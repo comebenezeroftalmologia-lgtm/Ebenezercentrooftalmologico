@@ -1,63 +1,107 @@
 /**
- * Integración con Clientify API.
+ * Integración con Clientify API — verificada contra la cuenta real de
+ * Ebenezer el 2026-09-08.
  *
- * Confirmado en la documentación pública (developer.clientify.com /
- * newapi.clientify.com): REST + JSON, autenticación por API key.
- *
- * PENDIENTE DE CONFIRMAR CONTIGO antes de dar por buena esta capa
- * (la documentación pública no expone el detalle sin estar logueado
- * con una cuenta Enterprise, así que estos son los puntos a validar
- * en cuanto tengas acceso):
- *   1. Header exacto de autenticación (suele ser `Authorization: Token <key>`
- *      o `Authorization: Api-Key <key>` — hay que confirmarlo).
- *   2. Nombre exacto del recurso de oportunidades (`/deals/` o `/opportunities/`)
- *      y de pipelines/etapas.
- *   3. Si el plan actual (Enterprise, según lo que habíamos anotado)
- *      ya tiene la API habilitada.
- *
- * Mientras tanto, esta función normaliza lo que sea que devuelva
- * Clientify hacia nuestro modelo `Opportunity` (ver lib/types.ts), así
- * que cuando confirmemos el shape real, el cambio queda contenido
- * aquí y no toca el resto de la app.
+ * Confirmado en vivo (ya no son suposiciones):
+ * - Base URL: https://api.clientify.com/v1
+ * - Auth: header `Authorization: Token <api_key>`
+ * - Recurso de oportunidades: `/deals/` (no "opportunities"), paginado
+ *   estilo DRF (`count`, `next`, `previous`, `results`)
+ * - Filtro por pipeline: `?pipeline_id=<id>` (OJO: `?pipeline=<id>` y
+ *   `?pipeline__id=<id>` NO filtran, Clientify los ignora silenciosamente
+ *   y devuelve todo sin filtrar — hay que usar `pipeline_id`)
+ * - Los 3 pipelines que nos interesan, con sus IDs reales:
+ *     106113 = Campañas            -> generacion_leads
+ *     132406 = Ordenamientos Quirurgicos    -> ordenamientos_qx
+ *     134626 = Ordenamientos No Quirurgicos -> ordenamientos_no_qx
+ * - Cada pipeline expone su lista de etapas completa (ordenadas por
+ *   `position`) en GET /deals/pipelines/{id}/
+ * - Código de estado del deal (`status`): 1=Open, 2=Expired, 3=Won, 4=Lost
+ *   (Expired se trata como cerrado/perdido para el cálculo de tiempo de
+ *   cierre — es un deal que caducó sin gestionarse, ajustar si Ebenezer
+ *   lo quiere tratar distinto)
+ * - El campo "Servicio" (Cataratas / Cx Refractiva / Ojo Seco) casi
+ *   nunca viene en `custom_fields` (solo ~5% de los deals de Campañas
+ *   tienen ahí un campo "Tipo de Servicio", con valores distintos como
+ *   "Cirugía Refractiva"/"Oftalmología General"). La señal real y
+ *   consistente es el PREFIJO del nombre del deal, ej. "Cx Refractiva -
+ *   Rafael", "Cataratas - Cindy", "Ojo Seco - ...". Confirmado sobre
+ *   1564 deals de Campañas: 1340 Cx Refractiva, 110 Cataratas, 50 Ojo
+ *   Seco, más variantes con typos (Catarata, Cx cataratas, etc.) que se
+ *   normalizan aquí.
  */
 
 import type { Pipeline } from "@/lib/types";
 
-const DEFAULT_BASE_URL =
-  process.env.CLIENTIFY_API_BASE_URL ?? "https://api.clientify.net/v1";
+const BASE_URL =
+  process.env.CLIENTIFY_API_BASE_URL ?? "https://api.clientify.com/v1";
 
-// Mapea el nombre del pipeline en Clientify -> nuestro enum interno.
-// Ajustar estas 3 claves una vez confirmemos los nombres exactos de
-// los pipelines en la cuenta de Ebenezer.
-const PIPELINE_NAME_MAP: Record<string, Pipeline> = {
-  "Campañas": "generacion_leads",
-  "Generación de Clientes Potenciales": "generacion_leads",
-  "Ordenamientos No Quirúrgicos": "ordenamientos_no_qx",
-  "Ordenamientos Quirúrgicos": "ordenamientos_qx",
+// IDs reales de pipeline en la cuenta de Clientify de Ebenezer.
+export const CLIENTIFY_PIPELINE_IDS: Record<Pipeline, number> = {
+  generacion_leads: 106113, // Campañas
+  ordenamientos_qx: 132406, // Ordenamientos Quirurgicos
+  ordenamientos_no_qx: 134626, // Ordenamientos No Quirurgicos
 };
 
-interface ClientifyDealRaw {
-  id: string | number;
-  pipeline_name: string;
-  stage_name: string;
-  amount?: number;
-  contact_id?: string | number;
-  source?: string;
-  custom_fields?: Record<string, unknown>;
-  created?: string;
-  closed_date?: string | null;
-  status?: string; // 'open' | 'won' | 'lost' (a confirmar valores exactos)
+const STATUS_MAP: Record<number, "open" | "won" | "lost"> = {
+  1: "open",
+  2: "lost", // Expired
+  3: "won",
+  4: "lost",
+};
+
+// Normaliza el prefijo del nombre del deal a uno de los 3 servicios.
+// Devuelve null si no matchea ninguno (leads genéricos tipo "Lead (Ads)").
+export function extractServiceFromDealName(name: string): string | null {
+  const prefix = name.split(/\s+-\s+/)[0]?.trim().toLowerCase() ?? "";
+  if (prefix.startsWith("cx refractiva") || prefix.startsWith("refractiva")) {
+    return "Cx Refractiva";
+  }
+  if (prefix.includes("catarata")) {
+    // cubre "Cataratas", "Catarata", "Cx Cataratas", "Cx Catarata", "Cx cataratas"
+    return "Cataratas";
+  }
+  if (prefix.includes("ojo seco")) {
+    return "Ojo Seco";
+  }
+  return null;
 }
 
-async function clientifyFetch<T>(path: string): Promise<T> {
+interface ClientifyDealRaw {
+  id: number;
+  name: string;
+  amount: string;
+  status: number;
+  status_desc: string;
+  pipeline: string; // URL
+  pipeline_desc: string;
+  pipeline_stage: string; // URL
+  pipeline_stage_desc: string;
+  contact: string | null;
+  contact_name: string | null;
+  contact_medium: string | null;
+  custom_fields: { id: number; field: string; value: string }[];
+  created: string;
+  actual_closed_date: string | null;
+  expected_closed_date: string | null;
+}
+
+interface ClientifyDealsPage {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ClientifyDealRaw[];
+}
+
+async function clientifyFetch<T>(url: string): Promise<T> {
   const apiKey = process.env.CLIENTIFY_API_KEY;
   if (!apiKey) {
     throw new Error("CLIENTIFY_API_KEY no configurada — ver .env.example");
   }
 
-  const res = await fetch(`${DEFAULT_BASE_URL}${path}`, {
+  const res = await fetch(url, {
     headers: {
-      Authorization: `Token ${apiKey}`, // TODO: confirmar formato exacto con soporte de Clientify
+      Authorization: `Token ${apiKey}`,
       Accept: "application/json",
     },
   });
@@ -69,32 +113,44 @@ async function clientifyFetch<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function fetchClientifyDeals(): Promise<ClientifyDealRaw[]> {
-  // TODO: confirmar el nombre real del recurso y la paginación
-  // (`?page=`, `?offset=`, o cursor). Se deja como GET simple por ahora.
-  const data = await clientifyFetch<{ results: ClientifyDealRaw[] }>(
-    "/deals/"
-  );
-  return data.results;
-}
+/** Trae TODOS los deals de un pipeline, paginando hasta el final. */
+export async function fetchClientifyDealsForPipeline(
+  pipeline: Pipeline
+): Promise<ClientifyDealRaw[]> {
+  const pipelineId = CLIENTIFY_PIPELINE_IDS[pipeline];
+  let url: string | null = `${BASE_URL}/deals/?pipeline_id=${pipelineId}&page_size=100`;
+  const all: ClientifyDealRaw[] = [];
 
-export function normalizeClientifyDeal(deal: ClientifyDealRaw) {
-  const pipeline = PIPELINE_NAME_MAP[deal.pipeline_name];
-  if (!pipeline) {
-    // Pipeline que no es uno de los 3 que nos interesan (p.ej. PQRS,
-    // Mutual-Flujo) — se ignora en la sincronización.
-    return null;
+  while (url) {
+    const page: ClientifyDealsPage = await clientifyFetch<ClientifyDealsPage>(url);
+    all.push(...page.results);
+    url = page.next;
   }
 
+  return all;
+}
+
+export function normalizeClientifyDeal(deal: ClientifyDealRaw, pipeline: Pipeline) {
   return {
-    id: String(deal.id),
+    id: `clientify-${deal.id}`,
     pipeline,
-    stage: deal.stage_name,
-    value: deal.amount ?? null,
-    channel: deal.source ?? null,
-    contact_id: deal.contact_id ? String(deal.contact_id) : null,
-    created_at: deal.created ?? new Date().toISOString(),
-    closed_at: deal.closed_date ?? null,
-    status: (deal.status as "open" | "won" | "lost") ?? "open",
+    stage: deal.pipeline_stage_desc,
+    service_name: extractServiceFromDealName(deal.name), // se resuelve a service_id en el sync route
+    value: deal.amount ? Number(deal.amount) : null,
+    channel: deal.contact_medium,
+    contact_id: deal.contact,
+    created_at: deal.created,
+    closed_at: deal.actual_closed_date,
+    status: STATUS_MAP[deal.status] ?? "open",
+    raw: deal,
   };
+}
+
+/** Trae las etapas de un pipeline en orden (para pintar el embudo aunque no haya oportunidades abiertas en todas). */
+export async function fetchClientifyPipelineStages(pipeline: Pipeline) {
+  const pipelineId = CLIENTIFY_PIPELINE_IDS[pipeline];
+  const data = await clientifyFetch<{
+    stages: { name: string; position: number }[];
+  }>(`${BASE_URL}/deals/pipelines/${pipelineId}/`);
+  return data.stages.sort((a, b) => a.position - b.position);
 }
