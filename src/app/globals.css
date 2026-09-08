@@ -2,10 +2,156 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: var(--font-inter), sans-serif;
+/* =========================================================
+   Ebenezer — Centro Oftalmológico
+   Design tokens, copiados 1:1 del Design System de la marca
+   (Claude Design: "Ebenezer Design System")
+   ========================================================= */
+:root {
+  /* ------- Paleta de marca ------- */
+  --eb-navy: #0e245e;
+  --eb-blue: #0f2ff3;
+  --eb-blue-soft: #6791f0;
+  --eb-aqua: #b0fffa;
+  --eb-green: #21814b;
+  --eb-paper: #f5f5f5;
+  --eb-white: #ffffff;
+
+  /* ------- Tintas y sombras derivadas ------- */
+  --eb-navy-90: #1a3174;
+  --eb-navy-70: #3b4f8d;
+  --eb-navy-20: #c7cde0;
+  --eb-navy-10: #e4e7f0;
+  --eb-aqua-50: #d8fffd;
+  --eb-aqua-20: #eeffff;
+  --eb-blue-10: #e7ecfe;
+  --eb-green-10: #dceee3;
+
+  /* ------- Neutros ------- */
+  --eb-ink: #0b1633;
+  --eb-ink-2: #2a335a;
+  --eb-ink-3: #5b6483;
+  --eb-line: #e1e4ec;
+  --eb-line-2: #eff1f6;
+  --eb-bg: #fafbfc;
+  --eb-surface: #ffffff;
+  --eb-surface-2: #f5f5f5;
+
+  /* ------- Semánticos fg/bg/border ------- */
+  --fg-1: var(--eb-ink);
+  --fg-2: var(--eb-ink-2);
+  --fg-3: var(--eb-ink-3);
+  --fg-inverse: var(--eb-white);
+  --fg-brand: var(--eb-navy);
+  --fg-link: var(--eb-blue);
+
+  --bg-1: var(--eb-bg);
+  --bg-2: var(--eb-surface);
+  --bg-3: var(--eb-surface-2);
+  --bg-brand: var(--eb-navy);
+  --bg-accent: var(--eb-aqua);
+
+  --border-1: var(--eb-line);
+  --border-2: var(--eb-line-2);
+  --border-strong: var(--eb-navy);
+
+  /* ------- Estado ------- */
+  --status-success: var(--eb-green);
+  --status-success-bg: var(--eb-green-10);
+  --status-info: var(--eb-blue-soft);
+  --status-info-bg: var(--eb-blue-10);
+  --status-warn: #c77a00;
+  --status-danger: #b3261e;
+
+  /* ------- Tipografía ------- */
+  --font-display: var(--font-cuerpo), "Questrial", "Outfit", -apple-system, sans-serif;
+  --font-body: var(--font-cuerpo), "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-label: var(--font-titulo), "Inter", -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --t-display: clamp(48px, 6vw, 88px);
+  --t-h1: clamp(36px, 4.4vw, 60px);
+  --t-h2: clamp(28px, 3.2vw, 44px);
+  --t-h3: clamp(22px, 2.4vw, 32px);
+  --t-h4: 20px;
+  --t-h5: 17px;
+  --t-body-lg: 18px;
+  --t-body: 16px;
+  --t-body-sm: 14px;
+  --t-caption: 13px;
+  --t-overline: 12px;
+
+  --lh-display: 0.96;
+  --lh-heading: 1.1;
+  --lh-body: 1.55;
+  --lh-tight: 1.25;
+
+  --tr-display: -0.02em;
+  --tr-heading: -0.01em;
+  --tr-body: 0em;
+  --tr-overline: 0.12em;
+  --tr-label: 0.16em;
+
+  --w-light: 300;
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-semibold: 600;
+  --w-bold: 700;
+
+  /* ------- Radios ------- */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 28px;
+  --r-2xl: 40px;
+  --r-pill: 999px;
+
+  /* ------- Espaciado (escala 4pt) ------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+  --s-9: 56px;
+  --s-10: 72px;
+  --s-11: 96px;
+  --s-12: 128px;
+
+  /* ------- Elevación (sombras con tinte navy) ------- */
+  --shadow-1: 0 1px 2px rgba(14, 36, 94, 0.04), 0 1px 1px rgba(14, 36, 94, 0.04);
+  --shadow-2: 0 4px 10px rgba(14, 36, 94, 0.06), 0 1px 2px rgba(14, 36, 94, 0.04);
+  --shadow-3: 0 12px 28px rgba(14, 36, 94, 0.1), 0 2px 6px rgba(14, 36, 94, 0.06);
+  --shadow-4: 0 24px 60px rgba(14, 36, 94, 0.14), 0 8px 16px rgba(14, 36, 94, 0.08);
+  --shadow-focus: 0 0 0 4px rgba(15, 47, 243, 0.18);
+
+  /* ------- Movimiento ------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-poppins), sans-serif;
+body {
+  font-family: var(--font-body);
+  background: var(--bg-1);
+  color: var(--fg-1);
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: var(--w-regular);
+  letter-spacing: var(--tr-heading);
+  color: var(--fg-brand);
+}
+
+.eb-label {
+  font-family: var(--font-label);
+  font-weight: var(--w-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tr-label);
 }

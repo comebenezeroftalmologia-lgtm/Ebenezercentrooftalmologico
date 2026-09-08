@@ -1,13 +1,26 @@
 import type { Metadata } from "next";
-import { Inter, Poppins } from "next/font/google";
+import localFont from "next/font/local";
 import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-poppins",
+// Fuentes reales de la marca (Ebenezer Design System).
+// Cada familia llega en dos archivos que cubren rangos de peso distintos.
+const cuerpo = localFont({
+  src: [
+    { path: "../../public/brand/fonts/Cuerpo.otf", weight: "300 500", style: "normal" },
+    { path: "../../public/brand/fonts/Cuerpo-2.otf", weight: "600 700", style: "normal" },
+  ],
+  variable: "--font-cuerpo",
+  display: "swap",
+});
+
+const titulo = localFont({
+  src: [
+    { path: "../../public/brand/fonts/Titulo.ttf", weight: "700", style: "normal" },
+    { path: "../../public/brand/fonts/Titulo-2.ttf", weight: "800", style: "normal" },
+  ],
+  variable: "--font-titulo",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -23,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body
-        className={`${inter.variable} ${poppins.variable} font-body bg-slate-50 text-navy-deep`}
+        className={`${cuerpo.variable} ${titulo.variable} font-body bg-ebbg text-ink antialiased`}
       >
         <div className="flex min-h-screen">
           <Sidebar />
