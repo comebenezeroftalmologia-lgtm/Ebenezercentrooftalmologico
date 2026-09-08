@@ -74,14 +74,14 @@ export function Sidebar() {
   return (
     <div ref={panelRef} className="relative flex shrink-0">
       {/* Riel de íconos, siempre visible */}
-      <aside className="flex w-[72px] shrink-0 flex-col items-center bg-navy py-4">
-        <Link href="/" className="mb-4 flex h-10 w-10 items-center justify-center">
+      <aside className="flex w-[96px] shrink-0 flex-col items-center bg-navy py-5">
+        <Link href="/" className="mb-5 flex h-20 w-20 items-center justify-center">
           <Image
             src="/brand/logo/logo-claro.png"
             alt="Ebenezer"
-            width={36}
-            height={36}
-            className="h-9 w-9 object-contain"
+            width={80}
+            height={80}
+            className="h-20 w-20 object-contain"
             priority
           />
         </Link>
@@ -125,7 +125,7 @@ export function Sidebar() {
 
       {/* Panel flotante de módulos */}
       {open && (
-        <div className="absolute left-[72px] top-4 z-30 w-80 rounded-xl border border-line bg-white p-3 shadow-eb-4">
+        <div className="absolute left-[96px] top-4 z-30 w-80 rounded-xl border border-line bg-white p-3 shadow-eb-4">
           <p className="eb-label px-3 pb-2 pt-1 text-[12px] text-blue">
             Módulos
           </p>
