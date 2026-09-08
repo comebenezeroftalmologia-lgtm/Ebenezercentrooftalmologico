@@ -165,6 +165,7 @@ export function normalizeClientifyDeal(deal: ClientifyDealRaw, pipeline: Pipelin
     created_at: deal.created,
     closed_at: deal.actual_closed_date,
     next_appointment_date: nextApptRaw ? parseClientifyDate(nextApptRaw) : null,
+    expected_close_date: deal.expected_closed_date,
     status: STATUS_MAP[deal.status] ?? "open",
     raw: deal,
   };

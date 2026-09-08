@@ -21,7 +21,6 @@ export function DrillDownTable({
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-line text-ink-3">
-            <th className="eb-label px-3 py-2 text-[11px]">Nombre</th>
             <th className="eb-label px-3 py-2 text-[11px]">Etapa</th>
             <th className="eb-label px-3 py-2 text-[11px]">Servicio</th>
             <th className="eb-label px-3 py-2 text-right text-[11px]">Valor</th>
@@ -30,7 +29,6 @@ export function DrillDownTable({
         <tbody>
           {rows.map((o) => (
             <tr key={o.id} className="border-b border-line-2 last:border-0">
-              <td className="px-3 py-2 text-ink">{o.contact_name ?? "—"}</td>
               <td className="px-3 py-2 text-ink-2">{o.stage}</td>
               <td className="px-3 py-2 text-ink-2">
                 {o.service_id ? serviceNames.get(o.service_id) ?? "—" : "—"}

@@ -12,7 +12,7 @@ export interface DashboardFilters extends DateRange {
 }
 
 const OPPORTUNITY_COLUMNS =
-  "id, pipeline, stage, service_id, value, channel, campaign_id, contact_id, contact_name, created_at, closed_at, next_appointment_date, status";
+  "id, pipeline, stage, service_id, value, channel, campaign_id, contact_id, contact_name, created_at, closed_at, next_appointment_date, expected_close_date, status";
 
 /** Todas las oportunidades de un pipeline dentro del rango de fechas
  * (por fecha de creación), opcionalmente filtradas por servicio. Es la
@@ -27,18 +27,33 @@ export async function getOpportunities({
   serviceId,
 }: DashboardFilters): Promise<Opportunity[]> {
   const supabase = createServiceClient();
-  let query = supabase
-    .from("opportunities")
-    .select(OPPORTUNITY_COLUMNS)
-    .eq("pipeline", pipeline)
-    .gte("created_at", `${from}T00:00:00.000Z`)
-    .lte("created_at", `${to}T23:59:59.999Z`);
+  const PAGE_SIZE = 1000; // límite por defecto de PostgREST/Supabase — hay
+  // que paginar explícitamente, algunos pipelines (Campañas) superan las
+  // 1000 oportunidades y se estaban truncando silenciosamente.
+  const all: Opportunity[] = [];
+  let start = 0;
 
-  if (serviceId) query = query.eq("service_id", serviceId);
+  while (true) {
+    let query = supabase
+      .from("opportunities")
+      .select(OPPORTUNITY_COLUMNS)
+      .eq("pipeline", pipeline)
+      .gte("created_at", `${from}T00:00:00.000Z`)
+      .lte("created_at", `${to}T23:59:59.999Z`)
+      .order("id", { ascending: true })
+      .range(start, start + PAGE_SIZE - 1);
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Opportunity[];
+    if (serviceId) query = query.eq("service_id", serviceId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    const rows = (data ?? []) as Opportunity[];
+    all.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+
+  return all;
 }
 
 /** Gasto total de Meta Ads en un rango de fechas (módulo Generación de Clientes Potenciales) */

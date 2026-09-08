@@ -38,6 +38,7 @@ export interface Opportunity {
   created_at: string;
   closed_at: string | null;
   next_appointment_date: string | null;
+  expected_close_date: string | null;
   status: OpportunityStatus;
 }
 

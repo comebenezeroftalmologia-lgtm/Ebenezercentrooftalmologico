@@ -56,7 +56,7 @@ export default async function LeadsPage({
   const avgClosingDays = avgDaysBetween(
     vendidas,
     (o) => o.created_at,
-    (o) => o.next_appointment_date
+    (o) => o.expected_close_date
   );
 
   const probabilidad = allOpportunities.filter(isProbabilidadCompra);
@@ -102,7 +102,7 @@ export default async function LeadsPage({
         <KpiCard
           label="Tiempo promedio de cierre"
           value={avgClosingDays !== null ? `${avgClosingDays.toFixed(1)} días` : "—"}
-          hint="Creación → Fecha próxima cita, solo vendidas"
+          hint="Creación → Fecha esperada de cierre, solo vendidas"
           icon={CalendarClock}
         />
         <KpiCard
