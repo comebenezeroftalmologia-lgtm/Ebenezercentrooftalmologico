@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/sync/meta-ads", "schedule": "0 8 * * *" },
+    { "path": "/api/sync/clientify", "schedule": "15 8 * * *" }
+  ]
+}
