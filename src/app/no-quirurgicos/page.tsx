@@ -5,6 +5,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
 import { StatusCards } from "@/components/StatusCards";
+import { ServiceDistributionChart } from "@/components/ServiceDistributionChart";
 import { StatusDonutChart } from "@/components/StatusDonutChart";
 import {
   ESTADO_LABELS,
@@ -91,10 +92,14 @@ export default async function NoQuirurgicosPage({
         />
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-navy">Distribución por Estado</h2>
           <StatusDonutChart counts={counts} />
+        </div>
+        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-navy">Distribución por Servicio</h2>
+          <ServiceDistributionChart opportunities={filtered} serviceNames={serviceNames} />
         </div>
         <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-navy">Etapas de las Oportunidades</h2>
