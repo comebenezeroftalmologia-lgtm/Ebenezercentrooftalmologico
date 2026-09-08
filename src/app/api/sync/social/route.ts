@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
   backfillInstagramFollowerHistory,
+  fetchFacebookPageFollowers,
   fetchInstagramDailyTotals,
   fetchInstagramFollowerCount,
   fetchInstagramReach,
@@ -19,10 +20,11 @@ export async function GET(req: NextRequest) {
     const today = new Date().toISOString().slice(0, 10);
     const backfill = req.nextUrl.searchParams.get("backfill") === "1";
 
-    const [reachRows, totalsRows, followers, topMedia, backfillRows] = await Promise.all([
+    const [reachRows, totalsRows, followers, fbFollowers, topMedia, backfillRows] = await Promise.all([
       fetchInstagramReach({ since: yesterday, until: today }),
       fetchInstagramDailyTotals(yesterday),
       fetchInstagramFollowerCount(),
+      fetchFacebookPageFollowers(),
       fetchInstagramTopMedia(25),
       backfill ? backfillInstagramFollowerHistory() : Promise.resolve([]),
     ]);
@@ -30,6 +32,9 @@ export async function GET(req: NextRequest) {
     const statRows = [...reachRows, ...totalsRows, ...backfillRows];
     if (followers !== null) {
       statRows.push({ platform: "instagram", metric: "followers", date: today, value: followers });
+    }
+    if (fbFollowers !== null) {
+      statRows.push({ platform: "facebook", metric: "followers", date: today, value: fbFollowers });
     }
 
     const supabase = createServiceClient();

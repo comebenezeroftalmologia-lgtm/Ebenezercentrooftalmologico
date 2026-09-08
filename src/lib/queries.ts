@@ -142,6 +142,45 @@ export async function getSocialPosts({
   return data ?? [];
 }
 
+/** Último valor conocido de una métrica de red social, sin importar el
+ * rango de fechas seleccionado — para mostrar el conteo "actual" de
+ * seguidores en los chips de plataforma, independiente del filtro. */
+export async function getLatestSocialStat({
+  platform,
+  metric,
+}: {
+  platform: string;
+  metric: string;
+}): Promise<SocialStatPoint | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("social_stats")
+    .select("date, value")
+    .eq("platform", platform)
+    .eq("metric", metric)
+    .order("date", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data && data.length > 0 ? data[0] : null;
+}
+
+/** Suma de una métrica de social_stats en un rango de fechas (ej. alcance,
+ * visitas al perfil, cuentas alcanzadas, interacciones totales). */
+export async function getSocialStatsSum({
+  platform,
+  metric,
+  from,
+  to,
+}: {
+  platform: string;
+  metric: string;
+  from: string;
+  to: string;
+}): Promise<number> {
+  const rows = await getSocialStatsSeries({ platform, metric, from, to });
+  return rows.reduce((sum, r) => sum + Number(r.value), 0);
+}
+
 /** Reduce una serie diaria a un punto por mes (el último valor observado
  * dentro de cada mes) — usado para el histórico de seguidores. */
 export function toMonthlySeries(rows: SocialStatPoint[]): SocialStatPoint[] {

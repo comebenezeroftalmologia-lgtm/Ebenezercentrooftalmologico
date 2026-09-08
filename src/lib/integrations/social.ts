@@ -266,3 +266,13 @@ export async function fetchInstagramTopMedia(limit = 25): Promise<InstagramMedia
   }
   return results;
 }
+
+/** Seguidores actuales de la página de Facebook (Meta Graph API, mismo access token que Instagram). */
+export async function fetchFacebookPageFollowers(): Promise<number | null> {
+  const pageId = process.env.META_PAGE_ID;
+  if (!pageId) return null;
+  const data = await graphFetch<{ followers_count?: number; fan_count?: number }>(`/${pageId}`, {
+    fields: "followers_count,fan_count",
+  });
+  return data.followers_count ?? data.fan_count ?? null;
+}
