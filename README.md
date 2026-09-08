@@ -90,3 +90,5 @@ ejecutan una vez al día).
    `CRON_SECRET` (cualquier string largo — Vercel lo usa para
    autenticar sus propias llamadas a los endpoints de sincronización).
 4. Deploy. Los crons de `vercel.json` quedan activos automáticamente.
+
+_Última actualización: 2026-09-08 04:43_
