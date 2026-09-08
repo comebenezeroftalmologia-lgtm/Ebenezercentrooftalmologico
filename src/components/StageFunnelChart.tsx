@@ -9,32 +9,27 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { StageFunnelRow } from "@/lib/types";
+import type { FunnelDatum } from "@/lib/dashboard";
 
-export function StageFunnelChart({ rows }: { rows: StageFunnelRow[] }) {
-  // Agrupa por etapa (por si vienen varios servicios sumados)
-  const byStage = new Map<string, number>();
-  for (const row of rows) {
-    byStage.set(row.stage, (byStage.get(row.stage) ?? 0) + row.opportunity_count);
-  }
-  const data = Array.from(byStage, ([stage, count]) => ({ stage, count }));
-
+export function StageFunnelChart({ data }: { data: FunnelDatum[] }) {
   if (data.length === 0) {
     return (
-      <p className="text-sm text-slate-500">
-        Sin oportunidades abiertas para este filtro todavía.
+      <p className="text-sm text-ink-3">
+        Sin oportunidades para este filtro todavía.
       </p>
     );
   }
 
+  const height = Math.max(240, data.length * 40);
+
   return (
-    <ResponsiveContainer width="100%" height={320}>
+    <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} layout="vertical" margin={{ left: 24 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
         <XAxis type="number" allowDecimals={false} />
-        <YAxis type="category" dataKey="stage" width={180} tick={{ fontSize: 12 }} />
+        <YAxis type="category" dataKey="stage" width={220} tick={{ fontSize: 12 }} />
         <Tooltip />
-        <Bar dataKey="count" fill="#0F2FF3" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="count" fill="#0F2FF3" radius={[0, 4, 4, 0]} name="Oportunidades" />
       </BarChart>
     </ResponsiveContainer>
   );

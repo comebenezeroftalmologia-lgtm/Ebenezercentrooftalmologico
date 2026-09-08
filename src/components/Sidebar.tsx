@@ -10,6 +10,7 @@ import {
   Target,
   Stethoscope,
   Scissors,
+  Share2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,11 @@ const NAV_ITEMS: NavItem[] = [
     href: "/quirurgicos",
     label: "Ordenamientos Quirúrgicos",
     icon: Scissors,
+  },
+  {
+    href: "/redes-sociales",
+    label: "Redes Sociales",
+    icon: Share2,
   },
 ];
 

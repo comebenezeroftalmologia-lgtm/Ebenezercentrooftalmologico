@@ -16,10 +16,10 @@
  *     134626 = Ordenamientos No Quirurgicos -> ordenamientos_no_qx
  * - Cada pipeline expone su lista de etapas completa (ordenadas por
  *   `position`) en GET /deals/pipelines/{id}/
- * - Código de estado del deal (`status`): 1=Open, 2=Expired, 3=Won, 4=Lost
- *   (Expired se trata como cerrado/perdido para el cálculo de tiempo de
- *   cierre — es un deal que caducó sin gestionarse, ajustar si Ebenezer
- *   lo quiere tratar distinto)
+ * - Código de estado del deal (`status`): 1=Open, 2=Expired, 3=Won, 4=Lost.
+ *   Expired y Lost son estados DISTINTOS en Clientify (se ven distinto en
+ *   la UI: "Vencida" vs "Perdida") y así se modelan aquí — antes este
+ *   código los colapsaba a los dos en "lost", ya corregido.
  * - El campo "Servicio" (Cataratas / Cx Refractiva / Ojo Seco) casi
  *   nunca viene en `custom_fields` (solo ~5% de los deals de Campañas
  *   tienen ahí un campo "Tipo de Servicio", con valores distintos como
@@ -29,9 +29,14 @@
  *   1564 deals de Campañas: 1340 Cx Refractiva, 110 Cataratas, 50 Ojo
  *   Seco, más variantes con typos (Catarata, Cx cataratas, etc.) que se
  *   normalizan aquí.
+ * - El custom field "Fecha de Próxima Cita" (formato DD/MM/YYYY) solo
+ *   existe en el pipeline Campañas (~6.3% de cobertura) — se usa para
+ *   recalcular el tiempo promedio de cierre del módulo de Generación de
+ *   Clientes Potenciales por pedido explícito de Ebenezer.
  */
 
 import type { Pipeline } from "@/lib/types";
+import { normalizeStage } from "@/lib/text";
 
 const BASE_URL =
   process.env.CLIENTIFY_API_BASE_URL ?? "https://api.clientify.com/v1";
@@ -43,12 +48,14 @@ export const CLIENTIFY_PIPELINE_IDS: Record<Pipeline, number> = {
   ordenamientos_no_qx: 134626, // Ordenamientos No Quirurgicos
 };
 
-const STATUS_MAP: Record<number, "open" | "won" | "lost"> = {
+const STATUS_MAP: Record<number, "open" | "won" | "lost" | "expired"> = {
   1: "open",
-  2: "lost", // Expired
+  2: "expired",
   3: "won",
   4: "lost",
 };
+
+const NEXT_APPOINTMENT_FIELD = normalizeStage("Fecha de Próxima Cita");
 
 // Normaliza el prefijo del nombre del deal a uno de los 3 servicios.
 // Devuelve null si no matchea ninguno (leads genéricos tipo "Lead (Ads)").
@@ -130,7 +137,22 @@ export async function fetchClientifyDealsForPipeline(
   return all;
 }
 
+function findCustomField(deal: ClientifyDealRaw, normalizedFieldName: string): string | null {
+  const f = deal.custom_fields?.find((cf) => normalizeStage(cf.field) === normalizedFieldName);
+  return f?.value ?? null;
+}
+
+/** Convierte "DD/MM/YYYY" (formato de Clientify) a "YYYY-MM-DD" (formato SQL date). */
+function parseClientifyDate(value: string): string | null {
+  const m = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m;
+  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+}
+
 export function normalizeClientifyDeal(deal: ClientifyDealRaw, pipeline: Pipeline) {
+  const nextApptRaw = findCustomField(deal, NEXT_APPOINTMENT_FIELD);
+
   return {
     id: `clientify-${deal.id}`,
     pipeline,
@@ -139,8 +161,10 @@ export function normalizeClientifyDeal(deal: ClientifyDealRaw, pipeline: Pipelin
     value: deal.amount ? Number(deal.amount) : null,
     channel: deal.contact_medium,
     contact_id: deal.contact,
+    contact_name: deal.contact_name,
     created_at: deal.created,
     closed_at: deal.actual_closed_date,
+    next_appointment_date: nextApptRaw ? parseClientifyDate(nextApptRaw) : null,
     status: STATUS_MAP[deal.status] ?? "open",
     raw: deal,
   };

@@ -16,6 +16,15 @@ export interface Service {
   name: ServiceName | string;
 }
 
+export type OpportunityStatus = "open" | "won" | "lost" | "expired";
+
+export const STATUS_LABELS: Record<OpportunityStatus, string> = {
+  open: "Abiertas",
+  expired: "Vencidas",
+  lost: "Perdidas",
+  won: "Ganadas",
+};
+
 export interface Opportunity {
   id: string;
   pipeline: Pipeline;
@@ -25,9 +34,11 @@ export interface Opportunity {
   channel: string | null;
   campaign_id: string | null;
   contact_id: string | null;
+  contact_name: string | null;
   created_at: string;
   closed_at: string | null;
-  status: "open" | "won" | "lost";
+  next_appointment_date: string | null;
+  status: OpportunityStatus;
 }
 
 export interface AdSpendRow {
@@ -40,17 +51,24 @@ export interface AdSpendRow {
   leads: number | null;
 }
 
-export interface StageFunnelRow {
-  pipeline: Pipeline;
-  service_id: number | null;
-  stage: string;
-  opportunity_count: number;
-  total_value: number | null;
+export interface SocialPost {
+  media_id: string;
+  platform: string;
+  media_type: string | null;
+  caption: string | null;
+  permalink: string | null;
+  posted_at: string | null;
+  likes: number;
+  comments: number;
+  shares: number;
+  saved: number;
+  reach: number;
+  views: number | null;
+  total_interactions: number;
+  synced_at: string;
 }
 
-export interface AvgClosingTimeRow {
-  pipeline: Pipeline;
-  service_id: number | null;
-  avg_days_to_close: number;
-  closed_count: number;
+export interface SocialStatPoint {
+  date: string;
+  value: number;
 }

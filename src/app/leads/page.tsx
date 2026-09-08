@@ -1,12 +1,27 @@
+import { CalendarClock, LineChart, Percent, Target, Wallet } from "lucide-react";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DrillDownTable } from "@/components/DrillDownTable";
 import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
+import { StatusCards } from "@/components/StatusCards";
 import {
-  getAdSpendTotal,
-  getAvgClosingTime,
-  getStageFunnel,
-  listServices,
-} from "@/lib/queries";
+  ESTADO_LABELS,
+  avgDaysBetween,
+  buildStageFunnel,
+  calcROI,
+  defaultDateRange,
+  filterByEstado,
+  isProbabilidadCompra,
+  isVendida,
+  statusCounts,
+  totalImporte,
+  type EstadoFilter,
+} from "@/lib/dashboard";
+import { PROBABILIDAD_COMPRA_STAGES } from "@/lib/pipelineStages";
+import { getAdSpendTotal, getOpportunities, listServices, serviceNameMap } from "@/lib/queries";
+import { formatCOP, formatNumber } from "@/lib/text";
+import { buildHref } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,55 +29,114 @@ export const revalidate = 0;
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: { servicio?: string };
+  searchParams: { servicio?: string; desde?: string; hasta?: string; estado?: string };
 }) {
   const serviceId = searchParams.servicio ? Number(searchParams.servicio) : null;
+  const defaults = defaultDateRange();
+  const from = searchParams.desde ?? defaults.from;
+  const to = searchParams.hasta ?? defaults.to;
+  const estado = searchParams.estado as EstadoFilter;
 
-  const today = new Date();
-  const from = new Date(today.getTime() - 30 * 86400_000)
-    .toISOString()
-    .slice(0, 10);
-  const to = today.toISOString().slice(0, 10);
-
-  const [services, funnel, closingTime, spend] = await Promise.all([
+  const [services, allOpportunities, gasto] = await Promise.all([
     listServices(),
-    getStageFunnel({ pipeline: "generacion_leads", serviceId }),
-    getAvgClosingTime({ pipeline: "generacion_leads", serviceId }),
+    getOpportunities({ pipeline: "generacion_leads", from, to, serviceId }),
     getAdSpendTotal({ from, to }),
   ]);
 
-  const avgDays = closingTime[0]?.avg_days_to_close ?? null;
+  const serviceNames = serviceNameMap(services);
+  const counts = statusCounts(allOpportunities);
+  const filtered = filterByEstado(allOpportunities, estado);
+  const funnel = buildStageFunnel(filtered);
+
+  const importeTotal = totalImporte(allOpportunities);
+  const roi = calcROI({ totalImporte: importeTotal, gasto });
+
+  const vendidas = allOpportunities.filter(isVendida);
+  const avgClosingDays = avgDaysBetween(
+    vendidas,
+    (o) => o.created_at,
+    (o) => o.next_appointment_date
+  );
+
+  const probabilidad = allOpportunities.filter(isProbabilidadCompra);
+
+  const currentParams: Record<string, string | undefined> = {
+    servicio: searchParams.servicio,
+    desde: searchParams.desde,
+    hasta: searchParams.hasta,
+    estado: searchParams.estado,
+  };
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-navy">
           Generación de Clientes Potenciales
         </h1>
-        <ServiceFilter services={services} />
+        <div className="flex flex-wrap items-end gap-3">
+          <ServiceFilter services={services} />
+          <DateRangePicker
+            from={from}
+            to={to}
+            otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }}
+          />
+        </div>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <StatusCards counts={counts} activeEstado={searchParams.estado} currentParams={currentParams} />
+
+      <div className="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard label="Gasto en Meta Ads" value={formatCOP(gasto)} hint={`${from} — ${to}`} icon={Wallet} />
         <KpiCard
-          label="Gasto en Meta Ads (30 días)"
-          value={spend.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })}
+          label="Total IMPORTE"
+          value={formatCOP(importeTotal)}
+          hint="Suma de todas las oportunidades del período, en cualquier etapa"
+        />
+        <KpiCard
+          label="ROI"
+          value={roi !== null ? `${roi.toFixed(0)}%` : "—"}
+          hint="(Total IMPORTE − Gasto) / Gasto"
+          icon={Percent}
         />
         <KpiCard
           label="Tiempo promedio de cierre"
-          value={avgDays !== null ? `${avgDays.toFixed(1)} días` : "—"}
-          hint="Solo oportunidades cerradas"
+          value={avgClosingDays !== null ? `${avgClosingDays.toFixed(1)} días` : "—"}
+          hint="Creación → Fecha próxima cita, solo vendidas"
+          icon={CalendarClock}
         />
         <KpiCard
-          label="Oportunidades abiertas"
-          value={String(funnel.reduce((a, r) => a + r.opportunity_count, 0))}
+          label="Total de Oportunidades Vendidas"
+          value={formatNumber(vendidas.length)}
+          hint="Ganadas + Programación de Cirugía"
+          href={buildHref(currentParams, { estado: "vendidas" })}
+          active={searchParams.estado === "vendidas"}
+          icon={Target}
+        />
+        <KpiCard
+          label="Oportunidades con Probabilidad de Compra"
+          value={formatNumber(probabilidad.length)}
+          hint="Ver etapas incluidas abajo"
+          href={buildHref(currentParams, { estado: "probabilidad" })}
+          active={searchParams.estado === "probabilidad"}
+          icon={LineChart}
         />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <p className="mb-8 text-xs text-ink-3">
+        <span className="font-semibold text-ink-2">Probabilidad de Compra</span> incluye las
+        etapas: {PROBABILIDAD_COMPRA_STAGES.join(", ")}.
+      </p>
+
+      <div className="mb-8 rounded-xl border border-line bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-navy">Etapas de las Oportunidades</h2>
+        <StageFunnelChart data={funnel} />
+      </div>
+
+      <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-navy">
-          Etapas de las Oportunidades
+          Detalle{estado ? ` — ${ESTADO_LABELS[estado] ?? estado}` : ""}
         </h2>
-        <StageFunnelChart rows={funnel} />
+        <DrillDownTable opportunities={filtered} serviceNames={serviceNames} />
       </div>
     </div>
   );

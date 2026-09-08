@@ -4,9 +4,9 @@
  * cuenta real @ebenezeroftalmo (IG Business Account ID confirmado:
  * 17841402278847170, resuelto desde la página de Facebook).
  *
- * Dos comportamientos distintos de la API de Instagram Insights,
- * confirmados probando contra la cuenta real (no están bien
- * documentados y cambiaron entre versiones de la API):
+ * Comportamientos de la API de Instagram Insights confirmados probando
+ * contra la cuenta real (no están bien documentados y cambiaron entre
+ * versiones de la API):
  *
  * 1. `reach` es una métrica de serie temporal — un `period=day` con
  *    `since`/`until` devuelve un valor POR DÍA dentro del rango.
@@ -15,9 +15,19 @@
  *    devuelve UN SOLO número agregado para todo el rango pedido (no
  *    hay desglose por día). Por eso, para estas 3, el rango que se
  *    pide siempre es "un solo día" y se guarda con la fecha de ese día.
+ * 3. `follower_count` es una métrica de serie temporal pero es un
+ *    DELTA diario (cuántos seguidores netos ganó/perdió ESE día), no un
+ *    acumulado — y solo se puede pedir para los últimos 30 días. Se usa
+ *    una sola vez para reconstruir el histórico hacia atrás a partir del
+ *    conteo actual (ver `backfillInstagramFollowerHistory`); de ahí en
+ *    adelante el histórico se construye solo, un punto por día, con el
+ *    conteo actual que ya guarda el sync diario normal.
  *
- * `impressions` está deprecado para cuentas nuevas — la API lo
- * rechaza directamente (probado, error 100). Se usa `reach` en su lugar.
+ * `impressions` está deprecado — la API lo rechaza directamente (error
+ * 100), confirmado tanto a nivel de cuenta como de publicación
+ * individual. Se usa `reach` en su lugar en todo el dashboard (se lo
+ * marcamos a Ebenezer: donde antes se hubiera mostrado "Impresiones"
+ * ahora se muestra "Alcance").
  */
 
 const GRAPH_API_VERSION = "v21.0";
@@ -27,6 +37,21 @@ export interface SocialStatRow {
   metric: string;
   date: string; // YYYY-MM-DD
   value: number;
+}
+
+export interface InstagramMediaInsight {
+  media_id: string;
+  media_type: string;
+  caption: string | null;
+  permalink: string | null;
+  timestamp: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  saved: number;
+  reach: number;
+  views: number | null;
+  total_interactions: number;
 }
 
 async function graphFetch<T>(path: string, params: Record<string, string>): Promise<T> {
@@ -122,4 +147,122 @@ export async function fetchInstagramFollowerCount(): Promise<number | null> {
     fields: "followers_count",
   });
   return data.followers_count;
+}
+
+/** Deltas diarios de seguidores (neto ganado/perdido ese día) — máximo 30 días hacia atrás, límite de la API. */
+async function fetchInstagramFollowerDeltas({
+  since,
+  until,
+}: {
+  since: string;
+  until: string;
+}): Promise<{ date: string; delta: number }[]> {
+  const igAccountId = process.env.META_IG_ACCOUNT_ID;
+  if (!igAccountId) return [];
+
+  const data = await graphFetch<{
+    data: { name: string; values: { value: number; end_time: string }[] }[];
+  }>(`/${igAccountId}/insights`, { metric: "follower_count", period: "day", since, until });
+
+  const series = data.data.find((m) => m.name === "follower_count");
+  return (series?.values ?? []).map((v) => ({ date: v.end_time.slice(0, 10), delta: v.value }));
+}
+
+/** Reconstruye el histórico ACUMULADO de seguidores de los últimos 30
+ * días (límite de la API para el delta diario) partiendo del conteo
+ * actual y restando los deltas hacia atrás en el tiempo. Pensado para
+ * correrse una sola vez como respaldo histórico — de ahí en adelante el
+ * sync diario normal (`fetchInstagramFollowerCount`) va acumulando el
+ * histórico real día a día. */
+export async function backfillInstagramFollowerHistory(): Promise<SocialStatRow[]> {
+  const current = await fetchInstagramFollowerCount();
+  if (current === null) return [];
+
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const sinceDate = new Date(today.getTime() - 29 * 86400_000);
+  const since = sinceDate.toISOString().slice(0, 10);
+
+  const deltas = await fetchInstagramFollowerDeltas({ since, until: todayStr });
+  const deltaByDate = new Map(deltas.map((d) => [d.date, d.delta]));
+
+  const dates: string[] = [];
+  for (
+    let d = new Date(sinceDate);
+    d.getTime() <= today.getTime();
+    d.setUTCDate(d.getUTCDate() + 1)
+  ) {
+    dates.push(d.toISOString().slice(0, 10));
+  }
+
+  const cumulative = new Map<string, number>();
+  cumulative.set(todayStr, current);
+  for (let i = dates.length - 2; i >= 0; i--) {
+    const nextDate = dates[i + 1];
+    const thisDate = dates[i];
+    const deltaOfNextDay = deltaByDate.get(nextDate) ?? 0;
+    cumulative.set(thisDate, (cumulative.get(nextDate) ?? current) - deltaOfNextDay);
+  }
+
+  return dates.map((date) => ({
+    platform: "instagram",
+    metric: "followers",
+    date,
+    value: cumulative.get(date) ?? current,
+  }));
+}
+
+/** Últimas publicaciones con sus métricas — base del ranking "Top 5 de contenidos". */
+export async function fetchInstagramTopMedia(limit = 25): Promise<InstagramMediaInsight[]> {
+  const igAccountId = process.env.META_IG_ACCOUNT_ID;
+  if (!igAccountId) return [];
+
+  const mediaList = await graphFetch<{
+    data: { id: string; media_type: string; caption?: string; permalink?: string; timestamp: string }[];
+  }>(`/${igAccountId}/media`, {
+    fields: "id,media_type,caption,permalink,timestamp",
+    limit: String(limit),
+  });
+
+  const results: InstagramMediaInsight[] = [];
+  for (const media of mediaList.data) {
+    const isVideo = media.media_type === "VIDEO" || media.media_type === "REELS";
+    const metricNames = isVideo
+      ? "likes,comments,shares,saved,reach,total_interactions,views"
+      : "likes,comments,shares,saved,reach,total_interactions";
+
+    let insightData: { name: string; values?: { value: number }[]; total_value?: { value: number } }[] = [];
+    try {
+      const insight = await graphFetch<{ data: typeof insightData }>(`/${media.id}/insights`, {
+        metric: metricNames,
+      });
+      insightData = insight.data;
+    } catch {
+      // Algunas piezas viejas (ej. carruseles) pueden no tener insights disponibles — se ignoran.
+    }
+
+    const val = (name: string) => {
+      const m = insightData.find((x) => x.name === name);
+      if (!m) return 0;
+      if (m.total_value) return m.total_value.value;
+      if (m.values?.[0]) return m.values[0].value;
+      return 0;
+    };
+
+    results.push({
+      media_id: media.id,
+      media_type: media.media_type,
+      caption: media.caption ?? null,
+      permalink: media.permalink ?? null,
+      timestamp: media.timestamp,
+      likes: val("likes"),
+      comments: val("comments"),
+      shares: val("shares"),
+      saved: val("saved"),
+      reach: val("reach"),
+      views: isVideo ? val("views") : null,
+      total_interactions: val("total_interactions"),
+    });
+  }
+  return results;
 }
