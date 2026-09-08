@@ -1,6 +1,5 @@
 import { CalendarClock, Target } from "lucide-react";
 import { DateRangePicker } from "@/components/DateRangePicker";
-import { DrillDownTable } from "@/components/DrillDownTable";
 import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
@@ -8,7 +7,6 @@ import { StatusCards } from "@/components/StatusCards";
 import { ServiceDistributionChart } from "@/components/ServiceDistributionChart";
 import { StatusDonutChart } from "@/components/StatusDonutChart";
 import {
-  ESTADO_LABELS,
   avgDaysBetween,
   buildStageFunnel,
   defaultDateRange,
@@ -105,13 +103,6 @@ export default async function NoQuirurgicosPage({
           <h2 className="mb-4 text-lg font-semibold text-navy">Etapas de las Oportunidades</h2>
           <StageFunnelChart data={funnel} />
         </div>
-      </div>
-
-      <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-navy">
-          Detalle{estado ? ` — ${ESTADO_LABELS[estado] ?? estado}` : ""}
-        </h2>
-        <DrillDownTable opportunities={filtered} serviceNames={serviceNames} />
       </div>
     </div>
   );

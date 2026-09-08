@@ -122,3 +122,40 @@ export const ESTADO_LABELS: Record<string, string> = {
   vendidas: "Vendidas",
   probabilidad: "Con Probabilidad de Compra",
 };
+
+export interface VendidaBreakdownItem {
+  label: string;
+  count: number;
+}
+
+/** Desglosa "vendidas" en sus categorías que la componen, sin doble
+ * conteo: Ganadas (status won, en cualquier etapa) + una fila por cada
+ * etapa de "programación" del pipeline (excluyendo las que ya se
+ * contaron como Ganadas). La suma de los conteos da exactamente
+ * vendidas.length. */
+export function breakdownVendidas(opps: Opportunity[], pipeline: Pipeline): VendidaBreakdownItem[] {
+  const ventaStages = VENTA_STAGES[pipeline];
+  const ganadas = opps.filter((o) => o.status === "won").length;
+  const items: VendidaBreakdownItem[] = [{ label: "Ganadas", count: ganadas }];
+  for (const stageName of ventaStages) {
+    const count = opps.filter(
+      (o) => o.status !== "won" && normalizeStage(o.stage) === normalizeStage(stageName)
+    ).length;
+    items.push({ label: stageName, count });
+  }
+  return items;
+}
+
+/** Igual que buildStageFunnel pero para un conjunto fijo de etapas (en
+ * el orden dado), incluyendo las que tienen 0 oportunidades — útil
+ * para mostrar siempre las 8 etapas de "Probabilidad de Compra". */
+export function buildStageBreakdown(opps: Opportunity[], stageNames: string[]): FunnelDatum[] {
+  return stageNames.map((stage) => {
+    const matching = opps.filter((o) => normalizeStage(o.stage) === normalizeStage(stage));
+    return {
+      stage,
+      count: matching.length,
+      value: matching.reduce((sum, o) => sum + (o.value ?? 0), 0),
+    };
+  });
+}

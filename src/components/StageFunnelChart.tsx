@@ -11,7 +11,13 @@ import {
 } from "recharts";
 import type { FunnelDatum } from "@/lib/dashboard";
 
-export function StageFunnelChart({ data }: { data: FunnelDatum[] }) {
+export function StageFunnelChart({
+  data,
+  color = "#0F2FF3",
+}: {
+  data: FunnelDatum[];
+  color?: string;
+}) {
   if (data.length === 0) {
     return (
       <p className="text-sm text-ink-3">
@@ -29,7 +35,7 @@ export function StageFunnelChart({ data }: { data: FunnelDatum[] }) {
         <XAxis type="number" allowDecimals={false} />
         <YAxis type="category" dataKey="stage" width={220} tick={{ fontSize: 12 }} />
         <Tooltip />
-        <Bar dataKey="count" fill="#0F2FF3" radius={[0, 4, 4, 0]} name="Oportunidades" />
+        <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} name="Oportunidades" />
       </BarChart>
     </ResponsiveContainer>
   );

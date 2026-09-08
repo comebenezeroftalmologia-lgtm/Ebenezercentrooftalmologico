@@ -1,6 +1,6 @@
 import { CalendarClock, LineChart, Percent, Target, Wallet } from "lucide-react";
+import Link from "next/link";
 import { DateRangePicker } from "@/components/DateRangePicker";
-import { DrillDownTable } from "@/components/DrillDownTable";
 import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
@@ -8,8 +8,9 @@ import { StatusCards } from "@/components/StatusCards";
 import { ServiceDistributionChart } from "@/components/ServiceDistributionChart";
 import { StatusDonutChart } from "@/components/StatusDonutChart";
 import {
-  ESTADO_LABELS,
   avgDaysBetween,
+  breakdownVendidas,
+  buildStageBreakdown,
   buildStageFunnel,
   calcROI,
   defaultDateRange,
@@ -61,6 +62,8 @@ export default async function LeadsPage({
   );
 
   const probabilidad = allOpportunities.filter(isProbabilidadCompra);
+  const vendidasBreakdown = breakdownVendidas(vendidas, "generacion_leads");
+  const probabilidadBreakdown = buildStageBreakdown(filtered, PROBABILIDAD_COMPRA_STAGES);
 
   const currentParams: Record<string, string | undefined> = {
     servicio: searchParams.servicio,
@@ -106,14 +109,25 @@ export default async function LeadsPage({
           hint="Creación → Fecha esperada de cierre, solo vendidas"
           icon={CalendarClock}
         />
-        <KpiCard
-          label="Total de Oportunidades Vendidas"
-          value={formatNumber(vendidas.length)}
-          hint="Ganadas + Programación de Cirugía"
+        <Link
           href={buildHref(currentParams, { estado: "vendidas" })}
-          active={searchParams.estado === "vendidas"}
-          icon={Target}
-        />
+          className={`rounded-xl border p-5 shadow-sm transition-colors duration-150 ease-eb-out hover:border-navy-20 ${
+            searchParams.estado === "vendidas" ? "border-blue bg-blue-10" : "border-line bg-white"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="eb-label text-[11px] text-ink-3">Total de Oportunidades Vendidas</p>
+            <Target className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />
+          </div>
+          <p className="mt-1 font-heading text-3xl font-semibold text-navy">{formatNumber(vendidas.length)}</p>
+          <div className="mt-2 flex flex-col gap-0.5">
+            {vendidasBreakdown.map((item) => (
+              <p key={item.label} className="text-xs text-ink-3">
+                {item.label}: <span className="font-semibold text-ink-2">{formatNumber(item.count)}</span>
+              </p>
+            ))}
+          </div>
+        </Link>
         <KpiCard
           label="Oportunidades con Probabilidad de Compra"
           value={formatNumber(probabilidad.length)}
@@ -146,9 +160,9 @@ export default async function LeadsPage({
 
       <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-navy">
-          Detalle{estado ? ` — ${ESTADO_LABELS[estado] ?? estado}` : ""}
+          Oportunidades con Probabilidad de Compra por Etapa
         </h2>
-        <DrillDownTable opportunities={filtered} serviceNames={serviceNames} />
+        <StageFunnelChart data={probabilidadBreakdown} color="#21814B" />
       </div>
     </div>
   );
