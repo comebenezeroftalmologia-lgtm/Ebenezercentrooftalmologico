@@ -5,6 +5,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
 import { StatusCards } from "@/components/StatusCards";
+import { StatusDonutChart } from "@/components/StatusDonutChart";
 import {
   ESTADO_LABELS,
   avgDaysBetween,
@@ -90,9 +91,15 @@ export default async function QuirurgicosPage({
         />
       </div>
 
-      <div className="mb-8 rounded-xl border border-line bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-navy">Etapas de las Oportunidades</h2>
-        <StageFunnelChart data={funnel} />
+      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-navy">Distribución por Estado</h2>
+          <StatusDonutChart counts={counts} />
+        </div>
+        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-navy">Etapas de las Oportunidades</h2>
+          <StageFunnelChart data={funnel} />
+        </div>
       </div>
 
       <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
