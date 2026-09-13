@@ -190,6 +190,13 @@ export function normalizeClientifyDeal(deal: ClientifyDealRaw, pipeline: Pipelin
     expected_close_date: deal.expected_closed_date,
     status: STATUS_MAP[deal.status] ?? "open",
     raw: deal,
+    // Se fija explícitamente en cada sync (insert o update) — sin esto,
+    // el default de la columna solo aplica en el INSERT inicial y
+    // synced_at queda "congelado" en la primera carga aunque el deal
+    // se siga actualizando en cada corrida del cron (encontrado el
+    // 2026-09-13 al diagnosticar un reporte de datos desactualizados:
+    // el contenido SÍ se actualizaba bien, pero synced_at mentía).
+    synced_at: new Date().toISOString(),
   };
 }
 
