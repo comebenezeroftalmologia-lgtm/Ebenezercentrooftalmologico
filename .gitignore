@@ -4,3 +4,7 @@ node_modules
 .env.local
 *.log
 supabase/.temp/
+
+# Exports crudos de Frecuencias (pueden pesar varios MB; se recargan
+# con scripts/frecuencias/ingest.mjs cuando llegue un nuevo export)
+scripts/frecuencias/data/

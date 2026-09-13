@@ -11,6 +11,7 @@ import {
   Stethoscope,
   Scissors,
   Share2,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +42,11 @@ const NAV_ITEMS: NavItem[] = [
     href: "/redes-sociales",
     label: "Redes Sociales",
     icon: Share2,
+  },
+  {
+    href: "/frecuencias",
+    label: "Frecuencias",
+    icon: BarChart3,
   },
 ];
 

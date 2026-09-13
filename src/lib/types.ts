@@ -73,3 +73,17 @@ export interface SocialStatPoint {
   date: string;
   value: number;
 }
+
+export interface FrecuenciaMonthly {
+  year: number;
+  month_num: number;
+  month_name: string;
+  uf: string | null;
+  grupo: string | null;
+  real: number;
+  meta: number;
+  base_prev: number;
+  dias_calendario: number | null;
+  dias_habiles: number | null;
+  is_mtd: boolean;
+}

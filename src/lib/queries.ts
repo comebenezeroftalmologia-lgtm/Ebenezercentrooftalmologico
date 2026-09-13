@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import type { Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
+import type { FrecuenciaMonthly, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -193,4 +193,102 @@ export function toMonthlySeries(rows: SocialStatPoint[]): SocialStatPoint[] {
     }
   }
   return Array.from(byMonth.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+const FRECUENCIA_COLUMNS =
+  "year, month_num, month_name, uf, grupo, real, meta, base_prev, dias_calendario, dias_habiles, is_mtd";
+
+/** Serie mensual total (todas las UF, todos los grupos) de un año —
+ * base del gráfico "Real vs. Meta" principal de Frecuencias. */
+export async function getFrecuenciasTotalSerie(year: number): Promise<FrecuenciaMonthly[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_mensual")
+    .select(FRECUENCIA_COLUMNS)
+    .is("uf", null)
+    .is("grupo", null)
+    .eq("year", year)
+    .order("month_num");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Desglose por Unidad Funcional (UF) de un mes puntual (todos los
+ * grupos combinados). */
+export async function getFrecuenciasPorUF({
+  year,
+  monthNum,
+}: {
+  year: number;
+  monthNum: number;
+}): Promise<FrecuenciaMonthly[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_mensual")
+    .select(FRECUENCIA_COLUMNS)
+    .not("uf", "is", null)
+    .is("grupo", null)
+    .eq("year", year)
+    .eq("month_num", monthNum)
+    .order("uf");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Desglose por empresa/contrato (grupo) de un mes puntual (todas las
+ * UF combinadas). */
+export async function getFrecuenciasPorGrupo({
+  year,
+  monthNum,
+}: {
+  year: number;
+  monthNum: number;
+}): Promise<FrecuenciaMonthly[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_mensual")
+    .select(FRECUENCIA_COLUMNS)
+    .is("uf", null)
+    .not("grupo", "is", null)
+    .eq("year", year)
+    .eq("month_num", monthNum)
+    .order("grupo");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Años disponibles en la base de Frecuencias (para el selector), de
+ * más reciente a más antiguo. */
+export async function getFrecuenciasAniosDisponibles(): Promise<number[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_mensual")
+    .select("year")
+    .is("uf", null)
+    .is("grupo", null);
+  if (error) throw error;
+  const years = Array.from(new Set((data ?? []).map((r) => r.year)));
+  return years.sort((a, b) => b - a);
+}
+
+/** El mes más reciente con datos cargados (año + mes) — para elegir el
+ * valor por defecto de los filtros al entrar al módulo. Si el mes más
+ * reciente está "en curso" (is_mtd), se informa igual: la página avisa
+ * que es un corte parcial. */
+export async function getFrecuenciasMesMasReciente(): Promise<{
+  year: number;
+  month_num: number;
+  is_mtd: boolean;
+} | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_mensual")
+    .select("year, month_num, is_mtd")
+    .is("uf", null)
+    .is("grupo", null)
+    .order("year", { ascending: false })
+    .order("month_num", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data && data.length > 0 ? data[0] : null;
 }
