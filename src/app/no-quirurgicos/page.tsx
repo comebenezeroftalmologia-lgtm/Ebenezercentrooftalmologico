@@ -12,6 +12,8 @@ import {
   defaultDateRange,
   filterByEstado,
   isVendida,
+  pctChange,
+  previousPeriodRange,
   statusCounts,
   type EstadoFilter,
 } from "@/lib/dashboard";
@@ -33,10 +35,12 @@ export default async function NoQuirurgicosPage({
   const from = searchParams.desde ?? defaults.from;
   const to = searchParams.hasta ?? defaults.to;
   const estado = searchParams.estado as EstadoFilter;
+  const previousRange = previousPeriodRange(from, to);
 
-  const [services, allOpportunities] = await Promise.all([
+  const [services, allOpportunities, previousOpportunities] = await Promise.all([
     listServices(),
     getOpportunities({ pipeline: "ordenamientos_no_qx", from, to, serviceId }),
+    getOpportunities({ pipeline: "ordenamientos_no_qx", ...previousRange, serviceId }),
   ]);
 
   const serviceNames = serviceNameMap(services);
@@ -50,6 +54,8 @@ export default async function NoQuirurgicosPage({
     (o) => o.created_at,
     (o) => o.closed_at
   );
+
+  const vendidasPct = pctChange(vendidas.length, previousOpportunities.filter(isVendida).length);
 
   const currentParams: Record<string, string | undefined> = {
     servicio: searchParams.servicio,
@@ -72,7 +78,12 @@ export default async function NoQuirurgicosPage({
         </div>
       </div>
 
-      <StatusCards counts={counts} activeEstado={searchParams.estado} currentParams={currentParams} />
+      <StatusCards
+        counts={counts}
+        previousTotal={previousOpportunities.length}
+        activeEstado={searchParams.estado}
+        currentParams={currentParams}
+      />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <KpiCard
@@ -88,6 +99,7 @@ export default async function NoQuirurgicosPage({
           href={buildHref(currentParams, { estado: "vendidas" })}
           active={searchParams.estado === "vendidas"}
           icon={Target}
+          comparison={{ pct: vendidasPct }}
         />
       </div>
 

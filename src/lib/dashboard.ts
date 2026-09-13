@@ -159,3 +159,22 @@ export function buildStageBreakdown(opps: Opportunity[], stageNames: string[]): 
     };
   });
 }
+
+/** Rango del "período anterior": mismo número de días, inmediatamente
+ * antes de `from` (sin solaparse) — base para los comparativos
+ * "vs. período anterior" en los 3 módulos de pipeline. */
+export function previousPeriodRange(from: string, to: string): { from: string; to: string } {
+  const fromDate = new Date(`${from}T00:00:00Z`);
+  const toDate = new Date(`${to}T00:00:00Z`);
+  const lengthMs = Math.max(toDate.getTime() - fromDate.getTime(), 0);
+  const prevTo = new Date(fromDate.getTime() - 86400_000);
+  const prevFrom = new Date(prevTo.getTime() - lengthMs);
+  return { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) };
+}
+
+/** % de cambio entre dos valores. null cuando no hay base de comparación
+ * (período anterior en cero y el actual no) — evita mostrar "+Infinity%". */
+export function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}

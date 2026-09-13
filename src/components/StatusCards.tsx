@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { StatusCounts } from "@/lib/dashboard";
+import { pctChange, type StatusCounts } from "@/lib/dashboard";
 import { buildHref } from "@/lib/url";
 import { formatNumber } from "@/lib/text";
 
@@ -13,10 +13,14 @@ const CARDS: { key: "total" | "open" | "expired" | "lost" | "won"; label: string
 
 export function StatusCards({
   counts,
+  previousTotal,
   activeEstado,
   currentParams,
 }: {
   counts: StatusCounts;
+  /** Total de oportunidades del período anterior (mismo rango de días) —
+   * si se pasa, la tarjeta "Total Oportunidades" muestra el % de cambio. */
+  previousTotal?: number | null;
   activeEstado?: string;
   currentParams: Record<string, string | undefined>;
 }) {
@@ -28,6 +32,10 @@ export function StatusCards({
           estado: card.key === "total" ? undefined : card.key,
         });
         const value = card.key === "total" ? counts.total : counts[card.key];
+        const pct =
+          card.key === "total" && previousTotal !== undefined && previousTotal !== null
+            ? pctChange(value, previousTotal)
+            : null;
         return (
           <Link
             key={card.key}
@@ -40,6 +48,15 @@ export function StatusCards({
             <p className="mt-1 font-heading text-2xl font-semibold text-navy">
               {formatNumber(value)}
             </p>
+            {pct !== null && (
+              <p
+                className={`mt-1 text-[11px] font-semibold ${
+                  pct >= 0 ? "text-green" : "text-[#B3261E]"
+                }`}
+              >
+                {pct >= 0 ? "↑" : "↓"} {Math.abs(pct)}% vs. anterior
+              </p>
+            )}
           </Link>
         );
       })}

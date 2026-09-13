@@ -1,4 +1,4 @@
-import { CalendarClock, LineChart, Percent, Target, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarClock, LineChart, Percent, Target, Wallet } from "lucide-react";
 import Link from "next/link";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { KpiCard } from "@/components/KpiCard";
@@ -17,6 +17,8 @@ import {
   filterByEstado,
   isProbabilidadCompra,
   isVendida,
+  pctChange,
+  previousPeriodRange,
   statusCounts,
   totalImporte,
   type EstadoFilter,
@@ -40,11 +42,13 @@ export default async function LeadsPage({
   const from = searchParams.desde ?? defaults.from;
   const to = searchParams.hasta ?? defaults.to;
   const estado = searchParams.estado as EstadoFilter;
+  const previousRange = previousPeriodRange(from, to);
 
-  const [services, allOpportunities, gasto] = await Promise.all([
+  const [services, allOpportunities, gasto, previousOpportunities] = await Promise.all([
     listServices(),
     getOpportunities({ pipeline: "generacion_leads", from, to, serviceId }),
     getAdSpendTotal({ from, to }),
+    getOpportunities({ pipeline: "generacion_leads", ...previousRange, serviceId }),
   ]);
 
   const serviceNames = serviceNameMap(services);
@@ -65,6 +69,14 @@ export default async function LeadsPage({
   const probabilidad = allOpportunities.filter(isProbabilidadCompra);
   const vendidasBreakdown = breakdownVendidas(vendidas, "generacion_leads");
   const probabilidadBreakdown = buildStageBreakdown(filtered, PROBABILIDAD_COMPRA_STAGES);
+
+  // Comparativo vs. período anterior (mismo rango de días, inmediatamente
+  // antes del seleccionado) — para IMPORTE y Vendidas, los dos números que
+  // más le importan a gerencia mes a mes.
+  const prevImporte = totalImporte(previousOpportunities);
+  const prevVendidas = previousOpportunities.filter(isVendida).length;
+  const importePct = pctChange(importeTotal, prevImporte);
+  const vendidasPct = pctChange(vendidas.length, prevVendidas);
 
   const currentParams: Record<string, string | undefined> = {
     servicio: searchParams.servicio,
@@ -89,7 +101,12 @@ export default async function LeadsPage({
         </div>
       </div>
 
-      <StatusCards counts={counts} activeEstado={searchParams.estado} currentParams={currentParams} />
+      <StatusCards
+        counts={counts}
+        previousTotal={previousOpportunities.length}
+        activeEstado={searchParams.estado}
+        currentParams={currentParams}
+      />
 
       <div className="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard label="Gasto en Meta Ads" value={formatCOP(gasto)} hint={`${from} — ${to}`} icon={Wallet} />
@@ -97,6 +114,7 @@ export default async function LeadsPage({
           label="Total IMPORTE"
           value={formatCOP(importeTotal)}
           hint="Suma de todas las oportunidades del período, en cualquier etapa"
+          comparison={{ pct: importePct }}
         />
         <KpiCard
           label="ROI"
@@ -121,6 +139,20 @@ export default async function LeadsPage({
             <Target className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />
           </div>
           <p className="mt-1 font-heading text-3xl font-semibold text-navy">{formatNumber(vendidas.length)}</p>
+          {vendidasPct !== null && (
+            <span
+              className={`mt-2 inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-xs font-semibold ${
+                vendidasPct >= 0 ? "bg-green-10 text-green" : "bg-[#FBEAE8] text-[#B3261E]"
+              }`}
+            >
+              {vendidasPct >= 0 ? (
+                <ArrowUp className="h-3 w-3" strokeWidth={2.5} />
+              ) : (
+                <ArrowDown className="h-3 w-3" strokeWidth={2.5} />
+              )}
+              {Math.abs(vendidasPct)}% vs. período anterior
+            </span>
+          )}
           <div className="mt-2 flex flex-col gap-0.5">
             {vendidasBreakdown.map((item) => (
               <p key={item.label} className="text-xs text-ink-3">
