@@ -6,6 +6,11 @@ import {
 } from "@/lib/integrations/clientify";
 import type { Pipeline } from "@/lib/types";
 
+
+// Clientify puede paginar cientos de deals y responder lento/con
+// timeouts intermitentes — 10s (default de Vercel) no alcanza.
+export const maxDuration = 60;
+
 const PIPELINES: Pipeline[] = [
   "generacion_leads",
   "ordenamientos_qx",

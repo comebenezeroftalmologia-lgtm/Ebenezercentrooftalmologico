@@ -100,20 +100,42 @@ interface ClientifyDealsPage {
   results: ClientifyDealRaw[];
 }
 
-async function clientifyFetch<T>(url: string): Promise<T> {
+/** Clientify (o la red entre Vercel y Clientify) responde de forma
+ * intermitente con 502/503/504 en pipelines grandes con paginación
+ * profunda (confirmado en producción: "generacion_leads: Gateway
+ * Timeout" tumbaba el sync completo, dejando Campañas y lo que viniera
+ * después sin sincronizar ese día). Reintenta con backoff exponencial
+ * antes de rendirse. */
+async function clientifyFetch<T>(url: string, attempt = 1): Promise<T> {
   const apiKey = process.env.CLIENTIFY_API_KEY;
   if (!apiKey) {
     throw new Error("CLIENTIFY_API_KEY no configurada — ver .env.example");
   }
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Token ${apiKey}`,
-      Accept: "application/json",
-    },
-  });
+  const MAX_ATTEMPTS = 4;
+  const RETRYABLE_STATUS = new Set([502, 503, 504]);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        Authorization: `Token ${apiKey}`,
+        Accept: "application/json",
+      },
+    });
+  } catch (err) {
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+      return clientifyFetch<T>(url, attempt + 1);
+    }
+    throw err;
+  }
 
   if (!res.ok) {
+    if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_ATTEMPTS) {
+      await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+      return clientifyFetch<T>(url, attempt + 1);
+    }
     throw new Error(`Clientify API error ${res.status}: ${await res.text()}`);
   }
 

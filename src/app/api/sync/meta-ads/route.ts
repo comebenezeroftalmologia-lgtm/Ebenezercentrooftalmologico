@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { extractLeadsFromActions, fetchMetaAdInsights } from "@/lib/integrations/meta-ads";
 
+// La API de Meta puede responder lento — 10s (default de Vercel) no
+// siempre alcanza.
+export const maxDuration = 60;
+
 // Vercel Cron Jobs llaman por GET, con
 // `Authorization: Bearer <CRON_SECRET>` cuando CRON_SECRET está
 // configurado en el proyecto de Vercel — así se evita que quede

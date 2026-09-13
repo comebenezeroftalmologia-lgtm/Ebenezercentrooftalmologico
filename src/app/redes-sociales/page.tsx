@@ -17,6 +17,7 @@ import type { SocialStatPoint } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const maxDuration = 30;
 
 function netChange(series: SocialStatPoint[]): number | null {
   if (series.length < 2) return null;

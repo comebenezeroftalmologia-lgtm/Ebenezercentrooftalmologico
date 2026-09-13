@@ -9,6 +9,10 @@ import {
   fetchInstagramTopMedia,
 } from "@/lib/integrations/social";
 
+// Varias llamadas a la API de Meta en serie/paralelo — 10s (default de
+// Vercel) no siempre alcanza.
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
