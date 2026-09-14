@@ -12,6 +12,7 @@ import {
   Scissors,
   Share2,
   BarChart3,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,6 +48,11 @@ const NAV_ITEMS: NavItem[] = [
     href: "/frecuencias",
     label: "Frecuencias",
     icon: BarChart3,
+  },
+  {
+    href: "/venta-del-dia",
+    label: "Venta del Día",
+    icon: ClipboardList,
   },
 ];
 

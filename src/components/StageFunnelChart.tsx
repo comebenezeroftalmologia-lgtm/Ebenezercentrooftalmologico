@@ -14,16 +14,14 @@ import type { FunnelDatum } from "@/lib/dashboard";
 export function StageFunnelChart({
   data,
   color = "#0F2FF3",
+  emptyMessage = "Sin oportunidades para este filtro todavía.",
 }: {
   data: FunnelDatum[];
   color?: string;
+  emptyMessage?: string;
 }) {
   if (data.length === 0) {
-    return (
-      <p className="text-sm text-ink-3">
-        Sin oportunidades para este filtro todavía.
-      </p>
-    );
+    return <p className="text-sm text-ink-3">{emptyMessage}</p>;
   }
 
   const height = Math.max(240, data.length * 40);
