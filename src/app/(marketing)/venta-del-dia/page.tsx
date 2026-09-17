@@ -1,3 +1,4 @@
+import { requireModuloAccess } from "@/lib/auth";
 import { AlertTriangle, CalendarCheck2, Info, Scissors, Stethoscope, UserCheck, XCircle } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { SingleDatePicker } from "@/components/SingleDatePicker";
@@ -35,6 +36,7 @@ export default async function VentaDelDiaPage({
 }: {
   searchParams: { fecha?: string };
 }) {
+  await requireModuloAccess("venta_del_dia");
   const fecha = searchParams.fecha ?? todayISO();
 
   // Agenda del día (pendientes + confirmadas) — API antigua, siempre

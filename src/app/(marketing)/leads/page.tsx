@@ -1,3 +1,4 @@
+import { requireModuloAccess } from "@/lib/auth";
 import { ArrowDown, ArrowUp, CalendarClock, LineChart, Percent, Target, Wallet } from "lucide-react";
 import Link from "next/link";
 import { DateRangePicker } from "@/components/DateRangePicker";
@@ -37,6 +38,7 @@ export default async function LeadsPage({
 }: {
   searchParams: { servicio?: string; desde?: string; hasta?: string; estado?: string };
 }) {
+  await requireModuloAccess("leads");
   const serviceId = searchParams.servicio ? Number(searchParams.servicio) : null;
   const defaults = defaultDateRange();
   const from = searchParams.desde ?? defaults.from;

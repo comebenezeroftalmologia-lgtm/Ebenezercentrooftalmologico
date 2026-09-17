@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Building2 } from "lucide-react";
-import { getCurrentAppUser, getMisAsignaciones } from "@/lib/procesos/auth";
+import { getCurrentAppUser, getMisAsignaciones } from "@/lib/auth";
 import { listAreas, listTodasLasAsignaciones } from "@/lib/procesos/queries";
 
 export const dynamic = "force-dynamic";

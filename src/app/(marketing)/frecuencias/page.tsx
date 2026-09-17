@@ -1,3 +1,4 @@
+import { requireModuloAccess } from "@/lib/auth";
 import { Activity, CalendarCheck2, PieChart, TrendingUp } from "lucide-react";
 import { CategoryRealVsMetaChart } from "@/components/CategoryRealVsMetaChart";
 import { FrecuenciasFilters } from "@/components/FrecuenciasFilters";
@@ -36,6 +37,7 @@ export default async function FrecuenciasPage({
 }: {
   searchParams: { anio?: string; mes?: string };
 }) {
+  await requireModuloAccess("frecuencias");
   const years = await getFrecuenciasAniosDisponibles();
   const latest = await getFrecuenciasMesMasReciente();
 

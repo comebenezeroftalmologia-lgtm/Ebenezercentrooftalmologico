@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { getCurrentAppUser } from "@/lib/procesos/auth";
+import { getCurrentAppUser } from "@/lib/auth";
 import {
   getArea,
   listAppUsers,

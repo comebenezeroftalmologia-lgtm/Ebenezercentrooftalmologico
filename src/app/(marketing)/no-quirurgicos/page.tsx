@@ -1,3 +1,4 @@
+import { requireModuloAccess } from "@/lib/auth";
 import { CalendarClock, Target } from "lucide-react";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { KpiCard } from "@/components/KpiCard";
@@ -30,6 +31,7 @@ export default async function NoQuirurgicosPage({
 }: {
   searchParams: { servicio?: string; desde?: string; hasta?: string; estado?: string };
 }) {
+  await requireModuloAccess("no_quirurgicos");
   const serviceId = searchParams.servicio ? Number(searchParams.servicio) : null;
   const defaults = defaultDateRange();
   const from = searchParams.desde ?? defaults.from;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CheckCircle2, Circle, CircleDot } from "lucide-react";
-import { requireAppUser } from "@/lib/procesos/auth";
+import { requireAppUser } from "@/lib/auth";
 import { listMisTareas } from "@/lib/procesos/queries";
 import { ESTADO_LABELS } from "@/lib/procesos/types";
 

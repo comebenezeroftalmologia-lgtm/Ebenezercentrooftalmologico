@@ -1,3 +1,4 @@
+import { requireModuloAccess } from "@/lib/auth";
 import { Eye, Image as ImageIcon, TrendingUp, UserCheck, Users, Zap } from "lucide-react";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { FollowerHistoryChart } from "@/components/FollowerHistoryChart";
@@ -29,6 +30,7 @@ export default async function RedesSocialesPage({
 }: {
   searchParams: { red?: string; desde?: string; hasta?: string };
 }) {
+  await requireModuloAccess("redes_sociales");
   const defaults = defaultDateRange();
   const from = searchParams.desde ?? defaults.from;
   const to = searchParams.hasta ?? defaults.to;

@@ -1,4 +1,5 @@
 import { createSessionServerClient } from "@/lib/supabase/server";
+import type { Modulo } from "@/lib/modulos";
 import type {
   Actividad,
   AppUser,
@@ -45,6 +46,20 @@ export async function listAppUsers(): Promise<AppUser[]> {
     .order("nombre_completo");
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAppUser);
+}
+
+export async function listModuloAccesosPorUsuario(): Promise<Record<string, Modulo[]>> {
+  const supabase = createSessionServerClient();
+  const { data, error } = await supabase.from("modulo_accesos").select("user_id, modulo");
+  if (error) throw new Error(error.message);
+  const map: Record<string, Modulo[]> = {};
+  for (const row of data ?? []) {
+    const uid = (row as { user_id: string }).user_id;
+    const modulo = (row as { modulo: Modulo }).modulo;
+    if (!map[uid]) map[uid] = [];
+    map[uid].push(modulo);
+  }
+  return map;
 }
 
 export async function listAsignacionesPorArea(areaId: string): Promise<AreaAsignacion[]> {

@@ -16,44 +16,52 @@ import {
   FolderKanban,
   type LucideIcon,
 } from "lucide-react";
+import type { Modulo } from "@/lib/modulos";
 
 interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  modulo?: Modulo;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Inicio", icon: Home },
   {
     href: "/leads",
     label: "Generación de Clientes Potenciales",
     icon: Target,
+    modulo: "leads",
   },
   {
     href: "/no-quirurgicos",
     label: "Ordenamientos No Quirúrgicos",
     icon: Stethoscope,
+    modulo: "no_quirurgicos",
   },
   {
     href: "/quirurgicos",
     label: "Ordenamientos Quirúrgicos",
     icon: Scissors,
+    modulo: "quirurgicos",
   },
   {
     href: "/redes-sociales",
     label: "Redes Sociales",
     icon: Share2,
+    modulo: "redes_sociales",
   },
   {
     href: "/frecuencias",
     label: "Frecuencias",
     icon: BarChart3,
+    modulo: "frecuencias",
   },
   {
     href: "/venta-del-dia",
     label: "Venta del Día",
     icon: ClipboardList,
+    modulo: "venta_del_dia",
   },
   {
     href: "/procesos",
@@ -62,7 +70,9 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ modulos }: { modulos: Modulo[] }) {
+  const allowed = new Set(modulos);
+  const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => !item.modulo || allowed.has(item.modulo));
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);

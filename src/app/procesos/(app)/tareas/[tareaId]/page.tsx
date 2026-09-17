@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCurrentAppUser, getMisAsignaciones } from "@/lib/procesos/auth";
+import { getCurrentAppUser, getMisAsignaciones } from "@/lib/auth";
 import { getTarea, listAsignacionesPorArea, listRelacionesDeTarea } from "@/lib/procesos/queries";
 import { ESTADO_LABELS } from "@/lib/procesos/types";
 import { EditarTareaForm } from "./EditarTareaForm";

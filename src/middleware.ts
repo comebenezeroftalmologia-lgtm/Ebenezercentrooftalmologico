@@ -1,10 +1,12 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Protege /procesos/**: sin sesión, redirige a /procesos/login; con
-// sesión, no deja volver a /procesos/login. El resto del sitio
-// (tableros de mercadeo) no pasa por aquí — ver `matcher` abajo — así
-// que sigue público, sin cambios.
+// Protege TODO el sitio (tableros de mercadeo + /procesos): sin
+// sesión, redirige a /login; con sesión, no deja volver a /login.
+// Quedan fuera del gate (ver `matcher` abajo): /login, /auth/callback
+// (el callback de invitación de Supabase), /api/**, los internos de
+// Next (_next/static, _next/image) y cualquier archivo estático
+// (imágenes, íconos, etc. — cualquier ruta con punto).
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -32,16 +34,16 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isLoginPage = path === "/procesos/login";
+  const isLoginPage = path === "/login";
 
   if (!isLoginPage && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/procesos/login";
+    url.pathname = "/login";
     return NextResponse.redirect(url);
   }
   if (isLoginPage && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/procesos";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
@@ -49,5 +51,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/procesos/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|auth/callback|api|.*\\..*).*)"],
 };

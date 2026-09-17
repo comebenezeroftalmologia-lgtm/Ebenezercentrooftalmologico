@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
-import { esUsuarioValido, requireAdmin, requireAppUser, usuarioToEmail } from "@/lib/procesos/auth";
+import { requireAdmin, requireAppUser } from "@/lib/auth";
+import type { Modulo } from "@/lib/modulos";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function errorMsg(e: unknown): string {
   return e instanceof Error ? e.message : "Error desconocido.";
@@ -15,79 +19,120 @@ export async function loginAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const usuario = String(formData.get("usuario") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!usuario || !password) {
-    return { error: "Ingresa usuario y contraseña." };
+  if (!email || !password) {
+    return { error: "Ingresa correo y contraseña." };
   }
 
   const supabase = createSessionServerClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: usuarioToEmail(usuario),
-    password,
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: "Usuario o contraseña incorrectos." };
+    return { error: "Correo o contraseña incorrectos." };
   }
 
-  redirect("/procesos");
+  redirect("/");
 }
 
 export async function logoutAction() {
   const supabase = createSessionServerClient();
   await supabase.auth.signOut();
-  redirect("/procesos/login");
+  redirect("/login");
+}
+
+/** Primer login tras aceptar una invitación: la persona ya tiene
+ * sesión (vino del link del correo vía /auth/callback), solo le falta
+ * poner su propia contraseña. */
+export async function establecerPasswordInicialAction(
+  _prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const user = await requireAppUser();
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
+
+  const supabase = createSessionServerClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  void user;
+  redirect("/");
 }
 
 // --- Administración de usuarios (solo admin) ---------------------------
 
-export async function crearUsuarioAction(
+export async function invitarUsuarioAction(
   _prevState: { error: string | null; ok?: boolean },
   formData: FormData
 ): Promise<{ error: string | null; ok?: boolean }> {
   await requireAdmin();
 
-  const usuario = String(formData.get("usuario") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const nombreCompleto = String(formData.get("nombreCompleto") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
   const isAdmin = formData.get("isAdmin") === "on";
+  const modulos = formData.getAll("modulos").map(String) as Modulo[];
 
-  if (!esUsuarioValido(usuario)) {
-    return {
-      error: "Usuario inválido: solo minúsculas, números, punto, guion o guion bajo (sin espacios).",
-    };
-  }
+  if (!EMAIL_PATTERN.test(email)) return { error: "Correo inválido." };
   if (!nombreCompleto) return { error: "Falta el nombre completo." };
-  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
 
-  const email = usuarioToEmail(usuario);
   const admin = createServiceClient();
 
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
+  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${SITE_URL}/auth/callback?next=/invitacion`,
   });
 
-  if (createError || !created.user) {
-    return { error: `No se pudo crear el usuario: ${createError?.message ?? "error desconocido"}` };
+  if (inviteError || !invited.user) {
+    return { error: `No se pudo invitar: ${inviteError?.message ?? "error desconocido"}` };
   }
 
   const { error: profileError } = await admin.from("app_users").insert({
-    id: created.user.id,
+    id: invited.user.id,
     nombre_completo: nombreCompleto,
     email,
     is_admin: isAdmin,
   });
 
   if (profileError) {
-    return { error: `Usuario creado pero falló el perfil: ${profileError.message}` };
+    return { error: `Invitación enviada pero falló el perfil: ${profileError.message}` };
+  }
+
+  if (modulos.length > 0) {
+    const { error: modulosError } = await admin
+      .from("modulo_accesos")
+      .insert(modulos.map((modulo) => ({ user_id: invited.user!.id, modulo })));
+    if (modulosError) {
+      return { error: `Invitación enviada pero falló el acceso a módulos: ${modulosError.message}` };
+    }
   }
 
   revalidatePath("/procesos/usuarios");
   return { error: null, ok: true };
+}
+
+export async function actualizarAccesoUsuarioAction(
+  userId: string,
+  isAdmin: boolean,
+  modulos: Modulo[]
+) {
+  await requireAdmin();
+  const admin = createServiceClient();
+
+  const { error: updateError } = await admin.from("app_users").update({ is_admin: isAdmin }).eq("id", userId);
+  if (updateError) throw new Error(updateError.message);
+
+  const { error: deleteError } = await admin.from("modulo_accesos").delete().eq("user_id", userId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (modulos.length > 0) {
+    const { error: insertError } = await admin
+      .from("modulo_accesos")
+      .insert(modulos.map((modulo) => ({ user_id: userId, modulo })));
+    if (insertError) throw new Error(insertError.message);
+  }
+
+  revalidatePath("/procesos/usuarios");
 }
 
 export async function toggleActivoUsuarioAction(userId: string, activo: boolean) {
@@ -96,6 +141,31 @@ export async function toggleActivoUsuarioAction(userId: string, activo: boolean)
   const { error } = await admin.from("app_users").update({ activo }).eq("id", userId);
   if (error) throw new Error(error.message);
   revalidatePath("/procesos/usuarios");
+}
+
+export async function eliminarUsuarioAction(userId: string) {
+  const yo = await requireAdmin();
+  if (userId === yo.id) throw new Error("No puedes eliminar tu propia cuenta.");
+  const admin = createServiceClient();
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/procesos/usuarios");
+}
+
+export async function restablecerPasswordAction(
+  userId: string,
+  _prevState: { error: string | null; ok?: boolean },
+  formData: FormData
+): Promise<{ error: string | null; ok?: boolean }> {
+  await requireAdmin();
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
+
+  const admin = createServiceClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (error) return { error: error.message };
+
+  return { error: null, ok: true };
 }
 
 // --- Asignaciones de área (líder / colaborador) ------------------------
@@ -356,20 +426,4 @@ export async function buscarTareasParaRelacionarAction(query: string, excluirTar
   await requireAppUser();
   const { buscarTareas } = await import("@/lib/procesos/queries");
   return buscarTareas(query, excluirTareaId);
-}
-
-export async function restablecerPasswordAction(
-  userId: string,
-  _prevState: { error: string | null; ok?: boolean },
-  formData: FormData
-): Promise<{ error: string | null; ok?: boolean }> {
-  await requireAdmin();
-  const password = String(formData.get("password") ?? "");
-  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
-
-  const admin = createServiceClient();
-  const { error } = await admin.auth.admin.updateUserById(userId, { password });
-  if (error) return { error: error.message };
-
-  return { error: null, ok: true };
 }
