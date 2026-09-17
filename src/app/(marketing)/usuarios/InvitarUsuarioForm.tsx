@@ -2,7 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { invitarUsuarioAction } from "@/lib/procesos/actions";
-import { MODULOS } from "@/lib/modulos";
+import { modulosPorGrupo } from "@/lib/modulos";
 
 function BotonInvitar() {
   const { pending } = useFormStatus();
@@ -19,6 +19,7 @@ function BotonInvitar() {
 
 export function InvitarUsuarioForm() {
   const [state, formAction] = useFormState(invitarUsuarioAction, { error: null });
+  const grupos = modulosPorGrupo();
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -50,21 +51,26 @@ export function InvitarUsuarioForm() {
         </div>
       </div>
 
-      <div>
-        <p className="eb-label mb-2 block text-[11px] text-ink-3">Acceso a módulos</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULOS.map((m) => (
-            <label key={m.slug} className="flex items-center gap-2 text-sm text-ink-2">
-              <input
-                name="modulos"
-                type="checkbox"
-                value={m.slug}
-                className="h-4 w-4 rounded border-line"
-              />
-              {m.label}
-            </label>
-          ))}
-        </div>
+      <div className="flex flex-col gap-4">
+        <p className="eb-label -mb-1 block text-[11px] text-ink-3">Acceso a módulos</p>
+        {(Object.keys(grupos) as (keyof typeof grupos)[]).map((grupo) => (
+          <div key={grupo}>
+            <p className="mb-1.5 text-xs font-semibold text-navy">{grupo}</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {grupos[grupo].map((m) => (
+                <label key={m.slug} className="flex items-center gap-2 text-sm text-ink-2">
+                  <input
+                    name="modulos"
+                    type="checkbox"
+                    value={m.slug}
+                    className="h-4 w-4 rounded border-line"
+                  />
+                  {m.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       {state.error && (

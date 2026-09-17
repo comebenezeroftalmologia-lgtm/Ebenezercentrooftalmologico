@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import type { AppUser } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
-import { MODULOS, moduloLabel } from "@/lib/modulos";
+import { MODULOS, modulosPorGrupo, moduloLabel } from "@/lib/modulos";
 import { actualizarAccesoUsuarioAction, eliminarUsuarioAction } from "@/lib/procesos/actions";
 import { RestablecerPasswordButton } from "./RestablecerPasswordButton";
 import { ToggleActivoButton } from "./ToggleActivoButton";
@@ -114,18 +114,27 @@ export function UsuarioCard({
             Administrador (acceso a todos los módulos)
           </label>
           {!isAdmin && (
-            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              {MODULOS.map((m) => (
-                <label key={m.slug} className="flex items-center gap-2 text-sm text-ink-2">
-                  <input
-                    type="checkbox"
-                    checked={seleccion.has(m.slug)}
-                    onChange={() => toggleModulo(m.slug)}
-                    className="h-4 w-4 rounded border-line"
-                  />
-                  {m.label}
-                </label>
-              ))}
+            <div className="flex flex-col gap-3">
+              {(Object.keys(modulosPorGrupo()) as (keyof ReturnType<typeof modulosPorGrupo>)[]).map(
+                (grupo) => (
+                  <div key={grupo}>
+                    <p className="mb-1 text-[11px] font-semibold text-ink-3">{grupo}</p>
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                      {modulosPorGrupo()[grupo].map((m) => (
+                        <label key={m.slug} className="flex items-center gap-2 text-sm text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={seleccion.has(m.slug)}
+                            onChange={() => toggleModulo(m.slug)}
+                            className="h-4 w-4 rounded border-line"
+                          />
+                          {m.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )
+              )}
             </div>
           )}
         </div>

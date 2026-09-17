@@ -19,68 +19,32 @@ import {
   LogOut,
   type LucideIcon,
 } from "lucide-react";
-import type { Modulo } from "@/lib/modulos";
+import { MODULOS, type Modulo } from "@/lib/modulos";
 import { logoutAction } from "@/lib/procesos/actions";
 
-interface NavItem {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  modulo?: Modulo;
-}
+// Solo íconos — el slug/label/href/grupo de cada módulo vive en
+// lib/modulos.ts (fuente única, la comparte también /usuarios).
+const ICONOS: Record<Modulo, LucideIcon> = {
+  leads: Target,
+  no_quirurgicos: Stethoscope,
+  quirurgicos: Scissors,
+  redes_sociales: Share2,
+  frecuencias: BarChart3,
+  venta_del_dia: ClipboardList,
+  procesos: FolderKanban,
+};
 
-const ALL_NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Inicio", icon: Home },
-  {
-    href: "/leads",
-    label: "Generación de Clientes Potenciales",
-    icon: Target,
-    modulo: "leads",
-  },
-  {
-    href: "/no-quirurgicos",
-    label: "Ordenamientos No Quirúrgicos",
-    icon: Stethoscope,
-    modulo: "no_quirurgicos",
-  },
-  {
-    href: "/quirurgicos",
-    label: "Ordenamientos Quirúrgicos",
-    icon: Scissors,
-    modulo: "quirurgicos",
-  },
-  {
-    href: "/redes-sociales",
-    label: "Redes Sociales",
-    icon: Share2,
-    modulo: "redes_sociales",
-  },
-  {
-    href: "/frecuencias",
-    label: "Frecuencias",
-    icon: BarChart3,
-    modulo: "frecuencias",
-  },
-  {
-    href: "/venta-del-dia",
-    label: "Venta del Día",
-    icon: ClipboardList,
-    modulo: "venta_del_dia",
-  },
-  {
-    href: "/procesos",
-    label: "Procesos",
-    icon: FolderKanban,
-    modulo: "procesos",
-  },
-];
+const ANALYTICS_ITEMS = MODULOS.filter((m) => m.grupo === "Analytics");
 
 export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: boolean }) {
   const allowed = new Set(modulos);
-  const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => !item.modulo || allowed.has(item.modulo));
+  const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug));
+  const procesosPermitido = allowed.has("procesos");
+
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const analyticsActivo = analyticsAllowed.some((m) => pathname === m.href);
 
   useEffect(() => {
     if (!open) return;
@@ -119,40 +83,51 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
           />
         </Link>
 
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-label="Ver módulos"
-          className={`mb-3 flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
-            open ? "bg-aqua text-navy" : "text-aqua hover:bg-navy-90"
-          }`}
-        >
-          <LayoutGrid className="h-5 w-5" strokeWidth={1.75} />
-        </button>
-
         <div className="mb-2 h-px w-8 bg-white/10" />
 
         <nav className="flex flex-1 flex-col items-center gap-2">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-label={item.label}
-                title={item.label}
-                className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
-                  active
-                    ? "bg-aqua text-navy"
-                    : "text-white/80 hover:bg-navy-90 hover:text-aqua"
-                }`}
-              >
-                <Icon className="h-5 w-5" strokeWidth={1.75} />
-              </Link>
-            );
-          })}
+          <Link
+            href="/"
+            aria-label="Inicio"
+            title="Inicio"
+            className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
+              pathname === "/" ? "bg-aqua text-navy" : "text-white/80 hover:bg-navy-90 hover:text-aqua"
+            }`}
+          >
+            <Home className="h-5 w-5" strokeWidth={1.75} />
+          </Link>
+
+          {analyticsAllowed.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-label="Analytics"
+              title="Analytics"
+              className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
+                open || analyticsActivo
+                  ? "bg-aqua text-navy"
+                  : "text-white/80 hover:bg-navy-90 hover:text-aqua"
+              }`}
+            >
+              <LayoutGrid className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+          )}
+
+          {procesosPermitido && (
+            <Link
+              href="/procesos"
+              aria-label="Procesos"
+              title="Procesos"
+              className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
+                pathname === "/procesos" || pathname.startsWith("/procesos/")
+                  ? "bg-aqua text-navy"
+                  : "text-white/80 hover:bg-navy-90 hover:text-aqua"
+              }`}
+            >
+              <FolderKanban className="h-5 w-5" strokeWidth={1.75} />
+            </Link>
+          )}
         </nav>
 
         <div className="mt-2 flex flex-col items-center gap-2">
@@ -195,24 +170,20 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
         </div>
       </aside>
 
-      {/* Panel flotante de módulos */}
-      {open && (
+      {/* Panel flotante de Analytics */}
+      {open && analyticsAllowed.length > 0 && (
         <div className="absolute left-[96px] top-4 z-30 w-80 rounded-xl border border-line bg-white p-3 shadow-eb-4">
-          <p className="eb-label px-3 pb-2 pt-1 text-[12px] text-blue">
-            Módulos
-          </p>
+          <p className="eb-label px-3 pb-2 pt-1 text-[12px] text-blue">Analytics</p>
           <div className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => {
+            {analyticsAllowed.map((item) => {
               const active = pathname === item.href;
-              const Icon = item.icon;
+              const Icon = ICONOS[item.slug];
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors duration-150 ease-eb-out ${
-                    active
-                      ? "bg-aqua-50 font-semibold text-navy"
-                      : "text-ink-2 hover:bg-aqua-20"
+                    active ? "bg-aqua-50 font-semibold text-navy" : "text-ink-2 hover:bg-aqua-20"
                   }`}
                 >
                   <span
