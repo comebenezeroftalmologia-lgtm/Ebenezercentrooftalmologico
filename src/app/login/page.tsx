@@ -67,6 +67,13 @@ export default function LoginPage() {
         )}
 
         <BotonEntrar />
+
+        <a
+          href="/recuperar-password"
+          className="text-center text-xs text-ink-3 underline hover:text-blue"
+        >
+          ¿Olvidaste tu contraseña?
+        </a>
       </form>
     </div>
   );

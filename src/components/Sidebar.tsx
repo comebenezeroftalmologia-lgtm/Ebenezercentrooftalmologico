@@ -14,9 +14,12 @@ import {
   BarChart3,
   ClipboardList,
   FolderKanban,
+  UserCircle,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import type { Modulo } from "@/lib/modulos";
+import { logoutAction } from "@/lib/procesos/actions";
 
 interface NavItem {
   href: string;
@@ -128,7 +131,7 @@ export function Sidebar({ modulos }: { modulos: Modulo[] }) {
 
         <div className="mb-2 h-px w-8 bg-white/10" />
 
-        <nav className="flex flex-col items-center gap-2">
+        <nav className="flex flex-1 flex-col items-center gap-2">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
             const Icon = item.icon;
@@ -149,6 +152,31 @@ export function Sidebar({ modulos }: { modulos: Modulo[] }) {
             );
           })}
         </nav>
+
+        <div className="mt-2 flex flex-col items-center gap-2">
+          <Link
+            href="/perfil"
+            aria-label="Mi perfil"
+            title="Mi perfil"
+            className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
+              pathname === "/perfil"
+                ? "bg-aqua text-navy"
+                : "text-white/80 hover:bg-navy-90 hover:text-aqua"
+            }`}
+          >
+            <UserCircle className="h-5 w-5" strokeWidth={1.75} />
+          </Link>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              className="flex h-11 w-11 items-center justify-center rounded-pill text-white/60 transition-colors duration-150 ease-eb-out hover:bg-navy-90 hover:text-white"
+            >
+              <LogOut className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+          </form>
+        </div>
       </aside>
 
       {/* Panel flotante de módulos */}

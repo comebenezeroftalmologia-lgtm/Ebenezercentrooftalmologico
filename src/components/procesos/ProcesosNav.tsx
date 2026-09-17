@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ClipboardCheck, Home, Users, LogOut } from "lucide-react";
+import { Building2, ClipboardCheck, Home, Users, LogOut, UserCircle } from "lucide-react";
 import type { AppUser } from "@/lib/procesos/types";
 import { logoutAction } from "@/lib/procesos/actions";
 
@@ -55,7 +55,14 @@ export function ProcesosNav({ user }: { user: AppUser }) {
       <div className="mt-4 border-t border-white/10 pt-4">
         <p className="truncate text-xs font-medium text-white/90">{user.nombreCompleto}</p>
         <p className="text-[11px] text-white/50">{user.isAdmin ? "Administrador" : "Usuario"}</p>
-        <form action={logoutAction} className="mt-3">
+        <Link
+          href="/perfil"
+          className="mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-xs text-white/70 transition-colors duration-150 ease-eb-out hover:bg-navy-90 hover:text-white"
+        >
+          <UserCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+          Mi perfil
+        </Link>
+        <form action={logoutAction}>
           <button
             type="submit"
             className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-white/70 transition-colors duration-150 ease-eb-out hover:bg-navy-90 hover:text-white"

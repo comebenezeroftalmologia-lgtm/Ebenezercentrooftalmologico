@@ -3,10 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Protege TODO el sitio (tableros de mercadeo + /procesos): sin
 // sesión, redirige a /login; con sesión, no deja volver a /login.
-// Quedan fuera del gate (ver `matcher` abajo): /login, /auth/callback
-// (el callback de invitación de Supabase), /api/**, los internos de
-// Next (_next/static, _next/image) y cualquier archivo estático
-// (imágenes, íconos, etc. — cualquier ruta con punto).
+// Quedan fuera del gate (ver `matcher` abajo): /login,
+// /recuperar-password (pedir el correo de recuperación, sin sesión
+// todavía), /auth/callback (el callback de invitación/recuperación de
+// Supabase), /api/**, los internos de Next (_next/static,
+// _next/image) y cualquier archivo estático (imágenes, íconos, etc.
+// — cualquier ruta con punto). /restablecer-password SÍ queda
+// protegida a propósito: solo se llega ahí con una sesión de
+// recuperación ya establecida por /auth/callback.
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -51,5 +55,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|auth/callback|api|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|recuperar-password|auth/callback|api|.*\\..*).*)"],
 };

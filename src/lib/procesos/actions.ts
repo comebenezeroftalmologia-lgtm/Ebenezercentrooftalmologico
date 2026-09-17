@@ -61,6 +61,46 @@ export async function establecerPasswordInicialAction(
   redirect("/");
 }
 
+// Perfil (usuario ya autenticado, cambia su propia contraseña — se
+// queda en /perfil viendo el resultado, no se redirige).
+export async function cambiarPasswordAction(
+  _prevState: { error: string | null; ok?: boolean },
+  formData: FormData
+): Promise<{ error: string | null; ok?: boolean }> {
+  await requireAppUser();
+  const password = String(formData.get("password") ?? "");
+  const confirmar = String(formData.get("confirmar") ?? "");
+
+  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
+  if (password !== confirmar) return { error: "Las contraseñas no coinciden." };
+
+  const supabase = createSessionServerClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  return { error: null, ok: true };
+}
+
+// "Olvidé mi contraseña" (sin sesión): manda el correo de
+// recuperación. Supabase no revela si el correo existe o no — el
+// mensaje es siempre el mismo, para no filtrar qué correos están
+// registrados.
+export async function solicitarRecuperacionAction(
+  _prevState: { error: string | null; ok?: boolean },
+  formData: FormData
+): Promise<{ error: string | null; ok?: boolean }> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(email)) return { error: "Ingresa un correo válido." };
+
+  const supabase = createSessionServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${SITE_URL}/auth/callback?next=/restablecer-password`,
+  });
+
+  if (error) return { error: "No se pudo enviar el correo. Intenta de nuevo en unos minutos." };
+  return { error: null, ok: true };
+}
+
 // --- Administración de usuarios (solo admin) ---------------------------
 
 export async function invitarUsuarioAction(
