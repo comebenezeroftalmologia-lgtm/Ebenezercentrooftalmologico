@@ -1,13 +1,11 @@
-import { redirect } from "next/navigation";
-import { getCurrentAppUser } from "@/lib/auth";
+import { requireModuloAccess } from "@/lib/auth";
 import { ProcesosNav } from "@/components/procesos/ProcesosNav";
 
 export default async function ProcesosAppLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentAppUser();
-  // El middleware ya exige sesión de Supabase Auth; esto cubre el caso
-  // de una sesión válida sin fila en app_users (perfil no creado).
-  if (!user) redirect("/login");
-  if (!user.activo) redirect("/login");
+  // "procesos" es un módulo asignable más (como los del dashboard de
+  // mercadeo): un admin lo tiene implícito, cualquier otro usuario
+  // necesita que se lo asignen desde /usuarios.
+  const user = await requireModuloAccess("procesos");
 
   return (
     <div className="flex min-h-screen">

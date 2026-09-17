@@ -147,7 +147,7 @@ export async function invitarUsuarioAction(
     }
   }
 
-  revalidatePath("/procesos/usuarios");
+  revalidatePath("/usuarios");
   return { error: null, ok: true };
 }
 
@@ -172,7 +172,7 @@ export async function actualizarAccesoUsuarioAction(
     if (insertError) throw new Error(insertError.message);
   }
 
-  revalidatePath("/procesos/usuarios");
+  revalidatePath("/usuarios");
 }
 
 export async function toggleActivoUsuarioAction(userId: string, activo: boolean) {
@@ -180,7 +180,7 @@ export async function toggleActivoUsuarioAction(userId: string, activo: boolean)
   const admin = createServiceClient();
   const { error } = await admin.from("app_users").update({ activo }).eq("id", userId);
   if (error) throw new Error(error.message);
-  revalidatePath("/procesos/usuarios");
+  revalidatePath("/usuarios");
 }
 
 export async function eliminarUsuarioAction(userId: string) {
@@ -189,7 +189,7 @@ export async function eliminarUsuarioAction(userId: string) {
   const admin = createServiceClient();
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) throw new Error(error.message);
-  revalidatePath("/procesos/usuarios");
+  revalidatePath("/usuarios");
 }
 
 export async function restablecerPasswordAction(

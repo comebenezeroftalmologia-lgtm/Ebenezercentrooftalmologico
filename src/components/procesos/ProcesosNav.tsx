@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ClipboardCheck, Home, Users, LogOut, UserCircle } from "lucide-react";
+import { Building2, ClipboardCheck, Home, LogOut, UserCircle } from "lucide-react";
 import type { AppUser } from "@/lib/procesos/types";
 import { logoutAction } from "@/lib/procesos/actions";
 
@@ -14,7 +14,6 @@ export function ProcesosNav({ user }: { user: AppUser }) {
     { href: "/procesos", label: "Inicio", icon: Home },
     { href: "/procesos/areas", label: "Áreas", icon: Building2 },
     { href: "/procesos/mis-tareas", label: "Mis Tareas", icon: ClipboardCheck },
-    ...(user.isAdmin ? [{ href: "/procesos/usuarios", label: "Usuarios", icon: Users }] : []),
   ];
 
   return (

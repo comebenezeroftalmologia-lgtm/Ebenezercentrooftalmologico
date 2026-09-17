@@ -7,7 +7,8 @@ export type Modulo =
   | "quirurgicos"
   | "redes_sociales"
   | "frecuencias"
-  | "venta_del_dia";
+  | "venta_del_dia"
+  | "procesos";
 
 export const MODULOS: { slug: Modulo; label: string; href: string }[] = [
   { slug: "leads", label: "Generación de Clientes Potenciales", href: "/leads" },
@@ -16,6 +17,7 @@ export const MODULOS: { slug: Modulo; label: string; href: string }[] = [
   { slug: "redes_sociales", label: "Redes Sociales", href: "/redes-sociales" },
   { slug: "frecuencias", label: "Frecuencias", href: "/frecuencias" },
   { slug: "venta_del_dia", label: "Venta del Día", href: "/venta-del-dia" },
+  { slug: "procesos", label: "Procesos", href: "/procesos" },
 ];
 
 export function moduloLabel(slug: Modulo): string {

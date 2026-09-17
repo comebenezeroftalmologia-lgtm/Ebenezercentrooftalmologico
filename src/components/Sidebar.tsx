@@ -14,6 +14,7 @@ import {
   BarChart3,
   ClipboardList,
   FolderKanban,
+  Users,
   UserCircle,
   LogOut,
   type LucideIcon,
@@ -70,10 +71,11 @@ const ALL_NAV_ITEMS: NavItem[] = [
     href: "/procesos",
     label: "Procesos",
     icon: FolderKanban,
+    modulo: "procesos",
   },
 ];
 
-export function Sidebar({ modulos }: { modulos: Modulo[] }) {
+export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: boolean }) {
   const allowed = new Set(modulos);
   const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => !item.modulo || allowed.has(item.modulo));
   const pathname = usePathname();
@@ -154,6 +156,20 @@ export function Sidebar({ modulos }: { modulos: Modulo[] }) {
         </nav>
 
         <div className="mt-2 flex flex-col items-center gap-2">
+          {isAdmin && (
+            <Link
+              href="/usuarios"
+              aria-label="Usuarios"
+              title="Usuarios"
+              className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
+                pathname === "/usuarios"
+                  ? "bg-aqua text-navy"
+                  : "text-white/80 hover:bg-navy-90 hover:text-aqua"
+              }`}
+            >
+              <Users className="h-5 w-5" strokeWidth={1.75} />
+            </Link>
+          )}
           <Link
             href="/perfil"
             aria-label="Mi perfil"
