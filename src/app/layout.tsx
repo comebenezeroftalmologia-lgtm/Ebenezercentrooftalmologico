@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
 // Fuentes reales de la marca (Ebenezer Design System).
@@ -28,6 +27,10 @@ export const metadata: Metadata = {
   description: "Tableros de control de Centro Oftalmológico Ebenezer",
 };
 
+// Layout raíz — solo html/body/fuentes/estilos globales. El wrapper con
+// el Sidebar de mercadeo vive en (marketing)/layout.tsx: /procesos es
+// una sección aparte, con su propio login y su propia navegación, y no
+// debe llevar el sidebar de tableros comerciales.
 export default function RootLayout({
   children,
 }: {
@@ -38,10 +41,7 @@ export default function RootLayout({
       <body
         className={`${cuerpo.variable} ${titulo.variable} font-body bg-ebbg text-ink antialiased`}
       >
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-8">{children}</main>
-        </div>
+        {children}
       </body>
     </html>
   );

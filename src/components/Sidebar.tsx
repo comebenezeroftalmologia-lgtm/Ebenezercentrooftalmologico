@@ -13,6 +13,7 @@ import {
   Share2,
   BarChart3,
   ClipboardList,
+  FolderKanban,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,6 +54,11 @@ const NAV_ITEMS: NavItem[] = [
     href: "/venta-del-dia",
     label: "Venta del Día",
     icon: ClipboardList,
+  },
+  {
+    href: "/procesos",
+    label: "Procesos",
+    icon: FolderKanban,
   },
 ];
 
