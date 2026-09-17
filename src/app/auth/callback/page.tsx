@@ -4,14 +4,20 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
-// El link de invitación de Supabase no trae un `?code=` en la query
-// (eso sería PKCE) — trae el token en el fragmento de la URL
-// (`#access_token=...&refresh_token=...`), que nunca llega al
-// servidor. Por eso este procesamiento tiene que ser en el cliente:
-// el SDK de Supabase lee ese fragmento solo (detectSessionInUrl) al
-// crear el cliente de navegador, y dispara onAuthStateChange en
-// cuanto arma la sesión — createBrowserSupabaseClient además la deja
-// en cookies para que el servidor la vea después.
+// El link de invitación/recuperación de Supabase no trae un `?code=`
+// en la query (eso sería PKCE) — trae el token en el FRAGMENTO de la
+// URL (`#access_token=...&refresh_token=...&type=invite|recovery`),
+// que nunca llega al servidor.
+//
+// OJO: `@supabase/ssr`'s `createBrowserClient` fuerza `flowType:
+// "pkce"` internamente (no se puede sobreescribir vía options), y en
+// modo PKCE el SDK de Supabase SOLO revisa `?code=` para su
+// `detectSessionInUrl` automático — nunca lee el fragmento con
+// `access_token`. Por eso `getSession()`/`onAuthStateChange` nunca
+// disparaban aunque el token sí se hubiera consumido en el servidor
+// (confirmado viendo `last_sign_in_at` en Supabase). La solución es
+// parsear el hash nosotros mismos y llamar `setSession(...)`
+// explícitamente en vez de confiar en la detección automática.
 function CallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -20,32 +26,83 @@ function CallbackInner() {
   useEffect(() => {
     const supabase = createBrowserSupabaseClient();
     const next = searchParams.get("next") ?? "/invitacion";
-    let redirected = false;
+    let cancelled = false;
 
     function goNext() {
-      if (redirected) return;
-      redirected = true;
+      if (cancelled) return;
+      cancelled = true;
+      // Limpiamos el fragmento con los tokens de la URL antes de
+      // navegar, para no dejarlos visibles/en el historial.
+      window.history.replaceState(null, "", window.location.pathname);
       router.replace(next);
     }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) goNext();
-    });
+    function fail(message: string) {
+      if (cancelled) return;
+      cancelled = true;
+      setError(message);
+    }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) goNext();
-    });
+    async function run() {
+      // 1) Caso PKCE: `?code=` en la query (por si en el futuro se
+      // usa ese flujo desde algún lado).
+      const code = searchParams.get("code");
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          fail("El link no es válido o ya expiró.");
+        } else {
+          goNext();
+        }
+        return;
+      }
+
+      // 2) Caso real: implicit flow, tokens en el hash de la URL.
+      const hash = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash;
+      const hashParams = new URLSearchParams(hash);
+
+      const hashError = hashParams.get("error") || hashParams.get("error_description");
+      if (hashError) {
+        fail(decodeURIComponent(hashError.replace(/\+/g, " ")));
+        return;
+      }
+
+      const access_token = hashParams.get("access_token");
+      const refresh_token = hashParams.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (setSessionError) {
+          fail("El link de invitación no es válido o ya expiró.");
+        } else {
+          goNext();
+        }
+        return;
+      }
+
+      // 3) Nada de lo anterior: quizás la sesión ya se estableció
+      // (recarga de la página, por ejemplo). Revisamos por si acaso.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        goNext();
+      } else {
+        fail("El link de invitación no es válido o ya expiró.");
+      }
+    }
+
+    run();
 
     const timeout = setTimeout(() => {
-      if (!redirected) {
-        setError("El link de invitación no es válido o ya expiró.");
-      }
-    }, 6000);
+      fail("El link de invitación no es válido o ya expiró.");
+    }, 8000);
 
     return () => {
-      subscription.unsubscribe();
+      cancelled = true;
       clearTimeout(timeout);
     };
   }, [router, searchParams]);
