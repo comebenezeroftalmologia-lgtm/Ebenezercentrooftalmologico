@@ -274,16 +274,16 @@ export async function listRelacionesDeTarea(tareaId: string): Promise<TareaRelac
  * abierta a todo autenticado, ver migración 006). */
 export async function buscarTareas(
   query: string,
-  excluirTareaId: string
+  excluirTareaId?: string
 ): Promise<{ id: string; nombre: string; procesoNombre: string; areaNombre: string }[]> {
   if (query.trim().length < 2) return [];
   const supabase = createSessionServerClient();
-  const { data, error } = await supabase
+  let q = supabase
     .from("tareas")
     .select("id, nombre, actividades(procesos(nombre, areas(nombre)))")
-    .ilike("nombre", `%${query.trim()}%`)
-    .neq("id", excluirTareaId)
-    .limit(15);
+    .ilike("nombre", `%${query.trim()}%`);
+  if (excluirTareaId) q = q.neq("id", excluirTareaId);
+  const { data, error } = await q.limit(15);
   if (error) throw new Error(error.message);
   return (data ?? []).map((row: any) => ({
     id: row.id,

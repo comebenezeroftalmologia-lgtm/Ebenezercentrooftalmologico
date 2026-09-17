@@ -331,20 +331,42 @@ export async function crearTareaAction(
   const responsableUserId = String(formData.get("responsableUserId") ?? "").trim() || null;
   const resultado = String(formData.get("resultado") ?? "").trim() || null;
   const impactoPaciente = String(formData.get("impactoPaciente") ?? "").trim() || null;
+  // Relacionar con otra tarea (de cualquier área) desde el momento de
+  // crear — mismo mecanismo que el panel "Tareas relacionadas" del
+  // detalle, pero disponible ya en el formulario de creación.
+  const relacionarConTareaId = String(formData.get("relacionarConTareaId") ?? "").trim() || null;
+  const relacionarNota = String(formData.get("relacionarNota") ?? "").trim() || null;
   if (!nombre) return { error: "Falta el nombre de la tarea." };
 
   const supabase = createSessionServerClient();
-  const { error } = await supabase.from("tareas").insert({
-    actividad_id: actividadId,
-    nombre,
-    descripcion,
-    responsable_user_id: responsableUserId,
-    resultado,
-    impacto_paciente: impactoPaciente,
-    orden: siguienteOrden,
-    created_by: user.id,
-  });
+  const { data, error } = await supabase
+    .from("tareas")
+    .insert({
+      actividad_id: actividadId,
+      nombre,
+      descripcion,
+      responsable_user_id: responsableUserId,
+      resultado,
+      impacto_paciente: impactoPaciente,
+      orden: siguienteOrden,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
   if (error) return { error: error.message };
+
+  if (relacionarConTareaId) {
+    const { error: relError } = await supabase.from("tarea_relaciones").insert({
+      tarea_id: data.id,
+      tarea_relacionada_id: relacionarConTareaId,
+      nota: relacionarNota,
+      created_by: user.id,
+    });
+    if (relError) {
+      revalidatePath(`/procesos/actividades/${actividadId}`);
+      return { error: `La tarea se creó, pero no se pudo relacionar: ${relError.message}`, ok: true };
+    }
+  }
 
   revalidatePath(`/procesos/actividades/${actividadId}`);
   return { error: null, ok: true };
@@ -462,7 +484,7 @@ export async function eliminarRelacionTareaAction(relacionId: string, tareaId: s
 
 // --- Búsqueda para relacionar tareas -----------------------------------
 
-export async function buscarTareasParaRelacionarAction(query: string, excluirTareaId: string) {
+export async function buscarTareasParaRelacionarAction(query: string, excluirTareaId?: string) {
   await requireAppUser();
   const { buscarTareas } = await import("@/lib/procesos/queries");
   return buscarTareas(query, excluirTareaId);
