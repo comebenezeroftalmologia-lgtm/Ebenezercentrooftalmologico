@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { RutaProceso } from "@/components/procesos/RutaProceso";
+import { KpisPanel } from "@/components/procesos/KpisPanel";
 import { getCurrentAppUser } from "@/lib/auth";
 import {
   getArea,
+  getKpisPorArea,
   listAppUsers,
   listAsignacionesPorArea,
   listProcesosPorArea,
@@ -17,12 +19,13 @@ import { CrearProcesoForm } from "./CrearProcesoForm";
 export const dynamic = "force-dynamic";
 
 export default async function AreaDetailPage({ params }: { params: { areaId: string } }) {
-  const [user, area, asignaciones, todosLosUsuarios, procesos] = await Promise.all([
+  const [user, area, asignaciones, todosLosUsuarios, procesos, kpis] = await Promise.all([
     getCurrentAppUser(),
     getArea(params.areaId),
     listAsignacionesPorArea(params.areaId),
     listAppUsers(),
     listProcesosPorArea(params.areaId),
+    getKpisPorArea(params.areaId),
   ]);
 
   if (!area || !user) notFound();
@@ -81,6 +84,15 @@ export default async function AreaDetailPage({ params }: { params: { areaId: str
           )}
         </div>
       </div>
+
+      {puedeGestionarColaboradores && (
+        <>
+          <h2 className="mb-3 text-lg font-semibold text-navy">Dashboard del área</h2>
+          <div className="mb-8">
+            <KpisPanel kpis={kpis} />
+          </div>
+        </>
+      )}
 
       <h2 className="mb-3 text-lg font-semibold text-navy">Procesos</h2>
       <div className="mb-6 rounded-xl border border-line bg-white shadow-sm">

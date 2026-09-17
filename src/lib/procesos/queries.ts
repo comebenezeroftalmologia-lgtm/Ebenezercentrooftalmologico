@@ -5,6 +5,7 @@ import type {
   AppUser,
   Area,
   AreaAsignacion,
+  KpisTareas,
   Proceso,
   Tarea,
   TareaRelacionada,
@@ -177,12 +178,23 @@ export async function getActividad(
   };
 }
 
+function mapTareaKpiFields(row: any) {
+  return {
+    altoRiesgo: row.alto_riesgo ?? false,
+    slaHoras: row.sla_horas ?? null,
+    iniciadoAt: row.iniciado_at ?? null,
+    completadoAt: row.completado_at ?? null,
+    rechazadaAt: row.rechazada_at ?? null,
+    vecesRechazada: row.veces_rechazada ?? 0,
+  };
+}
+
 export async function listTareasPorActividad(actividadId: string): Promise<Tarea[]> {
   const supabase = createSessionServerClient();
   const { data, error } = await supabase
     .from("tareas")
     .select(
-      "id, actividad_id, nombre, descripcion, responsable_user_id, resultado, impacto_paciente, estado, orden, app_users!tareas_responsable_user_id_fkey(id, nombre_completo, email, is_admin, activo)"
+      "id, actividad_id, nombre, descripcion, responsable_user_id, resultado, impacto_paciente, estado, orden, alto_riesgo, sla_horas, iniciado_at, completado_at, rechazada_at, veces_rechazada, app_users!tareas_responsable_user_id_fkey(id, nombre_completo, email, is_admin, activo)"
     )
     .eq("actividad_id", actividadId)
     .order("orden");
@@ -198,6 +210,7 @@ export async function listTareasPorActividad(actividadId: string): Promise<Tarea
     impactoPaciente: row.impacto_paciente,
     estado: row.estado,
     orden: row.orden,
+    ...mapTareaKpiFields(row),
   }));
 }
 
@@ -215,7 +228,7 @@ export async function getTarea(tareaId: string): Promise<
   const { data, error } = await supabase
     .from("tareas")
     .select(
-      "id, actividad_id, nombre, descripcion, responsable_user_id, resultado, impacto_paciente, estado, orden, app_users!tareas_responsable_user_id_fkey(id, nombre_completo, email, is_admin, activo), actividades(nombre, proceso_id, procesos(nombre, area_id, areas(nombre)))"
+      "id, actividad_id, nombre, descripcion, responsable_user_id, resultado, impacto_paciente, estado, orden, alto_riesgo, sla_horas, iniciado_at, completado_at, rechazada_at, veces_rechazada, app_users!tareas_responsable_user_id_fkey(id, nombre_completo, email, is_admin, activo), actividades(nombre, proceso_id, procesos(nombre, area_id, areas(nombre)))"
     )
     .eq("id", tareaId)
     .single();
@@ -232,6 +245,7 @@ export async function getTarea(tareaId: string): Promise<
     impactoPaciente: row.impacto_paciente,
     estado: row.estado,
     orden: row.orden,
+    ...mapTareaKpiFields(row),
     actividadNombre: row.actividades?.nombre ?? "",
     procesoId: row.actividades?.proceso_id ?? "",
     procesoNombre: row.actividades?.procesos?.nombre ?? "",
@@ -301,6 +315,7 @@ export async function listMisTareas(userId: string): Promise<
     .from("tareas")
     .select(
       "id, actividad_id, nombre, descripcion, responsable_user_id, resultado, impacto_paciente, estado, orden, " +
+        "alto_riesgo, sla_horas, iniciado_at, completado_at, rechazada_at, veces_rechazada, " +
         "actividades(nombre, procesos(nombre, areas(nombre)))"
     )
     .eq("responsable_user_id", userId)
@@ -318,8 +333,113 @@ export async function listMisTareas(userId: string): Promise<
     impactoPaciente: row.impacto_paciente,
     estado: row.estado,
     orden: row.orden,
+    ...mapTareaKpiFields(row),
     actividadNombre: row.actividades?.nombre ?? "",
     procesoNombre: row.actividades?.procesos?.nombre ?? "",
     areaNombre: row.actividades?.procesos?.areas?.nombre ?? "",
   }));
+}
+
+// --- KPIs -----------------------------------------------------------
+//
+// Catálogo fijo (fase 1): el líder marca alto_riesgo/sla_horas al
+// crear o editar la tarea; iniciado_at/completado_at/rechazada_at/
+// veces_rechazada los llena un trigger de la base de datos con cada
+// cambio de `estado` (ver migración 008) — nada de esto se digita a
+// mano, solo se calcula/agrega aquí.
+
+interface TareaParaKpi {
+  areaId: string;
+  estado: string;
+  altoRiesgo: boolean;
+  slaHoras: number | null;
+  iniciadoAt: string | null;
+  completadoAt: string | null;
+  vecesRechazada: number;
+}
+
+function calcularKpis(tareas: TareaParaKpi[]): KpisTareas {
+  const total = tareas.length;
+  const activas = tareas.filter((t) => t.estado === "pendiente" || t.estado === "en_progreso").length;
+  const completadas = tareas.filter((t) => t.estado === "completada").length;
+  const rechazadas = tareas.filter((t) => t.vecesRechazada > 0).length;
+
+  const altoRiesgo = tareas.filter((t) => t.altoRiesgo);
+  const altoRiesgoMitigado = altoRiesgo.filter((t) => t.estado === "completada").length;
+
+  const conSla = tareas.filter((t) => t.slaHoras != null && t.iniciadoAt && t.completadoAt);
+  const cumplenSla = conSla.filter((t) => {
+    const horas = (new Date(t.completadoAt!).getTime() - new Date(t.iniciadoAt!).getTime()) / 3_600_000;
+    return horas <= (t.slaHoras as number);
+  }).length;
+
+  const conCiclo = tareas.filter((t) => t.iniciadoAt && t.completadoAt);
+  const horasCiclo = conCiclo.map(
+    (t) => (new Date(t.completadoAt!).getTime() - new Date(t.iniciadoAt!).getTime()) / 3_600_000
+  );
+
+  return {
+    totalTareas: total,
+    activas,
+    completadas,
+    rechazadas,
+    altoRiesgoTotal: altoRiesgo.length,
+    altoRiesgoMitigado,
+    pctAltoRiesgoMitigado: altoRiesgo.length > 0 ? (altoRiesgoMitigado / altoRiesgo.length) * 100 : null,
+    conSla: conSla.length,
+    cumplenSla,
+    pctCumplimientoSla: conSla.length > 0 ? (cumplenSla / conSla.length) * 100 : null,
+    tasaRetrabajo: total > 0 ? (rechazadas / total) * 100 : null,
+    conCiclo: conCiclo.length,
+    tiempoCicloPromedioHoras:
+      conCiclo.length > 0 ? horasCiclo.reduce((a, b) => a + b, 0) / conCiclo.length : null,
+  };
+}
+
+/** Trae los campos de KPI de TODAS las tareas visibles para el usuario
+ * actual (RLS ya limita esto a las áreas donde es líder/colaborador, o
+ * todo si es admin — ver policy tareas_select en la migración 005),
+ * con el area_id resuelto para poder agrupar. */
+async function listTareasParaKpis(): Promise<TareaParaKpi[]> {
+  const supabase = createSessionServerClient();
+  const { data, error } = await supabase
+    .from("tareas")
+    .select(
+      "estado, alto_riesgo, sla_horas, iniciado_at, completado_at, veces_rechazada, actividades(procesos(area_id))"
+    );
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row: any) => ({
+    areaId: row.actividades?.procesos?.area_id ?? "",
+    estado: row.estado,
+    altoRiesgo: row.alto_riesgo ?? false,
+    slaHoras: row.sla_horas ?? null,
+    iniciadoAt: row.iniciado_at ?? null,
+    completadoAt: row.completado_at ?? null,
+    vecesRechazada: row.veces_rechazada ?? 0,
+  }));
+}
+
+/** KPIs de una sola área. */
+export async function getKpisPorArea(areaId: string): Promise<KpisTareas> {
+  const tareas = await listTareasParaKpis();
+  return calcularKpis(tareas.filter((t) => t.areaId === areaId));
+}
+
+/** KPIs de cada área que el usuario actual puede ver (todas si es
+ * admin; solo las suyas si es líder — vía RLS), para el dashboard
+ * general. */
+export async function getKpisPorTodasLasAreas(): Promise<Map<string, KpisTareas>> {
+  const [tareas, areas] = await Promise.all([listTareasParaKpis(), listAreas()]);
+  const porArea = new Map<string, TareaParaKpi[]>();
+  for (const t of tareas) {
+    if (!t.areaId) continue;
+    if (!porArea.has(t.areaId)) porArea.set(t.areaId, []);
+    porArea.get(t.areaId)!.push(t);
+  }
+  const resultado = new Map<string, KpisTareas>();
+  for (const area of areas) {
+    const tareasDelArea = porArea.get(area.id) ?? [];
+    resultado.set(area.id, calcularKpis(tareasDelArea));
+  }
+  return resultado;
 }

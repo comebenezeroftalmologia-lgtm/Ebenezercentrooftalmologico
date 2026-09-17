@@ -18,7 +18,7 @@ function BotonGuardar() {
   );
 }
 
-const ESTADOS: EstadoTarea[] = ["pendiente", "en_progreso", "completada"];
+const ESTADOS: EstadoTarea[] = ["pendiente", "en_progreso", "completada", "rechazada"];
 
 export function EditarTareaForm({ tarea, responsablesPosibles }: { tarea: Tarea; responsablesPosibles: AppUser[] }) {
   const action = actualizarTareaAction.bind(null, tarea.id);
@@ -93,6 +93,29 @@ export function EditarTareaForm({ tarea, responsablesPosibles }: { tarea: Tarea;
           defaultValue={tarea.impactoPaciente ?? ""}
           className="w-full rounded-lg border border-line px-3 py-2 text-sm text-ink"
         />
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-2 text-sm text-ink-2">
+          <input
+            name="altoRiesgo"
+            type="checkbox"
+            defaultChecked={tarea.altoRiesgo}
+            className="h-4 w-4 rounded border-line"
+          />
+          ¿Es de alto riesgo?
+        </label>
+        <div>
+          <label className="eb-label mb-1 block text-[11px] text-ink-3">SLA en horas (opcional)</label>
+          <input
+            name="slaHoras"
+            type="number"
+            min={1}
+            step={1}
+            defaultValue={tarea.slaHoras ?? ""}
+            placeholder="Ej. 48"
+            className="w-full rounded-lg border border-line px-3 py-2 text-sm text-ink"
+          />
+        </div>
       </div>
       {state.error && <p className="text-xs text-[#B3261E]">{state.error}</p>}
       <div>

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Circle, CircleDot } from "lucide-react";
+import { CheckCircle2, Circle, CircleDot, XCircle } from "lucide-react";
 import { getActividad, listAsignacionesPorArea, listTareasPorActividad } from "@/lib/procesos/queries";
 import { RutaProceso } from "@/components/procesos/RutaProceso";
 import { ESTADO_LABELS } from "@/lib/procesos/types";
@@ -13,6 +13,7 @@ const ESTADO_ICON = {
   pendiente: Circle,
   en_progreso: CircleDot,
   completada: CheckCircle2,
+  rechazada: XCircle,
 } as const;
 
 export default async function ActividadDetailPage({ params }: { params: { actividadId: string } }) {
@@ -60,7 +61,7 @@ export default async function ActividadDetailPage({ params }: { params: { activi
               <Link href={`/procesos/tareas/${t.id}`} className="flex flex-1 items-center gap-3">
                 <Icon
                   className={`h-4 w-4 shrink-0 ${
-                    t.estado === "completada" ? "text-green" : "text-blue"
+                    t.estado === "completada" ? "text-green" : t.estado === "rechazada" ? "text-[#B3261E]" : "text-blue"
                   }`}
                   strokeWidth={1.75}
                 />

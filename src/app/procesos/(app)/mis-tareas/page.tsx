@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Circle, CircleDot } from "lucide-react";
+import { CheckCircle2, Circle, CircleDot, XCircle } from "lucide-react";
 import { requireAppUser } from "@/lib/auth";
 import { listMisTareas } from "@/lib/procesos/queries";
 import { ESTADO_LABELS } from "@/lib/procesos/types";
@@ -10,6 +10,7 @@ const ESTADO_ICON = {
   pendiente: Circle,
   en_progreso: CircleDot,
   completada: CheckCircle2,
+  rechazada: XCircle,
 } as const;
 
 export default async function MisTareasPage() {
@@ -33,7 +34,7 @@ export default async function MisTareasPage() {
               }`}
             >
               <Icon
-                className={`h-4 w-4 shrink-0 ${t.estado === "completada" ? "text-green" : "text-blue"}`}
+                className={`h-4 w-4 shrink-0 ${t.estado === "completada" ? "text-green" : t.estado === "rechazada" ? "text-[#B3261E]" : "text-blue"}`}
                 strokeWidth={1.75}
               />
               <div className="flex-1">

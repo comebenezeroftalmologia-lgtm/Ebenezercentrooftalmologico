@@ -331,6 +331,12 @@ export async function crearTareaAction(
   const responsableUserId = String(formData.get("responsableUserId") ?? "").trim() || null;
   const resultado = String(formData.get("resultado") ?? "").trim() || null;
   const impactoPaciente = String(formData.get("impactoPaciente") ?? "").trim() || null;
+  const altoRiesgo = formData.get("altoRiesgo") === "on";
+  const slaHorasRaw = String(formData.get("slaHoras") ?? "").trim();
+  const slaHoras = slaHorasRaw ? Number(slaHorasRaw) : null;
+  if (slaHoras !== null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
+    return { error: "El SLA debe ser un número de horas mayor a 0." };
+  }
   // Relacionar con otra tarea (de cualquier área) desde el momento de
   // crear — mismo mecanismo que el panel "Tareas relacionadas" del
   // detalle, pero disponible ya en el formulario de creación.
@@ -348,6 +354,8 @@ export async function crearTareaAction(
       responsable_user_id: responsableUserId,
       resultado,
       impacto_paciente: impactoPaciente,
+      alto_riesgo: altoRiesgo,
+      sla_horas: slaHoras,
       orden: siguienteOrden,
       created_by: user.id,
     })
@@ -410,6 +418,12 @@ export async function actualizarTareaAction(
   const resultado = String(formData.get("resultado") ?? "").trim() || null;
   const impactoPaciente = String(formData.get("impactoPaciente") ?? "").trim() || null;
   const estado = String(formData.get("estado") ?? "pendiente");
+  const altoRiesgo = formData.get("altoRiesgo") === "on";
+  const slaHorasRaw = String(formData.get("slaHoras") ?? "").trim();
+  const slaHoras = slaHorasRaw ? Number(slaHorasRaw) : null;
+  if (slaHoras !== null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
+    return { error: "El SLA debe ser un número de horas mayor a 0." };
+  }
   if (!nombre) return { error: "Falta el nombre de la tarea." };
 
   const supabase = createSessionServerClient();
@@ -422,6 +436,8 @@ export async function actualizarTareaAction(
       resultado,
       impacto_paciente: impactoPaciente,
       estado,
+      alto_riesgo: altoRiesgo,
+      sla_horas: slaHoras,
       updated_at: new Date().toISOString(),
     })
     .eq("id", tareaId);
