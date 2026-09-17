@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { crearTareaAction } from "@/lib/procesos/actions";
 import type { AppUser } from "@/lib/procesos/types";
@@ -28,9 +29,19 @@ export function CrearTareaForm({
 }) {
   const action = crearTareaAction.bind(null, actividadId, siguienteOrden);
   const [state, formAction] = useFormState(action, { error: null });
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Cada envío exitoso limpia el formulario — sin esto, los campos se
+  // quedaban con lo último escrito y parecía que no se podía agregar
+  // una segunda tarea (aunque sí se creaba, solo que no era obvio).
+  useEffect(() => {
+    if (state.ok) {
+      formRef.current?.reset();
+    }
+  }, [state]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
       <div>
         <label className="eb-label mb-1 block text-[11px] text-ink-3">Nombre de la tarea</label>
         <input
@@ -82,6 +93,7 @@ export function CrearTareaForm({
         />
       </div>
       {state.error && <p className="text-xs text-[#B3261E]">{state.error}</p>}
+      {state.ok && <p className="text-xs text-green">Tarea creada — puedes agregar otra.</p>}
       <div>
         <BotonCrear />
       </div>

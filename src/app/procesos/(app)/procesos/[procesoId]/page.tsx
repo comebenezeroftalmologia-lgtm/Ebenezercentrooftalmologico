@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ListChecks } from "lucide-react";
+import { RutaProceso } from "@/components/procesos/RutaProceso";
 import { getProceso, listActividadesPorProceso } from "@/lib/procesos/queries";
 import { MoverActividadButtons } from "./MoverActividadButtons";
 import { CrearActividadForm } from "./CrearActividadForm";
@@ -16,11 +17,13 @@ export default async function ProcesoDetailPage({ params }: { params: { procesoI
 
   return (
     <div>
-      <p className="mb-1 text-xs text-ink-3">
-        <Link href={`/procesos/areas/${proceso.areaId}`} className="hover:underline">
-          {proceso.areaNombre}
-        </Link>
-      </p>
+      <RutaProceso
+        segmentos={[
+          { label: "Inicio", href: "/procesos" },
+          { label: proceso.areaNombre, href: `/procesos/areas/${proceso.areaId}` },
+          { label: proceso.nombre },
+        ]}
+      />
       <h1 className="mb-1 text-2xl font-semibold text-navy">{proceso.nombre}</h1>
       {proceso.descripcion && <p className="mb-6 text-sm text-ink-3">{proceso.descripcion}</p>}
       {!proceso.descripcion && <div className="mb-6" />}

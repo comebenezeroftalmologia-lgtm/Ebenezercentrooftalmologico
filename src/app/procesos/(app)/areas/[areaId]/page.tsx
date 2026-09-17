@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { FileText } from "lucide-react";
+import { RutaProceso } from "@/components/procesos/RutaProceso";
 import { getCurrentAppUser } from "@/lib/auth";
 import {
   getArea,
@@ -37,6 +38,7 @@ export default async function AreaDetailPage({ params }: { params: { areaId: str
 
   return (
     <div>
+      <RutaProceso segmentos={[{ label: "Inicio", href: "/procesos" }, { label: area.nombre }]} />
       <h1 className="mb-1 text-2xl font-semibold text-navy">{area.nombre}</h1>
       <p className="mb-6 text-sm text-ink-3">
         {lideres.length > 0

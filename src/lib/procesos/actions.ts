@@ -322,9 +322,9 @@ export async function moverActividadAction(
 export async function crearTareaAction(
   actividadId: string,
   siguienteOrden: number,
-  _prevState: { error: string | null },
+  _prevState: { error: string | null; ok?: boolean },
   formData: FormData
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; ok?: boolean }> {
   const user = await requireAppUser();
   const nombre = String(formData.get("nombre") ?? "").trim();
   const descripcion = String(formData.get("descripcion") ?? "").trim() || null;
@@ -347,7 +347,7 @@ export async function crearTareaAction(
   if (error) return { error: error.message };
 
   revalidatePath(`/procesos/actividades/${actividadId}`);
-  return { error: null };
+  return { error: null, ok: true };
 }
 
 export async function moverTareaAction(

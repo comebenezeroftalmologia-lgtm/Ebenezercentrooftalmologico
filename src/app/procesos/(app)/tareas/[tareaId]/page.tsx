@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentAppUser, getMisAsignaciones } from "@/lib/auth";
 import { getTarea, listAsignacionesPorArea, listRelacionesDeTarea } from "@/lib/procesos/queries";
+import { RutaProceso } from "@/components/procesos/RutaProceso";
 import { ESTADO_LABELS } from "@/lib/procesos/types";
 import { EditarTareaForm } from "./EditarTareaForm";
 import { MiTareaForm } from "./MiTareaForm";
@@ -27,11 +28,15 @@ export default async function TareaDetailPage({ params }: { params: { tareaId: s
 
   return (
     <div>
-      <p className="mb-1 text-xs text-ink-3">
-        <Link href={`/procesos/actividades/${tarea.actividadId}`} className="hover:underline">
-          {tarea.areaNombre} · {tarea.procesoNombre} · {tarea.actividadNombre}
-        </Link>
-      </p>
+      <RutaProceso
+        segmentos={[
+          { label: "Inicio", href: "/procesos" },
+          { label: tarea.areaNombre, href: `/procesos/areas/${tarea.areaId}` },
+          { label: tarea.procesoNombre, href: `/procesos/procesos/${tarea.procesoId}` },
+          { label: tarea.actividadNombre, href: `/procesos/actividades/${tarea.actividadId}` },
+          { label: tarea.nombre },
+        ]}
+      />
       <h1 className="mb-1 text-2xl font-semibold text-navy">{tarea.nombre}</h1>
       <p className="mb-6 text-sm text-ink-3">
         {tarea.responsable ? tarea.responsable.nombreCompleto : "Sin responsable"} · {ESTADO_LABELS[tarea.estado]}

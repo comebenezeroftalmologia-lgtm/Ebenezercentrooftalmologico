@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Circle, CircleDot } from "lucide-react";
 import { getActividad, listAsignacionesPorArea, listTareasPorActividad } from "@/lib/procesos/queries";
+import { RutaProceso } from "@/components/procesos/RutaProceso";
 import { ESTADO_LABELS } from "@/lib/procesos/types";
 import { MoverTareaButtons } from "./MoverTareaButtons";
 import { CrearTareaForm } from "./CrearTareaForm";
@@ -27,11 +28,14 @@ export default async function ActividadDetailPage({ params }: { params: { activi
 
   return (
     <div>
-      <p className="mb-1 text-xs text-ink-3">
-        <Link href={`/procesos/procesos/${actividad.procesoId}`} className="hover:underline">
-          {actividad.areaNombre} · {actividad.procesoNombre}
-        </Link>
-      </p>
+      <RutaProceso
+        segmentos={[
+          { label: "Inicio", href: "/procesos" },
+          { label: actividad.areaNombre, href: `/procesos/areas/${actividad.areaId}` },
+          { label: actividad.procesoNombre, href: `/procesos/procesos/${actividad.procesoId}` },
+          { label: actividad.nombre },
+        ]}
+      />
       <h1 className="mb-1 text-2xl font-semibold text-navy">{actividad.nombre}</h1>
       {actividad.descripcion && <p className="mb-6 text-sm text-ink-3">{actividad.descripcion}</p>}
       {!actividad.descripcion && <div className="mb-6" />}
