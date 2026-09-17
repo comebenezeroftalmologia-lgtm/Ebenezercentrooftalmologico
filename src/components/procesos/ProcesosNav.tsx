@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ClipboardCheck, Home, LogOut, UserCircle } from "lucide-react";
+import { ArrowLeft, Building2, ClipboardCheck, Home, LogOut, UserCircle } from "lucide-react";
 import type { AppUser } from "@/lib/procesos/types";
 import { logoutAction } from "@/lib/procesos/actions";
 
@@ -31,6 +31,14 @@ export function ProcesosNav({ user }: { user: AppUser }) {
           <p className="text-[11px] text-white/60">Ebenezer</p>
         </div>
       </div>
+
+      <Link
+        href="/"
+        className="mb-4 flex items-center gap-2 rounded-md px-3 py-2 text-xs text-white/70 transition-colors duration-150 ease-eb-out hover:bg-navy-90 hover:text-white"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
+        Volver a módulos
+      </Link>
 
       <nav className="flex flex-1 flex-col gap-1">
         {items.map((item) => {
