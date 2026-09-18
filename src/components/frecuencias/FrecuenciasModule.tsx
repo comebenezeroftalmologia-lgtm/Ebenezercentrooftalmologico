@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { FrecuenciaConteo, FrecuenciaMonthly } from "@/lib/types";
 import { ComparativoAnual } from "./ComparativoAnual";
+import { DetallePorEmpresa } from "./DetallePorEmpresa";
 import { ResumenComparativo } from "./ResumenComparativo";
 import { TendenciaMensual } from "./TendenciaMensual";
 import type { Mode } from "./shared";
@@ -11,7 +12,7 @@ const TABS = [
   { key: "resumen", label: "Resumen Comparativo", enabled: true },
   { key: "anual", label: "Comparativo Anual", enabled: true },
   { key: "tendencia", label: "Tendencia Mensual", enabled: true },
-  { key: "detalle", label: "Detalle por Empresa", enabled: false },
+  { key: "detalle", label: "Detalle por Empresa", enabled: true },
   { key: "prep", label: "Prepagadas", enabled: false },
   { key: "dxapoyo", label: "Diagnóstica y Apoyo", enabled: false },
   { key: "medicos", label: "Médicos", enabled: false },
@@ -25,9 +26,11 @@ type TabKey = (typeof TABS)[number]["key"];
 export function FrecuenciasModule({
   rows,
   metaRows,
+  metaDetalleRows,
 }: {
   rows: FrecuenciaConteo[];
   metaRows: FrecuenciaMonthly[];
+  metaDetalleRows: FrecuenciaMonthly[];
 }) {
   const allYears = useMemo(() => Array.from(new Set(rows.map((r) => r.year))).sort((a, b) => a - b), [rows]);
 
@@ -170,6 +173,15 @@ export function FrecuenciasModule({
         <TendenciaMensual
           rows={rows}
           metaRows={metaRows}
+          years={years}
+          mutualIncluded={mutualIncluded}
+          mode={mode}
+        />
+      )}
+      {activeTab === "detalle" && (
+        <DetallePorEmpresa
+          rows={rows}
+          metaRows={metaDetalleRows}
           years={years}
           mutualIncluded={mutualIncluded}
           mode={mode}

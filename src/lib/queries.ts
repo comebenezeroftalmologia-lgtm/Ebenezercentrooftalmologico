@@ -340,3 +340,20 @@ export async function getFrecuenciasMetaPorUF(): Promise<FrecuenciaMonthly[]> {
   if (error) throw error;
   return data ?? [];
 }
+
+/** Filas de meta/real "por UF + Empresa" (detalle granular, ninguna
+ * columna nula) — fuente para la columna Meta de la pestaña nativa
+ * "Detalle por Empresa". Igual que la meta total/por UF, ya viene sin
+ * Mutual desde el motor de Pedro y solo aplica en modo Frecuencias. */
+export async function getFrecuenciasMetaDetalle(): Promise<FrecuenciaMonthly[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_mensual")
+    .select(FRECUENCIA_COLUMNS)
+    .not("uf", "is", null)
+    .not("grupo", "is", null)
+    .order("year")
+    .order("month_num");
+  if (error) throw error;
+  return data ?? [];
+}

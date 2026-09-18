@@ -1,6 +1,6 @@
 import { requireModuloAccess } from "@/lib/auth";
 import { FrecuenciasModule } from "@/components/frecuencias/FrecuenciasModule";
-import { getFrecuenciasConteos, getFrecuenciasMetaPorUF } from "@/lib/queries";
+import { getFrecuenciasConteos, getFrecuenciasMetaDetalle, getFrecuenciasMetaPorUF } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -8,7 +8,11 @@ export const maxDuration = 30;
 
 export default async function FrecuenciasPage() {
   await requireModuloAccess("frecuencias");
-  const [rows, metaRows] = await Promise.all([getFrecuenciasConteos(), getFrecuenciasMetaPorUF()]);
+  const [rows, metaRows, metaDetalleRows] = await Promise.all([
+    getFrecuenciasConteos(),
+    getFrecuenciasMetaPorUF(),
+    getFrecuenciasMetaDetalle(),
+  ]);
 
   return (
     <div>
@@ -27,7 +31,7 @@ export default async function FrecuenciasPage() {
           GitHub Actions ("Sincronizar Frecuencias" → Run workflow).
         </div>
       ) : (
-        <FrecuenciasModule rows={rows} metaRows={metaRows} />
+        <FrecuenciasModule rows={rows} metaRows={metaRows} metaDetalleRows={metaDetalleRows} />
       )}
     </div>
   );
