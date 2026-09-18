@@ -2,6 +2,7 @@ import { requireModuloAccess } from "@/lib/auth";
 import { FrecuenciasModule } from "@/components/frecuencias/FrecuenciasModule";
 import {
   getFrecuenciasConteos,
+  getFrecuenciasMedicos,
   getFrecuenciasMetaDetalle,
   getFrecuenciasMetaPorUF,
   getFrecuenciasPrepagadasMensual,
@@ -14,13 +15,15 @@ export const maxDuration = 30;
 
 export default async function FrecuenciasPage() {
   await requireModuloAccess("frecuencias");
-  const [rows, metaRows, metaDetalleRows, prepagadasMensual, prepagadasRanking] = await Promise.all([
-    getFrecuenciasConteos(),
-    getFrecuenciasMetaPorUF(),
-    getFrecuenciasMetaDetalle(),
-    getFrecuenciasPrepagadasMensual(),
-    getFrecuenciasPrepagadasRanking(),
-  ]);
+  const [rows, metaRows, metaDetalleRows, prepagadasMensual, prepagadasRanking, medicosRows] =
+    await Promise.all([
+      getFrecuenciasConteos(),
+      getFrecuenciasMetaPorUF(),
+      getFrecuenciasMetaDetalle(),
+      getFrecuenciasPrepagadasMensual(),
+      getFrecuenciasPrepagadasRanking(),
+      getFrecuenciasMedicos(),
+    ]);
 
   return (
     <div>
@@ -45,6 +48,7 @@ export default async function FrecuenciasPage() {
           metaDetalleRows={metaDetalleRows}
           prepagadasMensual={prepagadasMensual}
           prepagadasRanking={prepagadasRanking}
+          medicosRows={medicosRows}
         />
       )}
     </div>

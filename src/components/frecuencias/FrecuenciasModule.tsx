@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type {
   FrecuenciaConteo,
+  FrecuenciaMedicoMensual,
   FrecuenciaMonthly,
   FrecuenciaPrepagadaMensual,
   FrecuenciaPrepagadaRanking,
@@ -10,6 +11,7 @@ import type {
 import { ComparativoAnual } from "./ComparativoAnual";
 import { DetallePorEmpresa } from "./DetallePorEmpresa";
 import { DiagnosticaApoyo } from "./DiagnosticaApoyo";
+import { Medicos } from "./Medicos";
 import { Prepagadas } from "./Prepagadas";
 import { ResumenComparativo } from "./ResumenComparativo";
 import { TendenciaMensual } from "./TendenciaMensual";
@@ -22,7 +24,7 @@ const TABS = [
   { key: "detalle", label: "Detalle por Empresa", enabled: true },
   { key: "prep", label: "Prepagadas", enabled: true },
   { key: "dxapoyo", label: "Diagnóstica y Apoyo", enabled: true },
-  { key: "medicos", label: "Médicos", enabled: false },
+  { key: "medicos", label: "Médicos", enabled: true },
   { key: "cobrable", label: "Cobrable vs No", enabled: false },
   { key: "mutual", label: "Contrato Mutual", enabled: false },
   { key: "servicio", label: "Buscar Servicio", enabled: false },
@@ -36,12 +38,14 @@ export function FrecuenciasModule({
   metaDetalleRows,
   prepagadasMensual,
   prepagadasRanking,
+  medicosRows,
 }: {
   rows: FrecuenciaConteo[];
   metaRows: FrecuenciaMonthly[];
   metaDetalleRows: FrecuenciaMonthly[];
   prepagadasMensual: FrecuenciaPrepagadaMensual[];
   prepagadasRanking: FrecuenciaPrepagadaRanking[];
+  medicosRows: FrecuenciaMedicoMensual[];
 }) {
   const allYears = useMemo(() => Array.from(new Set(rows.map((r) => r.year))).sort((a, b) => a - b), [rows]);
 
@@ -203,6 +207,9 @@ export function FrecuenciasModule({
       )}
       {activeTab === "dxapoyo" && (
         <DiagnosticaApoyo rows={rows} years={years} mutualIncluded={mutualIncluded} mode={mode} />
+      )}
+      {activeTab === "medicos" && (
+        <Medicos rows={medicosRows} years={years} mutualIncluded={mutualIncluded} mode={mode} />
       )}
     </div>
   );

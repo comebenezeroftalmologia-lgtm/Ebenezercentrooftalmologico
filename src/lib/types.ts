@@ -121,3 +121,17 @@ export interface FrecuenciaPrepagadaRanking {
   freq: number;
   valor: number;
 }
+
+/** Actividad de un médico por año/mes/sede/UF — RAW.medicos del motor
+ * de Pedro, aplanado. "Sede 2" es donde se atiende Mutual: el toggle
+ * Mutual del módulo decide si entra en los totales. */
+export interface FrecuenciaMedicoMensual {
+  year: number;
+  month_num: number;
+  month_name: string;
+  medico: string;
+  sede: string;
+  uf: string;
+  cantidad: number;
+  valor: number;
+}

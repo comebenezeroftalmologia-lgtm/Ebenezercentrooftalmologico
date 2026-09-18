@@ -264,3 +264,54 @@ if (prepRankRows.length) {
 }
 
 console.log("Listo (prepagadas).");
+
+// ============================================================================
+// Fase 2 — pestaña "Médicos" (parcial): por_mes.por_uf_sede aplanado a
+// año/mes/médico/sede/UF. No incluye tipo_por_mes (Primera vez/Control/
+// Otros) ni pend_pm (pendientes) — quedan para una iteración futura.
+// ============================================================================
+const medicosRows = [];
+const medicos = raw.medicos ?? {};
+for (const year of Object.keys(medicos)) {
+  for (const [medico, x] of Object.entries(medicos[year] ?? {})) {
+    for (const [mes, md] of Object.entries(x.por_mes ?? {})) {
+      const porUfSede = md.por_uf_sede ?? {};
+      const porUfSedeVal = md.por_uf_sede_val ?? {};
+      for (const [sede, porUf] of Object.entries(porUfSede)) {
+        const porUfVal = porUfSedeVal[sede] ?? {};
+        for (const [uf, cantidad] of Object.entries(porUf)) {
+          medicosRows.push({
+            year: Number(year),
+            month_num: monthNum(mes),
+            month_name: mes,
+            medico,
+            sede,
+            uf,
+            cantidad: cantidad ?? 0,
+            valor: porUfVal[uf] ?? 0,
+            source_snapshot: sourceSnapshot,
+          });
+        }
+      }
+    }
+  }
+}
+
+if (medicosRows.length) {
+  console.log(`Filas (médicos) a cargar: ${medicosRows.length}`);
+  let loadedMedicos = 0;
+  for (let i = 0; i < medicosRows.length; i += BATCH) {
+    const batch = medicosRows.slice(i, i + BATCH);
+    const { error } = await supabase
+      .from("frecuencias_medicos_mensual")
+      .upsert(batch, { onConflict: "year,month_num,medico,sede,uf" });
+    if (error) {
+      console.error(`Error en lote médicos ${i}-${i + batch.length}:`, error.message);
+      process.exit(1);
+    }
+    loadedMedicos += batch.length;
+  }
+  console.log(`  ...${loadedMedicos}/${medicosRows.length}`);
+}
+
+console.log("Listo (médicos).");

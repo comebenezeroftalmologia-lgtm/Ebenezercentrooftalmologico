@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import type { FrecuenciaConteo, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
+import type { FrecuenciaConteo, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -383,4 +383,30 @@ export async function getFrecuenciasPrepagadasRanking(): Promise<FrecuenciaPrepa
     .order("valor", { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+/** Actividad por médico (año/mes/sede/UF) — alimenta la pestaña
+ * nativa "Médicos". "Sede 2" se filtra en el cliente según el toggle
+ * Mutual (Sede 2 es donde se atiende Mutual). */
+export async function getFrecuenciasMedicos(): Promise<FrecuenciaMedicoMensual[]> {
+  const supabase = createServiceClient();
+  const PAGE_SIZE = 1000;
+  const all: FrecuenciaMedicoMensual[] = [];
+  let start = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("frecuencias_medicos_mensual")
+      .select("year, month_num, month_name, medico, sede, uf, cantidad, valor")
+      .order("year")
+      .order("month_num")
+      .range(start, start + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as FrecuenciaMedicoMensual[];
+    all.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+
+  return all;
 }
