@@ -139,3 +139,58 @@ for (let i = 0; i < rows.length; i += BATCH) {
 }
 
 console.log("Listo.");
+
+// ============================================================================
+// Fase 2 — matriz completa año/mes/UF/empresa (tabla frecuencias_conteos).
+// Alimenta el módulo nativo "Resumen Comparativo". No filtra Mutual aquí:
+// eso lo hace la aplicación (excluye grupos cuyo nombre contiene "MUTUAL"),
+// igual que el tablero original en el cliente.
+// ============================================================================
+
+const conteoRows = [];
+const mens = raw.mens_year_uf_grp ?? {};
+const valores = raw.valor_year_uf_grp ?? {};
+
+for (const year of Object.keys(mens)) {
+  for (const mes of Object.keys(mens[year] ?? {})) {
+    const porUf = mens[year][mes] ?? {};
+    const valPorUf = (valores[year] ?? {})[mes] ?? {};
+    const h = habilesFor(year, mes);
+    for (const uf of Object.keys(porUf)) {
+      const porGrupo = porUf[uf] ?? {};
+      const valPorGrupo = valPorUf[uf] ?? {};
+      for (const grupo of Object.keys(porGrupo)) {
+        conteoRows.push({
+          year: Number(year),
+          month_num: monthNum(mes),
+          month_name: mes,
+          uf,
+          grupo,
+          cantidad: porGrupo[grupo] ?? 0,
+          valor: valPorGrupo[grupo] ?? 0,
+          dias_calendario: h.f ?? null,
+          dias_habiles: h.h ?? null,
+          source_snapshot: sourceSnapshot,
+        });
+      }
+    }
+  }
+}
+
+console.log(`\nFilas (conteos completos) a cargar: ${conteoRows.length}`);
+
+let loadedConteos = 0;
+for (let i = 0; i < conteoRows.length; i += BATCH) {
+  const batch = conteoRows.slice(i, i + BATCH);
+  const { error } = await supabase
+    .from("frecuencias_conteos")
+    .upsert(batch, { onConflict: "year,month_num,uf,grupo" });
+  if (error) {
+    console.error(`Error en lote (conteos) ${i}-${i + batch.length}:`, error.message);
+    process.exit(1);
+  }
+  loadedConteos += batch.length;
+  console.log(`  ...${loadedConteos}/${conteoRows.length}`);
+}
+
+console.log("Listo (conteos).");

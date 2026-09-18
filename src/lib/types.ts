@@ -87,3 +87,19 @@ export interface FrecuenciaMonthly {
   dias_habiles: number | null;
   is_mtd: boolean;
 }
+
+/** Fila de la matriz completa año/mes/UF/empresa del tablero de Pedro
+ * (RAW.mens_year_uf_grp y RAW.valor_year_uf_grp), sin filtrar Mutual —
+ * el incluir/excluir Mutual se aplica en el cliente (nombre de grupo
+ * que contiene "MUTUAL"), igual que el tablero original. */
+export interface FrecuenciaConteo {
+  year: number;
+  month_num: number;
+  month_name: string;
+  uf: string;
+  grupo: string;
+  cantidad: number;
+  valor: number;
+  dias_calendario: number | null;
+  dias_habiles: number | null;
+}

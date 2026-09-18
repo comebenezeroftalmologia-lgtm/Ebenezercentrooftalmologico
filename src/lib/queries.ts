@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import type { FrecuenciaMonthly, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
+import type { FrecuenciaConteo, FrecuenciaMonthly, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -291,4 +291,35 @@ export async function getFrecuenciasMesMasReciente(): Promise<{
     .limit(1);
   if (error) throw error;
   return data && data.length > 0 ? data[0] : null;
+}
+
+const FRECUENCIA_CONTEO_COLUMNS =
+  "year, month_num, month_name, uf, grupo, cantidad, valor, dias_calendario, dias_habiles";
+
+/** Matriz completa año/mes/UF/empresa (sin filtrar Mutual) — fuente
+ * única del módulo nativo "Resumen Comparativo" y las pestañas que le
+ * siguen. El filtro Mutual (incluir/excluir) y el modo
+ * Frecuencias/Pesos $ se aplican en el cliente, igual que el tablero
+ * original de Pedro. */
+export async function getFrecuenciasConteos(): Promise<FrecuenciaConteo[]> {
+  const supabase = createServiceClient();
+  const PAGE_SIZE = 1000;
+  const all: FrecuenciaConteo[] = [];
+  let start = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("frecuencias_conteos")
+      .select(FRECUENCIA_CONTEO_COLUMNS)
+      .order("year")
+      .order("month_num")
+      .range(start, start + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as FrecuenciaConteo[];
+    all.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+
+  return all;
 }
