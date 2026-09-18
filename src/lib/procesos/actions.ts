@@ -208,6 +208,31 @@ export async function restablecerPasswordAction(
   return { error: null, ok: true };
 }
 
+// --- Áreas (solo admin) -------------------------------------------------
+
+export async function crearAreaAction(
+  _prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  await requireAdmin();
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!nombre) return { error: "Falta el nombre del área." };
+
+  const supabase = createSessionServerClient();
+  const { data, error } = await supabase
+    .from("areas")
+    .insert({ nombre })
+    .select("id")
+    .single();
+  if (error) {
+    if (error.code === "23505") return { error: "Ya existe un área con ese nombre." };
+    return { error: error.message };
+  }
+
+  revalidatePath("/procesos/areas");
+  redirect(`/procesos/areas/${data.id}`);
+}
+
 // --- Asignaciones de área (líder / colaborador) ------------------------
 
 export async function asignarLiderAction(areaId: string, userId: string) {

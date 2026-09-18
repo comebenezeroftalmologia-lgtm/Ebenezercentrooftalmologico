@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { Building2, ChevronRight } from "lucide-react";
 import { listAreas, listTodasLasAsignaciones } from "@/lib/procesos/queries";
+import { requireAppUser } from "@/lib/auth";
+import { CrearAreaForm } from "./CrearAreaForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function AreasPage() {
+  const user = await requireAppUser();
   const [areas, asignaciones] = await Promise.all([listAreas(), listTodasLasAsignaciones()]);
 
   const liderPorArea = new Map<string, string>();
@@ -16,7 +19,7 @@ export default async function AreasPage() {
     <div>
       <h1 className="mb-1 text-2xl font-semibold text-navy">Áreas</h1>
       <p className="mb-6 text-sm text-ink-3">
-        Las 12 áreas de la organización. Entra a una para ver su líder, su equipo y sus procesos.
+        Áreas de la organización. Entra a una para ver su líder, su equipo y sus procesos.
       </p>
 
       <div className="rounded-xl border border-line bg-white shadow-sm">
@@ -41,6 +44,13 @@ export default async function AreasPage() {
           </Link>
         ))}
       </div>
+
+      {user.isAdmin && (
+        <div className="mt-6 rounded-xl border border-line bg-white p-6 shadow-sm">
+          <h3 className="mb-4 text-base font-semibold text-navy">Crear área</h3>
+          <CrearAreaForm />
+        </div>
+      )}
     </div>
   );
 }
