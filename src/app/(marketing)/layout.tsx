@@ -6,9 +6,9 @@ export default async function MarketingLayout({ children }: { children: React.Re
   const modulos = await getMisModulos(user.id, user.isAdmin);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar modulos={Array.from(modulos)} isAdmin={user.isAdmin} />
-      <main className="flex-1 min-w-0 overflow-x-hidden p-8">{children}</main>
+      <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-8">{children}</main>
     </div>
   );
 }
