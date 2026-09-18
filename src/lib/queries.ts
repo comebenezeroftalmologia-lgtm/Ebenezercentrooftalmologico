@@ -323,3 +323,20 @@ export async function getFrecuenciasConteos(): Promise<FrecuenciaConteo[]> {
 
   return all;
 }
+
+/** Filas de meta/real "por UF" (incluye el total con uf=null) de todos
+ * los años — fuente para la pestaña nativa "Comparativo Anual" (banner
+ * de meta +15% y columna Meta/% Avance de la tabla por UF). Esta meta
+ * ya viene sin Mutual desde el motor de Pedro (no depende del toggle
+ * Mutual del cliente) y solo aplica en modo Frecuencias. */
+export async function getFrecuenciasMetaPorUF(): Promise<FrecuenciaMonthly[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_mensual")
+    .select(FRECUENCIA_COLUMNS)
+    .is("grupo", null)
+    .order("year")
+    .order("month_num");
+  if (error) throw error;
+  return data ?? [];
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -12,92 +12,31 @@ import {
   YAxis,
 } from "recharts";
 import type { FrecuenciaConteo } from "@/lib/types";
-import { formatCOP, formatNumber } from "@/lib/text";
+import {
+  DeltaCell,
+  GREEN,
+  type Mode,
+  MES_CORTO,
+  MES_LARGO,
+  MES_ORDEN,
+  MUTUAL_RE,
+  PctCell,
+  RED,
+  YEAR_COLORS,
+  fmtVal,
+} from "./shared";
 
-const MES_ORDEN = [
-  "enero",
-  "febrero",
-  "marzo",
-  "abril",
-  "mayo",
-  "junio",
-  "julio",
-  "agosto",
-  "septiembre",
-  "octubre",
-  "noviembre",
-  "diciembre",
-];
-const MES_CORTO: Record<string, string> = {
-  enero: "Ene",
-  febrero: "Feb",
-  marzo: "Mar",
-  abril: "Abr",
-  mayo: "May",
-  junio: "Jun",
-  julio: "Jul",
-  agosto: "Ago",
-  septiembre: "Sep",
-  octubre: "Oct",
-  noviembre: "Nov",
-  diciembre: "Dic",
-};
-const MES_LARGO: Record<string, string> = {
-  enero: "Enero",
-  febrero: "Febrero",
-  marzo: "Marzo",
-  abril: "Abril",
-  mayo: "Mayo",
-  junio: "Junio",
-  julio: "Julio",
-  agosto: "Agosto",
-  septiembre: "Septiembre",
-  octubre: "Octubre",
-  noviembre: "Noviembre",
-  diciembre: "Diciembre",
-};
-
-const MUTUAL_RE = /MUTUAL/i;
-const YEAR_COLORS = ["#B0C0D3", "#0F2FF3", "#21814B", "#F2994A", "#9B51E0"];
-const GREEN = "#059669";
-const RED = "#DC2626";
-
-type Mode = "freq" | "val";
-
-function fmtVal(mode: Mode, v: number): string {
-  return mode === "val" ? formatCOP(v) : formatNumber(v);
-}
-
-function DeltaCell({ value, mode }: { value: number; mode: Mode }) {
-  const color = value >= 0 ? GREEN : RED;
-  return (
-    <td className="whitespace-nowrap px-3 py-2 text-right font-semibold" style={{ color }}>
-      {value >= 0 ? "+" : ""}
-      {fmtVal(mode, value)}
-    </td>
-  );
-}
-
-function PctCell({ before, after }: { before: number; after: number }) {
-  if (!before) {
-    return (
-      <td className="whitespace-nowrap px-3 py-2 text-right font-semibold" style={{ color: after ? GREEN : "#94A3B8" }}>
-        {after ? "Nuevo" : "0%"}
-      </td>
-    );
-  }
-  const pct = ((after - before) / before) * 100;
-  const color = pct >= 0 ? GREEN : RED;
-  return (
-    <td className="whitespace-nowrap px-3 py-2 text-right font-semibold" style={{ color }}>
-      {pct >= 0 ? "+" : ""}
-      {pct.toFixed(1)}%
-    </td>
-  );
-}
-
-export function ResumenComparativo({ rows }: { rows: FrecuenciaConteo[] }) {
-  const allYears = useMemo(() => Array.from(new Set(rows.map((r) => r.year))).sort((a, b) => a - b), [rows]);
+export function ResumenComparativo({
+  rows,
+  years: selectedYears,
+  mutualIncluded,
+  mode,
+}: {
+  rows: FrecuenciaConteo[];
+  years: number[];
+  mutualIncluded: boolean;
+  mode: Mode;
+}) {
   const allUfs = useMemo(
     () => Array.from(new Set(rows.map((r) => r.uf))).sort((a, b) => a.localeCompare(b, "es")),
     [rows],
@@ -107,11 +46,7 @@ export function ResumenComparativo({ rows }: { rows: FrecuenciaConteo[] }) {
     [rows],
   );
 
-  const [selectedYears, setSelectedYears] = useState<number[]>(allYears);
-  const [mutualIncluded, setMutualIncluded] = useState(true);
-  const [mode, setMode] = useState<Mode>("freq");
-
-  const years = (selectedYears.length ? selectedYears : allYears).slice().sort((a, b) => a - b);
+  const years = selectedYears.slice().sort((a, b) => a - b);
   const grupos = allGrupos.filter((g) => mutualIncluded || !MUTUAL_RE.test(g));
   const ufs = allUfs;
   const valueKey: keyof Pick<FrecuenciaConteo, "cantidad" | "valor"> = mode === "val" ? "valor" : "cantidad";
@@ -169,15 +104,6 @@ export function ResumenComparativo({ rows }: { rows: FrecuenciaConteo[] }) {
   const y2 = years[years.length - 1];
   const twoOrMore = years.length >= 2;
 
-  function toggleYear(y: number) {
-    setSelectedYears((prev) => {
-      const has = prev.includes(y);
-      if (has && prev.length === 1) return prev; // no dejar la selección vacía
-      const next = has ? prev.filter((x) => x !== y) : [...prev, y];
-      return next.sort((a, b) => a - b);
-    });
-  }
-
   // --- Mes a mes (años seleccionados) ---
   const mesesConDatos = useMemo(() => {
     const set = new Set<number>();
@@ -207,84 +133,6 @@ export function ResumenComparativo({ rows }: { rows: FrecuenciaConteo[] }) {
 
   return (
     <div>
-      {/* Barra de filtros del tablero */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-ink-3">Años</span>
-          {allYears.map((y) => (
-            <button
-              key={y}
-              type="button"
-              onClick={() => toggleYear(y)}
-              className={`rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors duration-150 ease-eb-out ${
-                years.includes(y)
-                  ? "border-blue bg-blue text-white"
-                  : "border-line bg-white text-ink-3 hover:border-navy-20"
-              }`}
-            >
-              {y}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-3">Mutual</span>
-            <div className="inline-flex rounded-lg border border-line bg-line-2 p-1">
-              <button
-                type="button"
-                onClick={() => setMutualIncluded(true)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 ease-eb-out ${
-                  mutualIncluded ? "bg-navy text-white" : "text-ink-3"
-                }`}
-              >
-                Incluir
-              </button>
-              <button
-                type="button"
-                onClick={() => setMutualIncluded(false)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 ease-eb-out ${
-                  !mutualIncluded ? "bg-navy text-white" : "text-ink-3"
-                }`}
-              >
-                Excluir
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-3">Mostrar como</span>
-            <div className="inline-flex rounded-lg border border-line bg-line-2 p-1">
-              <button
-                type="button"
-                onClick={() => setMode("freq")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 ease-eb-out ${
-                  mode === "freq" ? "bg-blue text-white" : "text-ink-3"
-                }`}
-              >
-                Frecuencias
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("val")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 ease-eb-out ${
-                  mode === "val" ? "bg-blue text-white" : "text-ink-3"
-                }`}
-              >
-                Pesos $
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <p className="mb-6 text-xs text-ink-3">
-        Periodo: <strong className="text-ink">año completo</strong> · Comparación:{" "}
-        <strong className="text-ink">{years.join(" vs ")}</strong> · Mutual:{" "}
-        <strong className="text-ink">{mutualIncluded ? "Incluido" : "Excluido"}</strong> · Modo:{" "}
-        <strong className="text-ink">{mode === "val" ? "Pesos $" : "Frecuencias"}</strong>
-      </p>
-
       {/* KPI cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {years.map((y, i) => {
