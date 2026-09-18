@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import type { FrecuenciaConteo, FrecuenciaMonthly } from "@/lib/types";
 import { ComparativoAnual } from "./ComparativoAnual";
 import { ResumenComparativo } from "./ResumenComparativo";
+import { TendenciaMensual } from "./TendenciaMensual";
 import type { Mode } from "./shared";
 
 const TABS = [
   { key: "resumen", label: "Resumen Comparativo", enabled: true },
   { key: "anual", label: "Comparativo Anual", enabled: true },
-  { key: "tendencia", label: "Tendencia Mensual", enabled: false },
+  { key: "tendencia", label: "Tendencia Mensual", enabled: true },
   { key: "detalle", label: "Detalle por Empresa", enabled: false },
   { key: "prep", label: "Prepagadas", enabled: false },
   { key: "dxapoyo", label: "Diagnóstica y Apoyo", enabled: false },
@@ -158,6 +159,15 @@ export function FrecuenciasModule({
       )}
       {activeTab === "anual" && (
         <ComparativoAnual
+          rows={rows}
+          metaRows={metaRows}
+          years={years}
+          mutualIncluded={mutualIncluded}
+          mode={mode}
+        />
+      )}
+      {activeTab === "tendencia" && (
+        <TendenciaMensual
           rows={rows}
           metaRows={metaRows}
           years={years}
