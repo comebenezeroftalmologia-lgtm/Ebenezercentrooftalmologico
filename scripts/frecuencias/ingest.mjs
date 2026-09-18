@@ -315,3 +315,63 @@ if (medicosRows.length) {
 }
 
 console.log("Listo (médicos).");
+
+// ============================================================================
+// Fase 2 — pestaña "Cobrable vs No": RAW.cobrable[year][mes] = {si, no,
+// valor_si, valor_no}. Una fila uf=null con los totales + valor, y una
+// fila por UF con el desglose si/no (sin valor, no viene por UF).
+// ============================================================================
+const cobrableRows = [];
+const cobrable = raw.cobrable ?? {};
+for (const year of Object.keys(cobrable)) {
+  for (const [mes, d] of Object.entries(cobrable[year] ?? {})) {
+    const si = d.si ?? {};
+    const no = d.no ?? {};
+    const totalSi = Object.values(si).reduce((s, v) => s + (v ?? 0), 0);
+    const totalNo = Object.values(no).reduce((s, v) => s + (v ?? 0), 0);
+    cobrableRows.push({
+      year: Number(year),
+      month_num: monthNum(mes),
+      month_name: mes,
+      uf: null,
+      si: totalSi,
+      no: totalNo,
+      valor_si: d.valor_si ?? 0,
+      valor_no: d.valor_no ?? 0,
+      source_snapshot: sourceSnapshot,
+    });
+    const ufs = new Set([...Object.keys(si), ...Object.keys(no)]);
+    for (const uf of ufs) {
+      cobrableRows.push({
+        year: Number(year),
+        month_num: monthNum(mes),
+        month_name: mes,
+        uf,
+        si: si[uf] ?? 0,
+        no: no[uf] ?? 0,
+        valor_si: null,
+        valor_no: null,
+        source_snapshot: sourceSnapshot,
+      });
+    }
+  }
+}
+
+if (cobrableRows.length) {
+  console.log(`Filas (cobrable) a cargar: ${cobrableRows.length}`);
+  let loadedCobrable = 0;
+  for (let i = 0; i < cobrableRows.length; i += BATCH) {
+    const batch = cobrableRows.slice(i, i + BATCH);
+    const { error } = await supabase
+      .from("frecuencias_cobrable_mensual")
+      .upsert(batch, { onConflict: "year,month_num,uf" });
+    if (error) {
+      console.error(`Error en lote cobrable ${i}-${i + batch.length}:`, error.message);
+      process.exit(1);
+    }
+    loadedCobrable += batch.length;
+  }
+  console.log(`  ...${loadedCobrable}/${cobrableRows.length}`);
+}
+
+console.log("Listo (cobrable).");

@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import type { FrecuenciaConteo, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
+import type { FrecuenciaCobrableMensual, FrecuenciaConteo, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -409,4 +409,17 @@ export async function getFrecuenciasMedicos(): Promise<FrecuenciaMedicoMensual[]
   }
 
   return all;
+}
+
+/** Servicios facturados vs. no cobrados por mes — alimenta la pestaña
+ * nativa "Cobrable vs No". */
+export async function getFrecuenciasCobrable(): Promise<FrecuenciaCobrableMensual[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_cobrable_mensual")
+    .select("year, month_num, month_name, uf, si, no, valor_si, valor_no")
+    .order("year")
+    .order("month_num");
+  if (error) throw error;
+  return data ?? [];
 }

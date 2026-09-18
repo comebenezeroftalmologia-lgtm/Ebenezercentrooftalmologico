@@ -135,3 +135,17 @@ export interface FrecuenciaMedicoMensual {
   cantidad: number;
   valor: number;
 }
+
+/** Servicios facturados vs. no cobrados por mes — RAW.cobrable del
+ * motor de Pedro. uf=null es el total (con valor_si/valor_no en
+ * pesos); las filas con uf trae el desglose de conteos por UF. */
+export interface FrecuenciaCobrableMensual {
+  year: number;
+  month_num: number;
+  month_name: string;
+  uf: string | null;
+  si: number;
+  no: number;
+  valor_si: number | null;
+  valor_no: number | null;
+}
