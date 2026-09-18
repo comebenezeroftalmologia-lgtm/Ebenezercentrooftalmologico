@@ -1,0 +1,34 @@
+name: Sincronizar Frecuencias
+
+# Trae el RAW mas reciente del tablero de Pedro (tablero-ebenezer, solo
+# lectura) y lo carga a Supabase. No modifica el repo de Pedro en absoluto.
+# Su tablero se actualiza ~10:00/06:00 y ~18:30/14:30 UTC (ver su propio
+# workflow); corremos un rato despues para no competir con esas corridas.
+
+on:
+  schedule:
+    - cron: "15 12 * * *"  # 07:15 Colombia - despues de su corrida de la manana
+    - cron: "15 20 * * *"  # 15:15 Colombia - despues de su corrida de la tarde
+  workflow_dispatch:        # boton "Run workflow" para probar al instante
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar este repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias
+        run: npm install --no-save @supabase/supabase-js
+
+      - name: Sincronizar RAW del tablero de Frecuencias hacia Supabase
+        env:
+          TABLERO_EBENEZER_PAT: ${{ secrets.TABLERO_EBENEZER_PAT }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/frecuencias/sync_from_tablero.mjs
