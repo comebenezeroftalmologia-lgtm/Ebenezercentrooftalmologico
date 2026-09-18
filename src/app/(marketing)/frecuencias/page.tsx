@@ -11,10 +11,12 @@ const TABS = [
   { key: "anual", label: "Comparativo Anual", enabled: false },
   { key: "tendencia", label: "Tendencia Mensual", enabled: false },
   { key: "detalle", label: "Detalle por Empresa", enabled: false },
-  { key: "medicos", label: "Médicos", enabled: false },
   { key: "prep", label: "Prepagadas", enabled: false },
   { key: "dxapoyo", label: "Diagnóstica y Apoyo", enabled: false },
+  { key: "medicos", label: "Médicos", enabled: false },
+  { key: "cobrable", label: "Cobrable vs No", enabled: false },
   { key: "mutual", label: "Contrato Mutual", enabled: false },
+  { key: "servicio", label: "Buscar Servicio", enabled: false },
 ] as const;
 
 export default async function FrecuenciasPage() {
