@@ -194,3 +194,73 @@ for (let i = 0; i < conteoRows.length; i += BATCH) {
 }
 
 console.log("Listo (conteos).");
+
+// ============================================================================
+// Fase 2 — pestaña "Prepagadas" (parcial): evolución mensual + ranking por
+// contrato. No incluye embudo/tarifas/ranking-por-entidad — esos campos
+// vienen null en el export automático actual del motor de Pedro.
+// ============================================================================
+const prepMensRows = [];
+const prepMens = raw.prepagadas_mens ?? {};
+for (const year of Object.keys(prepMens)) {
+  for (const [mes, v] of Object.entries(prepMens[year] ?? {})) {
+    prepMensRows.push({
+      year: Number(year),
+      month_num: monthNum(mes),
+      month_name: mes,
+      freq: v.freq ?? 0,
+      valor: v.valor ?? 0,
+      source_snapshot: sourceSnapshot,
+    });
+  }
+}
+
+const prepRankRows = [];
+const prepTop = raw.prepagadas_top ?? {};
+for (const year of Object.keys(prepTop)) {
+  for (const item of prepTop[year] ?? []) {
+    prepRankRows.push({
+      year: Number(year),
+      contrato: item.contrato,
+      freq: item.freq ?? 0,
+      valor: item.valor ?? 0,
+      source_snapshot: sourceSnapshot,
+    });
+  }
+}
+
+if (prepMensRows.length) {
+  console.log(`Filas (prepagadas mensual) a cargar: ${prepMensRows.length}`);
+  let loadedPrepMens = 0;
+  for (let i = 0; i < prepMensRows.length; i += BATCH) {
+    const batch = prepMensRows.slice(i, i + BATCH);
+    const { error } = await supabase
+      .from("frecuencias_prepagadas_mensual")
+      .upsert(batch, { onConflict: "year,month_num" });
+    if (error) {
+      console.error(`Error en lote prepagadas_mensual ${i}-${i + batch.length}:`, error.message);
+      process.exit(1);
+    }
+    loadedPrepMens += batch.length;
+  }
+  console.log(`  ...${loadedPrepMens}/${prepMensRows.length}`);
+}
+
+if (prepRankRows.length) {
+  console.log(`Filas (prepagadas ranking) a cargar: ${prepRankRows.length}`);
+  let loadedPrepRank = 0;
+  for (let i = 0; i < prepRankRows.length; i += BATCH) {
+    const batch = prepRankRows.slice(i, i + BATCH);
+    const { error } = await supabase
+      .from("frecuencias_prepagadas_ranking")
+      .upsert(batch, { onConflict: "year,contrato" });
+    if (error) {
+      console.error(`Error en lote prepagadas_ranking ${i}-${i + batch.length}:`, error.message);
+      process.exit(1);
+    }
+    loadedPrepRank += batch.length;
+  }
+  console.log(`  ...${loadedPrepRank}/${prepRankRows.length}`);
+}
+
+console.log("Listo (prepagadas).");

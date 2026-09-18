@@ -103,3 +103,21 @@ export interface FrecuenciaConteo {
   dias_calendario: number | null;
   dias_habiles: number | null;
 }
+
+/** Evolución mensual del grupo "Prepagadas" (todas las entidades
+ * combinadas) — RAW.prepagadas_mens del motor de Pedro. */
+export interface FrecuenciaPrepagadaMensual {
+  year: number;
+  month_num: number;
+  month_name: string;
+  freq: number;
+  valor: number;
+}
+
+/** Ranking por contrato/entidad prepagada de un año — RAW.prepagadas_top. */
+export interface FrecuenciaPrepagadaRanking {
+  year: number;
+  contrato: string;
+  freq: number;
+  valor: number;
+}

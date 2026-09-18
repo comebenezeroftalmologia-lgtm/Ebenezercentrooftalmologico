@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import type { FrecuenciaConteo, FrecuenciaMonthly, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
+import type { FrecuenciaConteo, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -354,6 +354,33 @@ export async function getFrecuenciasMetaDetalle(): Promise<FrecuenciaMonthly[]> 
     .not("grupo", "is", null)
     .order("year")
     .order("month_num");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Evolución mensual de Prepagadas (todas las entidades combinadas) —
+ * alimenta el gráfico de evolución de la pestaña nativa "Prepagadas".
+ * No depende del toggle Mutual (Prepagadas es un grupo aparte). */
+export async function getFrecuenciasPrepagadasMensual(): Promise<FrecuenciaPrepagadaMensual[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_prepagadas_mensual")
+    .select("year, month_num, month_name, freq, valor")
+    .order("year")
+    .order("month_num");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Ranking por contrato/entidad prepagada, todos los años disponibles —
+ * alimenta el Top 5 y la tabla de ranking de la pestaña "Prepagadas". */
+export async function getFrecuenciasPrepagadasRanking(): Promise<FrecuenciaPrepagadaRanking[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("frecuencias_prepagadas_ranking")
+    .select("year, contrato, freq, valor")
+    .order("year")
+    .order("valor", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
