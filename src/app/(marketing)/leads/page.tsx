@@ -5,6 +5,7 @@ import { DateRangePicker } from "@/components/DateRangePicker";
 import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
+import { ConversionFunnelSection } from "@/components/ConversionFunnelSection";
 import { StatusCards } from "@/components/StatusCards";
 import { ServiceDistributionChart } from "@/components/ServiceDistributionChart";
 import { StatusDonutChart } from "@/components/StatusDonutChart";
@@ -25,7 +26,7 @@ import {
   type EstadoFilter,
 } from "@/lib/dashboard";
 import { PROBABILIDAD_COMPRA_STAGES } from "@/lib/pipelineStages";
-import { getAdSpendTotal, getOpportunities, listServices, serviceNameMap } from "@/lib/queries";
+import { getAdSpendStats, getOpportunities, listServices, serviceNameMap } from "@/lib/queries";
 import { formatCOP, formatNumber } from "@/lib/text";
 import { buildHref } from "@/lib/url";
 
@@ -46,12 +47,13 @@ export default async function LeadsPage({
   const estado = searchParams.estado as EstadoFilter;
   const previousRange = previousPeriodRange(from, to);
 
-  const [services, allOpportunities, gasto, previousOpportunities] = await Promise.all([
+  const [services, allOpportunities, adStats, previousOpportunities] = await Promise.all([
     listServices(),
     getOpportunities({ pipeline: "generacion_leads", from, to, serviceId }),
-    getAdSpendTotal({ from, to }),
+    getAdSpendStats({ from, to }),
     getOpportunities({ pipeline: "generacion_leads", ...previousRange, serviceId }),
   ]);
+  const gasto = adStats.spend;
 
   const serviceNames = serviceNameMap(services);
   const counts = statusCounts(allOpportunities);
@@ -199,6 +201,15 @@ export default async function LeadsPage({
         </h2>
         <StageFunnelChart data={probabilidadBreakdown} color="#21814B" />
       </div>
+
+      <ConversionFunnelSection
+        impressions={adStats.impressions}
+        clicks={adStats.clicks}
+        leadsCaptados={adStats.leads}
+        probabilidad={probabilidad.length}
+        cierre={vendidas.length}
+        perdidas={counts.lost}
+      />
     </div>
   );
 }

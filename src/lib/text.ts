@@ -1,11 +1,15 @@
 /** Normaliza texto para comparar nombres de etapa/campos sin depender de
- * mayusculas o acentos exactos (Clientify no siempre es consistente). */
+ * mayusculas, acentos, guiones o espacios exactos (Clientify no siempre es
+ * consistente — p.ej. "Asiste a Valoración - PTE Agendamiento" vs. la
+ * etapa esperada sin el guion). Cualquier corrida de caracteres que no
+ * sea letra/numero se colapsa a un solo espacio antes de comparar. */
 export function normalizeStage(s: string): string {
   return s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
-    .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export function formatCOP(value: number): string {

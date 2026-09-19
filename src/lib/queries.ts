@@ -58,15 +58,38 @@ export async function getOpportunities({
 
 /** Gasto total de Meta Ads en un rango de fechas (módulo Generación de Clientes Potenciales) */
 export async function getAdSpendTotal({ from, to }: DateRange): Promise<number> {
+  const stats = await getAdSpendStats({ from, to });
+  return stats.spend;
+}
+
+export interface AdSpendStats {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  /** Leads reportados por Meta (action_type "lead"), no confundir con las
+   * oportunidades de Clientify — ver ingest en extractLeadsFromActions. */
+  leads: number;
+}
+
+/** Métricas agregadas de Meta Ads en un rango de fechas — base del
+ * "Embudo de Conversión" (Impresiones → Clics → Leads Captados) del
+ * módulo Generación de Clientes Potenciales. */
+export async function getAdSpendStats({ from, to }: DateRange): Promise<AdSpendStats> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("ad_spend")
-    .select("spend")
+    .select("spend, impressions, clicks, leads")
     .gte("date", from)
     .lte("date", to);
 
   if (error) throw error;
-  return (data ?? []).reduce((sum, row) => sum + Number(row.spend), 0);
+  const rows = data ?? [];
+  return {
+    spend: rows.reduce((sum, row) => sum + Number(row.spend), 0),
+    impressions: rows.reduce((sum, row) => sum + Number(row.impressions ?? 0), 0),
+    clicks: rows.reduce((sum, row) => sum + Number(row.clicks ?? 0), 0),
+    leads: rows.reduce((sum, row) => sum + Number(row.leads ?? 0), 0),
+  };
 }
 
 export async function listServices(): Promise<Service[]> {
