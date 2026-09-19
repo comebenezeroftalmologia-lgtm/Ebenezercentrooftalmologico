@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Funnel, FunnelChart, LabelList, ResponsiveContainer, Tooltip } from "recharts";
+import { ratioPct } from "@/lib/dashboard";
 import { formatNumber } from "@/lib/text";
 
 export interface ConversionFunnelSectionProps {
@@ -22,15 +13,12 @@ export interface ConversionFunnelSectionProps {
   /** Oportunidades de Clientify en alguna de las etapas con
    * probabilidad de compra (ver PROBABILIDAD_COMPRA_STAGES). */
   probabilidad: number;
-  /** Oportunidades "vendidas" (Ganadas o en Programación de Cirugía). */
+  /** Oportunidades en la etapa "Programación de Cirugía" puntualmente
+   * (no "vendidas" en general — solo esa etapa). */
   cierre: number;
-  /** Oportunidades con status "Perdida" en el rango. */
+  /** Oportunidades con status "Perdida" en el rango — se muestra aparte
+   * del embudo, no como un paso más. */
   perdidas: number;
-}
-
-function pct(part: number, total: number): number | null {
-  if (!total) return null;
-  return Math.round((part / total) * 1000) / 10;
 }
 
 export function ConversionFunnelSection({
@@ -41,20 +29,29 @@ export function ConversionFunnelSection({
   cierre,
   perdidas,
 }: ConversionFunnelSectionProps) {
-  const ctr = pct(clicks, impressions);
-  const leadRate = pct(leadsCaptados, clicks);
-  const conversionRate = pct(probabilidad, leadsCaptados);
-  const cierreRate = pct(cierre, probabilidad);
-  const perdidaRate = pct(perdidas, leadsCaptados);
+  const ctr = ratioPct(clicks, impressions);
+  const leadRate = ratioPct(leadsCaptados, clicks);
+  const conversionRate = ratioPct(probabilidad, leadsCaptados);
+  const cierreRate = ratioPct(cierre, probabilidad);
+  const perdidaRate = ratioPct(perdidas, leadsCaptados);
 
   const steps = [
-    { label: "Paso 1 — Leads Captados", value: leadsCaptados, color: "#0F2FF3" },
-    { label: "Paso 2 — Probabilidad de Compra", value: probabilidad, color: "#D97706" },
-    { label: "Paso 3 — Cierre (Vendidas)", value: cierre, color: "#21814B" },
-    { label: "Oportunidades Perdidas", value: perdidas, color: "#B3261E" },
+    {
+      name: `Paso 1 — Leads Captados — ${formatNumber(leadsCaptados)}`,
+      value: leadsCaptados,
+      fill: "#0F2FF3",
+    },
+    {
+      name: `Paso 2 — Probabilidad de Compra — ${formatNumber(probabilidad)}`,
+      value: probabilidad,
+      fill: "#D97706",
+    },
+    {
+      name: `Paso 3 — Programación de Cirugía — ${formatNumber(cierre)}`,
+      value: cierre,
+      fill: "#21814B",
+    },
   ];
-
-  const height = Math.max(220, steps.length * 56);
 
   return (
     <div className="mb-8">
@@ -86,24 +83,17 @@ export function ConversionFunnelSection({
       </div>
 
       <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
-        <ResponsiveContainer width="100%" height={height}>
-          <BarChart data={steps} layout="vertical" margin={{ left: 24, right: 48 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" allowDecimals={false} />
-            <YAxis type="category" dataKey="label" width={220} tick={{ fontSize: 12 }} />
+        <ResponsiveContainer width="100%" height={320}>
+          <FunnelChart>
             <Tooltip formatter={(value: number) => formatNumber(value)} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} name="Oportunidades">
-              {steps.map((s) => (
-                <Cell key={s.label} fill={s.color} />
-              ))}
+            <Funnel dataKey="value" data={steps} isAnimationActive>
               <LabelList
-                dataKey="value"
+                dataKey="name"
                 position="right"
                 style={{ fill: "#0B1633", fontSize: 12, fontWeight: 600 }}
-                formatter={(v: number) => formatNumber(v)}
               />
-            </Bar>
-          </BarChart>
+            </Funnel>
+          </FunnelChart>
         </ResponsiveContainer>
 
         <div className="mt-4 flex flex-wrap gap-3">
@@ -111,11 +101,19 @@ export function ConversionFunnelSection({
             Conversión (Leads → Probabilidad): {conversionRate !== null ? `${conversionRate}%` : "—"}
           </span>
           <span className="inline-flex items-center gap-1 rounded-pill bg-green-10 px-3 py-1 text-xs font-semibold text-green">
-            Cierre (Probabilidad → Vendidas): {cierreRate !== null ? `${cierreRate}%` : "—"}
+            Cierre (Probabilidad → Programación de Cirugía):{" "}
+            {cierreRate !== null ? `${cierreRate}%` : "—"}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-pill bg-[#FBEAE8] px-3 py-1 text-xs font-semibold text-[#B3261E]">
-            Pérdida (sobre Leads Captados): {perdidaRate !== null ? `${perdidaRate}%` : "—"}
-          </span>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-[#B3261E] px-5 py-4 text-white">
+          <span className="text-sm font-semibold">Oportunidades Perdidas</span>
+          <div className="text-right">
+            <span className="text-2xl font-bold">{formatNumber(perdidas)}</span>
+            {perdidaRate !== null && (
+              <p className="text-xs text-white/80">{perdidaRate}% sobre Leads Captados</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

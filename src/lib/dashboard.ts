@@ -178,3 +178,12 @@ export function pctChange(current: number, previous: number): number | null {
   if (previous === 0) return current === 0 ? 0 : null;
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
+
+/** % simple de una parte sobre un total (no confundir con pctChange, que
+ * compara contra un período anterior) — base de los badges de
+ * conversión del Embudo (Leads → Probabilidad → Programación de
+ * Cirugía) y de la proyección en la tarjeta de Probabilidad de Compra. */
+export function ratioPct(part: number, total: number): number | null {
+  if (!total) return null;
+  return Math.round((part / total) * 1000) / 10;
+}

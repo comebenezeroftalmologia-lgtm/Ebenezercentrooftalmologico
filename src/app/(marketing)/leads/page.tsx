@@ -21,11 +21,12 @@ import {
   isVendida,
   pctChange,
   previousPeriodRange,
+  ratioPct,
   statusCounts,
   totalImporte,
   type EstadoFilter,
 } from "@/lib/dashboard";
-import { PROBABILIDAD_COMPRA_STAGES } from "@/lib/pipelineStages";
+import { PROBABILIDAD_COMPRA_STAGES, VENTA_STAGES } from "@/lib/pipelineStages";
 import { getAdSpendStats, getOpportunities, listServices, serviceNameMap } from "@/lib/queries";
 import { formatCOP, formatNumber } from "@/lib/text";
 import { buildHref } from "@/lib/url";
@@ -73,6 +74,14 @@ export default async function LeadsPage({
   const probabilidad = allOpportunities.filter(isProbabilidadCompra);
   const vendidasBreakdown = breakdownVendidas(vendidas, "generacion_leads");
   const probabilidadBreakdown = buildStageBreakdown(filtered, PROBABILIDAD_COMPRA_STAGES);
+
+  // Paso 3 del Embudo de Conversión: puntualmente la etapa "Programación
+  // de Cirugía" (no "vendidas" en general, que también incluye Ganadas
+  // en cualquier otra etapa) — sobre el total sin filtrar por estado,
+  // igual que `probabilidad` arriba.
+  const cirugiaProgramada = buildStageBreakdown(allOpportunities, VENTA_STAGES.generacion_leads)[0]?.count ?? 0;
+  const cierreRate = ratioPct(cirugiaProgramada, probabilidad.length);
+  const proyeccionCirugias = cierreRate !== null ? Math.round((probabilidad.length * cierreRate) / 100) : null;
 
   // Comparativo vs. período anterior (mismo rango de días, inmediatamente
   // antes del seleccionado) — para IMPORTE y Vendidas, los dos números que
@@ -165,14 +174,26 @@ export default async function LeadsPage({
             ))}
           </div>
         </Link>
-        <KpiCard
-          label="Oportunidades con Probabilidad de Compra"
-          value={formatNumber(probabilidad.length)}
-          hint="Ver etapas incluidas abajo"
+        <Link
           href={buildHref(currentParams, { estado: "probabilidad" })}
-          active={searchParams.estado === "probabilidad"}
-          icon={LineChart}
-        />
+          className={`rounded-xl border p-5 shadow-sm transition-colors duration-150 ease-eb-out hover:border-navy-20 ${
+            searchParams.estado === "probabilidad" ? "border-blue bg-blue-10" : "border-line bg-white"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="eb-label text-[11px] text-ink-3">Oportunidades con Probabilidad de Compra</p>
+            <LineChart className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />
+          </div>
+          <p className="mt-1 font-heading text-3xl font-semibold text-navy">
+            {formatNumber(probabilidad.length)}
+          </p>
+          {proyeccionCirugias !== null && (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-pill bg-green-10 px-2 py-0.5 text-xs font-semibold text-green">
+              Proyección: ~{formatNumber(proyeccionCirugias)} cirugías ({cierreRate}%)
+            </span>
+          )}
+          <p className="mt-2 text-xs text-ink-3">Ver etapas incluidas abajo</p>
+        </Link>
       </div>
 
       <p className="mb-8 text-xs text-ink-3">
@@ -185,7 +206,7 @@ export default async function LeadsPage({
         clicks={adStats.clicks}
         leadsCaptados={adStats.leads}
         probabilidad={probabilidad.length}
-        cierre={vendidas.length}
+        cierre={cirugiaProgramada}
         perdidas={counts.lost}
       />
 
