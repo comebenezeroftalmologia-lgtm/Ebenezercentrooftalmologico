@@ -180,6 +180,15 @@ export default async function LeadsPage({
         etapas: {PROBABILIDAD_COMPRA_STAGES.join(", ")}.
       </p>
 
+      <ConversionFunnelSection
+        impressions={adStats.impressions}
+        clicks={adStats.clicks}
+        leadsCaptados={adStats.leads}
+        probabilidad={probabilidad.length}
+        cierre={vendidas.length}
+        perdidas={counts.lost}
+      />
+
       <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-navy">Distribución por Estado</h2>
@@ -201,15 +210,6 @@ export default async function LeadsPage({
         </h2>
         <StageFunnelChart data={probabilidadBreakdown} color="#21814B" />
       </div>
-
-      <ConversionFunnelSection
-        impressions={adStats.impressions}
-        clicks={adStats.clicks}
-        leadsCaptados={adStats.leads}
-        probabilidad={probabilidad.length}
-        cierre={vendidas.length}
-        perdidas={counts.lost}
-      />
     </div>
   );
 }

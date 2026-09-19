@@ -57,7 +57,7 @@ export function ConversionFunnelSection({
   const height = Math.max(220, steps.length * 56);
 
   return (
-    <div className="mt-8">
+    <div className="mb-8">
       <h2 className="mb-1 text-lg font-semibold text-navy">Embudo de Conversión</h2>
       <p className="mb-4 text-xs text-ink-3">
         Atracción (Meta Ads) → Conversión y Cierre (Clientify), para el período y filtros
