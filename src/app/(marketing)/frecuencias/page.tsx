@@ -1,70 +1,38 @@
 import { requireModuloAccess } from "@/lib/auth";
-import { FrecuenciasModule } from "@/components/frecuencias/FrecuenciasModule";
-import {
-  getFrecuenciasCobrable,
-  getFrecuenciasConteos,
-  getFrecuenciasDias,
-  getFrecuenciasMedicos,
-  getFrecuenciasMetaDetalle,
-  getFrecuenciasMetaPorUF,
-  getFrecuenciasPrepagadasMensual,
-  getFrecuenciasPrepagadasRanking,
-} from "@/lib/queries";
+
+/**
+ * Módulo de Frecuencias.
+ *
+ * Muestra el tablero completo que genera el motor en Python (10
+ * pestañas, 7 filtros, cierre del día, meta y proyección), servido por
+ * /api/frecuencias/tablero.
+ *
+ * Antes este módulo reconstruía el tablero con componentes propios.
+ * Esa copia quedó siempre por detrás del original —dos pestañas sin
+ * contenido, solo dos de los siete filtros, y una comparación anual
+ * equivocada— porque cada mejora del motor había que replicarla a mano.
+ * Ahora hay una sola fuente: lo que se ve aquí es exactamente lo que
+ * genera el motor, sin intermediarios que se puedan desincronizar.
+ */
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-export const maxDuration = 30;
 
 export default async function FrecuenciasPage() {
   await requireModuloAccess("frecuencias");
-  const [
-    rows,
-    dias,
-    metaRows,
-    metaDetalleRows,
-    prepagadasMensual,
-    prepagadasRanking,
-    medicosRows,
-    cobrableRows,
-  ] = await Promise.all([
-    getFrecuenciasConteos(),
-    getFrecuenciasDias(),
-    getFrecuenciasMetaPorUF(),
-    getFrecuenciasMetaDetalle(),
-    getFrecuenciasPrepagadasMensual(),
-    getFrecuenciasPrepagadasRanking(),
-    getFrecuenciasMedicos(),
-    getFrecuenciasCobrable(),
-  ]);
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-navy">Frecuencias</h1>
-        <p className="mt-1 text-sm text-ink-3">
-          Utilización real por Unidad Funcional y Empresa — fuente: SISMA, procesado por el motor
-          de Pedro Herrera y sincronizado automáticamente hacia esta plataforma.
-        </p>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="rounded-xl border border-line bg-white p-6 text-sm text-ink-3 shadow-sm">
-          Todavía no hay datos sincronizados en <code>frecuencias_conteos</code>. El pipeline
-          automático corre dos veces al día; puedes disparar una sincronización manual desde
-          GitHub Actions ("Sincronizar Frecuencias" → Run workflow).
-        </div>
-      ) : (
-        <FrecuenciasModule
-          rows={rows}
-          dias={dias}
-          metaRows={metaRows}
-          metaDetalleRows={metaDetalleRows}
-          prepagadasMensual={prepagadasMensual}
-          prepagadasRanking={prepagadasRanking}
-          medicosRows={medicosRows}
-          cobrableRows={cobrableRows}
-        />
-      )}
+    <div className="flex h-[calc(100vh-7rem)] min-h-[560px] flex-col">
+      <iframe
+        src="/api/frecuencias/tablero"
+        title="Tablero de Frecuencias — Centro Oftalmológico Ebenezer"
+        className="h-full w-full rounded-lg border border-line bg-white shadow-eb-2"
+        // El tablero trae su propio JavaScript (filtros y gráficas) y
+        // viene de nuestro mismo origen, así que no necesita permisos
+        // extra ni acceso a nada de fuera.
+        sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"
+        loading="eager"
+      />
     </div>
   );
 }
