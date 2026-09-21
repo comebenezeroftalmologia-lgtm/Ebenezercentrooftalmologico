@@ -32,9 +32,11 @@ const ARCHIVO = "Dashboard_Frecuencias.html";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// El motor corre 6:00 y 14:00; media hora de caché sobre la descarga
-// evita bajar 5 MB en cada carga de página.
-const CACHE_SEGUNDOS = 1800;
+// Caché corta sobre la descarga: evita bajar 5 MB en cada clic dentro
+// de la sesión, pero sin que un cambio recién publicado tarde en verse.
+// (Con media hora, después de regenerar el tablero la página seguía
+// mostrando la versión anterior y parecía que no había servido.)
+const CACHE_SEGUNDOS = 120;
 
 export async function GET() {
   await requireModuloAccess("frecuencias");
