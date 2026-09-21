@@ -39,6 +39,26 @@ export default async function VentaDelDiaPage({
   await requireModuloAccess("venta_del_dia");
   const fecha = searchParams.fecha ?? todayISO();
 
+  // Los errores técnicos no se le muestran a quien consulta el tablero:
+  // "SISMA_NODE_API_KEY no configurada", "Unexpected token…" o un código
+  // HTTP no le dicen nada a gerencia ni a facturación. Se traducen a una
+  // frase que explique qué pasa y a quién avisarle.
+  function mensajeClaro(error: string, que: string): string {
+    if (error === "SIN_LLAVE") {
+      return `Todavía no está configurado el acceso al sistema para consultar ${que}. Avísele a quien administra la plataforma.`;
+    }
+    if (/not valid JSON|Unexpected token/i.test(error)) {
+      return `El sistema respondió con un formato que la plataforma no pudo leer al consultar ${que}. Ya quedó reportado; si sigue apareciendo, avísenos.`;
+    }
+    if (/\b(401|403)\b/.test(error)) {
+      return `El acceso al sistema no tiene permiso para consultar ${que}. Hay que revisar la llave configurada.`;
+    }
+    if (/\b(5\d\d)\b/.test(error)) {
+      return `SISMA no respondió al consultar ${que}. Suele ser momentáneo: vuelva a intentar en unos minutos.`;
+    }
+    return `No se pudo consultar ${que} en este momento. Intente de nuevo en unos minutos.`;
+  }
+
   // Agenda del día (pendientes + confirmadas) — API antigua, siempre
   // disponible con la llave actual. Si esto falla, no hay nada que
   // mostrar en la página.
@@ -124,11 +144,27 @@ export default async function VentaDelDiaPage({
   const posQuirurgicos = atendidasConCategoria.filter((c) => c.categoria === "posquirurgico").length;
 
   // --- Cirugía (programación de quirófano) ---
+  //
+  // Se cuenta por el estado que DEVUELVE el sistema, no por una lista
+  // fija. El código anterior buscaba "Realizada", y el valor real que
+  // manda SISMA es "Atendida": habría dado cero para siempre.
   const cirugiaSinAutoCanceladas = cirugiaItems.filter((qx) => !esCancelacionAutomatica(qx));
-  const cirugiaProgramadas = cirugiaSinAutoCanceladas.filter((qx) => qx.estado === "Programada").length;
-  const cirugiaRealizadas = cirugiaSinAutoCanceladas.filter((qx) => qx.estado === "Realizada").length;
-  const cirugiaCanceladas = cirugiaSinAutoCanceladas.filter((qx) => qx.estado === "Cancelada").length;
-  const cirugiaIncumplidas = cirugiaSinAutoCanceladas.filter((qx) => qx.estado === "Incumplida").length;
+
+  const porEstado = new Map<string, number>();
+  for (const qx of cirugiaSinAutoCanceladas) {
+    porEstado.set(qx.estado, (porEstado.get(qx.estado) ?? 0) + 1);
+  }
+  const estadosCirugia = Array.from(porEstado.entries()).sort((a, b) => b[1] - a[1]);
+  const cirugiaTotal = cirugiaSinAutoCanceladas.length;
+  const autoCanceladas = cirugiaItems.length - cirugiaTotal;
+
+  const ICONO_ESTADO: Record<string, typeof Scissors> = {
+    atendida: UserCheck,
+    realizada: UserCheck,
+    programada: Scissors,
+    cancelada: XCircle,
+    incumplida: AlertTriangle,
+  };
 
   return (
     <div>
@@ -159,10 +195,7 @@ export default async function VentaDelDiaPage({
       {asistenciaError && (
         <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>
-            Asistencia real no disponible todavía: {asistenciaError}. En cuanto TIC emita la llave del
-            API ampliado y se configure en Vercel, esta sección se activa sola.
-          </span>
+          <span>{mensajeClaro(asistenciaError, "la asistencia del día")}</span>
         </div>
       )}
 
@@ -178,10 +211,7 @@ export default async function VentaDelDiaPage({
       {cirugiaError ? (
         <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>
-            Programación de cirugía no disponible todavía: {cirugiaError}. En cuanto TIC emita la llave
-            del API ampliado y se configure en Vercel, esta sección se activa sola.
-          </span>
+          <span>{mensajeClaro(cirugiaError, "la programación de cirugía")}</span>
         </div>
       ) : (
         <>
@@ -193,30 +223,35 @@ export default async function VentaDelDiaPage({
           )}
           <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              label="Cirugías Programadas"
-              value={formatNumber(cirugiaProgramadas)}
-              hint={fecha}
+              label="Cirugías del día"
+              value={formatNumber(cirugiaTotal)}
+              hint={
+                autoCanceladas > 0
+                  ? `${fecha} · ${autoCanceladas} edición(es) no contada(s)`
+                  : fecha
+              }
               icon={Scissors}
             />
-            <KpiCard
-              label="Cirugías Realizadas"
-              value={formatNumber(cirugiaRealizadas)}
-              hint={fecha}
-              icon={UserCheck}
-            />
-            <KpiCard
-              label="Cirugías Canceladas"
-              value={formatNumber(cirugiaCanceladas)}
-              hint="Sin contar canceladas automáticas por edición"
-              icon={XCircle}
-            />
-            <KpiCard
-              label="Cirugías Incumplidas"
-              value={formatNumber(cirugiaIncumplidas)}
-              hint="Relativo a la fecha de hoy"
-              icon={AlertTriangle}
-            />
+            {estadosCirugia.map(([estado, n]) => (
+              <KpiCard
+                key={estado}
+                label={estado}
+                value={formatNumber(n)}
+                hint={
+                  cirugiaTotal > 0
+                    ? `${Math.round((n / cirugiaTotal) * 100)}% del día`
+                    : fecha
+                }
+                icon={ICONO_ESTADO[estado.toLowerCase()] ?? Scissors}
+              />
+            ))}
           </div>
+
+          {cirugiaTotal === 0 && (
+            <p className="mb-8 text-sm text-ink-3">
+              No hay cirugías programadas para el {fecha}.
+            </p>
+          )}
         </>
       )}
     </div>

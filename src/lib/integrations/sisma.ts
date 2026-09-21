@@ -62,21 +62,99 @@ async function sismaFetch<T>(path: string): Promise<T> {
 const NODE_BASE_URL = `${BASE_URL}/node`;
 const NODE_API_KEY = process.env.SISMA_NODE_API_KEY;
 
-async function sismaNodeFetch<T>(path: string): Promise<{ data: T; aviso: string | null }> {
-  if (!NODE_API_KEY) {
-    throw new Error(
-      "SISMA_NODE_API_KEY no configurada — pendiente de que TIC emita la llave del API ampliado (ver .env.example)"
-    );
+/**
+ * IMPORTANTE — los informes del API ampliado devuelven CSV, no JSON.
+ *
+ * Esto se descubrió el 21-09-2026, al activar la llave: las peticiones
+ * respondían "Unexpected token 'i', "tipo_docume"... is not valid JSON"
+ * y "'C', "CONSECUTIV"...". Son las filas de encabezado del CSV. Las
+ * estructuras que había aquí antes (paciente anidado, idCita, etc.)
+ * estaban inferidas de una descripción, nunca probadas contra el API.
+ *
+ * El motor en Python del tablero de Frecuencias lleva semanas leyendo
+ * estos mismos endpoints: pide formato=csv y separador=; y parsea el
+ * resultado. Aquí se hace igual, para que ambos lean lo mismo.
+ *
+ * Los nombres de columna NO son uniformes entre endpoints:
+ *   citas-atendidas  -> minúsculas con guión bajo (asunto, fecha_cita…)
+ *   programacion-qx  -> MAYÚSCULAS (ESTADO, MOTIVO_DETALLE, CUPS…)
+ * Por eso las filas se normalizan a minúsculas y se leen con `campo()`,
+ * que acepta varios nombres posibles.
+ */
+export type FilaCsv = Record<string, string>;
+
+/** Parte una línea de CSV respetando las comillas dobles. */
+function partirLinea(linea: string, sep: string): string[] {
+  const out: string[] = [];
+  let actual = "";
+  let enComillas = false;
+  for (let i = 0; i < linea.length; i++) {
+    const c = linea[i];
+    if (c === '"') {
+      if (enComillas && linea[i + 1] === '"') {
+        actual += '"';
+        i++;
+      } else {
+        enComillas = !enComillas;
+      }
+    } else if (c === sep && !enComillas) {
+      out.push(actual);
+      actual = "";
+    } else {
+      actual += c;
+    }
   }
-  const res = await fetch(`${NODE_BASE_URL}${path}`, {
-    headers: { "X-Api-Key": NODE_API_KEY },
+  out.push(actual);
+  return out;
+}
+
+function parsearCsv(texto: string, sep = ";"): FilaCsv[] {
+  const limpio = texto.replace(/^﻿/, "").replace(/\r\n/g, "\n").trim();
+  if (!limpio) return [];
+  const lineas = limpio.split("\n");
+  const encabezados = partirLinea(lineas[0], sep).map((h) => h.trim().toLowerCase());
+  const filas: FilaCsv[] = [];
+  for (let i = 1; i < lineas.length; i++) {
+    if (!lineas[i].trim()) continue;
+    const celdas = partirLinea(lineas[i], sep);
+    const fila: FilaCsv = {};
+    encabezados.forEach((h, j) => {
+      fila[h] = (celdas[j] ?? "").trim();
+    });
+    filas.push(fila);
+  }
+  return filas;
+}
+
+/** Lee un campo probando varios nombres posibles (los endpoints no usan
+ * la misma convención). Devuelve "" si ninguno existe. */
+export function campo(fila: FilaCsv, ...nombres: string[]): string {
+  for (const n of nombres) {
+    const v = fila[n.toLowerCase()];
+    if (v !== undefined && v !== "") return v;
+  }
+  return "";
+}
+
+async function sismaNodeFetch(
+  path: string,
+): Promise<{ filas: FilaCsv[]; aviso: string | null }> {
+  if (!NODE_API_KEY) {
+    throw new Error("SIN_LLAVE");
+  }
+  const sep = ";";
+  const unido = path.includes("?") ? "&" : "?";
+  const url = `${NODE_BASE_URL}${path}${unido}formato=csv&separador=${encodeURIComponent(sep)}`;
+
+  const res = await fetch(url, {
+    headers: { "X-Api-Key": NODE_API_KEY, Accept: "text/csv" },
     cache: "no-store",
   });
   if (!res.ok) {
-    throw new Error(`SISMA node API error ${res.status} en ${path}: ${await res.text()}`);
+    throw new Error(`El sistema respondió con un error ${res.status} al consultar ${path}.`);
   }
-  const data = (await res.json()) as T;
-  return { data, aviso: res.headers.get("X-Aviso") };
+  const texto = await res.text();
+  return { filas: parsearCsv(texto, sep), aviso: res.headers.get("X-Aviso") };
 }
 
 export interface SismaPacienteResumen {
@@ -152,23 +230,36 @@ export async function fetchPacienteCitas(
  * Forma de los campos inferida de la descripción del desarrollador
  * (2026-09-14) — confirmar contra /node/swagger si algo no calza al
  * activar la llave nueva. */
+/** Columnas reales (verificadas contra Informes/ATENDIDAS_COLUMNAS.txt
+ * del motor): tipo_documento, numero_documento, edad, municipio,
+ * contrato, empresa, telefono, medico, paciente, asunto,
+ * codigo_procedimiento, procedimiento, cantidad, fecha_solicitud,
+ * fecha_atencion, fecha_cita, fecha_marca_atendida, diagnostico,
+ * dias_oportunidad, usuario_nombre… */
 export interface SismaCitaAtendida {
-  idCita: number;
   fecha: string;
-  hora: string | null;
-  estado: string;
-  estadoDescripcion: string | null;
-  idAsunto: number | null;
   asunto: string | null;
-  paciente: SismaPacienteResumen;
-  medico: SismaMedicoResumen | null;
+  procedimiento: string | null;
+  paciente: string | null;
+  medico: string | null;
+  empresa: string | null;
+  contrato: string | null;
 }
 
 export async function fetchCitasAtendidas(desde: string, hasta: string): Promise<SismaCitaAtendida[]> {
-  const { data } = await sismaNodeFetch<SismaCitaAtendida[]>(
+  const { filas } = await sismaNodeFetch(
     `/api/informes/citas-atendidas?desde=${desde}&hasta=${hasta}`
   );
-  return data;
+  return filas.map((f) => ({
+    fecha: campo(f, "fecha_atencion", "fecha_cita", "fecha"),
+    // Para categorizar sirve el asunto; si viene vacío, el procedimiento.
+    asunto: campo(f, "asunto", "procedimiento") || null,
+    procedimiento: campo(f, "procedimiento") || null,
+    paciente: campo(f, "paciente") || null,
+    medico: campo(f, "medico") || null,
+    empresa: campo(f, "empresa") || null,
+    contrato: campo(f, "contrato") || null,
+  }));
 }
 
 /** Programación de cirugía (reserva de quirófano) — vive en un módulo
@@ -181,19 +272,32 @@ export async function fetchCitasAtendidas(desde: string, hasta: string): Promise
  *    automática (motivoCancelacion con el texto fijo de
  *    CANCELACION_AUTOMATICA_TEXT) que NO debe contarse como cancelación
  *    real — usar esCancelacionAutomatica() para filtrarlas. */
+/** Columnas reales (verificadas contra la muestra que bajó el motor):
+ * CONSECUTIVO, FECHA_SOLICITUD, FECHA_PROGRAMADA, DIAS_OPORTUNIDAD,
+ * HORA_INICIAL, HORA_FINAL, ESTADO, ESTADO_CODIGO, MOTIVO_TIPO,
+ * MOTIVO_DETALLE, PACIENTE, TIPO_DOCUMENTO, DOCUMENTO, EDAD, TELEFONO,
+ * CORREO, MUNICIPIO, CUPS, PROCEDIMIENTO, QUIROFANO, CIRUJANO,
+ * ANESTESIOLOGO, AYUDANTE, MEDICO_AUXILIAR, RESPONSABLE, EMPRESA,
+ * CONTRATO, ESTUDIO, OBSERVACION.
+ *
+ * Ojo con ESTADO: el valor real que devuelve el sistema es "Atendida",
+ * no "Realizada". El código anterior contaba estados que no existen y
+ * por eso habría dado cero aunque la llave hubiera funcionado. Aquí se
+ * cuenta por el valor que venga, sin lista fija. */
 export interface SismaProgramacionQx {
-  idProgramacion: number;
-  paciente: SismaPacienteResumen;
+  consecutivo: string;
+  paciente: string | null;
   procedimiento: string | null;
   cups: string | null;
   cirujano: string | null;
   anestesiologo: string | null;
-  ayudante: string | null;
   quirofano: string | null;
   fechaProgramada: string;
-  horaProgramada: string | null;
+  horaInicial: string | null;
   estado: string;
+  motivoTipo: string | null;
   motivoCancelacion: string | null;
+  empresa: string | null;
   diasOportunidad: number | null;
 }
 
@@ -202,11 +306,31 @@ export interface SismaProgramacionQxResult {
   aviso: string | null;
 }
 
+function aQx(f: FilaCsv): SismaProgramacionQx {
+  const dias = campo(f, "dias_oportunidad");
+  return {
+    consecutivo: campo(f, "consecutivo"),
+    paciente: campo(f, "paciente") || null,
+    procedimiento: campo(f, "procedimiento") || null,
+    cups: campo(f, "cups") || null,
+    cirujano: campo(f, "cirujano") || null,
+    anestesiologo: campo(f, "anestesiologo") || null,
+    quirofano: campo(f, "quirofano") || null,
+    fechaProgramada: campo(f, "fecha_programada", "fecha"),
+    horaInicial: campo(f, "hora_inicial") || null,
+    estado: campo(f, "estado") || "Sin estado",
+    motivoTipo: campo(f, "motivo_tipo") || null,
+    motivoCancelacion: campo(f, "motivo_detalle", "motivo_cancelacion") || null,
+    empresa: campo(f, "empresa") || null,
+    diasOportunidad: dias ? Number(dias) : null,
+  };
+}
+
 export async function fetchProgramacionQx(desde: string, hasta: string): Promise<SismaProgramacionQxResult> {
-  const { data, aviso } = await sismaNodeFetch<SismaProgramacionQx[]>(
+  const { filas, aviso } = await sismaNodeFetch(
     `/api/informes/programacion-qx?desde=${desde}&hasta=${hasta}`
   );
-  return { items: data, aviso };
+  return { items: filas.map(aQx), aviso };
 }
 
 /** Misma información que fetchProgramacionQx, con "días de oportunidad"
@@ -216,10 +340,10 @@ export async function fetchProgramacionQxOportunidad(
   desde: string,
   hasta: string
 ): Promise<SismaProgramacionQxResult> {
-  const { data, aviso } = await sismaNodeFetch<SismaProgramacionQx[]>(
+  const { filas, aviso } = await sismaNodeFetch(
     `/api/informes/programacion-qx/oportunidad?desde=${desde}&hasta=${hasta}`
   );
-  return { items: data, aviso };
+  return { items: filas.map(aQx), aviso };
 }
 
 export const CANCELACION_AUTOMATICA_TEXT = "Cancelado automáticamente por actualización de cirugía";
