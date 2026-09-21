@@ -104,6 +104,18 @@ export interface FrecuenciaConteo {
   dias_habiles: number | null;
 }
 
+/** Detalle día a día (RAW.dias del motor de Pedro). Es lo que permite
+ * comparar los años cortados al mismo día ("a la fecha") en vez de
+ * restar un año incompleto contra uno completo. `fecha` viene como
+ * 'YYYY-MM-DD'. */
+export interface FrecuenciaDia {
+  fecha: string;
+  uf: string;
+  grupo: string;
+  cantidad: number;
+  valor: number;
+}
+
 /** Evolución mensual del grupo "Prepagadas" (todas las entidades
  * combinadas) — RAW.prepagadas_mens del motor de Pedro. */
 export interface FrecuenciaPrepagadaMensual {

@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import type { FrecuenciaCobrableMensual, FrecuenciaConteo, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
+import type { FrecuenciaCobrableMensual, FrecuenciaConteo, FrecuenciaDia, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -318,6 +318,41 @@ export async function getFrecuenciasMesMasReciente(): Promise<{
 
 const FRECUENCIA_CONTEO_COLUMNS =
   "year, month_num, month_name, uf, grupo, cantidad, valor, dias_calendario, dias_habiles";
+
+const FRECUENCIA_DIA_COLUMNS = "fecha, uf, grupo, cantidad, valor";
+
+/** Detalle día a día (tabla frecuencias_dias, migración 013). Se usa
+ * para cortar todos los años al mismo día del calendario: sin esto, la
+ * comparación resta un año en curso contra años completos y siempre da
+ * en rojo. Son ~10.300 filas, así que se traen todas y se agregan en el
+ * cliente, igual que hace el tablero original. */
+export async function getFrecuenciasDias(): Promise<FrecuenciaDia[]> {
+  const supabase = createServiceClient();
+  const PAGE_SIZE = 1000;
+  const all: FrecuenciaDia[] = [];
+  let start = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("frecuencias_dias")
+      .select(FRECUENCIA_DIA_COLUMNS)
+      .order("fecha")
+      .range(start, start + PAGE_SIZE - 1);
+    // La tabla puede no existir todavía (migración 013 sin aplicar): en
+    // ese caso se devuelve vacío y la UI cae al modo por meses, en vez
+    // de tumbar la página entera.
+    if (error) {
+      console.warn("getFrecuenciasDias:", error.message);
+      return [];
+    }
+    const rows = (data ?? []) as FrecuenciaDia[];
+    all.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+
+  return all;
+}
 
 /** Matriz completa año/mes/UF/empresa (sin filtrar Mutual) — fuente
  * única del módulo nativo "Resumen Comparativo" y las pestañas que le
