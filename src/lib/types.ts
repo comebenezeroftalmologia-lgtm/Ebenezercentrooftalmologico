@@ -42,6 +42,24 @@ export interface Opportunity {
   status: OpportunityStatus;
 }
 
+/** Una fila = una vez que una oportunidad de Campañas ENTRÓ a la etapa
+ * "Servicio Agendado" (ver supabase/migrations/013 y el botón
+ * "Servicios Agendados" del módulo de Leads). Si el mismo lead
+ * reingresa a la etapa más adelante, genera otra fila — es un log
+ * acumulado, no un snapshot del estado actual. */
+export interface ServicioAgendadoLogRow {
+  id: number;
+  opportunity_id: string | null;
+  entered_at: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  service_id: number | null;
+  value: number | null;
+  channel: string | null;
+  deal_created_at: string | null;
+}
+
 export interface AdSpendRow {
   campaign_id: string;
   campaign_name: string | null;

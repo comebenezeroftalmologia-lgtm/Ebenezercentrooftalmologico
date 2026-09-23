@@ -23,3 +23,13 @@ export function formatCOP(value: number): string {
 export function formatNumber(value: number): string {
   return value.toLocaleString("es-CO", { maximumFractionDigits: 0 });
 }
+
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("es-CO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

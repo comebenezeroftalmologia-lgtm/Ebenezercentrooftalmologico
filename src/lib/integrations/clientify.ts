@@ -86,6 +86,8 @@ interface ClientifyDealRaw {
   pipeline_stage_desc: string;
   contact: string | null;
   contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
   contact_medium: string | null;
   custom_fields: { id: number; field: string; value: string }[];
   created: string;

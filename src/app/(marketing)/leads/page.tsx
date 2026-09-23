@@ -6,6 +6,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
 import { ConversionFunnelSection } from "@/components/ConversionFunnelSection";
+import { ServiciosAgendadosButton } from "@/components/ServiciosAgendadosButton";
 import { StatusCards } from "@/components/StatusCards";
 import { ServiceDistributionChart } from "@/components/ServiceDistributionChart";
 import { StatusDonutChart } from "@/components/StatusDonutChart";
@@ -27,7 +28,7 @@ import {
   type EstadoFilter,
 } from "@/lib/dashboard";
 import { PROBABILIDAD_COMPRA_STAGES, VENTA_STAGES } from "@/lib/pipelineStages";
-import { getAdSpendStats, getOpportunities, listServices, serviceNameMap } from "@/lib/queries";
+import { getAdSpendStats, getOpportunities, getServiciosAgendadosLog, listServices, serviceNameMap } from "@/lib/queries";
 import { formatCOP, formatNumber } from "@/lib/text";
 import { buildHref } from "@/lib/url";
 
@@ -48,11 +49,12 @@ export default async function LeadsPage({
   const estado = searchParams.estado as EstadoFilter;
   const previousRange = previousPeriodRange(from, to);
 
-  const [services, allOpportunities, adStats, previousOpportunities] = await Promise.all([
+  const [services, allOpportunities, adStats, previousOpportunities, serviciosAgendadosLog] = await Promise.all([
     listServices(),
     getOpportunities({ pipeline: "generacion_leads", from, to, serviceId }),
     getAdSpendStats({ from, to }),
     getOpportunities({ pipeline: "generacion_leads", ...previousRange, serviceId }),
+    getServiciosAgendadosLog({ from, to }),
   ]);
   const gasto = adStats.spend;
 
@@ -112,6 +114,12 @@ export default async function LeadsPage({
             from={from}
             to={to}
             otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }}
+          />
+          <ServiciosAgendadosButton
+            rows={serviciosAgendadosLog}
+            serviceNames={serviceNames}
+            from={from}
+            to={to}
           />
         </div>
       </div>

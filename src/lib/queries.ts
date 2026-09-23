@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
-import type { FrecuenciaCobrableMensual, FrecuenciaConteo, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, SocialPost, SocialStatPoint } from "@/lib/types";
+import type { FrecuenciaCobrableMensual, FrecuenciaConteo, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, ServicioAgendadoLogRow, SocialPost, SocialStatPoint } from "@/lib/types";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -104,6 +104,33 @@ export async function listServices(): Promise<Service[]> {
 
 export function serviceNameMap(services: Service[]): Map<number, string> {
   return new Map(services.map((s) => [s.id, s.name]));
+}
+
+/** Log acumulado de "Servicio Agendado" (Campañas) — ver
+ * ServicioAgendadoLogRow. Filtra por `entered_at` (cuándo se detectó la
+ * entrada a la etapa), no por fecha de creación de la oportunidad. */
+export async function getServiciosAgendadosLog({ from, to }: DateRange): Promise<ServicioAgendadoLogRow[]> {
+  const supabase = createServiceClient();
+  const PAGE_SIZE = 1000;
+  const all: ServicioAgendadoLogRow[] = [];
+  let start = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("servicios_agendados_log")
+      .select("id, opportunity_id, entered_at, contact_name, contact_email, contact_phone, service_id, value, channel, deal_created_at")
+      .gte("entered_at", `${from}T00:00:00.000Z`)
+      .lte("entered_at", `${to}T23:59:59.999Z`)
+      .order("entered_at", { ascending: false })
+      .range(start, start + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as ServicioAgendadoLogRow[];
+    all.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+
+  return all;
 }
 
 // ---------------------------------------------------------------------
