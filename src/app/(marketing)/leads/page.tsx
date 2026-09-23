@@ -18,8 +18,10 @@ import {
   calcROI,
   defaultDateRange,
   filterByEstado,
+  isCierreStageEnRango,
   isProbabilidadCompra,
   isVendida,
+  isVendidaEnRango,
   pctChange,
   previousPeriodRange,
   ratioPct,
@@ -28,7 +30,15 @@ import {
   type EstadoFilter,
 } from "@/lib/dashboard";
 import { PROBABILIDAD_COMPRA_STAGES, VENTA_STAGES } from "@/lib/pipelineStages";
-import { getAdSpendStats, getOpportunities, getServiciosAgendadosLog, listServices, serviceNameMap } from "@/lib/queries";
+import {
+  getAdSpendStats,
+  getCirugiaExitosaEntryDates,
+  getOpportunities,
+  getServiciosAgendadosLog,
+  getVentasCandidatas,
+  listServices,
+  serviceNameMap,
+} from "@/lib/queries";
 import { formatCOP, formatNumber } from "@/lib/text";
 import { buildHref } from "@/lib/url";
 
@@ -49,12 +59,22 @@ export default async function LeadsPage({
   const estado = searchParams.estado as EstadoFilter;
   const previousRange = previousPeriodRange(from, to);
 
-  const [services, allOpportunities, adStats, previousOpportunities, serviciosAgendadosLog] = await Promise.all([
+  const [
+    services,
+    allOpportunities,
+    adStats,
+    previousOpportunities,
+    serviciosAgendadosLog,
+    ventasCandidatas,
+    cirugiaExitosaDates,
+  ] = await Promise.all([
     listServices(),
     getOpportunities({ pipeline: "generacion_leads", from, to, serviceId }),
     getAdSpendStats({ from, to }),
     getOpportunities({ pipeline: "generacion_leads", ...previousRange, serviceId }),
     getServiciosAgendadosLog({ from, to }),
+    getVentasCandidatas({ pipeline: "generacion_leads", serviceId }),
+    getCirugiaExitosaEntryDates(),
   ]);
   const gasto = adStats.spend;
 
@@ -66,32 +86,49 @@ export default async function LeadsPage({
   const importeTotal = totalImporte(allOpportunities);
   const roi = calcROI({ totalImporte: importeTotal, gasto });
 
-  const vendidas = allOpportunities.filter(isVendida);
+  // "Tiempo promedio de cierre" sigue basado en fecha de CREACIÓN (no
+  // cambia con este ajuste): creación -> fecha esperada de cierre, para
+  // las vendidas del período en que se CREARON.
+  const vendidasPorCreacion = allOpportunities.filter(isVendida);
   const avgClosingDays = avgDaysBetween(
-    vendidas,
+    vendidasPorCreacion,
     (o) => o.created_at,
     (o) => o.expected_close_date
   );
 
   const probabilidad = allOpportunities.filter(isProbabilidadCompra);
-  const vendidasBreakdown = breakdownVendidas(vendidas, "generacion_leads");
   const probabilidadBreakdown = buildStageBreakdown(filtered, PROBABILIDAD_COMPRA_STAGES);
+
+  // "Total de Oportunidades Vendidas" y el Paso 3 del embudo cuentan por
+  // FECHA DE CIERRE EFECTIVA, no por fecha de creación — una cirugía
+  // puede cerrarse meses después de haberse creado el lead, y con el
+  // filtro anterior (por creación) esas ventas desaparecían del período
+  // en que realmente se vendieron. `ventasCandidatas` no está acotado
+  // por fecha de creación, así que cualquier rango de fechas encuentra
+  // sus ventas correctamente.
+  const vendidas = ventasCandidatas.filter((o) => isVendidaEnRango(o, from, to, cirugiaExitosaDates));
+  const vendidasBreakdown = breakdownVendidas(vendidas, "generacion_leads");
 
   // Paso 3 del Embudo de Conversión: puntualmente las etapas de cierre
   // de Campañas — "Programación de Cirugía" y "Cirugía Exitosa" (no
   // "vendidas" en general, que también incluye Ganadas en cualquier
-  // otra etapa) — sobre el total sin filtrar por estado, igual que
-  // `probabilidad` arriba.
-  const cirugiaBreakdown = buildStageBreakdown(allOpportunities, VENTA_STAGES.generacion_leads);
+  // otra etapa) — filtradas por fecha de cierre efectiva.
+  const cirugiaBreakdown = buildStageBreakdown(
+    ventasCandidatas.filter((o) => isCierreStageEnRango(o, from, to, cirugiaExitosaDates)),
+    VENTA_STAGES.generacion_leads
+  );
   const cirugiaProgramada = cirugiaBreakdown.reduce((sum, item) => sum + item.count, 0);
   const cierreRate = ratioPct(cirugiaProgramada, probabilidad.length);
   const proyeccionCirugias = cierreRate !== null ? Math.round((probabilidad.length * cierreRate) / 100) : null;
 
   // Comparativo vs. período anterior (mismo rango de días, inmediatamente
   // antes del seleccionado) — para IMPORTE y Vendidas, los dos números que
-  // más le importan a gerencia mes a mes.
+  // más le importan a gerencia mes a mes. Vendidas usa la misma fecha de
+  // cierre efectiva, comparando contra `previousRange`.
   const prevImporte = totalImporte(previousOpportunities);
-  const prevVendidas = previousOpportunities.filter(isVendida).length;
+  const prevVendidas = ventasCandidatas.filter((o) =>
+    isVendidaEnRango(o, previousRange.from, previousRange.to, cirugiaExitosaDates)
+  ).length;
   const importePct = pctChange(importeTotal, prevImporte);
   const vendidasPct = pctChange(vendidas.length, prevVendidas);
 

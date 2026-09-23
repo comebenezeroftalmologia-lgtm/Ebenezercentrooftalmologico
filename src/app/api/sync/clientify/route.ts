@@ -24,6 +24,14 @@ const PIPELINES: Pipeline[] = [
 const SERVICIO_AGENDADO_PIPELINE: Pipeline = "generacion_leads";
 const SERVICIO_AGENDADO_STAGE = normalizeStage("Servicio Agendado");
 
+// Igual que arriba pero para cirugia_exitosa_log (ver migración 015) —
+// Clientify no tiene ningún campo confiable para saber CUÁNDO una
+// oportunidad pasó a "Cirugía Exitosa" (el equipo no marca el deal
+// como Ganado), así que la plataforma detecta y guarda ella misma el
+// momento en que ocurre, en cada sync.
+const CIRUGIA_EXITOSA_PIPELINE: Pipeline = "generacion_leads";
+const CIRUGIA_EXITOSA_STAGE = normalizeStage("Cirugía Exitosa");
+
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -39,6 +47,7 @@ export async function GET(req: NextRequest) {
   let totalSynced = 0;
   const perPipeline: Record<string, number> = {};
   const servicioAgendadoLogged: Record<string, number> = {};
+  const cirugiaExitosaLogged: Record<string, number> = {};
 
   for (const pipeline of PIPELINES) {
     const deals = await fetchClientifyDealsForPipeline(pipeline);
@@ -89,7 +98,7 @@ export async function GET(req: NextRequest) {
       // Detecta entradas a "Servicio Agendado" (solo Campañas) ANTES del
       // upsert, mientras `previousStageById` todavía refleja la etapa de
       // la corrida anterior.
-      const servicioAgendadoEntries: {
+      type StageEntryRow = {
         opportunity_id: string;
         pipeline: Pipeline;
         contact_name: string | null;
@@ -99,18 +108,30 @@ export async function GET(req: NextRequest) {
         value: number | null;
         channel: string | null;
         deal_created_at: string;
-      }[] = [];
-      if (pipeline === SERVICIO_AGENDADO_PIPELINE) {
+      };
+      const servicioAgendadoEntries: StageEntryRow[] = [];
+      const cirugiaExitosaEntries: StageEntryRow[] = [];
+      if (pipeline === SERVICIO_AGENDADO_PIPELINE || pipeline === CIRUGIA_EXITOSA_PIPELINE) {
         for (let i = 0; i < deals.length; i++) {
           const deal = deals[i];
           const row = rows[i];
-          if (normalizeStage(row.stage) !== SERVICIO_AGENDADO_STAGE) continue;
+          const normalizedStage = normalizeStage(row.stage);
           const prevStage = previousStageById.get(row.id);
-          const wasAlreadyThere = prevStage !== undefined && normalizeStage(prevStage) === SERVICIO_AGENDADO_STAGE;
-          if (wasAlreadyThere) continue; // ya estaba ahí en la corrida anterior, no es una entrada nueva
+
+          const isNewServicioAgendado =
+            pipeline === SERVICIO_AGENDADO_PIPELINE &&
+            normalizedStage === SERVICIO_AGENDADO_STAGE &&
+            !(prevStage !== undefined && normalizeStage(prevStage) === SERVICIO_AGENDADO_STAGE);
+
+          const isNewCirugiaExitosa =
+            pipeline === CIRUGIA_EXITOSA_PIPELINE &&
+            normalizedStage === CIRUGIA_EXITOSA_STAGE &&
+            !(prevStage !== undefined && normalizeStage(prevStage) === CIRUGIA_EXITOSA_STAGE);
+
+          if (!isNewServicioAgendado && !isNewCirugiaExitosa) continue;
 
           const serviceName = extractServiceFromDealName(deal.name);
-          servicioAgendadoEntries.push({
+          const entry: StageEntryRow = {
             opportunity_id: row.id,
             pipeline,
             contact_name: deal.contact_name,
@@ -120,7 +141,9 @@ export async function GET(req: NextRequest) {
             value: row.value,
             channel: row.channel,
             deal_created_at: row.created_at,
-          });
+          };
+          if (isNewServicioAgendado) servicioAgendadoEntries.push(entry);
+          if (isNewCirugiaExitosa) cirugiaExitosaEntries.push(entry);
         }
       }
 
@@ -145,6 +168,19 @@ export async function GET(req: NextRequest) {
           );
         }
         servicioAgendadoLogged[pipeline] = servicioAgendadoEntries.length;
+      }
+
+      if (cirugiaExitosaEntries.length > 0) {
+        const { error: logError } = await supabase
+          .from("cirugia_exitosa_log")
+          .insert(cirugiaExitosaEntries);
+        if (logError) {
+          return NextResponse.json(
+            { error: `${pipeline} (log de Cirugía Exitosa): ${logError.message}`, syncedBeforeError: totalSynced },
+            { status: 500 }
+          );
+        }
+        cirugiaExitosaLogged[pipeline] = cirugiaExitosaEntries.length;
       }
 
       // Clientify no expone un webhook de borrado — un deal eliminado o
@@ -178,5 +214,5 @@ export async function GET(req: NextRequest) {
     totalSynced += rows.length;
   }
 
-  return NextResponse.json({ synced: totalSynced, perPipeline, servicioAgendadoLogged });
+  return NextResponse.json({ synced: totalSynced, perPipeline, servicioAgendadoLogged, cirugiaExitosaLogged });
 }

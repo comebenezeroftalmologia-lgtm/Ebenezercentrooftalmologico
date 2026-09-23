@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import type { FrecuenciaCobrableMensual, FrecuenciaConteo, FrecuenciaDia, FrecuenciaMedicoMensual, FrecuenciaMonthly, FrecuenciaPrepagadaMensual, FrecuenciaPrepagadaRanking, Opportunity, Pipeline, Service, ServicioAgendadoLogRow, SocialPost, SocialStatPoint } from "@/lib/types";
+import { VENTA_STAGES } from "@/lib/pipelineStages";
 
 export interface DateRange {
   from: string; // YYYY-MM-DD
@@ -54,6 +55,50 @@ export async function getOpportunities({
   }
 
   return all;
+}
+
+/** Candidatas a "vendida" de un pipeline, SIN filtrar por fecha de
+ * creación: cualquier oportunidad con status=Ganada (en cualquier
+ * etapa) o cuya etapa actual sea una de cierre real del pipeline (ver
+ * VENTA_STAGES). Existe porque una venta puede cerrarse mucho después
+ * de haberse creado (p. ej. un lead de julio que cierra en
+ * septiembre) — filtrar primero por fecha de creación las hacía
+ * desaparecer del conteo del período en que realmente se vendieron.
+ * El llamador filtra después por "fecha de cierre efectiva"
+ * (ver dashboard.ts: effectiveClosingDate / isVendidaEnRango). */
+export async function getVentasCandidatas({
+  pipeline,
+  serviceId,
+}: {
+  pipeline: Pipeline;
+  serviceId?: number | null;
+}): Promise<Opportunity[]> {
+  const supabase = createServiceClient();
+  const PAGE_SIZE = 1000;
+  const byId = new Map<string, Opportunity>();
+
+  async function fetchAll(build: (q: any) => any) {
+    let start = 0;
+    while (true) {
+      let query = supabase.from("opportunities").select(OPPORTUNITY_COLUMNS).eq("pipeline", pipeline);
+      query = build(query);
+      if (serviceId) query = query.eq("service_id", serviceId);
+      const { data, error } = await query.order("id", { ascending: true }).range(start, start + PAGE_SIZE - 1);
+      if (error) throw error;
+      const rows = (data ?? []) as Opportunity[];
+      for (const row of rows) byId.set(row.id, row);
+      if (rows.length < PAGE_SIZE) break;
+      start += PAGE_SIZE;
+    }
+  }
+
+  await fetchAll((q) => q.eq("status", "won"));
+  const ventaStages = VENTA_STAGES[pipeline];
+  if (ventaStages.length > 0) {
+    await fetchAll((q) => q.in("stage", ventaStages));
+  }
+
+  return Array.from(byId.values());
 }
 
 /** Gasto total de Meta Ads en un rango de fechas (módulo Generación de Clientes Potenciales) */
@@ -135,6 +180,36 @@ export async function getServiciosAgendadosLog({ from, to }: DateRange): Promise
 
 // ---------------------------------------------------------------------
 // Redes sociales
+
+/** Para cada oportunidad que alguna vez entró a "Cirugía Exitosa", la
+ * fecha (YYYY-MM-DD) de su entrada MÁS RECIENTE — es la "fecha de
+ * cierre efectiva" que usa dashboard.effectiveClosingDate cuando
+ * Clientify no tiene ningún campo confiable para esto (ver
+ * cirugia_exitosa_log, migración 015). */
+export async function getCirugiaExitosaEntryDates(): Promise<Map<string, string>> {
+  const supabase = createServiceClient();
+  const PAGE_SIZE = 1000;
+  const map = new Map<string, string>();
+  let start = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("cirugia_exitosa_log")
+      .select("opportunity_id, entered_at")
+      .order("entered_at", { ascending: true })
+      .range(start, start + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { opportunity_id: string | null; entered_at: string }[];
+    for (const row of rows) {
+      if (!row.opportunity_id) continue;
+      map.set(row.opportunity_id, row.entered_at.slice(0, 10)); // ascendente: la última entrada gana
+    }
+    if (rows.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+
+  return map;
+}
 // ---------------------------------------------------------------------
 
 export async function getSocialStatsSeries({

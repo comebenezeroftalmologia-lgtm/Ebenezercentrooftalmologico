@@ -11,6 +11,70 @@ export function isVendida(o: Opportunity): boolean {
   return ventaStages.some((s) => normalizeStage(s) === normalizeStage(o.stage));
 }
 
+const CIRUGIA_EXITOSA_STAGE = normalizeStage("Cirugía Exitosa");
+
+/** "Fecha de cierre efectiva" de una vendida:
+ * - Ganadas (status=won) usan `closed_at` — Clientify lo puebla bien
+ *   para ese status.
+ * - "Cirugía Exitosa" usa la fecha que la PLATAFORMA detectó al ver
+ *   entrar la oportunidad a esa etapa (cirugiaExitosaDates, ver
+ *   queries.getCirugiaExitosaEntryDates) — Clientify no tiene ningún
+ *   campo confiable para esto: el equipo no marca el deal como Ganado,
+ *   y `next_appointment_date` en este punto suele ser una cita de
+ *   seguimiento POSTERIOR a la cirugía, no la fecha de la cirugía.
+ * - El resto de etapas de "programación" (p. ej. Programación de
+ *   Cirugía) sí usan `next_appointment_date` — ahí sí es la fecha real
+ *   de la cirugía agendada.
+ * Devuelve null cuando no hay ninguna fecha confiable. */
+export function effectiveClosingDate(
+  o: Opportunity,
+  cirugiaExitosaDates?: Map<string, string>
+): string | null {
+  if (o.status === "won") return o.closed_at ? o.closed_at.slice(0, 10) : null;
+
+  if (normalizeStage(o.stage) === CIRUGIA_EXITOSA_STAGE) {
+    return cirugiaExitosaDates?.get(o.id) ?? (o.next_appointment_date ? o.next_appointment_date.slice(0, 10) : null);
+  }
+
+  const ventaStages = VENTA_STAGES[o.pipeline];
+  const matchesVentaStage = ventaStages.some((s) => normalizeStage(s) === normalizeStage(o.stage));
+  return matchesVentaStage ? (o.next_appointment_date ? o.next_appointment_date.slice(0, 10) : null) : null;
+}
+
+/** ¿Esta oportunidad cuenta como "vendida" dentro de [from, to], usando
+ * la fecha de cierre efectiva en vez de la fecha de creación? Cuando no
+ * hay fecha de cierre confiable, se cuenta igual (decisión explícita:
+ * mejor sobre-contar una vendida sin fecha que perderla del reporte). */
+export function isVendidaEnRango(
+  o: Opportunity,
+  from: string,
+  to: string,
+  cirugiaExitosaDates?: Map<string, string>
+): boolean {
+  if (!isVendida(o)) return false;
+  const date = effectiveClosingDate(o, cirugiaExitosaDates);
+  if (!date) return true;
+  return date >= from && date <= to;
+}
+
+/** Igual que isVendidaEnRango pero restringido a las etapas de cierre
+ * puntuales del pipeline (sin incluir Ganadas en otra etapa) — es lo
+ * que alimenta el Paso 3 del Embudo de Conversión, que por decisión
+ * explícita solo cuenta "Programación de Cirugía" y "Cirugía Exitosa". */
+export function isCierreStageEnRango(
+  o: Opportunity,
+  from: string,
+  to: string,
+  cirugiaExitosaDates?: Map<string, string>
+): boolean {
+  const ventaStages = VENTA_STAGES[o.pipeline];
+  const matchesVentaStage = ventaStages.some((s) => normalizeStage(s) === normalizeStage(o.stage));
+  if (!matchesVentaStage) return false;
+  const date = effectiveClosingDate(o, cirugiaExitosaDates);
+  if (!date) return true;
+  return date >= from && date <= to;
+}
+
 /** Solo aplica al pipeline de Generación de Clientes Potenciales. */
 export function isProbabilidadCompra(o: Opportunity): boolean {
   return PROBABILIDAD_COMPRA_STAGES.some(
