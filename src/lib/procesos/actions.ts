@@ -202,7 +202,13 @@ export async function restablecerPasswordAction(
   if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
 
   const admin = createServiceClient();
-  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  // email_confirm: true evita que quede bloqueado el login si la persona
+  // nunca confirmó el correo de invitación (p. ej. si el admin le puso la
+  // contraseña directamente en vez de que ella aceptara la invitación).
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    password,
+    email_confirm: true,
+  });
   if (error) return { error: error.message };
 
   return { error: null, ok: true };
