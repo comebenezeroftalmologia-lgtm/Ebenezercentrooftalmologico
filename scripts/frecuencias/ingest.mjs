@@ -375,3 +375,59 @@ if (cobrableRows.length) {
 }
 
 console.log("Listo (cobrable).");
+
+// ============================================================================
+// Fase 3 — detalle DÍA A DÍA: RAW.dias = { u:[UF...], g:[grupo...],
+// d:{ "YYYY-MM-DD": [[iUF, iGrupo, cantidad, valor], ...] } }
+//
+// Este bloque ya venía en el RAW y se estaba descartando. Sin él no se
+// puede cortar "a la fecha" (comparar los años hasta el mismo día), que
+// es lo que hacía que la tarjeta Diferencia restara 9 meses contra 12.
+// Son ~10.300 filas; el motor ya entrega agregado por día/UF/empresa.
+// ============================================================================
+const diasRows = [];
+const diasRaw = raw.dias ?? {};
+const diasUfs = diasRaw.u ?? [];
+const diasGrupos = diasRaw.g ?? [];
+
+for (const [fecha, entradas] of Object.entries(diasRaw.d ?? {})) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue;
+  for (const e of entradas ?? []) {
+    const uf = diasUfs[e[0]];
+    const grupo = diasGrupos[e[1]];
+    if (uf == null || grupo == null) continue;
+    diasRows.push({
+      fecha,
+      uf,
+      grupo: String(grupo),
+      cantidad: Number(e[2]) || 0,
+      valor: Number(e[3]) || 0,
+      source_snapshot: sourceSnapshot,
+    });
+  }
+}
+
+if (diasRows.length) {
+  const fechas = Object.keys(diasRaw.d ?? {}).sort();
+  console.log(
+    `\nFilas (detalle diario) a cargar: ${diasRows.length} ` +
+      `(${fechas.length} días, ${fechas[0]} a ${fechas[fechas.length - 1]})`,
+  );
+  let loadedDias = 0;
+  for (let i = 0; i < diasRows.length; i += BATCH) {
+    const batch = diasRows.slice(i, i + BATCH);
+    const { error } = await supabase
+      .from("frecuencias_dias")
+      .upsert(batch, { onConflict: "fecha,uf,grupo" });
+    if (error) {
+      console.error(`Error en lote días ${i}-${i + batch.length}:`, error.message);
+      process.exit(1);
+    }
+    loadedDias += batch.length;
+  }
+  console.log(`  ...${loadedDias}/${diasRows.length}`);
+} else {
+  console.warn("AVISO: RAW.dias vino vacío — no se cargó el detalle diario.");
+}
+
+console.log("Listo (detalle diario).");

@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { FrecuenciaConteo } from "@/lib/types";
+import type { FrecuenciaConteo, FrecuenciaDia } from "@/lib/types";
 import {
   DeltaCell,
   GREEN,
@@ -26,13 +26,25 @@ import {
   fmtVal,
 } from "./shared";
 
+const MES_NOMBRE_CORTO = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
+
 export function ResumenComparativo({
   rows,
+  dias = [],
   years: selectedYears,
   mutualIncluded,
   mode,
 }: {
   rows: FrecuenciaConteo[];
+  /** Detalle día a día. Cuando llega con datos, todos los cálculos de
+   * este componente se hacen cortando cada año al mismo día del
+   * calendario ("a la fecha"). Si llega vacío —migración 013 sin
+   * aplicar o sincronización vieja— se cae al modo anterior, que suma
+   * el año entero. */
+  dias?: FrecuenciaDia[];
   years: number[];
   mutualIncluded: boolean;
   mode: Mode;
@@ -77,11 +89,101 @@ export function ResumenComparativo({
     return m;
   }, [rows]);
 
+  // ---------------------------------------------------------------
+  // CORTE "A LA FECHA"
+  //
+  // El problema que resuelve: sumando meses completos, 2026 entra con
+  // 9 meses (el último a medias) y 2025 con 12. La resta daba -24.927
+  // cuando la comparación real, día contra día, era +368.
+  //
+  // Se toma la última fecha con datos (p. ej. 17-09-2026) y se corta
+  // TODOS los años en ese mismo mes/día. Si no hay detalle diario, se
+  // mantiene el comportamiento anterior.
+  // ---------------------------------------------------------------
+  const corte = useMemo(() => {
+    if (!dias.length) return null;
+    let max = "";
+    for (const d of dias) if (d.fecha > max) max = d.fecha;
+    if (!max) return null;
+    const [y, m, dd] = max.split("-").map(Number);
+    return { fecha: max, year: y, mes: m, dia: dd };
+  }, [dias]);
+
+  const usaDias = corte !== null;
+
+  /** Agregados hasta el día de corte: `${year}|${uf}|${grupo}` -> {cantidad, valor} */
+  const diasIndex = useMemo(() => {
+    const m = new Map<string, { cantidad: number; valor: number }>();
+    if (!corte) return m;
+    for (const d of dias) {
+      const [yy, mm, dd] = d.fecha.split("-").map(Number);
+      if (mm > corte.mes) continue;
+      if (mm === corte.mes && dd > corte.dia) continue;
+      const k = `${yy}|${d.uf}|${d.grupo}`;
+      const cur = m.get(k);
+      if (cur) {
+        cur.cantidad += d.cantidad;
+        cur.valor += Number(d.valor);
+      } else {
+        m.set(k, { cantidad: d.cantidad, valor: Number(d.valor) });
+      }
+    }
+    return m;
+  }, [dias, corte]);
+
+  /** Mismo corte, pero abierto por mes: `${year}|${mes}|${uf}|${grupo}` */
+  const diasIndexMes = useMemo(() => {
+    const m = new Map<string, { cantidad: number; valor: number }>();
+    if (!corte) return m;
+    for (const d of dias) {
+      const [yy, mm, dd] = d.fecha.split("-").map(Number);
+      if (mm > corte.mes) continue;
+      if (mm === corte.mes && dd > corte.dia) continue;
+      const k = `${yy}|${mm}|${d.uf}|${d.grupo}`;
+      const cur = m.get(k);
+      if (cur) {
+        cur.cantidad += d.cantidad;
+        cur.valor += Number(d.valor);
+      } else {
+        m.set(k, { cantidad: d.cantidad, valor: Number(d.valor) });
+      }
+    }
+    return m;
+  }, [dias, corte]);
+
+  /** Días distintos con actividad por año, dentro del corte. Es lo que
+   * se muestra como "días trabajados". */
+  const diasTrabajados = useMemo(() => {
+    const m = new Map<number, Set<string>>();
+    if (!corte) return m;
+    for (const d of dias) {
+      if (d.cantidad <= 0 && Number(d.valor) <= 0) continue;
+      const [yy, mm, dd] = d.fecha.split("-").map(Number);
+      if (mm > corte.mes) continue;
+      if (mm === corte.mes && dd > corte.dia) continue;
+      if (!m.has(yy)) m.set(yy, new Set());
+      m.get(yy)!.add(d.fecha);
+    }
+    return m;
+  }, [dias, corte]);
+
+  const periodoLabel = corte
+    ? `Ene–${MES_NOMBRE_CORTO[corte.mes - 1]} ${corte.dia}`
+    : "";
+
   function valExact(uf: string, grupo: string, year: number, monthNum: number): number {
+    if (usaDias) {
+      const r = diasIndexMes.get(`${year}|${monthNum}|${uf}|${grupo}`);
+      return r ? (mode === "val" ? r.valor : r.cantidad) : 0;
+    }
     const r = index.get(`${year}|${monthNum}|${uf}|${grupo}`);
     return r ? r[valueKey] : 0;
   }
   function valUfEmp(uf: string, grupo: string, year: number): number {
+    if (usaDias) {
+      const r = diasIndex.get(`${year}|${uf}|${grupo}`);
+      return r ? (mode === "val" ? r.valor : r.cantidad) : 0;
+    }
     const months = monthsByYear.get(year) ?? [];
     return months.reduce((s, m) => s + valExact(uf, grupo, year, m), 0);
   }
@@ -95,6 +197,9 @@ export function ResumenComparativo({
     return ufs.reduce((s, u) => s + valUf(u, year), 0);
   }
   function diasHabiles(year: number): number {
+    if (usaDias) {
+      return diasTrabajados.get(year)?.size || 1;
+    }
     const months = monthsByYear.get(year) ?? [];
     const total = months.reduce((s, m) => s + (diasHabilesByYearMonth.get(`${year}|${m}`) ?? 0), 0);
     return total || 1;
@@ -108,8 +213,11 @@ export function ResumenComparativo({
   const mesesConDatos = useMemo(() => {
     const set = new Set<number>();
     years.forEach((y) => (monthsByYear.get(y) ?? []).forEach((m) => set.add(m)));
-    return Array.from(set).sort((a, b) => a - b);
-  }, [years, monthsByYear]);
+    // Con corte a la fecha no se muestran meses posteriores al de corte:
+    // estarían vacíos en el año en curso y llenos en los anteriores.
+    const lista = Array.from(set).sort((a, b) => a - b);
+    return corte ? lista.filter((m) => m <= corte.mes) : lista;
+  }, [years, monthsByYear, corte]);
 
   const dataMes = mesesConDatos
     .map((monthNum) => {
@@ -133,6 +241,19 @@ export function ResumenComparativo({
 
   return (
     <div>
+      {/* Aviso del periodo comparado: sin esto nadie sabe que 2026 va a
+          mitad de año y la comparación se lee como una caída. */}
+      {corte && (
+        <div className="mb-4 rounded-xl border border-blue bg-blue-10 px-4 py-3 text-sm text-ink-2">
+          Comparación <strong>a la fecha</strong>: todos los años cortados al{" "}
+          <strong>
+            {corte.dia} de {MES_LARGO[MES_ORDEN[corte.mes - 1]] ?? MES_ORDEN[corte.mes - 1]}
+          </strong>
+          , para que el año en curso no se compare contra años completos. Último día con datos:{" "}
+          {corte.fecha}.
+        </div>
+      )}
+
       {/* KPI cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {years.map((y, i) => {
@@ -142,7 +263,8 @@ export function ResumenComparativo({
           return (
             <div key={y} className="rounded-xl border border-line bg-white p-5 shadow-sm">
               <p className="eb-label text-[11px] text-ink-3">
-                {mode === "val" ? "Valor" : "Atenciones"} · Año {y}
+                {mode === "val" ? "Valor" : "Atenciones"}
+                {corte ? ` a la fecha (${periodoLabel})` : " · Año"} {y}
               </p>
               <p className="mt-1 font-heading text-3xl font-semibold text-navy">{fmtVal(mode, v)}</p>
               <p className="mt-2 text-xs text-ink-3">
@@ -170,6 +292,7 @@ export function ResumenComparativo({
             </p>
             <p className="mt-2 text-xs text-ink-3">
               {y1} → {y2}
+              {corte ? ` · mismo periodo (${periodoLabel})` : ""}
             </p>
           </div>
         )}

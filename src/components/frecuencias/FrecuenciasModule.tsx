@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type {
   FrecuenciaCobrableMensual,
   FrecuenciaConteo,
+  FrecuenciaDia,
   FrecuenciaMedicoMensual,
   FrecuenciaMonthly,
   FrecuenciaPrepagadaMensual,
@@ -36,6 +37,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export function FrecuenciasModule({
   rows,
+  dias = [],
   metaRows,
   metaDetalleRows,
   prepagadasMensual,
@@ -44,6 +46,9 @@ export function FrecuenciasModule({
   cobrableRows,
 }: {
   rows: FrecuenciaConteo[];
+  /** Detalle día a día (tabla frecuencias_dias). Permite el corte
+   * "a la fecha" del Resumen Comparativo. */
+  dias?: FrecuenciaDia[];
   metaRows: FrecuenciaMonthly[];
   metaDetalleRows: FrecuenciaMonthly[];
   prepagadasMensual: FrecuenciaPrepagadaMensual[];
@@ -177,7 +182,7 @@ export function FrecuenciasModule({
       </p>
 
       {activeTab === "resumen" && (
-        <ResumenComparativo rows={rows} years={years} mutualIncluded={mutualIncluded} mode={mode} />
+        <ResumenComparativo rows={rows} dias={dias} years={years} mutualIncluded={mutualIncluded} mode={mode} />
       )}
       {activeTab === "anual" && (
         <ComparativoAnual
