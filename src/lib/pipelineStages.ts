@@ -10,7 +10,10 @@ import type { Pipeline } from "@/lib/types";
 // cuenta de Clientify de Ebenezer — no es un error de tipeo de este
 // código, se preserva tal cual para que el filtro haga match.
 export const VENTA_STAGES: Record<Pipeline, string[]> = {
-  generacion_leads: ["Programación de Cirugía"],
+  // "Cirugía Exitosa" se agregó al pipeline de Campañas en Clientify
+  // el 2026-09-23 — a partir de ahí el cierre real de una oportunidad
+  // de Campañas puede quedar en cualquiera de estas dos etapas.
+  generacion_leads: ["Programación de Cirugía", "Cirugía Exitosa"],
   ordenamientos_qx: ["Programación de Cirguía"],
   ordenamientos_no_qx: ["Programación de Servicio"],
 };

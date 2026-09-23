@@ -75,11 +75,13 @@ export default async function LeadsPage({
   const vendidasBreakdown = breakdownVendidas(vendidas, "generacion_leads");
   const probabilidadBreakdown = buildStageBreakdown(filtered, PROBABILIDAD_COMPRA_STAGES);
 
-  // Paso 3 del Embudo de Conversión: puntualmente la etapa "Programación
-  // de Cirugía" (no "vendidas" en general, que también incluye Ganadas
-  // en cualquier otra etapa) — sobre el total sin filtrar por estado,
-  // igual que `probabilidad` arriba.
-  const cirugiaProgramada = buildStageBreakdown(allOpportunities, VENTA_STAGES.generacion_leads)[0]?.count ?? 0;
+  // Paso 3 del Embudo de Conversión: puntualmente las etapas de cierre
+  // de Campañas — "Programación de Cirugía" y "Cirugía Exitosa" (no
+  // "vendidas" en general, que también incluye Ganadas en cualquier
+  // otra etapa) — sobre el total sin filtrar por estado, igual que
+  // `probabilidad` arriba.
+  const cirugiaBreakdown = buildStageBreakdown(allOpportunities, VENTA_STAGES.generacion_leads);
+  const cirugiaProgramada = cirugiaBreakdown.reduce((sum, item) => sum + item.count, 0);
   const cierreRate = ratioPct(cirugiaProgramada, probabilidad.length);
   const proyeccionCirugias = cierreRate !== null ? Math.round((probabilidad.length * cierreRate) / 100) : null;
 
