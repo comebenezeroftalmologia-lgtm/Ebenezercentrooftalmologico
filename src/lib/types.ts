@@ -58,6 +58,10 @@ export interface ServicioAgendadoLogRow {
   value: number | null;
   channel: string | null;
   deal_created_at: string | null;
+  /** Etapa ACTUAL de la oportunidad en Clientify (no la etapa en el
+   * momento del registro, que siempre fue "Servicio Agendado"). null si
+   * la oportunidad ya no existe en Clientify (limpieza de fantasmas). */
+  current_stage: string | null;
 }
 
 export interface AdSpendRow {

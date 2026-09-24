@@ -154,28 +154,49 @@ export function serviceNameMap(services: Service[]): Map<number, string> {
 /** Log acumulado de "Servicio Agendado" (Campañas) — ver
  * ServicioAgendadoLogRow. Filtra por `entered_at` (cuándo se detectó la
  * entrada a la etapa), no por fecha de creación de la oportunidad. */
-export async function getServiciosAgendadosLog({ from, to }: DateRange): Promise<ServicioAgendadoLogRow[]> {
+export async function getServiciosAgendadosLog(range: Partial<DateRange> = {}): Promise<ServicioAgendadoLogRow[]> {
+  const { from, to } = range;
   const supabase = createServiceClient();
   const PAGE_SIZE = 1000;
-  const all: ServicioAgendadoLogRow[] = [];
+  const all: Omit<ServicioAgendadoLogRow, "current_stage">[] = [];
   let start = 0;
 
   while (true) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("servicios_agendados_log")
-      .select("id, opportunity_id, entered_at, contact_name, contact_email, contact_phone, service_id, value, channel, deal_created_at")
-      .gte("entered_at", `${from}T00:00:00.000Z`)
-      .lte("entered_at", `${to}T23:59:59.999Z`)
+      .select("id, opportunity_id, entered_at, contact_name, contact_email, contact_phone, service_id, value, channel, deal_created_at");
+    if (from) query = query.gte("entered_at", `${from}T00:00:00.000Z`);
+    if (to) query = query.lte("entered_at", `${to}T23:59:59.999Z`);
+    const { data, error } = await query
       .order("entered_at", { ascending: false })
       .range(start, start + PAGE_SIZE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as ServicioAgendadoLogRow[];
+    const rows = (data ?? []) as Omit<ServicioAgendadoLogRow, "current_stage">[];
     all.push(...rows);
     if (rows.length < PAGE_SIZE) break;
     start += PAGE_SIZE;
   }
 
-  return all;
+  // La etapa guardada en el log siempre fue "Servicio Agendado" (es el
+  // momento del registro) — para saber dónde está la oportunidad HOY se
+  // consulta aparte contra `opportunities`, en lotes (un .in() con
+  // cientos de IDs en la URL puede fallar).
+  const opportunityIds = Array.from(new Set(all.map((r) => r.opportunity_id).filter((id): id is string => !!id)));
+  const stageById = new Map<string, string>();
+  const ID_BATCH = 200;
+  for (let i = 0; i < opportunityIds.length; i += ID_BATCH) {
+    const batch = opportunityIds.slice(i, i + ID_BATCH);
+    const { data, error } = await supabase.from("opportunities").select("id, stage").in("id", batch);
+    if (error) throw error;
+    for (const row of (data ?? []) as { id: string; stage: string }[]) {
+      stageById.set(row.id, row.stage);
+    }
+  }
+
+  return all.map((r) => ({
+    ...r,
+    current_stage: r.opportunity_id ? stageById.get(r.opportunity_id) ?? null : null,
+  }));
 }
 
 // ---------------------------------------------------------------------

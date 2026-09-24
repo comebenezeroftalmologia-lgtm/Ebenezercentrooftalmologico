@@ -72,7 +72,7 @@ export default async function LeadsPage({
     getOpportunities({ pipeline: "generacion_leads", from, to, serviceId }),
     getAdSpendStats({ from, to }),
     getOpportunities({ pipeline: "generacion_leads", ...previousRange, serviceId }),
-    getServiciosAgendadosLog({ from, to }),
+    getServiciosAgendadosLog(),
     getVentasCandidatas({ pipeline: "generacion_leads", serviceId }),
     getCirugiaExitosaEntryDates(),
   ]);
@@ -152,12 +152,7 @@ export default async function LeadsPage({
             to={to}
             otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }}
           />
-          <ServiciosAgendadosButton
-            rows={serviciosAgendadosLog}
-            serviceNames={serviceNames}
-            from={from}
-            to={to}
-          />
+          <ServiciosAgendadosButton rows={serviciosAgendadosLog} serviceNames={serviceNames} />
         </div>
       </div>
 
