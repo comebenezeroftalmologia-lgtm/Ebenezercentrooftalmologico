@@ -57,9 +57,28 @@ export function categorizeAsunto(nombre: string | null | undefined): SismaCatego
   if (!nombre) return "otro";
   const n = normalize(nombre);
   if (n.includes("posquirurg") || n.includes("posqx") || n.includes("pos qx")) return "posquirurgico";
-  if (n.includes("pre - quirurg") || n.includes("prequirurg") || n.includes("pre quirurg")) {
+
+  // --- Prequirúrgico ---------------------------------------------
+  // En Ebenezer lo prequirúrgico NO se agenda como "prequirúrgica":
+  // son la VALORACIÓN PREANESTÉSICA y la BIOMETRÍA (confirmado por
+  // gerencia el 21-09-2026).
+  //
+  // El tamaño del error que esto corrige, medido sobre la base del
+  // motor (2024 a 2026):
+  //    BIOMETRIA ........................... 9.366
+  //    VALORACION PREANESTESICA ............ 8.568
+  //    VALORACION PREANESTESICA CONTROL .... 2.166
+  //    VALORACION PREANESTESICA PRIMERA VEZ  1.758
+  //    PRE - QUIRURGICA ........................ 7   <- lo único que
+  //                                                    se detectaba
+  // Va ANTES que "control" y que "primera vez" a propósito: dos de
+  // esos nombres las contienen y se estaban clasificando mal.
+  if (n.includes("preanestesic") || n.includes("pre - quirurg") || n.includes("prequirurg") || n.includes("pre quirurg")) {
     return "prequirurgico";
   }
+  // "BIOMETRIA CONTROL MIOPIA" es seguimiento de miopía, no cirugía.
+  if (n.includes("biometr") && !n.includes("miopia")) return "prequirurgico";
+
   if (n.includes("control")) return "control";
   if (n.includes("primera vez") || n.includes("primer vez")) return "primera_vez";
   if (DIAGNOSTICO_KEYWORDS.some((k) => n.includes(k))) return "diagnostico";
