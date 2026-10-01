@@ -13,6 +13,7 @@ import {
 } from "@/lib/integrations/sisma";
 import { categorizeAsunto, SISMA_CATEGORIA_LABELS, type SismaCategoria } from "@/lib/sismaCategories";
 import { formatNumber } from "@/lib/text";
+import { traerDiaTipico } from "@/lib/diaTipico";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -145,16 +146,7 @@ export default async function VentaDelDiaPage({
   // Lo calcula el motor de Frecuencias con la misma regla que su tarjeta de
   // cierre (promedio del mismo día de la semana, 4 semanas atrás). Si no se
   // puede traer, la página sigue igual: es contexto, no un dato esencial.
-  let diaTipico: { total: number; tipico: number | null } | null = null;
-  try {
-    const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-    const r = await fetch(`${base}/api/frecuencias/dia-tipico?fecha=${fecha}`, {
-      cache: "no-store",
-    });
-    if (r.ok) diaTipico = (await r.json()).dato ?? null;
-  } catch {
-    diaTipico = null;
-  }
+  const diaTipico = await traerDiaTipico(fecha);
   const pctTipico =
     diaTipico?.tipico && diaTipico.tipico > 0
       ? Math.round((diaTipico.total / diaTipico.tipico) * 100)
