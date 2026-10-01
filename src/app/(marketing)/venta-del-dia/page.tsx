@@ -126,8 +126,43 @@ export default async function VentaDelDiaPage({
 
   // --- Asistencia real (node API) ---
   const asistidas = citasAtendidas.length;
-  const baseAsistencia = programadas + asistidas;
-  const pctAsistencia = baseAsistencia > 0 ? Math.round((asistidas / baseAsistencia) * 1000) / 10 : null;
+  // --- Cuánto de la agenda del día ya se atendió ---
+  //
+  // Esto NO es el porcentaje de asistencia, aunque antes se llamaba así.
+  // `programadas` son las citas que todavía no se han atendido, así que el
+  // cociente sube solo con el correr del día y a las 6 p.m. siempre da
+  // cerca del 100%: medía qué tan tarde era, no cuánta gente vino.
+  //
+  // Mientras el día está en curso es "lo que llevamos de la agenda". Solo al
+  // cerrar el día, cuando ya no quedan pendientes por procesar, se puede
+  // leer como asistencia — y aun así los que faltan no son necesariamente
+  // inasistentes. Para asistencia real hace falta que SISMA mande el estado
+  // de inasistencia, que hoy no llega.
+  const agendaDia = programadas + asistidas;
+  const pctAgenda = agendaDia > 0 ? Math.round((asistidas / agendaDia) * 1000) / 10 : null;
+
+  // --- Contexto: ¿cómo se compara con un día igual? ---
+  // Lo calcula el motor de Frecuencias con la misma regla que su tarjeta de
+  // cierre (promedio del mismo día de la semana, 4 semanas atrás). Si no se
+  // puede traer, la página sigue igual: es contexto, no un dato esencial.
+  let diaTipico: { total: number; tipico: number | null } | null = null;
+  try {
+    const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+    const r = await fetch(`${base}/api/frecuencias/dia-tipico?fecha=${fecha}`, {
+      cache: "no-store",
+    });
+    if (r.ok) diaTipico = (await r.json()).dato ?? null;
+  } catch {
+    diaTipico = null;
+  }
+  const pctTipico =
+    diaTipico?.tipico && diaTipico.tipico > 0
+      ? Math.round((diaTipico.total / diaTipico.tipico) * 100)
+      : null;
+  const DIA_SEMANA = [
+    "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado",
+  ];
+  const nombreDia = DIA_SEMANA[new Date(fecha + "T12:00:00").getDay()];
 
   const atendidasConCategoria = citasAtendidas.map((c) => ({
     cita: c,
@@ -170,6 +205,33 @@ export default async function VentaDelDiaPage({
     <div>
       {header}
 
+      {/* Contexto que aporta Frecuencias: el número del día contra un día
+          igual. Sin esto, "386 atenciones" no dice nada por sí solo. */}
+      {diaTipico && pctTipico !== null && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3">
+          <div className="text-sm text-ink-2">
+            Se cerraron <strong className="text-navy">{formatNumber(diaTipico.total)}</strong>{" "}
+            atenciones. Un {nombreDia} típico cierra en{" "}
+            <strong className="text-navy">{formatNumber(diaTipico.tipico ?? 0)}</strong>.
+          </div>
+          <div className="flex items-center gap-4">
+            <span
+              className={`text-sm font-semibold ${
+                pctTipico >= 100 ? "text-[#21814B]" : "text-[#B3541E]"
+              }`}
+            >
+              {pctTipico}% de un {nombreDia} típico
+            </span>
+            <a
+              href={`/frecuencias?dia=${fecha}`}
+              className="rounded-md border border-line px-3 py-1.5 text-sm text-navy hover:bg-ebbg"
+            >
+              Ver el detalle en Frecuencias
+            </a>
+          </div>
+        </div>
+      )}
+
       <h2 className="mb-3 text-lg font-semibold text-navy">Agendamiento y Asistencia</h2>
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
@@ -181,7 +243,11 @@ export default async function VentaDelDiaPage({
         <KpiCard
           label="Citas Atendidas"
           value={asistenciaError ? "—" : formatNumber(asistidas)}
-          hint={pctAsistencia !== null ? `${pctAsistencia}% de asistencia` : "—"}
+          hint={
+            pctAgenda !== null
+              ? `${pctAgenda}% de las ${formatNumber(agendaDia)} agendadas del día`
+              : "—"
+          }
           icon={UserCheck}
         />
         <KpiCard
