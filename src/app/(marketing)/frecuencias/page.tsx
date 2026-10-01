@@ -22,14 +22,31 @@ export default async function FrecuenciasPage() {
   await requireModuloAccess("frecuencias");
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] min-h-[560px] flex-col">
+    // h-full, no un alto calculado a mano: el <main> del layout ya mide la
+    // pantalla y tiene su padding. Antes se restaban 7rem fijos, de los
+    // cuales 3rem no correspondían a nada del layout, y por eso sobraba
+    // espacio abajo.
+    <div className="flex h-full min-h-[560px] flex-col">
+      {/* Encabezado propio, igual al del resto de módulos. Sin esto la
+          página no tenía título y el tablero se veía como una tarjeta
+          flotando, sin que uno supiera que seguía dentro de la plataforma. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-navy">Frecuencias</h1>
+          <p className="mt-1 text-sm text-ink-3">
+            Producción asistencial por unidad funcional, empresa y médico.
+          </p>
+        </div>
+      </div>
       <iframe
         src="/api/frecuencias/tablero"
         title="Tablero de Frecuencias — Centro Oftalmológico Ebenezer"
-        className="h-full w-full rounded-lg border border-line bg-white shadow-eb-2"
-        // El tablero trae su propio JavaScript (filtros y gráficas) y
-        // viene de nuestro mismo origen, así que no necesita permisos
-        // extra ni acceso a nada de fuera.
+        // Sin borde, sin sombra y sin esquinas redondeadas: con eso el
+        // tablero deja de parecer un recuadro pegado encima de la página y
+        // se lee como parte del módulo. El tablero, por su lado, detecta
+        // que va dentro de un iframe y apaga su propio encabezado azul,
+        // que duplicaba el logo y el título.
+        className="min-h-0 w-full flex-1 bg-white"
         sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"
         loading="eager"
       />
