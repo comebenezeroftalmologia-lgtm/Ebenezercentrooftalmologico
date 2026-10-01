@@ -18,8 +18,23 @@ import { requireModuloAccess } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function FrecuenciasPage() {
+export default async function FrecuenciasPage({
+  searchParams,
+}: {
+  searchParams?: { dia?: string };
+}) {
   await requireModuloAccess("frecuencias");
+
+  // Si se llega desde Venta del Día con ?dia=YYYY-MM-DD, se le pasa la fecha
+  // al tablero para que abra ya filtrado por ese día. Se valida el formato
+  // antes de reenviarlo: lo que venga en la URL no se mete tal cual.
+  const dia =
+    searchParams?.dia && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.dia)
+      ? searchParams.dia
+      : null;
+  const src = dia
+    ? `/api/frecuencias/tablero?dia=${dia}`
+    : "/api/frecuencias/tablero";
 
   return (
     // h-full, no un alto calculado a mano: el <main> del layout ya mide la
@@ -38,8 +53,13 @@ export default async function FrecuenciasPage() {
           </p>
         </div>
       </div>
+      {dia && (
+        <p className="mb-2 text-sm text-ink-3">
+          Filtrado por el {dia}, desde Venta del Día.
+        </p>
+      )}
       <iframe
-        src="/api/frecuencias/tablero"
+        src={src}
         title="Tablero de Frecuencias — Centro Oftalmológico Ebenezer"
         // Sin borde, sin sombra y sin esquinas redondeadas: con eso el
         // tablero deja de parecer un recuadro pegado encima de la página y
