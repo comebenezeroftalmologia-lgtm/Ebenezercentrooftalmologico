@@ -1,7 +1,7 @@
 import { requireModuloAccess } from "@/lib/auth";
 import { AlertTriangle, CalendarCheck2, Info, Scissors, Stethoscope, UserCheck, XCircle } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
-import { SingleDatePicker } from "@/components/SingleDatePicker";
+import { SingleDatePicker, type SedeFiltro } from "@/components/SingleDatePicker";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
 import {
   esCancelacionAutomatica,
@@ -35,10 +35,26 @@ const CATEGORIA_ORDEN: SismaCategoria[] = [
 export default async function VentaDelDiaPage({
   searchParams,
 }: {
-  searchParams: { fecha?: string };
+  searchParams: { fecha?: string; sede?: string };
 }) {
   await requireModuloAccess("venta_del_dia");
   const fecha = searchParams.fecha ?? todayISO();
+
+  // --- Sede ---
+  // SISMA no manda la sede en las citas atendidas, pero no hace falta:
+  // Mutual se atiende en la Sede 2 y todo lo demás en la Sede 1. Es la
+  // misma regla que usa el tablero de Frecuencias (SEDE_MAP), así que las
+  // dos pantallas dicen lo mismo. Si algún día hubiera una sede nueva que
+  // no sea Mutual, esta regla deja de servir y hay que pedirle la sede al
+  // sistema.
+  const sede: SedeFiltro =
+    searchParams.sede === "1" || searchParams.sede === "2"
+      ? searchParams.sede
+      : "todas";
+  const esMutual = (empresa: string | null | undefined) =>
+    /MUTUAL/i.test(String(empresa ?? ""));
+  const pasaSede = (empresa: string | null | undefined) =>
+    sede === "todas" ? true : sede === "2" ? esMutual(empresa) : !esMutual(empresa);
 
   // Los errores técnicos no se le muestran a quien consulta el tablero:
   // "SISMA_NODE_API_KEY no configurada", "Unexpected token…" o un código
@@ -104,7 +120,7 @@ export default async function VentaDelDiaPage({
         <h1 className="text-2xl font-semibold text-navy">Venta del Día</h1>
         <p className="mt-1 text-sm text-ink-3">Agendamiento, asistencia real y cirugía del día.</p>
       </div>
-      <SingleDatePicker fecha={fecha} />
+      <SingleDatePicker fecha={fecha} sede={sede} />
     </div>
   );
 
@@ -126,6 +142,11 @@ export default async function VentaDelDiaPage({
   const programadas = citasDia.length;
 
   // --- Asistencia real (node API) ---
+  // El filtro se aplica aquí, antes de contar: así todo lo que viene
+  // despues (categorías, pre/pos-quirúrgicas, el porcentaje) ya sale por
+  // sede sin tener que acordarse de filtrarlo en cada sitio.
+  if (sede !== "todas") citasAtendidas = citasAtendidas.filter((c) => pasaSede(c.empresa));
+
   const asistidas = citasAtendidas.length;
   // --- Cuánto de la agenda del día ya se atendió ---
   //
@@ -139,8 +160,17 @@ export default async function VentaDelDiaPage({
   // leer como asistencia — y aun así los que faltan no son necesariamente
   // inasistentes. Para asistencia real hace falta que SISMA mande el estado
   // de inasistencia, que hoy no llega.
+  // OJO con el filtro de sede: las citas AGENDADAS que devuelve SISMA no
+  // traen empresa, solo las atendidas. Si se filtran las atendidas y las
+  // agendadas no, el porcentaje compara peras con manzanas y nadie se daría
+  // cuenta. Por eso, con una sede escogida, el agendado y el porcentaje se
+  // marcan como no disponibles en vez de mostrar un numero equivocado.
+  const hayAgendado = sede === "todas";
   const agendaDia = programadas + asistidas;
-  const pctAgenda = agendaDia > 0 ? Math.round((asistidas / agendaDia) * 1000) / 10 : null;
+  const pctAgenda =
+    hayAgendado && agendaDia > 0
+      ? Math.round((asistidas / agendaDia) * 1000) / 10
+      : null;
 
   // --- Contexto: ¿cómo se compara con un día igual? ---
   // Lo calcula el motor de Frecuencias con la misma regla que su tarjeta de
@@ -199,7 +229,7 @@ export default async function VentaDelDiaPage({
 
       {/* Contexto que aporta Frecuencias: el número del día contra un día
           igual. Sin esto, "386 atenciones" no dice nada por sí solo. */}
-      {diaTipico && pctTipico !== null && (
+      {diaTipico && pctTipico !== null && hayAgendado && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3">
           <div className="text-sm text-ink-2">
             Se cerraron <strong className="text-navy">{formatNumber(diaTipico.total)}</strong>{" "}
@@ -228,8 +258,12 @@ export default async function VentaDelDiaPage({
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
           label="Citas Programadas"
-          value={formatNumber(programadas)}
-          hint={`${fecha} · pendientes + confirmadas`}
+          value={hayAgendado ? formatNumber(programadas) : "—"}
+          hint={
+            hayAgendado
+              ? `${fecha} · pendientes + confirmadas`
+              : "SISMA no manda la sede en lo agendado"
+          }
           icon={CalendarCheck2}
         />
         <KpiCard
@@ -238,7 +272,11 @@ export default async function VentaDelDiaPage({
           hint={
             pctAgenda !== null
               ? `${pctAgenda}% de las ${formatNumber(agendaDia)} agendadas del día`
-              : "—"
+              : hayAgendado
+                ? "—"
+                : sede === "2"
+                  ? "Mutual (Sede 2)"
+                  : "Sin Mutual (Sede 1)"
           }
           icon={UserCheck}
         />
