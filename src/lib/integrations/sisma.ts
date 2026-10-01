@@ -38,7 +38,9 @@
 const BASE_URL = process.env.SISMA_API_BASE_URL ?? "https://api.centrooftalmologicoebenezer.com";
 const API_KEY = process.env.SISMA_API_KEY;
 
-async function sismaFetch<T>(path: string): Promise<T> {
+/** Exportada para el diagnostico de campos: ver
+ *  src/app/api/diagnostico/campos-sisma/route.ts */
+export async function sismaFetch<T>(path: string): Promise<T> {
   if (!API_KEY) {
     throw new Error("SISMA_API_KEY no configurada — ver .env.example");
   }
@@ -136,7 +138,8 @@ export function campo(fila: FilaCsv, ...nombres: string[]): string {
   return "";
 }
 
-async function sismaNodeFetch(
+/** Exportada para el diagnostico de campos. */
+export async function sismaNodeFetch(
   path: string,
 ): Promise<{ filas: FilaCsv[]; aviso: string | null }> {
   if (!NODE_API_KEY) {
