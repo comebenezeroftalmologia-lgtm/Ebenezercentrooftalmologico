@@ -230,6 +230,35 @@ export default async function VentaDelDiaPage({
       : xs.length % 2
         ? xs[(xs.length - 1) / 2]
         : Math.round(((xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2) * 10) / 10;
+  // --- DONDE esta la espera ---
+  // El numero global no sirve para hacer nada: 37 dias no dice en que
+  // servicio esta el cuello de botella. Esto lo abre por asunto de la cita,
+  // que es lo mas parecido a "especialidad" que manda SISMA, y lo ordena de
+  // mayor a menor espera. Solo primera vez: los controles se agendan lejos a
+  // proposito y ensucian la comparacion.
+  const porServicio = (() => {
+    const g = new Map<string, number[]>();
+    for (const { cita, categoria } of atendidasConCategoria) {
+      if (categoria !== "primera_vez") continue;
+      const d = cita.diasOportunidad;
+      if (d === null) continue;
+      const k = (cita.asunto ?? "Sin asunto").trim() || "Sin asunto";
+      const a = g.get(k) ?? [];
+      a.push(d);
+      g.set(k, a);
+    }
+    return [...g.entries()]
+      .map(([servicio, ds]) => ({
+        servicio,
+        n: ds.length,
+        espera: mediana([...ds].sort((a, b) => a - b)) ?? 0,
+      }))
+      // Con uno o dos pacientes la "mitad" no significa nada: se omiten
+      // para no senalar un cuello de botella que no existe.
+      .filter((x) => x.n >= 3)
+      .sort((a, b) => b.espera - a.espera);
+  })();
+
   const oportunidad = mediana(diasPrimera);
   const oportunidadControl = mediana(diasControl);
   // El dia mismo cuenta como 0: son las que se atendieron sin espera.
@@ -321,6 +350,52 @@ export default async function VentaDelDiaPage({
               {oportunidadControl === 1 ? "día" : "días"}.
             </span>
           )}
+        </div>
+      )}
+
+      {porServicio.length > 0 && (
+        <div className="mb-6 overflow-hidden rounded-lg border border-line bg-white">
+          <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-navy">
+            Dónde está la espera
+            <span className="ml-2 font-normal text-ink-3">
+              consultas de primera vez, de la que más espera a la que menos
+            </span>
+          </div>
+          <table className="w-full text-sm">
+            <tbody>
+              {porServicio.map((x) => {
+                // La barra es relativa a la espera mas larga del dia: de un
+                // vistazo se ve cual se sale del resto.
+                const tope = porServicio[0].espera || 1;
+                const ancho = Math.max(2, Math.round((x.espera / tope) * 100));
+                const alerta = x.espera > 30;
+                return (
+                  <tr key={x.servicio} className="border-t border-line/60">
+                    <td className="px-4 py-2 text-ink-2">{x.servicio}</td>
+                    <td className="w-20 px-2 py-2 text-right text-ink-3">
+                      {formatNumber(x.n)}
+                    </td>
+                    <td className="w-48 px-2 py-2">
+                      <div className="h-2 w-full rounded-full bg-ebbg">
+                        <div
+                          className={`h-2 rounded-full ${alerta ? "bg-[#B3541E]" : "bg-[#1A3174]"}`}
+                          style={{ width: `${ancho}%` }}
+                        />
+                      </div>
+                    </td>
+                    <td className="w-28 whitespace-nowrap px-4 py-2 text-right font-semibold text-navy">
+                      {x.espera} {x.espera === 1 ? "día" : "días"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="border-t border-line px-4 py-2 text-xs text-ink-3">
+            La mitad de los pacientes de cada servicio esperó más de ese número de
+            días. En naranja, los que pasan de 30. No se muestran los servicios
+            con menos de 3 pacientes en el día.
+          </div>
         </div>
       )}
 
