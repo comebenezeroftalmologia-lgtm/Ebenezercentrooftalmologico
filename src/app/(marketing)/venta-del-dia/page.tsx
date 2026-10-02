@@ -221,9 +221,6 @@ export default async function VentaDelDiaPage({
   const diasPrimera = diasDe(
     atendidasConCategoria.filter((c) => c.categoria === "primera_vez"),
   );
-  const diasControl = diasDe(
-    atendidasConCategoria.filter((c) => c.categoria === "control"),
-  );
   const mediana = (xs: number[]) =>
     xs.length === 0
       ? null
@@ -259,8 +256,13 @@ export default async function VentaDelDiaPage({
       .sort((a, b) => b.espera - a.espera);
   })();
 
+  // La regla es de Faber y es mas exigente que el contrato de Mutual (que
+  // da 50 dias en general y 90 en especialidad): si un paciente NUEVO
+  // espera mas de 3 semanas, se marca en rojo. Solo primera vez: un control
+  // se agenda lejos a proposito y no es falta de oportunidad.
+  const LIMITE_DIAS = 21;
+
   const oportunidad = mediana(diasPrimera);
-  const oportunidadControl = mediana(diasControl);
   // El dia mismo cuenta como 0: son las que se atendieron sin espera.
   const mismoDia = diasPrimera.filter((d) => d <= 0).length;
 
@@ -343,11 +345,10 @@ export default async function VentaDelDiaPage({
           ) : (
             <>A ninguno lo atendieron el mismo día que pidió.</>
           )}
-          {oportunidadControl !== null && (
-            <span className="text-ink-3">
+          {oportunidad > LIMITE_DIAS && (
+            <span className="font-semibold text-[#B3541E]">
               {" "}
-              En los controles, la mitad esperó más de {oportunidadControl}{" "}
-              {oportunidadControl === 1 ? "día" : "días"}.
+              Eso es más de 3 semanas.
             </span>
           )}
         </div>
@@ -356,9 +357,9 @@ export default async function VentaDelDiaPage({
       {porServicio.length > 0 && (
         <div className="mb-6 overflow-hidden rounded-lg border border-line bg-white">
           <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-navy">
-            Dónde está la espera
+            Cuánto espera un paciente nuevo
             <span className="ml-2 font-normal text-ink-3">
-              consultas de primera vez, de la que más espera a la que menos
+              en rojo, los que pasan de 3 semanas
             </span>
           </div>
           <table className="w-full text-sm">
@@ -368,7 +369,7 @@ export default async function VentaDelDiaPage({
                 // vistazo se ve cual se sale del resto.
                 const tope = porServicio[0].espera || 1;
                 const ancho = Math.max(2, Math.round((x.espera / tope) * 100));
-                const alerta = x.espera > 30;
+                const alerta = x.espera > LIMITE_DIAS;
                 return (
                   <tr key={x.servicio} className="border-t border-line/60">
                     <td className="px-4 py-2 text-ink-2">{x.servicio}</td>
@@ -378,12 +379,16 @@ export default async function VentaDelDiaPage({
                     <td className="w-48 px-2 py-2">
                       <div className="h-2 w-full rounded-full bg-ebbg">
                         <div
-                          className={`h-2 rounded-full ${alerta ? "bg-[#B3541E]" : "bg-[#1A3174]"}`}
+                          className={`h-2 rounded-full ${alerta ? "bg-[#C0392B]" : "bg-[#21814B]"}`}
                           style={{ width: `${ancho}%` }}
                         />
                       </div>
                     </td>
-                    <td className="w-28 whitespace-nowrap px-4 py-2 text-right font-semibold text-navy">
+                    <td
+                      className={`w-28 whitespace-nowrap px-4 py-2 text-right font-semibold ${
+                        alerta ? "text-[#C0392B]" : "text-[#21814B]"
+                      }`}
+                    >
                       {x.espera} {x.espera === 1 ? "día" : "días"}
                     </td>
                   </tr>
@@ -392,9 +397,10 @@ export default async function VentaDelDiaPage({
             </tbody>
           </table>
           <div className="border-t border-line px-4 py-2 text-xs text-ink-3">
-            La mitad de los pacientes de cada servicio esperó más de ese número de
-            días. En naranja, los que pasan de 30. No se muestran los servicios
-            con menos de 3 pacientes en el día.
+            Solo consultas de primera vez; los controles no cuentan porque se
+            agendan lejos a propósito. La cifra es la espera de la mitad de los
+            pacientes de ese servicio. No se muestran los servicios con menos de
+            3 pacientes en el día.
           </div>
         </div>
       )}
