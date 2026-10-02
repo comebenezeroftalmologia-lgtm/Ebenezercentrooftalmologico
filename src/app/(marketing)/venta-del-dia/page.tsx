@@ -1,5 +1,5 @@
 import { requireModuloAccess } from "@/lib/auth";
-import { AlertTriangle, CalendarCheck2, Info, Scissors, Stethoscope, UserCheck, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarCheck2, Clock, Info, Scissors, Stethoscope, UserCheck, XCircle } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { SingleDatePicker, type SedeFiltro } from "@/components/SingleDatePicker";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
@@ -197,6 +197,31 @@ export default async function VentaDelDiaPage({
     value: 0,
   })).filter((d) => d.count > 0);
 
+  // --- OPORTUNIDAD ---
+  // Dias entre que el paciente pide la cita y se la atienden. Llega en cada
+  // cita atendida y no lo estaba leyendo nadie. Es EL indicador de calidad
+  // que se reporta, asi que vale mas que casi todo lo demas de esta pagina.
+  //
+  // Se usa la MEDIANA, no el promedio: un paciente que esperó 300 dias
+  // (reprogramaciones, un control lejano pedido a proposito) mueve el
+  // promedio y no mueve la mediana. La mediana dice "la mitad espero menos
+  // de esto", que es lo que uno quiere saber.
+  const dias = citasAtendidas
+    .map((c) => c.diasOportunidad)
+    .filter((d): d is number => d !== null)
+    .sort((a, b) => a - b);
+  const mediana = (xs: number[]) =>
+    xs.length === 0
+      ? null
+      : xs.length % 2
+        ? xs[(xs.length - 1) / 2]
+        : Math.round(((xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2) * 10) / 10;
+  const oportunidad = mediana(dias);
+  const sinDato = citasAtendidas.length - dias.length;
+  // El dia mismo cuenta como 0: son las que se atendieron sin espera.
+  const mismoDia = dias.filter((d) => d <= 0).length;
+  const masDeOcho = dias.filter((d) => d > 8).length;
+
   const preQuirurgicas = atendidasConCategoria.filter((c) => c.categoria === "prequirurgico").length;
   const posQuirurgicos = atendidasConCategoria.filter((c) => c.categoria === "posquirurgico").length;
 
@@ -255,7 +280,7 @@ export default async function VentaDelDiaPage({
       )}
 
       <h2 className="mb-3 text-lg font-semibold text-navy">Agendamiento y Asistencia</h2>
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Citas Programadas"
           value={hayAgendado ? formatNumber(programadas) : "—"}
@@ -279,6 +304,20 @@ export default async function VentaDelDiaPage({
                   : "Sin Mutual (Sede 1)"
           }
           icon={UserCheck}
+        />
+        <KpiCard
+          label="Oportunidad (mediana)"
+          value={
+            asistenciaError || oportunidad === null
+              ? "—"
+              : `${oportunidad} ${oportunidad === 1 ? "día" : "días"}`
+          }
+          hint={
+            oportunidad === null
+              ? "—"
+              : `${formatNumber(mismoDia)} el mismo día · ${formatNumber(masDeOcho)} con más de 8${sinDato ? ` · ${formatNumber(sinDato)} sin dato` : ""}`
+          }
+          icon={Clock}
         />
         <KpiCard
           label="Consultas Pre/Pos-quirúrgicas Atendidas"
