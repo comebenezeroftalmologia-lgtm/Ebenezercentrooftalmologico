@@ -233,10 +233,38 @@ export default async function VentaDelDiaPage({
   // que es lo mas parecido a "especialidad" que manda SISMA, y lo ordena de
   // mayor a menor espera. Solo primera vez: los controles se agendan lejos a
   // proposito y ensucian la comparacion.
-  const porServicio = (() => {
+  // Cada sede se mide con su propia vara, porque son cosas distintas:
+  //
+  //   Sede 1  — particular, Ecopetrol, prepagadas. No hay plazo pactado con
+  //             nadie; la regla es de Faber: mas de 3 semanas es demasiado.
+  //   Sede 2  — Mutual. Tiene contrato con plazos escritos: 50 dias para
+  //             consulta general y 90 para especialidad, cumpliendole al 85%
+  //             de los pacientes. Marcar en rojo a los 21 dias seria senalar
+  //             como problema algo que el contrato permite.
+  //
+  // La clasificacion general/especialidad se comprobo contra las cifras del
+  // propio Excel de Mutual, mes a mes (enero dio 1.067 contra 1.067).
+  const LIMITE_SEDE1 = 21;
+  const LIMITE_MUTUAL_GENERAL = 50;
+  const LIMITE_MUTUAL_ESPECIALIDAD = 90;
+
+  const esGeneral = (asunto: string) => {
+    const a = asunto.toUpperCase();
+    return a.includes("GENERAL") || a.includes("DESPUES DE 1");
+  };
+
+  const limiteDe = (asunto: string, mutual: boolean) =>
+    !mutual
+      ? LIMITE_SEDE1
+      : esGeneral(asunto)
+        ? LIMITE_MUTUAL_GENERAL
+        : LIMITE_MUTUAL_ESPECIALIDAD;
+
+  function armarTabla(mutual: boolean) {
     const g = new Map<string, number[]>();
     for (const { cita, categoria } of atendidasConCategoria) {
       if (categoria !== "primera_vez") continue;
+      if (esMutual(cita.empresa) !== mutual) continue;
       const d = cita.diasOportunidad;
       if (d === null) continue;
       const k = (cita.asunto ?? "Sin asunto").trim() || "Sin asunto";
@@ -249,18 +277,22 @@ export default async function VentaDelDiaPage({
         servicio,
         n: ds.length,
         espera: mediana([...ds].sort((a, b) => a - b)) ?? 0,
+        limite: limiteDe(servicio, mutual),
       }))
       // Con uno o dos pacientes la "mitad" no significa nada: se omiten
       // para no senalar un cuello de botella que no existe.
       .filter((x) => x.n >= 3)
-      .sort((a, b) => b.espera - a.espera);
-  })();
+      .sort((a, b) => b.espera / b.limite - a.espera / a.limite);
+  }
 
-  // La regla es de Faber y es mas exigente que el contrato de Mutual (que
-  // da 50 dias en general y 90 en especialidad): si un paciente NUEVO
-  // espera mas de 3 semanas, se marca en rojo. Solo primera vez: un control
-  // se agenda lejos a proposito y no es falta de oportunidad.
-  const LIMITE_DIAS = 21;
+  const bloques = [
+    { titulo: "Sede 1", regla: "en rojo, más de 3 semanas", filas: armarTabla(false) },
+    {
+      titulo: "Sede 2 · Mutual",
+      regla: "en rojo, fuera del plazo del contrato (50 días general, 90 especialidad)",
+      filas: armarTabla(true),
+    },
+  ].filter((b) => b.filas.length > 0 && (sede === "todas" || (sede === "2") === (b.titulo !== "Sede 1")));
 
   const oportunidad = mediana(diasPrimera);
   // El dia mismo cuenta como 0: son las que se atendieron sin espera.
@@ -345,31 +377,32 @@ export default async function VentaDelDiaPage({
           ) : (
             <>A ninguno lo atendieron el mismo día que pidió.</>
           )}
-          {oportunidad > LIMITE_DIAS && (
-            <span className="font-semibold text-[#B3541E]">
+          {sede === "1" && oportunidad > LIMITE_SEDE1 && (
+            <span className="font-semibold text-[#C0392B]"> Eso es más de 3 semanas.</span>
+          )}
+          {sede === "todas" && (
+            <span className="text-ink-3">
               {" "}
-              Eso es más de 3 semanas.
+              Mezcla las dos sedes; abajo va cada una con su propio plazo.
             </span>
           )}
         </div>
       )}
 
-      {porServicio.length > 0 && (
-        <div className="mb-6 overflow-hidden rounded-lg border border-line bg-white">
+      {bloques.map((b) => (
+        <div key={b.titulo} className="mb-6 overflow-hidden rounded-lg border border-line bg-white">
           <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-navy">
-            Cuánto espera un paciente nuevo
-            <span className="ml-2 font-normal text-ink-3">
-              en rojo, los que pasan de 3 semanas
-            </span>
+            Cuánto espera un paciente nuevo · {b.titulo}
+            <span className="ml-2 font-normal text-ink-3">{b.regla}</span>
           </div>
           <table className="w-full text-sm">
             <tbody>
-              {porServicio.map((x) => {
-                // La barra es relativa a la espera mas larga del dia: de un
-                // vistazo se ve cual se sale del resto.
-                const tope = porServicio[0].espera || 1;
-                const ancho = Math.max(2, Math.round((x.espera / tope) * 100));
-                const alerta = x.espera > LIMITE_DIAS;
+              {b.filas.map((x) => {
+                // La barra se mide contra el limite de esa fila, no contra la
+                // espera mas larga: asi "lleno" significa "en el limite", y se
+                // pueden comparar servicios con plazos distintos.
+                const alerta = x.espera > x.limite;
+                const ancho = Math.max(2, Math.min(100, Math.round((x.espera / x.limite) * 100)));
                 return (
                   <tr key={x.servicio} className="border-t border-line/60">
                     <td className="px-4 py-2 text-ink-2">{x.servicio}</td>
@@ -385,11 +418,14 @@ export default async function VentaDelDiaPage({
                       </div>
                     </td>
                     <td
-                      className={`w-28 whitespace-nowrap px-4 py-2 text-right font-semibold ${
+                      className={`w-36 whitespace-nowrap px-4 py-2 text-right font-semibold ${
                         alerta ? "text-[#C0392B]" : "text-[#21814B]"
                       }`}
                     >
                       {x.espera} {x.espera === 1 ? "día" : "días"}
+                      <span className="ml-1 font-normal text-ink-3">
+                        de {x.limite}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -399,11 +435,11 @@ export default async function VentaDelDiaPage({
           <div className="border-t border-line px-4 py-2 text-xs text-ink-3">
             Solo consultas de primera vez; los controles no cuentan porque se
             agendan lejos a propósito. La cifra es la espera de la mitad de los
-            pacientes de ese servicio. No se muestran los servicios con menos de
-            3 pacientes en el día.
+            pacientes de ese servicio, y al lado el plazo con el que se compara.
+            No se muestran los servicios con menos de 3 pacientes en el día.
           </div>
         </div>
-      )}
+      ))}
 
       <h2 className="mb-3 text-lg font-semibold text-navy">Agendamiento y Asistencia</h2>
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
