@@ -298,25 +298,26 @@ export default async function VentaDelDiaPage({
           dice nada; la frase trae la referencia adentro. */}
       {oportunidad !== null && (
         <div className="mb-6 rounded-lg border border-line bg-white px-4 py-3 text-sm text-ink-2">
-          De los <strong className="text-navy">{formatNumber(diasPrimera.length)}</strong>{" "}
-          pacientes que vinieron <strong className="text-navy">por primera vez</strong>, la
-          mitad esperó más de{" "}
+          Hoy se atendieron{" "}
+          <strong className="text-navy">{formatNumber(diasPrimera.length)}</strong>{" "}
+          pacientes <strong className="text-navy">por primera vez</strong>. La mitad de
+          ellos esperó más de{" "}
           <strong className="text-navy">
             {oportunidad} {oportunidad === 1 ? "día" : "días"}
           </strong>{" "}
-          desde que pidió la cita.{" "}
+          entre que pidió la cita y lo atendieron, y la otra mitad esperó menos.{" "}
           {mismoDia > 0 ? (
             <>
-              Solo <strong className="text-navy">{formatNumber(mismoDia)}</strong> se
-              atendieron el mismo día.
+              A <strong className="text-navy">{formatNumber(mismoDia)}</strong> lo
+              atendieron el mismo día que pidió.
             </>
           ) : (
-            <>Ninguno se atendió el mismo día.</>
+            <>A ninguno lo atendieron el mismo día que pidió.</>
           )}
           {oportunidadControl !== null && (
             <span className="text-ink-3">
               {" "}
-              Los controles esperaron {oportunidadControl}{" "}
+              En los controles, la mitad esperó más de {oportunidadControl}{" "}
               {oportunidadControl === 1 ? "día" : "días"}.
             </span>
           )}
