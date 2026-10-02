@@ -247,6 +247,20 @@ export interface SismaCitaAtendida {
   medico: string | null;
   empresa: string | null;
   contrato: string | null;
+  /** Dias entre que el paciente pidio la cita y se la atendieron. Es el
+   *  indicador de oportunidad, el que se reporta. Venia llegando desde
+   *  siempre y no lo leia nadie. */
+  diasOportunidad: number | null;
+}
+
+/** El API manda la oportunidad como texto; a veces vacia o con coma
+ *  decimal. Un valor negativo no tiene sentido (seria atender antes de que
+ *  pidieran) y se descarta en vez de promediarlo. */
+function aDias(v: string): number | null {
+  const t = String(v ?? "").trim().replace(",", ".");
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 export async function fetchCitasAtendidas(desde: string, hasta: string): Promise<SismaCitaAtendida[]> {
@@ -262,6 +276,7 @@ export async function fetchCitasAtendidas(desde: string, hasta: string): Promise
     medico: campo(f, "medico") || null,
     empresa: campo(f, "empresa") || null,
     contrato: campo(f, "contrato") || null,
+    diasOportunidad: aDias(campo(f, "dias_oportunidad")),
   }));
 }
 
