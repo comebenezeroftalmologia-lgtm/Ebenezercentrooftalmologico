@@ -206,21 +206,36 @@ export default async function VentaDelDiaPage({
   // (reprogramaciones, un control lejano pedido a proposito) mueve el
   // promedio y no mueve la mediana. La mediana dice "la mitad espero menos
   // de esto", que es lo que uno quiere saber.
-  const dias = citasAtendidas
-    .map((c) => c.diasOportunidad)
-    .filter((d): d is number => d !== null)
-    .sort((a, b) => a - b);
+  // Y se separa PRIMERA VEZ de CONTROL, que es lo que hace que el numero
+  // signifique algo. Un control se agenda a proposito para dentro de meses:
+  // eso no es falta de oportunidad, es el plan del medico. Mezclarlos da un
+  // numero que parece malo y no dice nada. La oportunidad que se reporta es
+  // la de primera vez por especialista.
+  const diasDe = (cs: typeof atendidasConCategoria) =>
+    cs
+      .map((c) => c.cita.diasOportunidad)
+      .filter((d): d is number => d !== null)
+      .sort((a, b) => a - b);
+
+  const dias = diasDe(atendidasConCategoria);
+  const diasPrimera = diasDe(
+    atendidasConCategoria.filter((c) => c.categoria === "primera_vez"),
+  );
+  const diasControl = diasDe(
+    atendidasConCategoria.filter((c) => c.categoria === "control"),
+  );
   const mediana = (xs: number[]) =>
     xs.length === 0
       ? null
       : xs.length % 2
         ? xs[(xs.length - 1) / 2]
         : Math.round(((xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2) * 10) / 10;
-  const oportunidad = mediana(dias);
+  const oportunidad = mediana(diasPrimera);
+  const oportunidadControl = mediana(diasControl);
   const sinDato = citasAtendidas.length - dias.length;
   // El dia mismo cuenta como 0: son las que se atendieron sin espera.
-  const mismoDia = dias.filter((d) => d <= 0).length;
-  const masDeOcho = dias.filter((d) => d > 8).length;
+  const mismoDia = diasPrimera.filter((d) => d <= 0).length;
+  const masDeOcho = diasPrimera.filter((d) => d > 8).length;
 
   const preQuirurgicas = atendidasConCategoria.filter((c) => c.categoria === "prequirurgico").length;
   const posQuirurgicos = atendidasConCategoria.filter((c) => c.categoria === "posquirurgico").length;
@@ -306,7 +321,7 @@ export default async function VentaDelDiaPage({
           icon={UserCheck}
         />
         <KpiCard
-          label="Oportunidad (mediana)"
+          label="Oportunidad 1ª vez (mediana)"
           value={
             asistenciaError || oportunidad === null
               ? "—"
@@ -314,8 +329,12 @@ export default async function VentaDelDiaPage({
           }
           hint={
             oportunidad === null
-              ? "—"
-              : `${formatNumber(mismoDia)} el mismo día · ${formatNumber(masDeOcho)} con más de 8${sinDato ? ` · ${formatNumber(sinDato)} sin dato` : ""}`
+              ? "Sin consultas de primera vez este día"
+              : `${formatNumber(diasPrimera.length)} consultas · ${formatNumber(mismoDia)} el mismo día · ${formatNumber(masDeOcho)} con más de 8${
+                  oportunidadControl !== null
+                    ? ` · control: ${oportunidadControl} d`
+                    : ""
+                }`
           }
           icon={Clock}
         />
