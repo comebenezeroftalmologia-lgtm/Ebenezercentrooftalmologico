@@ -1,5 +1,5 @@
 import { requireModuloAccess } from "@/lib/auth";
-import { AlertTriangle, CalendarCheck2, Clock, Info, Scissors, Stethoscope, UserCheck, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarCheck2, Info, Scissors, Stethoscope, UserCheck, XCircle } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { SingleDatePicker, type SedeFiltro } from "@/components/SingleDatePicker";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
@@ -232,10 +232,8 @@ export default async function VentaDelDiaPage({
         : Math.round(((xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2) * 10) / 10;
   const oportunidad = mediana(diasPrimera);
   const oportunidadControl = mediana(diasControl);
-  const sinDato = citasAtendidas.length - dias.length;
   // El dia mismo cuenta como 0: son las que se atendieron sin espera.
   const mismoDia = diasPrimera.filter((d) => d <= 0).length;
-  const masDeOcho = diasPrimera.filter((d) => d > 8).length;
 
   const preQuirurgicas = atendidasConCategoria.filter((c) => c.categoria === "prequirurgico").length;
   const posQuirurgicos = atendidasConCategoria.filter((c) => c.categoria === "posquirurgico").length;
@@ -294,8 +292,39 @@ export default async function VentaDelDiaPage({
         </div>
       )}
 
+      {/* La espera, dicha como una frase. Antes era una tarjeta que decia
+          "Oportunidad 1ª vez (mediana) — 37 días" con cuatro cifras pegadas
+          abajo: eso es jerga, no informacion. Un numero sin referencia no
+          dice nada; la frase trae la referencia adentro. */}
+      {oportunidad !== null && (
+        <div className="mb-6 rounded-lg border border-line bg-white px-4 py-3 text-sm text-ink-2">
+          De los <strong className="text-navy">{formatNumber(diasPrimera.length)}</strong>{" "}
+          pacientes que vinieron <strong className="text-navy">por primera vez</strong>, la
+          mitad esperó más de{" "}
+          <strong className="text-navy">
+            {oportunidad} {oportunidad === 1 ? "día" : "días"}
+          </strong>{" "}
+          desde que pidió la cita.{" "}
+          {mismoDia > 0 ? (
+            <>
+              Solo <strong className="text-navy">{formatNumber(mismoDia)}</strong> se
+              atendieron el mismo día.
+            </>
+          ) : (
+            <>Ninguno se atendió el mismo día.</>
+          )}
+          {oportunidadControl !== null && (
+            <span className="text-ink-3">
+              {" "}
+              Los controles esperaron {oportunidadControl}{" "}
+              {oportunidadControl === 1 ? "día" : "días"}.
+            </span>
+          )}
+        </div>
+      )}
+
       <h2 className="mb-3 text-lg font-semibold text-navy">Agendamiento y Asistencia</h2>
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
           label="Citas Programadas"
           value={hayAgendado ? formatNumber(programadas) : "—"}
@@ -319,24 +348,6 @@ export default async function VentaDelDiaPage({
                   : "Sin Mutual (Sede 1)"
           }
           icon={UserCheck}
-        />
-        <KpiCard
-          label="Oportunidad 1ª vez (mediana)"
-          value={
-            asistenciaError || oportunidad === null
-              ? "—"
-              : `${oportunidad} ${oportunidad === 1 ? "día" : "días"}`
-          }
-          hint={
-            oportunidad === null
-              ? "Sin consultas de primera vez este día"
-              : `${formatNumber(diasPrimera.length)} consultas · ${formatNumber(mismoDia)} el mismo día · ${formatNumber(masDeOcho)} con más de 8${
-                  oportunidadControl !== null
-                    ? ` · control: ${oportunidadControl} d`
-                    : ""
-                }`
-          }
-          icon={Clock}
         />
         <KpiCard
           label="Consultas Pre/Pos-quirúrgicas Atendidas"
@@ -375,7 +386,7 @@ export default async function VentaDelDiaPage({
               <span>{cirugiaAviso}</span>
             </div>
           )}
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <KpiCard
               label="Cirugías del día"
               value={formatNumber(cirugiaTotal)}
