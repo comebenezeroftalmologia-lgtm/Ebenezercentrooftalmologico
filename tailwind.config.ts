@@ -34,6 +34,18 @@ const config: Config = {
         display: ["var(--font-cuerpo)", "Questrial", "Outfit", "sans-serif"],
         body: ["var(--font-cuerpo)", "Inter", "sans-serif"],
         label: ["var(--font-titulo)", "Inter", "sans-serif"],
+        // Para CIFRAS, nunca para texto. Monoespaciada y de ancho fijo por
+        // digito, asi las columnas de numeros quedan alineadas. Es el detalle
+        // que no se nota conscientemente y que separa un producto de una
+        // plantilla (es lo que hace Vercel).
+        cifra: [
+          "ui-monospace",
+          "SF Mono",
+          "Cascadia Mono",
+          "Menlo",
+          "Consolas",
+          "monospace",
+        ],
         heading: ["var(--font-cuerpo)", "Questrial", "sans-serif"],
       },
       borderRadius: {
@@ -58,6 +70,39 @@ const config: Config = {
       },
       transitionTimingFunction: {
         "eb-out": "cubic-bezier(0.22, 1, 0.36, 1)",
+        // Arranca rapido y frena suave. Es lo que hace que el movimiento se
+        // sienta fisico y no mecanico. Mas pronunciada que eb-out: para
+        // entradas y conteos, donde el frenado tiene que notarse.
+        "eb-entrada": "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+
+      // --- MOVIMIENTO ------------------------------------------------------
+      // Tres gestos, y nada mas. Cada uno con su nombre, para que todas las
+      // paginas se muevan igual y nadie invente uno nuevo.
+      //
+      //   entrar  -> el bloque sube 10px y se revela. Para secciones.
+      //   crecer  -> la barra sale desde abajo. Para las barras de dias.
+      //   abrir   -> se despliega de izquierda a derecha. Para composiciones.
+      //
+      // Ninguno pasa de 800ms: mas alla deja de ser elegante y empieza a
+      // estorbarle a quien entra veinte veces al dia.
+      keyframes: {
+        entrar: {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        crecer: {
+          from: { transform: "scaleY(0)" },
+          to: { transform: "scaleY(1)" },
+        },
+      },
+      animation: {
+        entrar: "entrar .62s cubic-bezier(0.16,1,0.3,1) both",
+        crecer: "crecer .56s cubic-bezier(0.16,1,0.3,1) both",
+      },
+      transitionDuration: {
+        gesto: "340ms",   // interruptores, pastillas que se deslizan
+        abrir: "700ms",   // barras que se despliegan
       },
     },
   },
