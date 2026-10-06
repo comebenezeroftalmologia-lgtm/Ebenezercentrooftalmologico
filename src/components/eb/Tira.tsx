@@ -30,19 +30,28 @@ export function Tira({
           <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.07em] text-ink-3">
             {d.rotulo}
           </div>
-          <div className="flex items-baseline gap-1">
+          {/* Sin espacio entre la cifra y el %: "89,1 %" se ve suelto, "89,1%"
+              se ve escrito por alguien. */}
+          <div className="flex items-baseline">
             <Cifra
               valor={d.valor}
               decimales={d.decimales ?? 0}
               espera={i * 60}
+              mono={false}
               className={
                 i === 0
-                  ? "text-[40px] font-medium leading-none tracking-[-0.02em] text-ink"
-                  : "text-[24px] font-medium leading-none tracking-[-0.015em] text-ink-2"
+                  ? "text-[40px] font-medium leading-none tracking-[-0.025em] text-ink"
+                  : "text-[25px] font-medium leading-none tracking-[-0.02em] text-ink-2"
               }
             />
             {d.sufijo ? (
-              <span className={i === 0 ? "text-[20px] text-ink-3" : "text-[15px] text-ink-3"}>
+              <span
+                className={
+                  i === 0
+                    ? "text-[24px] font-medium leading-none tracking-[-0.02em] text-ink-3"
+                    : "text-[17px] font-medium leading-none text-ink-3"
+                }
+              >
                 {d.sufijo}
               </span>
             ) : null}

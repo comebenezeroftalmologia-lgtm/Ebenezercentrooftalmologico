@@ -20,7 +20,10 @@ export function TablaEspera({
   filas: { servicio: string; n: number; espera: number; limite: number }[];
 }) {
   return (
-    <table className="w-full">
+    // Ancho tope. Sin esto la tabla se estira a 1.400px y el nombre del
+    // servicio queda a un palmo de su número: hay que barrer la pantalla con
+    // los ojos para juntarlos. Attio nunca deja una tabla llegar al borde.
+    <table className="w-full max-w-[640px]">
       <tbody>
         {filas.map((x) => {
           const alerta = x.espera > x.limite;
@@ -29,13 +32,13 @@ export function TablaEspera({
               key={x.servicio}
               className="group border-b border-line-2 transition-colors duration-micro ease-attio last:border-0 hover:bg-ebbg"
             >
-              <td className="py-2.5 pr-4 text-[13px] leading-[18px] text-ink-2">
+              <td className="py-2 pr-4 text-[13px] leading-[18px] text-ink-2">
                 {x.servicio.toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
               </td>
-              <td className="w-20 py-2.5 pr-8 text-right font-cifra text-[12px] tabular-nums text-ink-3">
+              <td className="w-16 py-2 pr-7 text-right font-cifra text-[12px] tabular-nums text-ink-3">
                 {formatNumber(x.n)}
               </td>
-              <td className="w-32 whitespace-nowrap py-2.5 text-right">
+              <td className="w-28 whitespace-nowrap py-2 text-right">
                 <span
                   className={`font-cifra text-[13.5px] font-medium tabular-nums ${
                     alerta ? "text-[#C0392B]" : "text-ink"

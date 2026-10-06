@@ -47,6 +47,7 @@ export function Cifra({
   duracion = 850,
   decimales = 0,
   sufijo,
+  mono = true,
   className = "",
 }: {
   valor: number;
@@ -55,6 +56,16 @@ export function Cifra({
   duracion?: number;
   decimales?: number;
   sufijo?: string;
+  /**
+   * Monoespaciada o no.
+   *
+   * En una TABLA sí: las columnas de números tienen que alinearse por dígito.
+   * En una CIFRA GRANDE no: a 40px la monoespaciada se ve de terminal, no de
+   * producto. Attio y Stripe usan su tipografía normal con cifras de ancho
+   * fijo (tabular-nums), que alinea igual pero se ve como letra, no como
+   * código.
+   */
+  mono?: boolean;
   className?: string;
 }) {
   // DEFENSA 1: arranca en el valor real, no en cero. Así el HTML del
@@ -116,7 +127,7 @@ export function Cifra({
   });
 
   return (
-    <span className={`font-cifra tabular-nums tracking-tight ${className}`}>
+    <span className={`${mono ? "font-cifra" : ""} tabular-nums ${className}`}>
       {texto}
       {sufijo ? <span className="text-ink-3">{sufijo}</span> : null}
     </span>
