@@ -69,6 +69,12 @@ const config: Config = {
         overline: "0.12em",
       },
       transitionTimingFunction: {
+        // LA CURVA DE ATTIO. Medida el 06-10-2026 directamente sobre
+        // attio.com, que es la referencia que escogio Faber: arranca de una y
+        // frena larguisimo. Es lo que hace que el movimiento se sienta caro en
+        // vez de rebotado. Es su firma y aqui se adopta tal cual.
+        attio: "cubic-bezier(0.2, 0, 0, 1)",
+        "attio-sim": "cubic-bezier(0.65, 0, 0.35, 1)", // simetrica, para bucles
         "eb-out": "cubic-bezier(0.22, 1, 0.36, 1)",
         // Arranca rapido y frena suave. Es lo que hace que el movimiento se
         // sienta fisico y no mecanico. Mas pronunciada que eb-out: para
@@ -95,13 +101,31 @@ const config: Config = {
           from: { transform: "scaleY(0)" },
           to: { transform: "scaleY(1)" },
         },
+        // Attio no "aparece" los bloques desde lejos: los sube 8px. Poca
+        // distancia y curva larga. Por eso se siente que el producto responde,
+        // no que la pagina se esta armando delante de uno.
+        asomar: {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        // Latido lento de fondo, 3,6s, como el radar de su portada. Es lo unico
+        // que se mueve solo, y casi no se nota: esa es la gracia.
+        latir: {
+          "0%, 100%": { opacity: "0.55" },
+          "50%": { opacity: "1" },
+        },
       },
       animation: {
         entrar: "entrar .62s cubic-bezier(0.16,1,0.3,1) both",
         crecer: "crecer .56s cubic-bezier(0.16,1,0.3,1) both",
+        asomar: "asomar .3s cubic-bezier(0.2,0,0,1) both",
+        latir: "latir 3.6s cubic-bezier(0.65,0,0.35,1) infinite",
       },
       transitionDuration: {
-        gesto: "340ms",   // interruptores, pastillas que se deslizan
+        // Los tres tiempos de Attio, medidos en su sitio.
+        micro: "150ms",   // hover, opacidad: tiene que sentirse instantaneo
+        gesto: "300ms",   // color, transformaciones
+        mover: "400ms",   // desplazamientos
         abrir: "700ms",   // barras que se despliegan
       },
     },
