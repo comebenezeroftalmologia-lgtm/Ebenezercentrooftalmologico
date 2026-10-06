@@ -210,26 +210,21 @@ export default async function VentaDelDiaNueva({
             Antes el mismo párrafo iba repetido palabra por palabra debajo de
             cada una. */}
         {d.bloques.length > 0 ? (
-          <Seccion
-            titulo="Cuánto espera un paciente nuevo"
-            derecha={
-              <span>
-                días esperados <span className="text-ink-3/60">/</span> plazo
-              </span>
-            }
-            retraso={300}
-          >
+          <Seccion titulo="Cuánto espera un paciente nuevo" retraso={300}>
             {d.bloques.map((b, i) => (
-              <div key={b.titulo} className={i > 0 ? "mt-7" : ""}>
+              // Mismo ancho tope que la tabla, para que el rótulo de la sede y
+              // la regla queden encima de sus propias columnas y no flotando
+              // al otro extremo de la pantalla.
+              <div key={b.titulo} className={`max-w-[640px] ${i > 0 ? "mt-7" : ""}`}>
                 <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-[13px] font-medium text-ink">{b.titulo}</span>
-                  <span className="text-[12px] text-ink-3">{b.regla}</span>
+                  <span className="text-[11.5px] text-ink-3">{b.regla}</span>
                 </div>
                 <TablaEspera filas={b.filas} />
               </div>
             ))}
 
-            <p className="mt-5 max-w-3xl text-[12px] leading-[18px] text-ink-3">
+            <p className="mt-5 max-w-[640px] text-[12px] leading-[18px] text-ink-3">
               {d.oportunidad !== null ? (
                 <>
                   De los{" "}
