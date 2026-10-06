@@ -1,542 +1,293 @@
 import { requireModuloAccess } from "@/lib/auth";
-import { AlertTriangle, CalendarCheck2, Info, Scissors, Stethoscope, UserCheck, XCircle } from "lucide-react";
-import { KpiCard } from "@/components/KpiCard";
-import { SingleDatePicker, type SedeFiltro } from "@/components/SingleDatePicker";
-import { StageFunnelChart } from "@/components/StageFunnelChart";
-import {
-  esCancelacionAutomatica,
-  fetchCitasAtendidas,
-  fetchCitasDia,
-  fetchProgramacionQx,
-  type SismaCitaAtendida,
-  type SismaProgramacionQx,
-} from "@/lib/integrations/sisma";
-import { categorizeAsunto, SISMA_CATEGORIA_LABELS, type SismaCategoria } from "@/lib/sismaCategories";
+import { AlertTriangle } from "lucide-react";
 import { formatNumber } from "@/lib/text";
-import { traerDiaTipico } from "@/lib/diaTipico";
+import {
+  calcularVentaDelDia,
+  mensajeClaro,
+  LIMITE_SEDE1,
+  type SedeFiltro,
+} from "@/lib/ventaDelDia";
+import { Tira, Seccion, TablaEspera, BarraComposicion, Controles } from "@/components/eb";
+
+/**
+ * Venta del Día.
+ *
+ * Los números NO se calculan aquí: salen de calcularVentaDelDia(). Esta
+ * pantalla solo pinta. Si algún número se ve raro, el problema está en esa
+ * función o en SISMA, nunca aquí.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * DE DÓNDE SALE ESTE ASPECTO
+ *
+ * Faber escogió Attio como referencia ("me gusta, y más cómo se mueven"), así
+ * que el 06-10-2026 se midió attio.com directamente —no se copió de memoria—
+ * y de ahí salieron estas reglas:
+ *
+ *   · NO HAY CAJAS. Attio casi no dibuja bordes: separa con una línea de 1px
+ *     y con aire. Las cuatro tarjetas con sombra que había antes eran lo que
+ *     hacía ver la pantalla "de plantilla".
+ *   · Rótulos de 11px en mayúsculas espaciadas; cifras de 24-40px con
+ *     interletrado negativo. Attio usa -0,01em en lo grande: apretar la letra
+ *     es lo que hace que se vea caro.
+ *   · Esquinas de 4px, no de 12. Lo redondito se ve amable; lo recto, serio.
+ *   · El color solo cuando significa. En Attio el acento aparece dos veces en
+ *     toda la pantalla. Aquí el azul de Ebenezer queda en el enlace y poco
+ *     más, y el rojo únicamente cuando un servicio se pasó del plazo.
+ *   · Movimiento: curva cubic-bezier(0.2,0,0,1) —la de ellos—, 150 ms para lo
+ *     micro, 300 ms para lo normal. Los bloques suben 8px, no 10 ni 20: poca
+ *     distancia y frenada larga. Se siente que el producto responde, no que
+ *     la página se está armando.
+ *   · Cero párrafos explicando. Lo que antes era prosa ahora es rótulo, y la
+ *     letra menuda va UNA vez al pie, no repetida debajo de cada tabla.
+ * ──────────────────────────────────────────────────────────────────────────
+ */
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const maxDuration = 60;
 
-function todayISO(): string {
+function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const CATEGORIA_ORDEN: SismaCategoria[] = [
-  "primera_vez",
-  "control",
-  "posquirurgico",
-  "prequirurgico",
-  "diagnostico",
-  "otro",
-];
+/** Del más oscuro al más claro: la categoría más grande es la más oscura, así
+ *  la barra se lee sola sin mirar la leyenda. */
+const TONOS = ["#0B1633", "#3B4F8D", "#7D88B0", "#AEB6CE", "#D5DAE6", "#EDEFF5"];
 
-export default async function VentaDelDiaPage({
+/** Decimales con coma, como se escribe en Colombia. Antes salía "58.5 días". */
+const conComa = (n: number) =>
+  n.toLocaleString("es-CO", { maximumFractionDigits: 1 });
+
+export default async function VentaDelDia({
   searchParams,
 }: {
   searchParams: { fecha?: string; sede?: string };
 }) {
   await requireModuloAccess("venta_del_dia");
-  const fecha = searchParams.fecha ?? todayISO();
 
-  // --- Sede ---
-  // SISMA no manda la sede en las citas atendidas, pero no hace falta:
-  // Mutual se atiende en la Sede 2 y todo lo demás en la Sede 1. Es la
-  // misma regla que usa el tablero de Frecuencias (SEDE_MAP), así que las
-  // dos pantallas dicen lo mismo. Si algún día hubiera una sede nueva que
-  // no sea Mutual, esta regla deja de servir y hay que pedirle la sede al
-  // sistema.
+  const fecha = searchParams.fecha ?? hoyISO();
   const sede: SedeFiltro =
-    searchParams.sede === "1" || searchParams.sede === "2"
-      ? searchParams.sede
-      : "todas";
-  const esMutual = (empresa: string | null | undefined) =>
-    /MUTUAL/i.test(String(empresa ?? ""));
-  const pasaSede = (empresa: string | null | undefined) =>
-    sede === "todas" ? true : sede === "2" ? esMutual(empresa) : !esMutual(empresa);
+    searchParams.sede === "1" || searchParams.sede === "2" ? searchParams.sede : "todas";
 
-  // Los errores técnicos no se le muestran a quien consulta el tablero:
-  // "SISMA_NODE_API_KEY no configurada", "Unexpected token…" o un código
-  // HTTP no le dicen nada a gerencia ni a facturación. Se traducen a una
-  // frase que explique qué pasa y a quién avisarle.
-  function mensajeClaro(error: string, que: string): string {
-    if (error === "SIN_LLAVE") {
-      return `Todavía no está configurado el acceso al sistema para consultar ${que}. Avísele a quien administra la plataforma.`;
-    }
-    if (/not valid JSON|Unexpected token/i.test(error)) {
-      return `El sistema respondió con un formato que la plataforma no pudo leer al consultar ${que}. Ya quedó reportado; si sigue apareciendo, avísenos.`;
-    }
-    if (/\b(401|403)\b/.test(error)) {
-      return `El acceso al sistema no tiene permiso para consultar ${que}. Hay que revisar la llave configurada.`;
-    }
-    if (/\b(5\d\d)\b/.test(error)) {
-      return `SISMA no respondió al consultar ${que}. Suele ser momentáneo: vuelva a intentar en unos minutos.`;
-    }
-    return `No se pudo consultar ${que} en este momento. Intente de nuevo en unos minutos.`;
-  }
+  const d = await calcularVentaDelDia({ fecha, sede });
 
-  // Agenda del día (pendientes + confirmadas) — API antigua, siempre
-  // disponible con la llave actual. Si esto falla, no hay nada que
-  // mostrar en la página.
-  let fetchError: string | null = null;
-  let citasDia: Awaited<ReturnType<typeof fetchCitasDia>> = [];
-  try {
-    citasDia = await fetchCitasDia(fecha);
-  } catch (e) {
-    fetchError = e instanceof Error ? e.message : "Error desconocido consultando SISMA.";
-  }
-
-  // Asistencia real del día — API ampliado (node), requiere la llave
-  // nueva que TIC todavía no ha emitido. Se degrada por sección: si
-  // falla, el resto de la página sigue funcionando.
-  let asistenciaError: string | null = null;
-  let citasAtendidas: SismaCitaAtendida[] = [];
-  if (!fetchError) {
-    try {
-      citasAtendidas = await fetchCitasAtendidas(fecha, fecha);
-    } catch (e) {
-      asistenciaError = e instanceof Error ? e.message : "Error desconocido consultando SISMA (node).";
-    }
-  }
-
-  // Programación de cirugía — mismo API ampliado.
-  let cirugiaError: string | null = null;
-  let cirugiaItems: SismaProgramacionQx[] = [];
-  let cirugiaAviso: string | null = null;
-  if (!fetchError) {
-    try {
-      const result = await fetchProgramacionQx(fecha, fecha);
-      cirugiaItems = result.items;
-      cirugiaAviso = result.aviso;
-    } catch (e) {
-      cirugiaError = e instanceof Error ? e.message : "Error desconocido consultando SISMA (node).";
-    }
-  }
-
-  const header = (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-navy">Venta del Día</h1>
-        <p className="mt-1 text-sm text-ink-3">Agendamiento, asistencia real y cirugía del día.</p>
+  const encabezado = (
+    <header className="mb-8 flex flex-wrap items-end justify-between gap-5 pb-6">
+      <div className="animate-asomar">
+        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.07em] text-ink-3">
+          Tableros · Operación
+        </div>
+        <h1 className="text-[28px] font-medium leading-none tracking-[-0.02em] text-ink">
+          Venta del Día
+        </h1>
       </div>
-      <SingleDatePicker fecha={fecha} sede={sede} />
-    </div>
+      <div className="animate-asomar" style={{ animationDelay: "60ms" }}>
+        <Controles fecha={fecha} sede={sede} />
+      </div>
+    </header>
   );
 
-  if (fetchError) {
+  if (d.fetchError) {
     return (
       <div>
-        {header}
-        <div className="flex items-start gap-3 rounded-lg border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
+        {encabezado}
+        <div className="flex items-start gap-3 rounded-xs border border-[#F2C744] bg-[#FEF8E7] p-4 text-[13px] text-[#8A6D00]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>
-            No se pudo consultar SISMA para el {fecha}: {fetchError}
-          </span>
+          <span>No se pudo consultar SISMA para el {fecha}: {d.fetchError}</span>
         </div>
       </div>
     );
   }
 
-  // --- Agendamiento (pendientes/confirmadas) ---
-  const programadas = citasDia.length;
+  const cat = (nombre: string) =>
+    d.porCategoria.find((c) => c.stage === nombre)?.count ?? 0;
 
-  // --- Asistencia real (node API) ---
-  // El filtro se aplica aquí, antes de contar: así todo lo que viene
-  // despues (categorías, pre/pos-quirúrgicas, el porcentaje) ya sale por
-  // sede sin tener que acordarse de filtrarlo en cada sitio.
-  if (sede !== "todas") citasAtendidas = citasAtendidas.filter((c) => pasaSede(c.empresa));
-
-  const asistidas = citasAtendidas.length;
-  // --- Cuánto de la agenda del día ya se atendió ---
-  //
-  // Esto NO es el porcentaje de asistencia, aunque antes se llamaba así.
-  // `programadas` son las citas que todavía no se han atendido, así que el
-  // cociente sube solo con el correr del día y a las 6 p.m. siempre da
-  // cerca del 100%: medía qué tan tarde era, no cuánta gente vino.
-  //
-  // Mientras el día está en curso es "lo que llevamos de la agenda". Solo al
-  // cerrar el día, cuando ya no quedan pendientes por procesar, se puede
-  // leer como asistencia — y aun así los que faltan no son necesariamente
-  // inasistentes. Para asistencia real hace falta que SISMA mande el estado
-  // de inasistencia, que hoy no llega.
-  // OJO con el filtro de sede: las citas AGENDADAS que devuelve SISMA no
-  // traen empresa, solo las atendidas. Si se filtran las atendidas y las
-  // agendadas no, el porcentaje compara peras con manzanas y nadie se daría
-  // cuenta. Por eso, con una sede escogida, el agendado y el porcentaje se
-  // marcan como no disponibles en vez de mostrar un numero equivocado.
-  const hayAgendado = sede === "todas";
-  const agendaDia = programadas + asistidas;
-  const pctAgenda =
-    hayAgendado && agendaDia > 0
-      ? Math.round((asistidas / agendaDia) * 1000) / 10
-      : null;
-
-  // --- Contexto: ¿cómo se compara con un día igual? ---
-  // Lo calcula el motor de Frecuencias con la misma regla que su tarjeta de
-  // cierre (promedio del mismo día de la semana, 4 semanas atrás). Si no se
-  // puede traer, la página sigue igual: es contexto, no un dato esencial.
-  const diaTipico = await traerDiaTipico(fecha);
-  const pctTipico =
-    diaTipico?.tipico && diaTipico.tipico > 0
-      ? Math.round((diaTipico.total / diaTipico.tipico) * 100)
-      : null;
-  const DIA_SEMANA = [
-    "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado",
-  ];
-  const nombreDia = DIA_SEMANA[new Date(fecha + "T12:00:00").getDay()];
-
-  const atendidasConCategoria = citasAtendidas.map((c) => ({
-    cita: c,
-    categoria: categorizeAsunto(c.asunto),
+  const partes = d.porCategoria.map((c, i) => ({
+    nombre: c.stage,
+    valor: c.count,
+    color: TONOS[i % TONOS.length],
   }));
 
-  const porCategoria = CATEGORIA_ORDEN.map((cat) => ({
-    stage: SISMA_CATEGORIA_LABELS[cat],
-    count: atendidasConCategoria.filter((c) => c.categoria === cat).length,
-    value: 0,
-  })).filter((d) => d.count > 0);
-
-  // --- OPORTUNIDAD ---
-  // Dias entre que el paciente pide la cita y se la atienden. Llega en cada
-  // cita atendida y no lo estaba leyendo nadie. Es EL indicador de calidad
-  // que se reporta, asi que vale mas que casi todo lo demas de esta pagina.
-  //
-  // Se usa la MEDIANA, no el promedio: un paciente que esperó 300 dias
-  // (reprogramaciones, un control lejano pedido a proposito) mueve el
-  // promedio y no mueve la mediana. La mediana dice "la mitad espero menos
-  // de esto", que es lo que uno quiere saber.
-  // Y se separa PRIMERA VEZ de CONTROL, que es lo que hace que el numero
-  // signifique algo. Un control se agenda a proposito para dentro de meses:
-  // eso no es falta de oportunidad, es el plan del medico. Mezclarlos da un
-  // numero que parece malo y no dice nada. La oportunidad que se reporta es
-  // la de primera vez por especialista.
-  const diasDe = (cs: typeof atendidasConCategoria) =>
-    cs
-      .map((c) => c.cita.diasOportunidad)
-      .filter((d): d is number => d !== null)
-      .sort((a, b) => a - b);
-
-  const dias = diasDe(atendidasConCategoria);
-  const diasPrimera = diasDe(
-    atendidasConCategoria.filter((c) => c.categoria === "primera_vez"),
-  );
-  const mediana = (xs: number[]) =>
-    xs.length === 0
-      ? null
-      : xs.length % 2
-        ? xs[(xs.length - 1) / 2]
-        : Math.round(((xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2) * 10) / 10;
-  // --- DONDE esta la espera ---
-  // El numero global no sirve para hacer nada: 37 dias no dice en que
-  // servicio esta el cuello de botella. Esto lo abre por asunto de la cita,
-  // que es lo mas parecido a "especialidad" que manda SISMA, y lo ordena de
-  // mayor a menor espera. Solo primera vez: los controles se agendan lejos a
-  // proposito y ensucian la comparacion.
-  // Cada sede se mide con su propia vara, porque son cosas distintas:
-  //
-  //   Sede 1  — particular, Ecopetrol, prepagadas. No hay plazo pactado con
-  //             nadie; la regla es de Faber: mas de 3 semanas es demasiado.
-  //   Sede 2  — Mutual. Tiene contrato con plazos escritos: 50 dias para
-  //             consulta general y 90 para especialidad, cumpliendole al 85%
-  //             de los pacientes. Marcar en rojo a los 21 dias seria senalar
-  //             como problema algo que el contrato permite.
-  //
-  // La clasificacion general/especialidad se comprobo contra las cifras del
-  // propio Excel de Mutual, mes a mes (enero dio 1.067 contra 1.067).
-  const LIMITE_SEDE1 = 21;
-  const LIMITE_MUTUAL_GENERAL = 50;
-  const LIMITE_MUTUAL_ESPECIALIDAD = 90;
-
-  const esGeneral = (asunto: string) => {
-    const a = asunto.toUpperCase();
-    return a.includes("GENERAL") || a.includes("DESPUES DE 1");
-  };
-
-  const limiteDe = (asunto: string, mutual: boolean) =>
-    !mutual
-      ? LIMITE_SEDE1
-      : esGeneral(asunto)
-        ? LIMITE_MUTUAL_GENERAL
-        : LIMITE_MUTUAL_ESPECIALIDAD;
-
-  function armarTabla(mutual: boolean) {
-    const g = new Map<string, number[]>();
-    for (const { cita, categoria } of atendidasConCategoria) {
-      if (categoria !== "primera_vez") continue;
-      if (esMutual(cita.empresa) !== mutual) continue;
-      const d = cita.diasOportunidad;
-      if (d === null) continue;
-      const k = (cita.asunto ?? "Sin asunto").trim() || "Sin asunto";
-      const a = g.get(k) ?? [];
-      a.push(d);
-      g.set(k, a);
-    }
-    return [...g.entries()]
-      .map(([servicio, ds]) => ({
-        servicio,
-        n: ds.length,
-        espera: mediana([...ds].sort((a, b) => a - b)) ?? 0,
-        limite: limiteDe(servicio, mutual),
-      }))
-      // Con uno o dos pacientes la "mitad" no significa nada: se omiten
-      // para no senalar un cuello de botella que no existe.
-      .filter((x) => x.n >= 3)
-      .sort((a, b) => b.espera / b.limite - a.espera / a.limite);
-  }
-
-  const bloques = [
-    { titulo: "Sede 1", regla: "en rojo, más de 3 semanas", filas: armarTabla(false) },
-    {
-      titulo: "Sede 2 · Mutual",
-      regla: "en rojo, fuera del plazo del contrato (50 días general, 90 especialidad)",
-      filas: armarTabla(true),
-    },
-  ].filter((b) => b.filas.length > 0 && (sede === "todas" || (sede === "2") === (b.titulo !== "Sede 1")));
-
-  const oportunidad = mediana(diasPrimera);
-  // El dia mismo cuenta como 0: son las que se atendieron sin espera.
-  const mismoDia = diasPrimera.filter((d) => d <= 0).length;
-
-  const preQuirurgicas = atendidasConCategoria.filter((c) => c.categoria === "prequirurgico").length;
-  const posQuirurgicos = atendidasConCategoria.filter((c) => c.categoria === "posquirurgico").length;
-
-  // --- Cirugía (programación de quirófano) ---
-  //
-  // Se cuenta por el estado que DEVUELVE el sistema, no por una lista
-  // fija. El código anterior buscaba "Realizada", y el valor real que
-  // manda SISMA es "Atendida": habría dado cero para siempre.
-  const cirugiaSinAutoCanceladas = cirugiaItems.filter((qx) => !esCancelacionAutomatica(qx));
-
-  const porEstado = new Map<string, number>();
-  for (const qx of cirugiaSinAutoCanceladas) {
-    porEstado.set(qx.estado, (porEstado.get(qx.estado) ?? 0) + 1);
-  }
-  const estadosCirugia = Array.from(porEstado.entries()).sort((a, b) => b[1] - a[1]);
-  const cirugiaTotal = cirugiaSinAutoCanceladas.length;
-  const autoCanceladas = cirugiaItems.length - cirugiaTotal;
-
-  const ICONO_ESTADO: Record<string, typeof Scissors> = {
-    atendida: UserCheck,
-    realizada: UserCheck,
-    programada: Scissors,
-    cancelada: XCircle,
-    incumplida: AlertTriangle,
-  };
-
   return (
-    <div>
-      {header}
+    <div className="pb-16">
+      {encabezado}
 
-      {/* Contexto que aporta Frecuencias: el número del día contra un día
-          igual. Sin esto, "386 atenciones" no dice nada por sí solo. */}
-      {diaTipico && pctTipico !== null && hayAgendado && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3">
-          <div className="text-sm text-ink-2">
-            Se cerraron <strong className="text-navy">{formatNumber(diaTipico.total)}</strong>{" "}
-            atenciones. Un {nombreDia} típico cierra en{" "}
-            <strong className="text-navy">{formatNumber(diaTipico.tipico ?? 0)}</strong>.
-          </div>
-          <div className="flex items-center gap-4">
-            <span
-              className={`text-sm font-semibold ${
-                pctTipico >= 100 ? "text-[#21814B]" : "text-[#B3541E]"
-              }`}
-            >
-              {pctTipico}% de un {nombreDia} típico
-            </span>
-            <a
-              href={`/frecuencias?dia=${fecha}`}
-              className="rounded-md border border-line px-3 py-1.5 text-sm text-navy hover:bg-ebbg"
-            >
-              Ver el detalle en Frecuencias
-            </a>
-          </div>
-        </div>
-      )}
+      {/* La tira. Antes esto eran cuatro tarjetas con borde y sombra. */}
+      <Tira
+        datos={[
+          {
+            rotulo: "Atendidos hoy",
+            valor: d.asistidas,
+            pie: d.hayAgendado
+              ? `${formatNumber(d.agendaDia)} agendados`
+              : sede === "2"
+                ? "Mutual · Sede 2"
+                : "Particular, Ecopetrol y prepagadas",
+          },
+          ...(d.hayAgendado
+            ? [
+                { rotulo: "Sin atender", valor: d.programadas, pie: "del agendamiento del día" },
+                ...(d.pctAgenda !== null
+                  ? [
+                      {
+                        rotulo: "Asistencia",
+                        valor: d.pctAgenda,
+                        decimales: 1,
+                        sufijo: "%",
+                        pie: "de lo agendado",
+                      },
+                    ]
+                  : []),
+              ]
+            : []),
+          {
+            rotulo: "Primera vez",
+            valor: cat("Primera Vez"),
+            pie: `${Math.round((cat("Primera Vez") / Math.max(1, d.asistidas)) * 100)}% de lo atendido`,
+          },
+          {
+            rotulo: "Control",
+            valor: cat("Control"),
+            pie: `${Math.round((cat("Control") / Math.max(1, d.asistidas)) * 100)}% de lo atendido`,
+          },
+          {
+            rotulo: "Pre y pos-qx",
+            valor: d.preQuirurgicas + d.posQuirurgicos,
+            pie: `${d.preQuirurgicas} antes · ${d.posQuirurgicos} después`,
+          },
+        ]}
+      />
 
-      {/* La espera, dicha como una frase. Antes era una tarjeta que decia
-          "Oportunidad 1ª vez (mediana) — 37 días" con cuatro cifras pegadas
-          abajo: eso es jerga, no informacion. Un numero sin referencia no
-          dice nada; la frase trae la referencia adentro. */}
-      {oportunidad !== null && (
-        <div className="mb-6 rounded-lg border border-line bg-white px-4 py-3 text-sm text-ink-2">
-          Hoy se atendieron{" "}
-          <strong className="text-navy">{formatNumber(diasPrimera.length)}</strong>{" "}
-          pacientes <strong className="text-navy">por primera vez</strong>. La mitad de
-          ellos esperó más de{" "}
-          <strong className="text-navy">
-            {oportunidad} {oportunidad === 1 ? "día" : "días"}
-          </strong>{" "}
-          entre que pidió la cita y lo atendieron, y la otra mitad esperó menos.{" "}
-          {mismoDia > 0 ? (
-            <>
-              A <strong className="text-navy">{formatNumber(mismoDia)}</strong> lo
-              atendieron el mismo día que pidió.
-            </>
-          ) : (
-            <>A ninguno lo atendieron el mismo día que pidió.</>
-          )}
-          {sede === "1" && oportunidad > LIMITE_SEDE1 && (
-            <span className="font-semibold text-[#C0392B]"> Eso es más de 3 semanas.</span>
-          )}
-          {sede === "todas" && (
-            <span className="text-ink-3">
-              {" "}
-              Mezcla las dos sedes; abajo va cada una con su propio plazo.
-            </span>
-          )}
-        </div>
-      )}
-
-      {bloques.map((b) => (
-        <div key={b.titulo} className="mb-6 overflow-hidden rounded-lg border border-line bg-white">
-          <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-navy">
-            Cuánto espera un paciente nuevo · {b.titulo}
-            <span className="ml-2 font-normal text-ink-3">{b.regla}</span>
-          </div>
-          <table className="w-full text-sm">
-            <tbody>
-              {b.filas.map((x) => {
-                // La barra se mide contra el limite de esa fila, no contra la
-                // espera mas larga: asi "lleno" significa "en el limite", y se
-                // pueden comparar servicios con plazos distintos.
-                const alerta = x.espera > x.limite;
-                const ancho = Math.max(2, Math.min(100, Math.round((x.espera / x.limite) * 100)));
-                return (
-                  <tr key={x.servicio} className="border-t border-line/60">
-                    <td className="px-4 py-2 text-ink-2">{x.servicio}</td>
-                    <td className="w-20 px-2 py-2 text-right text-ink-3">
-                      {formatNumber(x.n)}
-                    </td>
-                    <td className="w-48 px-2 py-2">
-                      <div className="h-2 w-full rounded-full bg-ebbg">
-                        <div
-                          className={`h-2 rounded-full ${alerta ? "bg-[#C0392B]" : "bg-[#21814B]"}`}
-                          style={{ width: `${ancho}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td
-                      className={`w-36 whitespace-nowrap px-4 py-2 text-right font-semibold ${
-                        alerta ? "text-[#C0392B]" : "text-[#21814B]"
-                      }`}
-                    >
-                      {x.espera} {x.espera === 1 ? "día" : "días"}
-                      <span className="ml-1 font-normal text-ink-3">
-                        de {x.limite}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="border-t border-line px-4 py-2 text-xs text-ink-3">
-            Solo consultas de primera vez; los controles no cuentan porque se
-            agendan lejos a propósito. La cifra es la espera de la mitad de los
-            pacientes de ese servicio, y al lado el plazo con el que se compara.
-            No se muestran los servicios con menos de 3 pacientes en el día.
-          </div>
-        </div>
-      ))}
-
-      <h2 className="mb-3 text-lg font-semibold text-navy">Agendamiento y Asistencia</h2>
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard
-          label="Citas Programadas"
-          value={hayAgendado ? formatNumber(programadas) : "—"}
-          hint={
-            hayAgendado
-              ? `${fecha} · pendientes + confirmadas`
-              : "SISMA no manda la sede en lo agendado"
-          }
-          icon={CalendarCheck2}
-        />
-        <KpiCard
-          label="Citas Atendidas"
-          value={asistenciaError ? "—" : formatNumber(asistidas)}
-          hint={
-            pctAgenda !== null
-              ? `${pctAgenda}% de las ${formatNumber(agendaDia)} agendadas del día`
-              : hayAgendado
-                ? "—"
-                : sede === "2"
-                  ? "Mutual (Sede 2)"
-                  : "Sin Mutual (Sede 1)"
-          }
-          icon={UserCheck}
-        />
-        <KpiCard
-          label="Consultas Pre/Pos-quirúrgicas Atendidas"
-          value={asistenciaError ? "—" : formatNumber(preQuirurgicas + posQuirurgicos)}
-          hint={`Pre: ${preQuirurgicas} · Pos: ${posQuirurgicos}`}
-          icon={Stethoscope}
-        />
-      </div>
-
-      {asistenciaError && (
-        <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>{mensajeClaro(asistenciaError, "la asistencia del día")}</span>
-        </div>
-      )}
-
-      {!asistenciaError && (
-        <div className="mb-8 rounded-xl border border-line bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-navy">Atendidas de Hoy por Tipo</h3>
-          <StageFunnelChart data={porCategoria} emptyMessage="Sin citas atendidas este día todavía." />
-        </div>
-      )}
-
-      <h2 className="mb-3 text-lg font-semibold text-navy">Cirugía</h2>
-
-      {cirugiaError ? (
-        <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>{mensajeClaro(cirugiaError, "la programación de cirugía")}</span>
-        </div>
-      ) : (
-        <>
-          {cirugiaAviso && (
-            <div className="mb-4 flex items-start gap-3 rounded-lg border border-line bg-white p-4 text-xs text-ink-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />
-              <span>{cirugiaAviso}</span>
+      <div className="mt-9">
+        {/* El cierre de Frecuencias: una línea, no una tarjeta con borde azul. */}
+        {d.diaTipico && d.pctTipico !== null && d.hayAgendado ? (
+          <Seccion titulo="Cierre en Frecuencias" retraso={180}>
+            <div className="flex flex-wrap items-baseline justify-between gap-4">
+              <div className="flex flex-wrap items-baseline gap-x-2 text-[13.5px] text-ink-2">
+                <span className="font-cifra text-[20px] font-medium tabular-nums tracking-[-0.015em] text-ink">
+                  {formatNumber(d.diaTipico.total)}
+                </span>
+                <span>
+                  atenciones facturadas · un {d.nombreDia} típico cierra en{" "}
+                  <span className="font-cifra tabular-nums text-ink">
+                    {formatNumber(d.diaTipico.tipico ?? 0)}
+                  </span>
+                </span>
+                <span
+                  className={`font-cifra font-medium tabular-nums ${
+                    d.pctTipico >= 100 ? "text-green" : "text-[#B3541E]"
+                  }`}
+                >
+                  {d.pctTipico}%
+                </span>
+              </div>
+              <a
+                href={`/frecuencias?dia=${fecha}`}
+                className="group inline-flex items-center gap-1.5 text-[12.5px] font-medium text-blue transition-[gap] duration-gesto ease-attio hover:gap-2.5"
+              >
+                Ver el detalle
+                <span>→</span>
+              </a>
             </div>
-          )}
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <KpiCard
-              label="Cirugías del día"
-              value={formatNumber(cirugiaTotal)}
-              hint={
-                autoCanceladas > 0
-                  ? `${fecha} · ${autoCanceladas} edición(es) no contada(s)`
-                  : fecha
-              }
-              icon={Scissors}
-            />
-            {estadosCirugia.map(([estado, n]) => (
-              <KpiCard
-                key={estado}
-                label={estado}
-                value={formatNumber(n)}
-                hint={
-                  cirugiaTotal > 0
-                    ? `${Math.round((n / cirugiaTotal) * 100)}% del día`
-                    : fecha
-                }
-                icon={ICONO_ESTADO[estado.toLowerCase()] ?? Scissors}
-              />
-            ))}
-          </div>
+          </Seccion>
+        ) : null}
 
-          {cirugiaTotal === 0 && (
-            <p className="mb-8 text-sm text-ink-3">
-              No hay cirugías programadas para el {fecha}.
+        {d.asistenciaError ? (
+          <Seccion retraso={200}>
+            <div className="flex items-start gap-3 rounded-xs border border-[#F2C744] bg-[#FEF8E7] p-4 text-[13px] text-[#8A6D00]">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span>{mensajeClaro(d.asistenciaError, "la asistencia del día")}</span>
+            </div>
+          </Seccion>
+        ) : null}
+
+        {partes.length > 0 ? (
+          <Seccion titulo="En qué se atendió" retraso={240}>
+            <BarraComposicion partes={partes} />
+          </Seccion>
+        ) : null}
+
+        {/* Las dos tablas bajo UN solo rótulo y UNA sola letra menuda.
+            Antes el mismo párrafo iba repetido palabra por palabra debajo de
+            cada una. */}
+        {d.bloques.length > 0 ? (
+          <Seccion titulo="Cuánto espera un paciente nuevo" retraso={300}>
+            {d.bloques.map((b, i) => (
+              // Mismo ancho tope que la tabla, para que el rótulo de la sede y
+              // la regla queden encima de sus propias columnas y no flotando
+              // al otro extremo de la pantalla.
+              <div key={b.titulo} className={`max-w-[640px] ${i > 0 ? "mt-7" : ""}`}>
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-[13px] font-medium text-ink">{b.titulo}</span>
+                  <span className="text-[11.5px] text-ink-3">{b.regla}</span>
+                </div>
+                <TablaEspera filas={b.filas} />
+              </div>
+            ))}
+
+            <p className="mt-5 max-w-[640px] text-[12px] leading-[18px] text-ink-3">
+              {d.oportunidad !== null ? (
+                <>
+                  De los{" "}
+                  <span className="font-cifra tabular-nums">
+                    {formatNumber(d.diasPrimera.length)}
+                  </span>{" "}
+                  pacientes de primera vez de hoy, la mitad esperó más de{" "}
+                  <span className="font-cifra tabular-nums">{conComa(d.oportunidad)}</span> días y
+                  la otra mitad menos
+                  {d.mismoDia > 0 ? (
+                    <>
+                      ; a <span className="font-cifra tabular-nums">{formatNumber(d.mismoDia)}</span>{" "}
+                      lo atendieron el mismo día que pidió
+                    </>
+                  ) : null}
+                  {sede === "1" && d.oportunidad > LIMITE_SEDE1 ? (
+                    <span className="text-[#C0392B]"> — más de 3 semanas</span>
+                  ) : null}
+                  {sede === "todas" ? ", mezclando las dos sedes" : ""}.{" "}
+                </>
+              ) : null}
+              Solo consultas de primera vez: los controles se agendan lejos a propósito. No se
+              muestran los servicios con menos de 3 pacientes en el día.
             </p>
-          )}
-        </>
-      )}
+          </Seccion>
+        ) : null}
+
+        {d.cirugiaError ? (
+          <Seccion titulo="Cirugía" retraso={360}>
+            <div className="flex items-start gap-3 rounded-xs border border-[#F2C744] bg-[#FEF8E7] p-4 text-[13px] text-[#8A6D00]">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span>{mensajeClaro(d.cirugiaError, "la programación de cirugía")}</span>
+            </div>
+          </Seccion>
+        ) : (
+          <Seccion titulo="Cirugía" retraso={360}>
+            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+              <span className="font-cifra text-[24px] font-medium tabular-nums tracking-[-0.015em] text-ink">
+                {formatNumber(d.cirugiaTotal)}
+              </span>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-ink-2">
+                {d.estadosCirugia.map(([estado, n]) => (
+                  <span key={estado}>
+                    <span className="font-cifra tabular-nums text-ink">{n}</span>{" "}
+                    {estado.toLowerCase()}
+                  </span>
+                ))}
+                {d.autoCanceladas > 0 ? (
+                  <span className="text-ink-3">
+                    {d.autoCanceladas} canceladas automáticamente, no cuentan
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            {d.cirugiaAviso ? (
+              <p className="mt-3 max-w-3xl text-[12px] leading-[18px] text-ink-3">
+                {d.cirugiaAviso}
+              </p>
+            ) : null}
+          </Seccion>
+        )}
+      </div>
     </div>
   );
 }
