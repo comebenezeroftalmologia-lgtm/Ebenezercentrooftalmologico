@@ -1,6 +1,5 @@
 import { requireModuloAccess } from "@/lib/auth";
 import { AlertTriangle } from "lucide-react";
-import { SingleDatePicker } from "@/components/SingleDatePicker";
 import { formatNumber } from "@/lib/text";
 import {
   calcularVentaDelDia,
@@ -8,30 +7,38 @@ import {
   LIMITE_SEDE1,
   type SedeFiltro,
 } from "@/lib/ventaDelDia";
-import {
-  EncabezadoPagina,
-  Titular,
-  FilaApoyo,
-  BarraComposicion,
-} from "@/components/eb";
+import { Tira, Seccion, TablaEspera, BarraComposicion, Controles } from "@/components/eb";
 
 /**
- * Venta del Día — versión nueva, en paralelo.
+ * Venta del Día — en paralelo. La de siempre sigue intacta en /venta-del-dia.
  *
- * Vive en /venta-del-dia/nueva y la de siempre queda intacta en
- * /venta-del-dia. La idea es que Faber pueda abrir las dos, compararlas y
- * decidir; si esta no sirve, se borra y no pasó nada.
+ * Los números NO se calculan aquí: salen de calcularVentaDelDia(), la misma
+ * función que usa la de siempre. Por construcción las dos dan lo mismo.
  *
- * Lo importante: los números NO se calculan aquí. Salen de
- * calcularVentaDelDia(), la misma función que usa la página de siempre. Por
- * construcción las dos tienen que dar lo mismo — un rediseño que cambie una
- * cifra no es un rediseño, es un daño.
+ * ──────────────────────────────────────────────────────────────────────────
+ * DE DÓNDE SALE ESTE ASPECTO
  *
- * Lo que sí cambia:
- *   · una cifra manda y el resto queda en voz baja
- *   · las cifras se cuentan al entrar
- *   · sin cajitas: se separa con aire, no con bordes
- *   · el azul de Ebenezer solo donde significa algo
+ * Faber escogió Attio como referencia ("me gusta, y más cómo se mueven"), así
+ * que el 06-10-2026 se midió attio.com directamente —no se copió de memoria—
+ * y de ahí salieron estas reglas:
+ *
+ *   · NO HAY CAJAS. Attio casi no dibuja bordes: separa con una línea de 1px
+ *     y con aire. Las cuatro tarjetas con sombra que había antes eran lo que
+ *     hacía ver la pantalla "de plantilla".
+ *   · Rótulos de 11px en mayúsculas espaciadas; cifras de 24-40px con
+ *     interletrado negativo. Attio usa -0,01em en lo grande: apretar la letra
+ *     es lo que hace que se vea caro.
+ *   · Esquinas de 4px, no de 12. Lo redondito se ve amable; lo recto, serio.
+ *   · El color solo cuando significa. En Attio el acento aparece dos veces en
+ *     toda la pantalla. Aquí el azul de Ebenezer queda en el enlace y poco
+ *     más, y el rojo únicamente cuando un servicio se pasó del plazo.
+ *   · Movimiento: curva cubic-bezier(0.2,0,0,1) —la de ellos—, 150 ms para lo
+ *     micro, 300 ms para lo normal. Los bloques suben 8px, no 10 ni 20: poca
+ *     distancia y frenada larga. Se siente que el producto responde, no que
+ *     la página se está armando.
+ *   · Cero párrafos explicando. Lo que antes era prosa ahora es rótulo, y la
+ *     letra menuda va UNA vez al pie, no repetida debajo de cada tabla.
+ * ──────────────────────────────────────────────────────────────────────────
  */
 
 export const dynamic = "force-dynamic";
@@ -42,9 +49,13 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Del más oscuro al más claro: la categoría más grande es la más oscura,
- *  así la barra se lee sola sin tener que mirar la leyenda. */
+/** Del más oscuro al más claro: la categoría más grande es la más oscura, así
+ *  la barra se lee sola sin mirar la leyenda. */
 const TONOS = ["#0B1633", "#3B4F8D", "#7D88B0", "#AEB6CE", "#D5DAE6", "#EDEFF5"];
+
+/** Decimales con coma, como se escribe en Colombia. Antes salía "58.5 días". */
+const conComa = (n: number) =>
+  n.toLocaleString("es-CO", { maximumFractionDigits: 1 });
 
 export default async function VentaDelDiaNueva({
   searchParams,
@@ -60,24 +71,35 @@ export default async function VentaDelDiaNueva({
   const d = await calcularVentaDelDia({ fecha, sede });
 
   const encabezado = (
-    <EncabezadoPagina
-      seccion="Tableros · Operación"
-      titulo="Venta del Día"
-      acciones={<SingleDatePicker fecha={fecha} sede={sede} />}
-    />
+    <header className="mb-8 flex flex-wrap items-end justify-between gap-5 pb-6">
+      <div className="animate-asomar">
+        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.07em] text-ink-3">
+          Tableros · Operación
+        </div>
+        <h1 className="text-[28px] font-medium leading-none tracking-[-0.02em] text-ink">
+          Venta del Día
+        </h1>
+      </div>
+      <div className="animate-asomar" style={{ animationDelay: "60ms" }}>
+        <Controles fecha={fecha} sede={sede} />
+      </div>
+    </header>
   );
 
   if (d.fetchError) {
     return (
       <div>
         {encabezado}
-        <div className="flex items-start gap-3 rounded-sm border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
+        <div className="flex items-start gap-3 rounded-xs border border-[#F2C744] bg-[#FEF8E7] p-4 text-[13px] text-[#8A6D00]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
           <span>No se pudo consultar SISMA para el {fecha}: {d.fetchError}</span>
         </div>
       </div>
     );
   }
+
+  const cat = (nombre: string) =>
+    d.porCategoria.find((c) => c.stage === nombre)?.count ?? 0;
 
   const partes = d.porCategoria.map((c, i) => ({
     nombre: c.stage,
@@ -86,214 +108,190 @@ export default async function VentaDelDiaNueva({
   }));
 
   return (
-    <div>
+    <div className="pb-16">
       {encabezado}
 
-      <Titular
-        rotulo="Pacientes atendidos hoy"
-        valor={d.asistidas}
-        detalle={
-          d.hayAgendado ? (
-            <>
-              de <b className="font-cifra tabular-nums text-ink">{formatNumber(d.agendaDia)}</b>{" "}
-              agendadas · {formatNumber(d.programadas)} quedaron sin atender
-              {d.pctAgenda !== null ? (
-                <span className="ml-2 inline-flex rounded-xs bg-blue-10 px-2 py-0.5 text-[12.5px] font-semibold text-blue">
-                  {d.pctAgenda}% atendido
-                </span>
-              ) : null}
-            </>
-          ) : sede === "2" ? (
-            "Mutual · Sede 2. Lo agendado no se puede separar por sede: SISMA no manda ese dato."
-          ) : (
-            "Particular, Ecopetrol y prepagadas · Sede 1. Lo agendado no se puede separar por sede."
-          )
-        }
-      />
-
-      <FilaApoyo
+      {/* La tira. Antes esto eran cuatro tarjetas con borde y sombra. */}
+      <Tira
         datos={[
           {
+            rotulo: "Atendidos hoy",
+            valor: d.asistidas,
+            pie: d.hayAgendado
+              ? `${formatNumber(d.agendaDia)} agendados`
+              : sede === "2"
+                ? "Mutual · Sede 2"
+                : "Particular, Ecopetrol y prepagadas",
+          },
+          ...(d.hayAgendado
+            ? [
+                { rotulo: "Sin atender", valor: d.programadas, pie: "del agendamiento del día" },
+                ...(d.pctAgenda !== null
+                  ? [
+                      {
+                        rotulo: "Asistencia",
+                        valor: d.pctAgenda,
+                        decimales: 1,
+                        sufijo: "%",
+                        pie: "de lo agendado",
+                      },
+                    ]
+                  : []),
+              ]
+            : []),
+          {
             rotulo: "Primera vez",
-            valor: d.porCategoria.find((c) => c.stage === "Primera Vez")?.count ?? 0,
-            pie: `${Math.round(((d.porCategoria.find((c) => c.stage === "Primera Vez")?.count ?? 0) / Math.max(1, d.asistidas)) * 100)}% de lo atendido`,
+            valor: cat("Primera Vez"),
+            pie: `${Math.round((cat("Primera Vez") / Math.max(1, d.asistidas)) * 100)}% de lo atendido`,
           },
           {
             rotulo: "Control",
-            valor: d.porCategoria.find((c) => c.stage === "Control")?.count ?? 0,
-            pie: `${Math.round(((d.porCategoria.find((c) => c.stage === "Control")?.count ?? 0) / Math.max(1, d.asistidas)) * 100)}% de lo atendido`,
+            valor: cat("Control"),
+            pie: `${Math.round((cat("Control") / Math.max(1, d.asistidas)) * 100)}% de lo atendido`,
           },
           {
-            rotulo: "Pre y pos-quirúrgicas",
+            rotulo: "Pre y pos-qx",
             valor: d.preQuirurgicas + d.posQuirurgicos,
             pie: `${d.preQuirurgicas} antes · ${d.posQuirurgicos} después`,
           },
         ]}
       />
 
-      {/* El cierre de Frecuencias va aparte y rotulado: es otra fuente
-          midiendo otra cosa. Juntarlo con el número de arriba confundía. */}
-      {d.diaTipico && d.pctTipico !== null && d.hayAgendado ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-5 rounded-sm border border-line border-l-[3px] border-l-blue bg-white px-4 py-3 text-[13.5px] text-ink-2 animate-entrar">
-          <div>
-            En <b className="text-ink">Frecuencias</b>, el cierre facturado de hoy es de{" "}
-            <b className="font-cifra tabular-nums text-ink">{formatNumber(d.diaTipico.total)}</b>{" "}
-            atenciones. Un {d.nombreDia} típico cierra en{" "}
-            <b className="font-cifra tabular-nums text-ink">{formatNumber(d.diaTipico.tipico ?? 0)}</b>{" "}
-            —{" "}
-            <b className={d.pctTipico >= 100 ? "text-green" : "text-[#B3541E]"}>
-              {d.pctTipico}%
-            </b>
-            .
-          </div>
-          <a
-            href={`/frecuencias?dia=${fecha}`}
-            className="group inline-flex items-center gap-1.5 text-[13px] font-medium text-blue transition-[gap] duration-gesto ease-eb-entrada hover:gap-2.5"
-          >
-            Ver el detalle <span>→</span>
-          </a>
-        </div>
-      ) : null}
-
-      {d.asistenciaError ? (
-        <div className="mb-5 flex items-start gap-3 rounded-sm border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>{mensajeClaro(d.asistenciaError, "la asistencia del día")}</span>
-        </div>
-      ) : null}
-
-      {partes.length > 0 ? (
-        <section className="mb-6 rounded-md border border-line bg-white p-5 animate-entrar">
-          <h2 className="mb-3.5 text-[12px] font-semibold tracking-overline text-ink-3">
-            EN QUÉ SE ATENDIÓ
-          </h2>
-          <BarraComposicion partes={partes} />
-        </section>
-      ) : null}
-
-      {/* La espera, dicha como una frase: "mediana" es jerga. */}
-      {d.oportunidad !== null ? (
-        <div className="mb-5 rounded-sm border border-line bg-white px-4 py-3 text-sm text-ink-2 animate-entrar">
-          Hoy se atendieron{" "}
-          <b className="font-cifra tabular-nums text-ink">{formatNumber(d.diasPrimera.length)}</b>{" "}
-          pacientes <b className="text-ink">por primera vez</b>. La mitad de ellos esperó más
-          de <b className="font-cifra tabular-nums text-ink">{d.oportunidad}</b>{" "}
-          {d.oportunidad === 1 ? "día" : "días"} entre que pidió la cita y lo atendieron, y la
-          otra mitad esperó menos.{" "}
-          {d.mismoDia > 0 ? (
-            <>
-              A <b className="font-cifra tabular-nums text-ink">{formatNumber(d.mismoDia)}</b> lo
-              atendieron el mismo día que pidió.
-            </>
-          ) : (
-            <>A ninguno lo atendieron el mismo día que pidió.</>
-          )}
-          {sede === "1" && d.oportunidad > LIMITE_SEDE1 ? (
-            <span className="font-semibold text-[#C0392B]"> Eso es más de 3 semanas.</span>
-          ) : null}
-          {/* Sin esta aclaración el número de arriba engaña: con las dos sedes
-              juntas, Mutual —que tiene plazos de 50 y 90 días por contrato—
-              arrastra el promedio y hace ver mal a la Sede 1, que va en 5. */}
-          {sede === "todas" ? (
-            <span className="text-ink-3">
-              {" "}
-              Mezcla las dos sedes; abajo va cada una con su propio plazo.
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-
-      {d.bloques.map((b) => (
-        <section
-          key={b.titulo}
-          className="mb-5 overflow-hidden rounded-md border border-line bg-white animate-entrar"
-        >
-          <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-navy">
-            Cuánto espera un paciente nuevo · {b.titulo}
-            <span className="ml-2 font-normal text-ink-3">{b.regla}</span>
-          </div>
-          <table className="w-full text-sm">
-            <tbody>
-              {b.filas.map((x) => {
-                // La barra se mide contra el límite de esa fila, no contra la
-                // espera más larga: así "llena" significa "en el límite", y se
-                // pueden comparar servicios con plazos distintos.
-                const alerta = x.espera > x.limite;
-                const ancho = Math.max(2, Math.min(100, Math.round((x.espera / x.limite) * 100)));
-                return (
-                  <tr
-                    key={x.servicio}
-                    className="border-t border-line-2 transition-colors duration-200 hover:bg-ebbg"
-                  >
-                    <td className="px-4 py-2 text-ink-2">{x.servicio}</td>
-                    <td className="w-20 px-2 py-2 text-right font-cifra text-[12.5px] tabular-nums text-ink-3">
-                      {formatNumber(x.n)}
-                    </td>
-                    <td className="w-48 px-2 py-2">
-                      <div className="h-2 w-full rounded-pill bg-ebbg">
-                        <div
-                          className={`h-2 rounded-pill transition-[width] duration-abrir ease-eb-entrada ${
-                            alerta ? "bg-[#C0392B]" : "bg-green"
-                          }`}
-                          style={{ width: `${ancho}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td
-                      className={`w-36 whitespace-nowrap px-4 py-2 text-right font-cifra font-semibold tabular-nums ${
-                        alerta ? "text-[#C0392B]" : "text-green"
-                      }`}
-                    >
-                      {x.espera} {x.espera === 1 ? "día" : "días"}
-                      <span className="ml-1 font-normal text-ink-3">de {x.limite}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="border-t border-line px-4 py-2 text-xs text-ink-3">
-            Solo consultas de primera vez; los controles no cuentan porque se agendan lejos a
-            propósito. La cifra es la espera de la mitad de los pacientes de ese servicio, y al
-            lado el plazo con el que se compara. No se muestran los servicios con menos de 3
-            pacientes en el día.
-          </div>
-        </section>
-      ))}
-
-      {d.cirugiaError ? (
-        <div className="mb-5 flex items-start gap-3 rounded-sm border border-[#F2C744] bg-[#FEF8E7] p-4 text-sm text-[#8A6D00]">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>{mensajeClaro(d.cirugiaError, "la programación de cirugía")}</span>
-        </div>
-      ) : (
-        <section className="mb-5 rounded-md border border-line bg-white p-5 animate-entrar">
-          <h2 className="mb-3.5 text-[12px] font-semibold tracking-overline text-ink-3">
-            CIRUGÍA
-          </h2>
-          <div className="flex flex-wrap items-baseline gap-9">
-            <span className="font-cifra text-[25px] font-medium tabular-nums">
-              {formatNumber(d.cirugiaTotal)}
-            </span>
-            <div className="flex flex-wrap gap-6 text-[13px] text-ink-2">
-              {d.estadosCirugia.map(([estado, n]) => (
-                <span key={estado}>
-                  <b className="font-cifra tabular-nums text-ink">{n}</b>{" "}
-                  {estado.toLowerCase()}
+      <div className="mt-9">
+        {/* El cierre de Frecuencias: una línea, no una tarjeta con borde azul. */}
+        {d.diaTipico && d.pctTipico !== null && d.hayAgendado ? (
+          <Seccion titulo="Cierre en Frecuencias" retraso={180}>
+            <div className="flex flex-wrap items-baseline justify-between gap-4">
+              <div className="flex flex-wrap items-baseline gap-x-2 text-[13.5px] text-ink-2">
+                <span className="font-cifra text-[20px] font-medium tabular-nums tracking-[-0.015em] text-ink">
+                  {formatNumber(d.diaTipico.total)}
                 </span>
-              ))}
-              {d.autoCanceladas > 0 ? (
-                <span className="text-ink-3">
-                  {d.autoCanceladas} canceladas automáticamente, no cuentan
+                <span>
+                  atenciones facturadas · un {d.nombreDia} típico cierra en{" "}
+                  <span className="font-cifra tabular-nums text-ink">
+                    {formatNumber(d.diaTipico.tipico ?? 0)}
+                  </span>
                 </span>
-              ) : null}
+                <span
+                  className={`font-cifra font-medium tabular-nums ${
+                    d.pctTipico >= 100 ? "text-green" : "text-[#B3541E]"
+                  }`}
+                >
+                  {d.pctTipico}%
+                </span>
+              </div>
+              <a
+                href={`/frecuencias?dia=${fecha}`}
+                className="group inline-flex items-center gap-1.5 text-[12.5px] font-medium text-blue transition-[gap] duration-gesto ease-attio hover:gap-2.5"
+              >
+                Ver el detalle
+                <span>→</span>
+              </a>
             </div>
-          </div>
-          {d.cirugiaAviso ? (
-            <p className="mt-3 text-xs text-ink-3">{d.cirugiaAviso}</p>
-          ) : null}
-        </section>
-      )}
+          </Seccion>
+        ) : null}
+
+        {d.asistenciaError ? (
+          <Seccion retraso={200}>
+            <div className="flex items-start gap-3 rounded-xs border border-[#F2C744] bg-[#FEF8E7] p-4 text-[13px] text-[#8A6D00]">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span>{mensajeClaro(d.asistenciaError, "la asistencia del día")}</span>
+            </div>
+          </Seccion>
+        ) : null}
+
+        {partes.length > 0 ? (
+          <Seccion titulo="En qué se atendió" retraso={240}>
+            <BarraComposicion partes={partes} />
+          </Seccion>
+        ) : null}
+
+        {/* Las dos tablas bajo UN solo rótulo y UNA sola letra menuda.
+            Antes el mismo párrafo iba repetido palabra por palabra debajo de
+            cada una. */}
+        {d.bloques.length > 0 ? (
+          <Seccion
+            titulo="Cuánto espera un paciente nuevo"
+            derecha={
+              <span>
+                días esperados <span className="text-ink-3/60">/</span> plazo
+              </span>
+            }
+            retraso={300}
+          >
+            {d.bloques.map((b, i) => (
+              <div key={b.titulo} className={i > 0 ? "mt-7" : ""}>
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-[13px] font-medium text-ink">{b.titulo}</span>
+                  <span className="text-[12px] text-ink-3">{b.regla}</span>
+                </div>
+                <TablaEspera filas={b.filas} />
+              </div>
+            ))}
+
+            <p className="mt-5 max-w-3xl text-[12px] leading-[18px] text-ink-3">
+              {d.oportunidad !== null ? (
+                <>
+                  De los{" "}
+                  <span className="font-cifra tabular-nums">
+                    {formatNumber(d.diasPrimera.length)}
+                  </span>{" "}
+                  pacientes de primera vez de hoy, la mitad esperó más de{" "}
+                  <span className="font-cifra tabular-nums">{conComa(d.oportunidad)}</span> días y
+                  la otra mitad menos
+                  {d.mismoDia > 0 ? (
+                    <>
+                      ; a <span className="font-cifra tabular-nums">{formatNumber(d.mismoDia)}</span>{" "}
+                      lo atendieron el mismo día que pidió
+                    </>
+                  ) : null}
+                  {sede === "1" && d.oportunidad > LIMITE_SEDE1 ? (
+                    <span className="text-[#C0392B]"> — más de 3 semanas</span>
+                  ) : null}
+                  {sede === "todas" ? ", mezclando las dos sedes" : ""}.{" "}
+                </>
+              ) : null}
+              Solo consultas de primera vez: los controles se agendan lejos a propósito. No se
+              muestran los servicios con menos de 3 pacientes en el día.
+            </p>
+          </Seccion>
+        ) : null}
+
+        {d.cirugiaError ? (
+          <Seccion titulo="Cirugía" retraso={360}>
+            <div className="flex items-start gap-3 rounded-xs border border-[#F2C744] bg-[#FEF8E7] p-4 text-[13px] text-[#8A6D00]">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span>{mensajeClaro(d.cirugiaError, "la programación de cirugía")}</span>
+            </div>
+          </Seccion>
+        ) : (
+          <Seccion titulo="Cirugía" retraso={360}>
+            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+              <span className="font-cifra text-[24px] font-medium tabular-nums tracking-[-0.015em] text-ink">
+                {formatNumber(d.cirugiaTotal)}
+              </span>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-ink-2">
+                {d.estadosCirugia.map(([estado, n]) => (
+                  <span key={estado}>
+                    <span className="font-cifra tabular-nums text-ink">{n}</span>{" "}
+                    {estado.toLowerCase()}
+                  </span>
+                ))}
+                {d.autoCanceladas > 0 ? (
+                  <span className="text-ink-3">
+                    {d.autoCanceladas} canceladas automáticamente, no cuentan
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            {d.cirugiaAviso ? (
+              <p className="mt-3 max-w-3xl text-[12px] leading-[18px] text-ink-3">
+                {d.cirugiaAviso}
+              </p>
+            ) : null}
+          </Seccion>
+        )}
+      </div>
     </div>
   );
 }
