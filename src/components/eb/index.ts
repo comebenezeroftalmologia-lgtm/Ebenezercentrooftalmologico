@@ -24,3 +24,7 @@ export { Segmentado } from "./Segmentado";
 export { Titular } from "./Titular";
 export { FilaApoyo } from "./FilaApoyo";
 export { BarraComposicion } from "./BarraComposicion";
+export { Tira } from "./Tira";
+export { Seccion } from "./Seccion";
+export { TablaEspera } from "./TablaEspera";
+export { Controles } from "./Controles";
