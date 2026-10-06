@@ -191,6 +191,15 @@ export default async function VentaDelDiaNueva({
           {sede === "1" && d.oportunidad > LIMITE_SEDE1 ? (
             <span className="font-semibold text-[#C0392B]"> Eso es más de 3 semanas.</span>
           ) : null}
+          {/* Sin esta aclaración el número de arriba engaña: con las dos sedes
+              juntas, Mutual —que tiene plazos de 50 y 90 días por contrato—
+              arrastra el promedio y hace ver mal a la Sede 1, que va en 5. */}
+          {sede === "todas" ? (
+            <span className="text-ink-3">
+              {" "}
+              Mezcla las dos sedes; abajo va cada una con su propio plazo.
+            </span>
+          ) : null}
         </div>
       ) : null}
 
