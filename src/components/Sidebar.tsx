@@ -55,21 +55,39 @@ const ICONOS: Record<Modulo, LucideIcon> = {
 
 const ANALYTICS_ITEMS = MODULOS.filter((m) => m.grupo === "Analytics");
 
+/**
+ * Nombre corto, SOLO para la barra.
+ *
+ * "Generación de Clientes Potenciales" no cabe en 216px y salía cortado con
+ * puntos suspensivos, que es peor que abreviar: no se sabe qué dice. El
+ * nombre oficial no se toca —sigue igual en /usuarios, en Inicio y en el
+ * título de cada página— y aquí queda como tooltip al pasar el cursor.
+ */
+const CORTO: Partial<Record<Modulo, string>> = {
+  leads: "Clientes Potenciales",
+  no_quirurgicos: "Ord. No Quirúrgicos",
+  quirurgicos: "Ord. Quirúrgicos",
+};
+
 /** Una fila de la barra. Una sola forma para todas, así nada se desalinea. */
 function Fila({
   href,
   icono: Icono,
   texto,
+  completo,
   activo,
 }: {
   href: string;
   icono: LucideIcon;
   texto: string;
+  /** El nombre completo, para el tooltip cuando el de la barra va abreviado. */
+  completo?: string;
   activo: boolean;
 }) {
   return (
     <Link
       href={href}
+      title={completo && completo !== texto ? completo : undefined}
       className={`group relative flex items-center gap-2.5 rounded-xs px-2.5 py-[7px] text-[13px] transition-colors duration-micro ease-attio ${
         activo
           ? "bg-blue-10 font-medium text-blue"
@@ -104,12 +122,15 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
         href="/"
         className="flex h-[62px] shrink-0 items-center gap-2.5 border-b border-line-2 px-4"
       >
+        {/* Se pide al doble del tamaño en que se ve: en pantallas densas, un
+            logo pedido a 34px y mostrado a 34px sale borroso. */}
         <Image
           src="/brand/logo/logo-oscuro.png"
           alt="Ebenezer"
-          width={34}
-          height={34}
-          className="h-[34px] w-[34px] object-contain"
+          width={72}
+          height={72}
+          quality={95}
+          className="h-[30px] w-[30px] object-contain"
           priority
         />
         <span className="text-[13.5px] font-medium tracking-[-0.01em] text-ink">
@@ -130,7 +151,8 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                 key={m.slug}
                 href={m.href}
                 icono={ICONOS[m.slug]}
-                texto={m.label}
+                texto={CORTO[m.slug] ?? m.label}
+                completo={m.label}
                 activo={pathname === m.href}
               />
             ))}
