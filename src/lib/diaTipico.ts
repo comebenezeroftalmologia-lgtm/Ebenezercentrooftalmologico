@@ -64,20 +64,31 @@ export async function traerDiaTipico(fecha: string): Promise<DiaTipico | null> {
   return datos?.dias?.[fecha] ?? null;
 }
 
+/** Hoy en Colombia. El servidor corre en UTC: despues de las 7 de la noche
+ *  alla ya es el dia siguiente, y sin esto el corte se iria un dia. */
+function hoyColombia(): string {
+  const d = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
- * El último día que tiene datos, con su fecha.
+ * El último día CERRADO, con su fecha. Nunca el de hoy.
  *
- * Inicio no puede pedir "hoy" a secas: la facturación de hoy casi nunca está
- * cerrada todavía, y a primera hora el archivo ni siquiera trae la fecha de
- * hoy. Pedir hoy daría una portada en blanco justo cuando más se mira.
- * Se toma el día más reciente que exista y se dice cuál es, para que nadie
- * confunda el cierre de ayer con el de hoy.
+ * Por qué nunca hoy: la facturación del día en curso va a medias. Se vio en
+ * la portada marcando "125 atenciones · un miércoles típico cierra en 336 ·
+ * 37%" a media mañana. Ese 37% no significa nada —el día apenas empieza—
+ * pero en rojo y en grande parece una alarma. Un número que asusta sin
+ * motivo es peor que no mostrar nada.
+ *
+ * Así que se toma el último día ANTERIOR a hoy: ese sí cerró y sí se puede
+ * comparar contra un día igual de la semana.
  */
 export async function traerUltimoDia(): Promise<(DiaTipico & { fecha: string }) | null> {
   const datos = await traerDiasTipicos();
   const dias = datos?.dias;
   if (!dias) return null;
-  const fechas = Object.keys(dias).sort();
+  const hoy = hoyColombia();
+  const fechas = Object.keys(dias).filter((f) => f < hoy).sort();
   const f = fechas[fechas.length - 1];
   return f ? { ...dias[f], fecha: f } : null;
 }
