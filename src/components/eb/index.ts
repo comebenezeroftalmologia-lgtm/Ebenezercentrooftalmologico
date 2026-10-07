@@ -28,3 +28,4 @@ export { Tira } from "./Tira";
 export { Seccion } from "./Seccion";
 export { TablaEspera } from "./TablaEspera";
 export { Controles } from "./Controles";
+export { Chispa } from "./Chispa";
