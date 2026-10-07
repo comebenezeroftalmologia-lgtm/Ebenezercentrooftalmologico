@@ -32,22 +32,30 @@ export function Chispa({
     return () => window.clearTimeout(t);
   }, []);
 
-  // El alto se reparte contra el día típico de cada uno. Se deja techo en
-  // 140% para que un día excepcional no aplaste visualmente a los demás.
+  // EN PIXELES, NO EN PORCENTAJE.
+  // Con porcentaje las barras salían invisibles: un alto en % necesita que
+  // el padre tenga altura resuelta, y la columna la sacaba de su contenido
+  // —que era la propia barra—. Circular: todas medían cero. En píxeles no
+  // depende de nadie.
+  const ALTO = 74;
   const alto = (d: { total: number; tipico: number | null }) => {
-    if (!d.tipico || d.tipico <= 0) return 0;
-    return Math.max(4, Math.min(100, (d.total / d.tipico) * 71));
+    if (!d.tipico || d.tipico <= 0) return 3;
+    // Tope en 130% de lo típico, para que un día excepcional no aplaste
+    // visualmente a los demás.
+    const r = Math.min(d.total / d.tipico, 1.3);
+    return Math.max(3, Math.round((r / 1.3) * ALTO));
   };
 
   return (
-    <div className="flex items-end gap-[6px]" style={{ height: 74 }}>
+    <div className="flex items-end gap-[6px]" style={{ height: ALTO }}>
       {dias.map((d, i) => {
         const pct = d.tipico && d.tipico > 0 ? Math.round((d.total / d.tipico) * 100) : null;
         const bajo = pct !== null && pct < 85;
         return (
           <div
             key={d.fecha}
-            className="group relative flex flex-1 flex-col justify-end"
+            className="group flex flex-1 items-end"
+            style={{ height: ALTO }}
             title={`${d.etiqueta}: ${d.total.toLocaleString("es-CO")} atenciones${
               pct !== null ? ` · ${pct}% de un día igual` : ""
             }`}
@@ -57,7 +65,7 @@ export function Chispa({
                 bajo ? "bg-[#D9A69A] group-hover:bg-[#C0392B]" : "bg-navy-20 group-hover:bg-navy"
               }`}
               style={{
-                height: abierto ? `${alto(d)}%` : "0%",
+                height: abierto ? alto(d) : 0,
                 transitionDelay: `${i * 35}ms`,
               }}
             />
