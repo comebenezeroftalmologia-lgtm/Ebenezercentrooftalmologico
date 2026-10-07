@@ -63,3 +63,21 @@ export async function traerDiaTipico(fecha: string): Promise<DiaTipico | null> {
   const datos = await traerDiasTipicos();
   return datos?.dias?.[fecha] ?? null;
 }
+
+/**
+ * El último día que tiene datos, con su fecha.
+ *
+ * Inicio no puede pedir "hoy" a secas: la facturación de hoy casi nunca está
+ * cerrada todavía, y a primera hora el archivo ni siquiera trae la fecha de
+ * hoy. Pedir hoy daría una portada en blanco justo cuando más se mira.
+ * Se toma el día más reciente que exista y se dice cuál es, para que nadie
+ * confunda el cierre de ayer con el de hoy.
+ */
+export async function traerUltimoDia(): Promise<(DiaTipico & { fecha: string }) | null> {
+  const datos = await traerDiasTipicos();
+  const dias = datos?.dias;
+  if (!dias) return null;
+  const fechas = Object.keys(dias).sort();
+  const f = fechas[fechas.length - 1];
+  return f ? { ...dias[f], fecha: f } : null;
+}
