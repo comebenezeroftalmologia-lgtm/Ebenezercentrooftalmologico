@@ -9,13 +9,13 @@ const useAntesDePintar =
 
 /** Rutas donde se sabe de antemano que SÍ va a haber panel. En esas se
  *  reserva el ancho desde el primer dibujo, para que el contenido no se
- *  corra 232px cuando el panel aparezca. Sin esto hay un brinco. */
+ *  corra cuando el panel aparezca. Sin esto hay un brinco. */
 const SIEMPRE_TIENE_PANEL = new Set(["/frecuencias"]);
 
 /**
  * El panel de secciones, a la izquierda.
  *
- * La regla que lo gobierna: NO INVENTA NADA. Lee del propio contenido qué
+ * LA REGLA QUE LO GOBIERNA: NO INVENTA NADA. Lee del propio contenido qué
  * secciones existen y las muestra; si no encuentra al menos dos, no se
  * dibuja. Un panel con enlaces que no llevan a ninguna parte es peor que
  * no tener panel.
@@ -32,13 +32,97 @@ const SIEMPRE_TIENE_PANEL = new Set(["/frecuencias"]);
  *     se arma la lista con ellos. Al hacer clic, se desplaza hasta el
  *     encabezado. Tampoco hay lista escrita a mano en ningún lado.
  *
- * El tablero se sirve desde /api/frecuencias/tablero, o sea del mismo
- * dominio, así que se puede leer su contenido directamente. Si algún día
- * dejara de serlo, el bloque try lo absorbe y el panel simplemente no
- * aparece: la página sigue funcionando igual.
+ * LO QUE SÍ SE DECIDE AQUÍ es cómo se agrupan y qué ícono lleva cada una.
+ * Eso es presentación, no contenido: diez renglones seguidos no se leen,
+ * cuatro bloques de dos o tres sí. Una sección que no esté en la tabla de
+ * abajo igual aparece —al final, sin grupo y con un ícono neutro—, así
+ * que agregar una pestaña nueva en el motor nunca la deja por fuera.
  */
 
 type Seccion = { id: string; texto: string };
+
+/** Para comparar sin que tilde o mayúscula dañe la coincidencia. */
+const llave = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const GRUPOS = ["VISIÓN GENERAL", "ANÁLISIS", "SEGMENTACIÓN", "FACTURACIÓN"] as const;
+type Grupo = (typeof GRUPOS)[number];
+
+/** Dibujos de línea, del mismo trazo, para que el riel se lea parejo. */
+const TRAZO: Record<string, JSX.Element> = {
+  tabla: (
+    <>
+      <rect x="2.5" y="3" width="15" height="14" rx="2" />
+      <path d="M2.5 8h15M8 8v9" />
+    </>
+  ),
+  barras: <path d="M3 16V9M8 16V4M13 16v-5M18 16V7" />,
+  linea: (
+    <>
+      <path d="M2.5 13.5l4.5-5 3.5 3 6.5-7.5" />
+      <path d="M2.5 17h15" />
+    </>
+  ),
+  rejilla: (
+    <>
+      <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
+      <path d="M2.5 8h15M2.5 12h15M11 8v8.5" />
+    </>
+  ),
+  persona: (
+    <>
+      <circle cx="10" cy="6.5" r="3" />
+      <path d="M3.8 17c.6-3.3 3.1-5 6.2-5s5.6 1.7 6.2 5" />
+    </>
+  ),
+  lupa: (
+    <>
+      <circle cx="9" cy="9" r="5.5" />
+      <path d="M13.2 13.2L17.5 17.5" />
+    </>
+  ),
+  escudo: <path d="M10 2.5l7 3.2v4.6c0 3.8-2.9 6.4-7 7.2-4.1-.8-7-3.4-7-7.2V5.7z" />,
+  diana: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <circle cx="10" cy="10" r="2.6" />
+    </>
+  ),
+  balanza: (
+    <>
+      <path d="M10 3v14M4 7h12" />
+      <path d="M4 7l-2 5h4zM16 7l-2 5h4z" />
+    </>
+  ),
+  hoja: (
+    <>
+      <path d="M5 2.5h7l3.5 3.5v11a1 1 0 01-1 1H5a1 1 0 01-1-1v-13a1 1 0 011-1z" />
+      <path d="M11.5 2.5V6H15" />
+      <path d="M7 11h6M7 14h4" />
+    </>
+  ),
+  punto: <circle cx="10" cy="10" r="3.2" />,
+};
+
+/** Dónde va cada sección y con qué dibujo. Lo que no esté aquí no se
+ *  pierde: cae al final, sin grupo y con un punto. */
+const MAPA: Record<string, { grupo: Grupo; icono: keyof typeof TRAZO }> = {
+  "resumen comparativo": { grupo: "VISIÓN GENERAL", icono: "tabla" },
+  "comparativo anual": { grupo: "VISIÓN GENERAL", icono: "barras" },
+  "tendencia mensual": { grupo: "VISIÓN GENERAL", icono: "linea" },
+  "detalle por empresa": { grupo: "ANÁLISIS", icono: "rejilla" },
+  medicos: { grupo: "ANÁLISIS", icono: "persona" },
+  "buscar servicio": { grupo: "ANÁLISIS", icono: "lupa" },
+  prepagadas: { grupo: "SEGMENTACIÓN", icono: "escudo" },
+  "diagnostica y apoyo": { grupo: "SEGMENTACIÓN", icono: "diana" },
+  "cobrable vs no": { grupo: "FACTURACIÓN", icono: "balanza" },
+  "contrato mutual": { grupo: "FACTURACIÓN", icono: "hoja" },
+};
 
 export function PanelSecciones() {
   const pathname = usePathname();
@@ -76,8 +160,9 @@ export function PanelSecciones() {
     };
 
     const leerEncabezados = (): boolean => {
-      const hs = Array.from(document.querySelectorAll<HTMLElement>("main h2"))
-        .filter((h) => (h.textContent || "").trim().length > 1);
+      const hs = Array.from(document.querySelectorAll<HTMLElement>("main h2")).filter(
+        (h) => (h.textContent || "").trim().length > 1,
+      );
       if (hs.length < 2) return false;
       if (!vivo) return true;
       setSecs(
@@ -105,8 +190,7 @@ export function PanelSecciones() {
     probar();
 
     // Y además se engancha al momento exacto en que el iframe termina de
-    // cargar, que es cuando sus pestañas existen por primera vez. Así la
-    // fila de adentro se apaga en ese mismo instante y no alcanza a verse.
+    // cargar, que es cuando sus pestañas existen por primera vez.
     const f = document.querySelector("iframe");
     const alCargar = () => leerIframe();
     if (f && pathname === "/frecuencias") f.addEventListener("load", alCargar);
@@ -115,7 +199,6 @@ export function PanelSecciones() {
       vivo = false;
       if (t) window.clearTimeout(t);
       if (f) f.removeEventListener("load", alCargar);
-      // Al salir de la página se le devuelven las pestañas al tablero.
       try {
         document
           .querySelector("iframe")
@@ -148,9 +231,6 @@ export function PanelSecciones() {
     setTitulo((h1?.textContent || "").trim());
   }, [pathname, secs.length]);
 
-  // Si todavia no hay secciones pero la ruta siempre las tiene, se dibuja
-  // el panel VACIO: ocupa su ancho desde el primer momento y el contenido
-  // no se corre cuando las secciones lleguen.
   const reservar = SIEMPRE_TIENE_PANEL.has(pathname);
   if (secs.length < 2 && !reservar) return null;
 
@@ -170,35 +250,107 @@ export function PanelSecciones() {
     setActiva(s.id);
   };
 
+  // Se reparten en bloques respetando el orden del tablero dentro de cada
+  // uno. Un bloque sin secciones no se dibuja.
+  const porGrupo = new Map<string, { s: Seccion; i: number }[]>();
+  const sueltas: { s: Seccion; i: number }[] = [];
+  secs.forEach((s, i) => {
+    const m = MAPA[llave(s.texto)];
+    if (!m) {
+      sueltas.push({ s, i });
+      return;
+    }
+    const lista = porGrupo.get(m.grupo) ?? [];
+    lista.push({ s, i });
+    porGrupo.set(m.grupo, lista);
+  });
+
+  const renglon = ({ s, i }: { s: Seccion; i: number }) => {
+    const on = activa === s.id || (pathname === "/frecuencias" && activa === String(i));
+    const icono = MAPA[llave(s.texto)]?.icono ?? "punto";
+    return (
+      <button
+        key={s.id}
+        type="button"
+        onClick={() => ir(s, i)}
+        aria-current={on ? "true" : undefined}
+        className={`group relative flex w-full items-center gap-[11px] rounded-sm px-2.5 py-[9px] text-left text-[13px] leading-[1.35] transition-colors duration-micro ease-attio ${
+          on
+            ? "bg-blue-10 font-semibold text-blue"
+            : "text-ink-2 hover:bg-[#F4F6FC] hover:text-navy"
+        }`}
+      >
+        {on ? (
+          <span className="absolute left-0 top-1/2 h-[19px] w-[3px] -translate-y-1/2 rounded-r-sm bg-blue" />
+        ) : null}
+        <svg
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+          className={`h-[17px] w-[17px] flex-none fill-none stroke-[1.7] [stroke-linecap:round] [stroke-linejoin:round] transition-colors duration-micro ease-attio ${
+            on ? "stroke-blue" : "stroke-[#A6ADC4] group-hover:stroke-navy"
+          }`}
+        >
+          {TRAZO[icono]}
+        </svg>
+        {s.texto}
+      </button>
+    );
+  };
+
   return (
-    <aside className="hidden w-[232px] shrink-0 flex-col border-r border-line-2 bg-[#FCFCFD] px-2.5 py-3 lg:flex">
+    <aside className="hidden w-[300px] shrink-0 flex-col border-r border-line bg-white px-3.5 py-4 lg:flex">
       {titulo ? (
-        <div className="mb-1.5 border-b border-line-2 px-2.5 pb-2.5 text-[13px] font-medium tracking-[-0.01em] text-ink">
-          {titulo}
+        <div className="mb-1.5 flex items-center gap-2.5 border-b border-line px-2.5 pb-3.5">
+          {/* El ojo: es lo de la casa, y al ser del mismo trazo que los
+              demás dibujos no desentona con el resto del riel. */}
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            className="h-[19px] w-[19px] flex-none fill-none stroke-navy stroke-[1.6] [stroke-linecap:round] [stroke-linejoin:round]"
+          >
+            <path d="M1.5 10S4.8 4.5 10 4.5 18.5 10 18.5 10 15.2 15.5 10 15.5 1.5 10 1.5 10z" />
+            <circle cx="10" cy="10" r="2.6" />
+          </svg>
+          <span className="font-titulo text-[17px] font-medium tracking-[-0.012em] text-navy">
+            {titulo}
+          </span>
+          {/* Los tres punticos, en los colores de Ebenezer. Adorno y nada
+              más: no son botones ni indican estado. */}
+          <span className="ml-auto flex gap-1" aria-hidden="true">
+            <s className="h-1.5 w-1.5 rounded-full bg-navy no-underline" />
+            <s className="h-1.5 w-1.5 rounded-full bg-blue no-underline" />
+            <s className="h-1.5 w-1.5 rounded-full bg-[#5BE3DC] no-underline" />
+          </span>
         </div>
       ) : null}
+
       <nav className="overflow-y-auto">
-        {secs.map((s, i) => {
-          const on = activa === s.id || (pathname === "/frecuencias" && activa === String(i));
+        {GRUPOS.map((g, gi) => {
+          const lista = porGrupo.get(g);
+          if (!lista || lista.length === 0) return null;
+          const ultimo = GRUPOS.slice(gi + 1).every((x) => !porGrupo.get(x)?.length);
           return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => ir(s, i)}
-              aria-current={on ? "true" : undefined}
-              className={`relative block w-full rounded-xs px-2.5 py-[7px] text-left text-[12.5px] leading-[1.35] transition-colors duration-micro ease-attio ${
-                on
-                  ? "bg-blue-10 font-medium text-blue"
-                  : "text-ink-2 hover:bg-line-2 hover:text-ink"
-              }`}
-            >
-              {on ? (
-                <span className="absolute left-0 top-1/2 h-[15px] w-[2px] -translate-y-1/2 rounded-pill bg-blue" />
-              ) : null}
-              {s.texto}
-            </button>
+            <div key={g}>
+              <div className="px-2.5 pb-[7px] pt-4 text-[10px] font-bold tracking-[0.15em] text-[#A2A9C0]">
+                {g}
+              </div>
+              {lista.map(renglon)}
+              {ultimo && sueltas.length === 0 ? null : (
+                <div className="mx-2.5 mt-2.5 h-px bg-line" />
+              )}
+            </div>
           );
         })}
+        {/* Secciones que el motor agregue y que todavía no estén en la
+            tabla de arriba. Aparecen igual: nunca se pierde una. */}
+        {sueltas.length > 0 ? (
+          <div>
+            <div className="px-2.5 pb-[7px] pt-4 text-[10px] font-bold tracking-[0.15em] text-[#A2A9C0]">
+              OTRAS
+            </div>
+            {sueltas.map(renglon)}
+          </div>
+        ) : null}
       </nav>
     </aside>
   );
