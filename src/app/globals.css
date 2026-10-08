@@ -142,6 +142,29 @@ body {
   color: var(--fg-1);
 }
 
+/* ---------------------------------------------------------------------
+   EL PAPEL.
+
+   El área de contenido deja de ser un gris plano y pasa a ser una hoja
+   cuadriculada. Dos detalles que son los que hacen que funcione:
+
+   · El papel NO es blanco. Es gris azulado. Eso es lo que hace que una
+     tarjeta blanca encima resalte sola, sin necesidad de sombra pesada.
+     Con el papel blanco las tarjetas se perdían y había que subrayarlas
+     con sombra, que es lo que hacía ver el tablero "barato".
+
+   · El cuadro es de 8px y la línea apenas se separa del papel. A esa
+     escala la cuadrícula se lee como textura, no como una reja: se
+     intuye de reojo y no estorba a quien viene a leer números.
+   --------------------------------------------------------------------- */
+.hoja-cuadriculada {
+  background-color: #f1f3f8;
+  background-image:
+    linear-gradient(#edeff5 1px, transparent 1px),
+    linear-gradient(90deg, #edeff5 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
 h1, h2, h3 {
   font-family: var(--font-display);
   font-weight: var(--w-regular);
