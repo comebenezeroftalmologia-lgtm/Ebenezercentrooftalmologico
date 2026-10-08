@@ -1,43 +1,40 @@
-import { BarraSuperior } from "@/components/BarraSuperior";
-import { PanelSecciones } from "@/components/PanelSecciones";
+import { Sidebar } from "@/components/Sidebar";
 import { requireAppUser, getMisModulos } from "@/lib/auth";
 
 /**
  * El marco de todas las páginas.
  *
- * La navegación pasó de un riel vertical de 96px en azul oscuro a una
- * franja arriba, también en el azul de Ebenezer. El contenido gana ese
- * ancho completo, que es donde están los números.
+ * Vuelve la navegación que la plataforma ya tenía: el riel de 96px en
+ * azul Ebenezer con Inicio, Analytics y Procesos, y Analytics abriendo
+ * su panel con los seis tableros, cada uno con su nombre completo.
  *
- * El componente anterior (Sidebar) se deja en el proyecto sin usar: si
- * esto no convence, volver atrás es cambiar dos líneas aquí.
+ * Durante unas horas esto fue una franja de módulos arriba. Fue un
+ * error mío: aplanaba en una sola fila dos niveles que el sistema ya
+ * distinguía —lo general (Analytics, Procesos) y lo que sale de cada
+ * uno (los tableros)— y esa distinción está escrita en lib/modulos.ts,
+ * que es la misma fuente que usa la pantalla de permisos. Cambiarla en
+ * la navegación dejaba la plataforma diciendo una cosa y el sistema de
+ * accesos otra.
+ *
+ * Los componentes de esa versión (BarraSuperior, PanelSecciones) quedan
+ * en el proyecto sin usar, por si alguna pieza sirve después.
  */
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAppUser();
   const modulos = await getMisModulos(user.id, user.isAdmin);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <BarraSuperior
-        modulos={Array.from(modulos)}
-        isAdmin={user.isAdmin}
-        nombre={user.nombreCompleto}
-      />
-      <div className="flex min-h-0 flex-1">
-        {/* El panel de secciones lee del propio contenido qué hay en la
-            página. Si no encuentra al menos dos secciones, no se dibuja:
-            así nunca aparece una columna vacía ni un enlace muerto. */}
-        <PanelSecciones />
-        {/* El relleno de 32px por lado se come 64px de ancho. En un
-            escritorio no se siente; en un teléfono de 375px es una sexta
-            parte de la pantalla. Por debajo de 640px baja a 16px; de ahí
-            en adelante no cambia nada. */}
-        {/* hoja-cuadriculada: el papel gris azulado con la textura. Está
-            en globals.css, con la explicación de por qué no es blanco. */}
-        <main className="hoja-cuadriculada min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8">
-          {children}
-        </main>
-      </div>
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar modulos={Array.from(modulos)} isAdmin={user.isAdmin} />
+      {/* hoja-cuadriculada: el papel gris azulado con la textura fina.
+          Está en globals.css, con la explicación de por qué no es blanco.
+
+          El relleno de 32px por lado se come 64px de ancho. En un
+          escritorio no se siente; en un teléfono de 375px es una sexta
+          parte de la pantalla. Por debajo de 640px baja a 16px. */}
+      <main className="hoja-cuadriculada min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8">
+        {children}
+      </main>
     </div>
   );
 }
