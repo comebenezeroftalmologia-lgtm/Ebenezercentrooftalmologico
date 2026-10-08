@@ -58,6 +58,11 @@ export function PanelSecciones() {
       setSecs(btns.map((b, i) => ({ id: String(i), texto: (b.textContent || "").trim() })));
       const i = btns.findIndex((b) => b.classList.contains("active"));
       setActiva(String(i < 0 ? 0 : i));
+      // Recién ahora, con las pestañas ya leídas y funcionando, se le avisa
+      // al tablero que puede apagar su propia fila: estaba saliendo dos
+      // veces. El aviso va DESPUÉS de leerlas a propósito — si esto fallara,
+      // la clase nunca se pone y el tablero conserva sus pestañas.
+      d?.documentElement.classList.add("con-panel");
       return true;
     };
 
@@ -87,6 +92,14 @@ export function PanelSecciones() {
     return () => {
       vivo = false;
       if (t) window.clearTimeout(t);
+      // Al salir de la página se le devuelven las pestañas al tablero.
+      try {
+        document
+          .querySelector("iframe")
+          ?.contentDocument?.documentElement.classList.remove("con-panel");
+      } catch {
+        /* ya no está: nada que devolver */
+      }
     };
   }, [pathname]);
 
