@@ -32,7 +32,9 @@ export default async function MarketingLayout({ children }: { children: React.Re
             escritorio no se siente; en un teléfono de 375px es una sexta
             parte de la pantalla. Por debajo de 640px baja a 16px; de ahí
             en adelante no cambia nada. */}
-        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8">
+        {/* hoja-cuadriculada: el papel gris azulado con la textura. Está
+            en globals.css, con la explicación de por qué no es blanco. */}
+        <main className="hoja-cuadriculada min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8">
           {children}
         </main>
       </div>
