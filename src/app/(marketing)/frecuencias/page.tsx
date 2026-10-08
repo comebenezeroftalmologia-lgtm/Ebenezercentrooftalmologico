@@ -32,9 +32,14 @@ export default async function FrecuenciasPage({
     searchParams?.dia && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.dia)
       ? searchParams.dia
       : null;
+  // panel=1 le avisa al tablero, desde la propia dirección, que la
+  // plataforma va a mostrar sus pestañas en el panel de la izquierda. Al ir
+  // en la dirección, el tablero lo sabe ANTES de dibujar y su fila de
+  // pestañas nunca aparece. Si se avisara después, se verían un segundo y
+  // al ocultarse el contenido brincaría 53px.
   const src = dia
-    ? `/api/frecuencias/tablero?dia=${dia}`
-    : "/api/frecuencias/tablero";
+    ? `/api/frecuencias/tablero?panel=1&dia=${dia}`
+    : "/api/frecuencias/tablero?panel=1";
 
   return (
     // h-full, no un alto calculado a mano: el <main> del layout ya mide la
