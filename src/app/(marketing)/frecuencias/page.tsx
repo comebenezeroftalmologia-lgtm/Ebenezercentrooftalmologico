@@ -47,21 +47,17 @@ export default async function FrecuenciasPage({
     // cuales 3rem no correspondían a nada del layout, y por eso sobraba
     // espacio abajo.
     <div className="flex h-full min-h-[560px] flex-col">
-      {/* Encabezado propio, igual al del resto de módulos. Sin esto la
-          página no tenía título y el tablero se veía como una tarjeta
-          flotando, sin que uno supiera que seguía dentro de la plataforma. */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          {/* Serif: el título se lee como algo escrito, no como una
-              etiqueta de interfaz. Es lo que le da aire de documento. */}
-          <h1 className="font-titulo text-[32px] font-medium leading-tight tracking-[-0.015em] text-navy">
-            Frecuencias
-          </h1>
-          <p className="mt-1 text-sm text-ink-3">
-            Producción asistencial por unidad funcional, empresa y médico.
-          </p>
-        </div>
-      </div>
+      {/* El título ya no se dibuja: está arriba del riel izquierdo y
+          escribirlo dos veces solo quitaba alto a los números, que es lo
+          que la gente viene a mirar.
+
+          Pero sigue EXISTIENDO en el documento, oculto a la vista:
+            · el riel lo lee de aquí para poner su propio encabezado
+              (PanelSecciones busca el h1 de <main>);
+            · quien usa lector de pantalla necesita saber en qué página
+              está, y un <main> sin h1 lo deja sin esa referencia.
+          Por eso va con sr-only y no borrado. */}
+      <h1 className="sr-only">Frecuencias</h1>
       {dia && (
         <p className="mb-2 text-sm text-ink-3">
           Filtrado por el {dia}, desde Venta del Día.
