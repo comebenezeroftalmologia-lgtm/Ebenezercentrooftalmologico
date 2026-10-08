@@ -341,13 +341,19 @@ export function PanelSecciones() {
             </div>
           );
         })}
-        {/* Secciones que el motor agregue y que todavía no estén en la
-            tabla de arriba. Aparecen igual: nunca se pierde una. */}
+        {/* Secciones que no están en la tabla de grupos: nunca se pierden.
+            El rótulo "OTRAS" solo aparece si de verdad hay grupos arriba de
+            los cuales distinguirlas. En los demás tableros —Venta del Día y
+            compañía— ninguna sección está en la tabla, así que caían TODAS
+            aquí y el riel entero quedaba encabezado por un "OTRAS" que no
+            separaba nada y solo confundía. Sin grupos, van sin rótulo. */}
         {sueltas.length > 0 ? (
           <div>
-            <div className="px-2.5 pb-[7px] pt-4 text-[10px] font-bold tracking-[0.15em] text-[#A2A9C0]">
-              OTRAS
-            </div>
+            {porGrupo.size > 0 ? (
+              <div className="px-2.5 pb-[7px] pt-4 text-[10px] font-bold tracking-[0.15em] text-[#A2A9C0]">
+                OTRAS
+              </div>
+            ) : null}
             {sueltas.map(renglon)}
           </div>
         ) : null}
