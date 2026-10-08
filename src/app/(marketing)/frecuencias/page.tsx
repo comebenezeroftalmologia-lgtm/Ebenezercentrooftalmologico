@@ -52,7 +52,11 @@ export default async function FrecuenciasPage({
           flotando, sin que uno supiera que seguía dentro de la plataforma. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-navy">Frecuencias</h1>
+          {/* Serif: el título se lee como algo escrito, no como una
+              etiqueta de interfaz. Es lo que le da aire de documento. */}
+          <h1 className="font-titulo text-[32px] font-medium leading-tight tracking-[-0.015em] text-navy">
+            Frecuencias
+          </h1>
           <p className="mt-1 text-sm text-ink-3">
             Producción asistencial por unidad funcional, empresa y médico.
           </p>
