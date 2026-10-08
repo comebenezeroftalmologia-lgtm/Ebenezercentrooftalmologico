@@ -47,6 +47,18 @@ const config: Config = {
           "monospace",
         ],
         heading: ["var(--font-cuerpo)", "Questrial", "sans-serif"],
+        // Serif para los titulos. Es lo que da el aire de documento serio
+        // frente al tablero generico: el titulo se lee como algo escrito,
+        // no como una etiqueta de interfaz. Solo para titulos, nunca para
+        // datos ni para cifras.
+        titulo: [
+          "Iowan Old Style",
+          "Palatino Linotype",
+          "Palatino",
+          "Georgia",
+          "Times New Roman",
+          "serif",
+        ],
       },
       borderRadius: {
         xs: "4px",
