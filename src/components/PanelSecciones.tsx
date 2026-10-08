@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+
+/** En el servidor no hay layout que medir; allá se comporta como useEffect. */
+const useAntesDePintar =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/** Rutas donde se sabe de antemano que SÍ va a haber panel. En esas se
+ *  reserva el ancho desde el primer dibujo, para que el contenido no se
+ *  corra 232px cuando el panel aparezca. Sin esto hay un brinco. */
+const SIEMPRE_TIENE_PANEL = new Set(["/frecuencias"]);
 
 /**
  * El panel de secciones, a la izquierda.
@@ -37,7 +46,7 @@ export function PanelSecciones() {
   const [activa, setActiva] = useState<string>("");
   const [titulo, setTitulo] = useState<string>("");
 
-  useEffect(() => {
+  useAntesDePintar(() => {
     setSecs([]);
     setActiva("");
     let vivo = true;
@@ -81,17 +90,31 @@ export function PanelSecciones() {
     };
 
     // El tablero tarda en cargar: se reintenta un rato y luego se deja.
+    // Los primeros intentos van rápido (80 ms) para alcanzar a apagar las
+    // pestañas de adentro antes de que el ojo las vea; si no aparecen
+    // pronto, se espacia para no gastar en vano.
     let intentos = 0;
     const probar = () => {
       if (!vivo) return;
       const ok = pathname === "/frecuencias" ? leerIframe() : leerEncabezados();
-      if (!ok && intentos++ < 25) t = window.setTimeout(probar, 400);
+      if (!ok && intentos < 60) {
+        intentos++;
+        t = window.setTimeout(probar, intentos < 20 ? 80 : 400);
+      }
     };
     probar();
+
+    // Y además se engancha al momento exacto en que el iframe termina de
+    // cargar, que es cuando sus pestañas existen por primera vez. Así la
+    // fila de adentro se apaga en ese mismo instante y no alcanza a verse.
+    const f = document.querySelector("iframe");
+    const alCargar = () => leerIframe();
+    if (f && pathname === "/frecuencias") f.addEventListener("load", alCargar);
 
     return () => {
       vivo = false;
       if (t) window.clearTimeout(t);
+      if (f) f.removeEventListener("load", alCargar);
       // Al salir de la página se le devuelven las pestañas al tablero.
       try {
         document
@@ -120,12 +143,16 @@ export function PanelSecciones() {
     return () => window.clearInterval(id);
   }, [pathname, secs.length]);
 
-  useEffect(() => {
+  useAntesDePintar(() => {
     const h1 = document.querySelector("main h1");
     setTitulo((h1?.textContent || "").trim());
   }, [pathname, secs.length]);
 
-  if (secs.length < 2) return null;
+  // Si todavia no hay secciones pero la ruta siempre las tiene, se dibuja
+  // el panel VACIO: ocupa su ancho desde el primer momento y el contenido
+  // no se corre cuando las secciones lleguen.
+  const reservar = SIEMPRE_TIENE_PANEL.has(pathname);
+  if (secs.length < 2 && !reservar) return null;
 
   const ir = (s: Seccion, i: number) => {
     if (pathname === "/frecuencias") {
