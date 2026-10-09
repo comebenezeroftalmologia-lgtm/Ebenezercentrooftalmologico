@@ -12,7 +12,8 @@ export type Modulo =
   | "redes_sociales"
   | "frecuencias"
   | "venta_del_dia"
-  | "procesos";
+  | "procesos"
+  | "proyectos";
 
 export type GrupoModulo = "Analytics" | "Procesos";
 
@@ -24,6 +25,7 @@ export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoM
   { slug: "frecuencias", label: "Frecuencias", href: "/frecuencias", grupo: "Analytics" },
   { slug: "venta_del_dia", label: "Venta del Día", href: "/venta-del-dia", grupo: "Analytics" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
+  { slug: "proyectos", label: "Proyectos", href: "/proyectos", grupo: "Procesos" },
 ];
 
 export function moduloLabel(slug: Modulo): string {

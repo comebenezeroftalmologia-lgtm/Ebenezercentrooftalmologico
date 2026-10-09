@@ -14,6 +14,7 @@ import {
   BarChart3,
   ClipboardList,
   FolderKanban,
+  KanbanSquare,
   Users,
   UserCircle,
   LogOut,
@@ -32,6 +33,7 @@ const ICONOS: Record<Modulo, LucideIcon> = {
   frecuencias: BarChart3,
   venta_del_dia: ClipboardList,
   procesos: FolderKanban,
+  proyectos: KanbanSquare,
 };
 
 const ANALYTICS_ITEMS = MODULOS.filter((m) => m.grupo === "Analytics");
@@ -40,6 +42,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
   const allowed = new Set(modulos);
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug));
   const procesosPermitido = allowed.has("procesos");
+  const proyectosPermitido = allowed.has("proyectos");
 
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -126,6 +129,21 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
               }`}
             >
               <FolderKanban className="h-5 w-5" strokeWidth={1.75} />
+            </Link>
+          )}
+
+          {proyectosPermitido && (
+            <Link
+              href="/proyectos"
+              aria-label="Proyectos"
+              title="Proyectos"
+              className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-150 ease-eb-out ${
+                pathname === "/proyectos" || pathname.startsWith("/proyectos/")
+                  ? "bg-aqua text-navy"
+                  : "text-white/80 hover:bg-navy-90 hover:text-aqua"
+              }`}
+            >
+              <KanbanSquare className="h-5 w-5" strokeWidth={1.75} />
             </Link>
           )}
         </nav>
