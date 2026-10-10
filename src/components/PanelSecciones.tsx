@@ -250,20 +250,8 @@ export function PanelSecciones() {
     setActiva(s.id);
   };
 
-  // ¿Se agrupa o se lista?
-  //
-  // Agrupar es para cuando la lista es tan larga que deja de leerse. Las
-  // diez secciones de Frecuencias lo necesitan; las tres de Clientes
-  // Potenciales, no — ahí los rótulos serían más renglones que secciones.
-  //
-  // Y se agrupa solo si TODAS caben en un grupo de verdad. Antes bastaba
-  // con que una cupiera: las demás iban a un cajón llamado "OTRAS", que no
-  // le dice nada a quien abre la página y además encabezaba el riel entero
-  // en los módulos que no estaban contemplados.
-  //
-  // Con esta regla, un módulo nuevo nunca sale mal: o entra completo en
-  // grupos, o se lista limpio. Nunca a medias.
-  const MINIMO_PARA_AGRUPAR = 6;
+  // Se reparten en bloques respetando el orden del tablero dentro de cada
+  // uno. Un bloque sin secciones no se dibuja.
   const porGrupo = new Map<string, { s: Seccion; i: number }[]>();
   const sueltas: { s: Seccion; i: number }[] = [];
   secs.forEach((s, i) => {
@@ -276,12 +264,6 @@ export function PanelSecciones() {
     lista.push({ s, i });
     porGrupo.set(m.grupo, lista);
   });
-  const agrupar = secs.length >= MINIMO_PARA_AGRUPAR && sueltas.length === 0;
-  if (!agrupar) {
-    porGrupo.clear();
-    sueltas.length = 0;
-    secs.forEach((s, i) => sueltas.push({ s, i }));
-  }
 
   const renglon = ({ s, i }: { s: Seccion; i: number }) => {
     const on = activa === s.id || (pathname === "/frecuencias" && activa === String(i));
@@ -353,15 +335,28 @@ export function PanelSecciones() {
                 {g}
               </div>
               {lista.map(renglon)}
-              {/* La línea separa un bloque del siguiente; después del
-                  último no hay nada que separar. */}
-              {ultimo ? null : <div className="mx-2.5 mt-2.5 h-px bg-line" />}
+              {ultimo && sueltas.length === 0 ? null : (
+                <div className="mx-2.5 mt-2.5 h-px bg-line" />
+              )}
             </div>
           );
         })}
-        {/* La lista limpia: cuando no se agrupa, van todas aquí, en el
-            mismo orden en que el módulo las trae. Sin rótulos inventados. */}
-        {sueltas.length > 0 ? <div className="pt-1">{sueltas.map(renglon)}</div> : null}
+        {/* Secciones que no están en la tabla de grupos: nunca se pierden.
+            El rótulo "OTRAS" solo aparece si de verdad hay grupos arriba de
+            los cuales distinguirlas. En los demás tableros —Venta del Día y
+            compañía— ninguna sección está en la tabla, así que caían TODAS
+            aquí y el riel entero quedaba encabezado por un "OTRAS" que no
+            separaba nada y solo confundía. Sin grupos, van sin rótulo. */}
+        {sueltas.length > 0 ? (
+          <div>
+            {porGrupo.size > 0 ? (
+              <div className="px-2.5 pb-[7px] pt-4 text-[10px] font-bold tracking-[0.15em] text-[#A2A9C0]">
+                OTRAS
+              </div>
+            ) : null}
+            {sueltas.map(renglon)}
+          </div>
+        ) : null}
       </nav>
     </aside>
   );
