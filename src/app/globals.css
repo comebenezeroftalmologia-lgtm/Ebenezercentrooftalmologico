@@ -142,6 +142,29 @@ body {
   color: var(--fg-1);
 }
 
+/* ---------------------------------------------------------------------
+   EL PAPEL.
+
+   El área de contenido deja de ser un gris plano y pasa a ser una hoja
+   cuadriculada. Dos detalles que son los que hacen que funcione:
+
+   · El papel NO es blanco. Es gris azulado. Eso es lo que hace que una
+     tarjeta blanca encima resalte sola, sin necesidad de sombra pesada.
+     Con el papel blanco las tarjetas se perdían y había que subrayarlas
+     con sombra, que es lo que hacía ver el tablero "barato".
+
+   · El cuadro es de 8px y la línea apenas se separa del papel. A esa
+     escala la cuadrícula se lee como textura, no como una reja: se
+     intuye de reojo y no estorba a quien viene a leer números.
+   --------------------------------------------------------------------- */
+.hoja-cuadriculada {
+  background-color: #f1f3f8;
+  background-image:
+    linear-gradient(#edeff5 1px, transparent 1px),
+    linear-gradient(90deg, #edeff5 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
 h1, h2, h3 {
   font-family: var(--font-display);
   font-weight: var(--w-regular);
@@ -154,4 +177,26 @@ h1, h2, h3 {
   font-weight: var(--w-bold);
   text-transform: uppercase;
   letter-spacing: var(--tr-label);
+}
+
+/* ---------------------------------------------------------------------
+   MOVIMIENTO: quien pidió menos, no ve ninguno.
+
+   Las animaciones de Tailwind (animate-entrar, animate-crecer) y las
+   transiciones no se apagan solas. Esto las apaga todas de una, para quien
+   tenga activado "reducir movimiento" en su sistema operativo.
+
+   No es un detalle de cortesía: hay personas a las que el movimiento en
+   pantalla les produce mareo o malestar, y esta es una plataforma de salud
+   que alguien abre veinte veces al día.
+   --------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -10,11 +10,10 @@ import {
 import { Tira, Seccion, TablaEspera, BarraComposicion, Controles } from "@/components/eb";
 
 /**
- * Venta del Día.
+ * Venta del Día — en paralelo. La de siempre sigue intacta en /venta-del-dia.
  *
- * Los números NO se calculan aquí: salen de calcularVentaDelDia(). Esta
- * pantalla solo pinta. Si algún número se ve raro, el problema está en esa
- * función o en SISMA, nunca aquí.
+ * Los números NO se calculan aquí: salen de calcularVentaDelDia(), la misma
+ * función que usa la de siempre. Por construcción las dos dan lo mismo.
  *
  * ──────────────────────────────────────────────────────────────────────────
  * DE DÓNDE SALE ESTE ASPECTO
@@ -58,7 +57,7 @@ const TONOS = ["#0B1633", "#3B4F8D", "#7D88B0", "#AEB6CE", "#D5DAE6", "#EDEFF5"]
 const conComa = (n: number) =>
   n.toLocaleString("es-CO", { maximumFractionDigits: 1 });
 
-export default async function VentaDelDia({
+export default async function VentaDelDiaNueva({
   searchParams,
 }: {
   searchParams: { fecha?: string; sede?: string };

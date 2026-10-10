@@ -38,7 +38,9 @@
 const BASE_URL = process.env.SISMA_API_BASE_URL ?? "https://api.centrooftalmologicoebenezer.com";
 const API_KEY = process.env.SISMA_API_KEY;
 
-async function sismaFetch<T>(path: string): Promise<T> {
+/** Exportada para el diagnostico de campos: ver
+ *  src/app/api/diagnostico/campos-sisma/route.ts */
+export async function sismaFetch<T>(path: string): Promise<T> {
   if (!API_KEY) {
     throw new Error("SISMA_API_KEY no configurada — ver .env.example");
   }
@@ -136,7 +138,8 @@ export function campo(fila: FilaCsv, ...nombres: string[]): string {
   return "";
 }
 
-async function sismaNodeFetch(
+/** Exportada para el diagnostico de campos. */
+export async function sismaNodeFetch(
   path: string,
 ): Promise<{ filas: FilaCsv[]; aviso: string | null }> {
   if (!NODE_API_KEY) {
@@ -244,6 +247,20 @@ export interface SismaCitaAtendida {
   medico: string | null;
   empresa: string | null;
   contrato: string | null;
+  /** Dias entre que el paciente pidio la cita y se la atendieron. Es el
+   *  indicador de oportunidad, el que se reporta. Venia llegando desde
+   *  siempre y no lo leia nadie. */
+  diasOportunidad: number | null;
+}
+
+/** El API manda la oportunidad como texto; a veces vacia o con coma
+ *  decimal. Un valor negativo no tiene sentido (seria atender antes de que
+ *  pidieran) y se descarta en vez de promediarlo. */
+function aDias(v: string): number | null {
+  const t = String(v ?? "").trim().replace(",", ".");
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 export async function fetchCitasAtendidas(desde: string, hasta: string): Promise<SismaCitaAtendida[]> {
@@ -259,6 +276,7 @@ export async function fetchCitasAtendidas(desde: string, hasta: string): Promise
     medico: campo(f, "medico") || null,
     empresa: campo(f, "empresa") || null,
     contrato: campo(f, "contrato") || null,
+    diasOportunidad: aDias(campo(f, "dias_oportunidad")),
   }));
 }
 

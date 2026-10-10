@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, Building2, ClipboardCheck, Home, LayoutDashboard, LogOut, UserCircle } from "lucide-react";
+import { ArrowLeft, Building2, ClipboardCheck, Home, LayoutDashboard, LogOut, UserCircle, BarChart3 } from "lucide-react";
 import type { AppUser } from "@/lib/procesos/types";
 import { logoutAction } from "@/lib/procesos/actions";
 
-export function ProcesosNav({ user, puedeVerDashboard }: { user: AppUser; puedeVerDashboard: boolean }) {
+export function ProcesosNav({ user, puedeVerDashboard, tieneAnalytics }: { user: AppUser; puedeVerDashboard: boolean; tieneAnalytics?: boolean }) {
   const pathname = usePathname();
 
   const items = [
@@ -16,6 +16,9 @@ export function ProcesosNav({ user, puedeVerDashboard }: { user: AppUser; puedeV
     { href: "/procesos/mis-tareas", label: "Mis Tareas", icon: ClipboardCheck },
     ...(puedeVerDashboard
       ? [{ href: "/procesos/dashboard", label: "Dashboard general", icon: LayoutDashboard }]
+      : []),
+    ...(tieneAnalytics
+      ? [{ href: "/analytics", label: "Analytics", icon: BarChart3 }]
       : []),
   ];
 
