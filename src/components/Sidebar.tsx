@@ -28,8 +28,11 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
 
   return (
     <div className="relative flex shrink-0">
-      <aside className="flex w-[96px] shrink-0 flex-col items-center bg-navy py-5 min-h-screen">
-        <Link href="/" className="mb-5 flex h-20 w-20 items-center justify-center">
+      <aside className="relative overflow-hidden flex w-[96px] shrink-0 flex-col items-center bg-navy py-5 min-h-screen">
+        {/* Textura viva sutil: un gradiente que simula un cristal oscuro superior */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none"></div>
+
+        <Link href="/" className="mb-5 flex h-20 w-20 items-center justify-center relative z-10">
           <Image
             src="/brand/logo/logo-claro.png"
             alt="Ebenezer"

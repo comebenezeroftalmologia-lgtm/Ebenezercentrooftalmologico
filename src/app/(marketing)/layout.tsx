@@ -32,7 +32,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
           El relleno de 32px por lado se come 64px de ancho. En un
           escritorio no se siente; en un teléfono de 375px es una sexta
           parte de la pantalla. Por debajo de 640px baja a 16px. */}
-      <main className="hoja-cuadriculada min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8">
+      <main className="hoja-cuadriculada min-w-0 flex-1 overflow-y-auto overflow-x-hidden ">
         {children}
       </main>
     </div>

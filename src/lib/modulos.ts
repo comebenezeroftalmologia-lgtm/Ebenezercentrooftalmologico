@@ -18,12 +18,12 @@ export type Modulo =
 export type GrupoModulo = "Analytics" | "Procesos";
 
 export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoModulo }[] = [
-  { slug: "leads", label: "Generación de Clientes Potenciales", href: "/leads", grupo: "Analytics" },
-  { slug: "no_quirurgicos", label: "Ordenamientos No Quirúrgicos", href: "/no-quirurgicos", grupo: "Analytics" },
-  { slug: "quirurgicos", label: "Ordenamientos Quirúrgicos", href: "/quirurgicos", grupo: "Analytics" },
-  { slug: "redes_sociales", label: "Redes Sociales", href: "/redes-sociales", grupo: "Analytics" },
-  { slug: "frecuencias", label: "Frecuencias", href: "/frecuencias", grupo: "Analytics" },
-  { slug: "venta_del_dia", label: "Venta del Día", href: "/venta-del-dia", grupo: "Analytics" },
+  { slug: "leads", label: "Generación de Clientes Potenciales", href: "/analytics/leads", grupo: "Analytics" },
+  { slug: "no_quirurgicos", label: "Ordenamientos No Quirúrgicos", href: "/analytics/no-quirurgicos", grupo: "Analytics" },
+  { slug: "quirurgicos", label: "Ordenamientos Quirúrgicos", href: "/analytics/quirurgicos", grupo: "Analytics" },
+  { slug: "redes_sociales", label: "Redes Sociales", href: "/analytics/redes-sociales", grupo: "Analytics" },
+  { slug: "frecuencias", label: "Frecuencias", href: "/analytics/frecuencias", grupo: "Analytics" },
+  { slug: "venta_del_dia", label: "Venta del Día", href: "/analytics/venta-del-dia", grupo: "Analytics" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
   { slug: "proyectos", label: "Proyectos", href: "/proyectos", grupo: "Procesos" },
 ];
