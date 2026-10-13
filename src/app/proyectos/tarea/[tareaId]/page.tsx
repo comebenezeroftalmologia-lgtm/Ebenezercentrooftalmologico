@@ -10,5 +10,5 @@ export default async function PaginaTarea({ params }: { params: { tareaId: strin
   if (!UUID.test(params.tareaId)) notFound();
   const datos = await getTarea(params.tareaId, user.id, user.isAdmin);
   if (!datos) notFound();
-  return <TareaDetalleView key={datos.tarea.id} datos={datos} yoId={user.id} />;
+  return <TareaDetalleView key={datos.tarea.id} datos={datos} yoId={user.id} esAdmin={user.isAdmin} />;
 }

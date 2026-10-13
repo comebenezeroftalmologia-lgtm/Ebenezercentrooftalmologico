@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Calendar, Check, Flag, Plus, Tag, X } from "lucide-react";
 import { Avatar, IconoBandera, Popover } from "@/components/proyectos/ui";
 import {
@@ -204,15 +204,7 @@ export function SelectorFecha({
       {(cerrar) => (
         <div>
           <p className="px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-overline text-ink-3">{etiqueta}</p>
-          <input
-            type="date"
-            value={valor ?? ""}
-            onChange={(e) => {
-              onCambiar(e.target.value || null);
-            }}
-            aria-label={etiqueta}
-            className="mb-1 w-full rounded-sm border border-line px-2 py-1.5 text-sm outline-none focus:border-blue"
-          />
+          <CampoFecha valor={valor} etiqueta={etiqueta} onCambiar={onCambiar} />
           {[
             ["Hoy", hoy],
             ["Mañana", sumarDias(hoy, 1)],
@@ -230,6 +222,50 @@ export function SelectorFecha({
         </div>
       )}
     </Popover>
+  );
+}
+
+/**
+ * Campo de fecha que no dispara el cambio a mitad de escritura: al teclear el
+ * año o el día el navegador emite fechas intermedias válidas (0002-…, 2026-10-01…),
+ * y con las postergaciones cada cambio cuenta. Se confirma tras una pausa, al salir
+ * del campo o con Enter; el calendario del navegador confirma de una vez.
+ */
+function CampoFecha({
+  valor,
+  etiqueta,
+  onCambiar,
+}: {
+  valor: string | null;
+  etiqueta: string;
+  onCambiar: (f: string | null) => void;
+}) {
+  const [borrador, setBorrador] = useState(valor ?? "");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => setBorrador(valor ?? ""), [valor]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const valida = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && f >= "2000-01-01" && f <= "2100-12-31";
+  function confirmar(f: string) {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    if (f && f !== (valor ?? "") && valida(f)) onCambiar(f);
+  }
+
+  return (
+    <input
+      type="date"
+      value={borrador}
+      onChange={(e) => {
+        setBorrador(e.target.value);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => confirmar(e.target.value), 900);
+      }}
+      onBlur={(e) => confirmar(e.target.value)}
+      onKeyDown={(e) => e.key === "Enter" && confirmar((e.target as HTMLInputElement).value)}
+      aria-label={etiqueta}
+      className="mb-1 w-full rounded-sm border border-line px-2 py-1.5 text-sm outline-none focus:border-blue"
+    />
   );
 }
 

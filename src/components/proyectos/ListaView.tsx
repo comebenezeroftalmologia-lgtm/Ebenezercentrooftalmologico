@@ -20,13 +20,14 @@ import type { DatosLista } from "@/lib/proyectos/queries";
 import type { Estado, Prioridad, Tarea } from "@/lib/proyectos/types";
 import {
   actualizarTareaAction,
+  postergarTareaAction,
   crearEtiquetaAction,
   crearTareaAction,
   moverTareaAction,
   setAsignadosAction,
   setEtiquetasTareaAction,
 } from "@/lib/proyectos/actions";
-import { estaVencida, etiquetaFecha, hoyISO, ordenEntre } from "@/lib/proyectos/utils";
+import { esPostergacion, estaVencida, etiquetaFecha, hoyISO, ordenEntre } from "@/lib/proyectos/utils";
 import { AvatarStack, BotonSecundario, IconoBandera, useAviso } from "@/components/proyectos/ui";
 import {
   EtiquetaChip,
@@ -40,6 +41,7 @@ import { EstadosModal } from "@/components/proyectos/EstadosModal";
 import { CompartirModal } from "@/components/proyectos/CompartirModal";
 import { PRIORIDADES } from "@/lib/proyectos/types";
 import { Migas } from "@/components/proyectos/Migas";
+import { DialogoPostergar, InsigniaPostergada } from "@/components/proyectos/Postergaciones";
 
 type Vista = "lista" | "tablero";
 const COLS = "md:grid-cols-[minmax(0,1fr)_132px_132px_104px]";
@@ -99,6 +101,22 @@ export function ListaView({ datos, vista, yoId }: { datos: DatosLista; vista: Vi
     });
   }
 
+  // Acuerdo de nueva fecha: mover la fecha límite hacia adelante exige motivo.
+  const [acuerdo, setAcuerdo] = useState<{ tarea: Tarea; nueva: string | null } | null>(null);
+  function cambiarLimite(t: Tarea, f: string | null) {
+    if (esPostergacion(t.fechaLimite, f)) return setAcuerdo({ tarea: t, nueva: f });
+    mutar(t.id, { fechaLimite: f }, () => actualizarTareaAction(t.id, { fechaLimite: f }));
+  }
+  async function confirmarAcuerdo(destino: string | null, motivo: string): Promise<string | null> {
+    if (!acuerdo) return null;
+    const id = acuerdo.tarea.id;
+    const r = await postergarTareaAction(id, destino, motivo);
+    if (!r.ok) return r.error;
+    setTareas((l) => l.map((t) => (t.id === id ? { ...t, fechaLimite: destino, postergaciones: t.postergaciones + 1 } : t)));
+    setAcuerdo(null);
+    return null;
+  }
+
   const primerAbierto = estados.find((e) => e.tipo === "abierto") ?? estados[0];
   const primerCerrado = estados.find((e) => e.tipo === "cerrado");
 
@@ -138,6 +156,7 @@ export function ListaView({ datos, vista, yoId }: { datos: DatosLista; vista: Vi
     puedeEditar,
     hijasDe,
     mutar,
+    cambiarLimite,
     alternarCompletada,
     crearEtiqueta,
   };
@@ -269,6 +288,15 @@ export function ListaView({ datos, vista, yoId }: { datos: DatosLista; vista: Vi
       </div>
 
       {modalEstados && <EstadosModal listaId={lista.id} estados={estados} onCerrar={() => setModalEstados(false)} />}
+      {acuerdo && acuerdo.tarea.fechaLimite && (
+        <DialogoPostergar
+          actual={acuerdo.tarea.fechaLimite}
+          nueva={acuerdo.nueva}
+          veces={acuerdo.tarea.postergaciones}
+          onConfirmar={confirmarAcuerdo}
+          onCancelar={() => setAcuerdo(null)}
+        />
+      )}
       {compartir && <CompartirModal espacio={espacio} yoId={yoId} onCerrar={() => setCompartir(false)} />}
     </div>
   );
@@ -285,6 +313,7 @@ interface Ctx {
   puedeEditar: boolean;
   hijasDe: Map<string, Tarea[]>;
   mutar: (id: string, patch: Partial<Tarea>, accion: () => Promise<{ ok: boolean; error?: string }>) => void;
+  cambiarLimite: (t: Tarea, f: string | null) => void;
   alternarCompletada: (t: Tarea) => void;
   crearEtiqueta: (nombre: string, color: string) => Promise<DatosLista["etiquetas"][number] | null>;
 }
@@ -464,6 +493,7 @@ function FilaTarea({ t, ctx, nivel = 0 }: { t: Tarea; ctx: Ctx; nivel?: number }
           >
             {t.nombre}
           </Link>
+          <InsigniaPostergada veces={t.postergaciones} />
           {t.subtareasTotal > 0 && (
             <span className="inline-flex shrink-0 items-center gap-1 text-xs text-ink-3" title="Subtareas">
               <ListTree className="h-3.5 w-3.5" />
@@ -493,7 +523,7 @@ function FilaTarea({ t, ctx, nivel = 0 }: { t: Tarea; ctx: Ctx; nivel?: number }
             cerrada={cerrada}
             etiqueta="Fecha límite"
             deshabilitado={!ctx.puedeEditar}
-            onCambiar={(f) => ctx.mutar(t.id, { fechaLimite: f }, () => actualizarTareaAction(t.id, { fechaLimite: f }))}
+            onCambiar={(f) => ctx.cambiarLimite(t, f)}
           />
         </div>
         <div className="hidden md:block">
@@ -703,6 +733,7 @@ function Tarjeta({
         {t.fechaLimite && (
           <span className={vencida ? "font-medium text-[#D92D20]" : ""}>{etiquetaFecha(t.fechaLimite, hoy)}</span>
         )}
+        <InsigniaPostergada veces={t.postergaciones} />
         {prioridad && (
           <span title={prioridad.label}>
             <IconoBandera color={prioridad.color} size={14} />

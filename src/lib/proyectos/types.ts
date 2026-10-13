@@ -111,6 +111,8 @@ export interface Tarea {
   etiquetas: string[];
   subtareasTotal: number;
   subtareasHechas: number;
+  /** Veces que se ha postergado la fecha límite (acuerdos de nueva fecha). */
+  postergaciones: number;
 }
 
 export interface ChecklistItem {
@@ -154,6 +156,36 @@ export interface EntradaActividad {
   createdAt: string;
 }
 
+/** Tarea enlazada desde un documento (texto convertido en tarea). */
+export interface EnlaceTarea {
+  id: string;
+  nombre: string;
+  listaId: string;
+  estado: { nombre: string; color: string; tipo: TipoEstado } | null;
+  asignados: string[];
+}
+
+/** Lista donde se puede crear una tarea desde un documento. */
+export interface ListaDestino {
+  id: string;
+  nombre: string;
+  espacioId: string;
+  espacioNombre: string;
+  espacioColor: string;
+  carpetaNombre: string | null;
+}
+
+/** Acuerdo de nueva fecha: cada vez que la fecha límite se movió hacia adelante. */
+export interface Postergacion {
+  id: string;
+  fechaAnterior: string;
+  /** null = se quitó la fecha límite. */
+  fechaNueva: string | null;
+  motivo: string;
+  userId: string | null;
+  createdAt: string;
+}
+
 export interface TareaDetalle extends Tarea {
   espacioId: string;
   descripcion: JSONContent | null;
@@ -163,6 +195,7 @@ export interface TareaDetalle extends Tarea {
   adjuntos: Adjunto[];
   comentarios: Comentario[];
   actividad: EntradaActividad[];
+  historialPostergaciones: Postergacion[];
 }
 
 export interface PaginaResumen {

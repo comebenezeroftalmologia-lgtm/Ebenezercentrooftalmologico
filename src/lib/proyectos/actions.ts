@@ -6,7 +6,7 @@ import { createServiceClient, createSessionServerClient } from "@/lib/supabase/s
 import { requireModuloAccess } from "@/lib/auth";
 import { BUCKET_ADJUNTOS, getMiembros } from "@/lib/proyectos/queries";
 import { mensajeError } from "@/lib/proyectos/utils";
-import type { Etiqueta, Miembro, Prioridad, Resultado, RolEspacio, TipoEstado } from "@/lib/proyectos/types";
+import type { EnlaceTarea, Etiqueta, Miembro, Prioridad, Resultado, RolEspacio, TipoEstado } from "@/lib/proyectos/types";
 
 // Todas las acciones corren con la sesión del usuario (llave anon + RLS):
 // la base de datos es quien decide si puede hacerlo. Aquí solo se valida
@@ -486,6 +486,39 @@ export async function crearTareaAction(input: {
   return { ok: true, id: data.id };
 }
 
+/**
+ * "Crear tarea" desde el texto seleccionado de un documento: crea la tarea en la
+ * lista elegida, asignada a quien la crea, y devuelve lo que el documento necesita
+ * para mostrarla como enlace (nombre, estado, responsable).
+ */
+export async function crearTareaDesdeDocAction(input: {
+  listaId: string;
+  nombre: string;
+}): Promise<Resultado<{ enlace: EnlaceTarea }>> {
+  const { sb, user } = await contexto();
+  const r = await crearTareaAction({ listaId: input.listaId, nombre: input.nombre, asignados: [user.id] });
+  if (!r.ok) return r;
+
+  const { data, error } = await sb
+    .from("proy_tareas")
+    .select("id, nombre, lista_id, proy_estados(nombre, color, tipo)")
+    .eq("id", r.id)
+    .single();
+  if (error || !data) return fallo(error);
+  const row = data as any;
+  const est = Array.isArray(row.proy_estados) ? row.proy_estados[0] : row.proy_estados;
+  return {
+    ok: true,
+    enlace: {
+      id: row.id,
+      nombre: row.nombre,
+      listaId: row.lista_id,
+      estado: est ? { nombre: est.nombre, color: est.color, tipo: est.tipo } : null,
+      asignados: [user.id],
+    },
+  };
+}
+
 export async function actualizarTareaAction(
   id: string,
   patch: {
@@ -533,6 +566,40 @@ export async function actualizarTareaAction(
   if (!data || data.length === 0) return invalido("No tienes permiso para editar esta tarea.");
   // La descripción se guarda mientras se escribe: no refresca.
   if (Object.keys(cambios).some((k) => k !== "descripcion")) refrescar();
+  return { ok: true };
+}
+
+/**
+ * Acuerdo de nueva fecha: mueve la fecha límite hacia adelante (o la quita) y deja
+ * el motivo en el historial. La regla la impone la base de datos (trigger): sin
+ * motivo, ningún camino puede postergar.
+ */
+export async function postergarTareaAction(
+  id: string,
+  nuevaFecha: string | null,
+  motivo: string
+): Promise<Resultado> {
+  const { sb } = await contexto();
+  if (!UUID.test(id)) return invalido("Tarea no válida.");
+  if (nuevaFecha !== null && !FECHA.test(nuevaFecha)) return invalido("Fecha no válida.");
+  const m = typeof motivo === "string" ? motivo.trim().replace(/\s+/g, " ") : "";
+  if (m.length < 5) return invalido("Escribe el motivo de la nueva fecha (mínimo 5 caracteres).");
+  if (m.length > 1000) return invalido("El motivo es demasiado largo (máximo 1000 caracteres).");
+
+  const { error } = await sb.rpc("proy_postergar_tarea", { p_tarea: id, p_nueva: nuevaFecha, p_motivo: m });
+  if (error) return fallo(error);
+  refrescar();
+  return { ok: true };
+}
+
+/** Solo un administrador de la plataforma puede borrar un acuerdo (lo impone RLS). */
+export async function eliminarPostergacionAction(id: string): Promise<Resultado> {
+  const { sb } = await contexto();
+  if (!UUID.test(id)) return invalido("Registro no válido.");
+  const { data, error } = await sb.from("proy_postergaciones").delete().eq("id", id).select("id");
+  if (error) return fallo(error);
+  if (!data || data.length === 0) return invalido("Solo un administrador puede borrar un acuerdo de nueva fecha.");
+  refrescar();
   return { ok: true };
 }
 

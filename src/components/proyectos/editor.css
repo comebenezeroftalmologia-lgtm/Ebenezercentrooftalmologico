@@ -45,3 +45,31 @@
   font-family: var(--font-titulo), Inter, sans-serif;
   font-weight: 700;
 }
+
+/* Texto convertido en tarea (enlace inline con estado y responsable). */
+.eb-editor .eb-enlace-tarea { display: inline-flex; align-items: center; gap: 0.35em; vertical-align: baseline; max-width: 100%; }
+.eb-editor .ProseMirror a.eb-enlace-tarea__nombre {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: #98a2b3;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.eb-editor .ProseMirror a.eb-enlace-tarea__nombre:hover { color: #0f2ff3; text-decoration-color: #0f2ff3; }
+.eb-editor .eb-enlace-tarea__estado {
+  display: inline-block;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: var(--font-titulo), Inter, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+}
+.eb-editor .eb-enlace-tarea__estado--sin { background: #98a2b3; }
+.eb-editor .eb-enlace-tarea__avatar { display: inline-flex; }
+.eb-editor .ProseMirror .ProseMirror-selectednode.eb-enlace-tarea,
+.eb-editor .ProseMirror .eb-enlace-tarea.ProseMirror-selectednode { outline: 2px solid #b0fffa; outline-offset: 2px; border-radius: 3px; }

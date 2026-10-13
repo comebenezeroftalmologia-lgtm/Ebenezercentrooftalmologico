@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import type { JSONContent } from "@tiptap/react";
 import { ChevronDown, ChevronRight, FileText, Plus, Trash2 } from "lucide-react";
 import type { DatosDoc } from "@/lib/proyectos/queries";
-import type { PaginaResumen } from "@/lib/proyectos/types";
-import { crearPaginaAction, eliminarPaginaAction, guardarPaginaAction } from "@/lib/proyectos/actions";
+import type { EnlaceTarea, PaginaResumen } from "@/lib/proyectos/types";
+import { crearPaginaAction, crearTareaDesdeDocAction, eliminarPaginaAction, guardarPaginaAction } from "@/lib/proyectos/actions";
 import { fechaHora } from "@/lib/proyectos/utils";
 import { Avatar, BotonSecundario, Modal, useAviso } from "@/components/proyectos/ui";
 import { Editor } from "@/components/proyectos/Editor";
@@ -22,6 +22,15 @@ export function DocView({ datos }: { datos: DatosDoc }) {
   const [plegadas, setPlegadas] = useState<Set<string>>(new Set());
   const [borrar, setBorrar] = useState<PaginaResumen | null>(null);
   const [, start] = useTransition();
+
+  // Tareas enlazadas desde el texto: lo del servidor + las recién creadas aquí.
+  const [enlaces, setEnlaces] = useState<Record<string, EnlaceTarea>>(datos.enlaces);
+  useEffect(() => setEnlaces((previos) => ({ ...previos, ...datos.enlaces })), [datos.enlaces]);
+  async function crearTareaDesdeTexto(nombre: string, listaId: string) {
+    const r = await crearTareaDesdeDocAction({ listaId, nombre });
+    if (r.ok) setEnlaces((previos) => ({ ...previos, [r.enlace.id]: r.enlace }));
+    return r;
+  }
 
   const hijas = useMemo(() => {
     const m = new Map<string | null, PaginaResumen[]>();
@@ -138,7 +147,15 @@ export function DocView({ datos }: { datos: DatosDoc }) {
       {/* Editor */}
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         {pagina ? (
-          <PaginaEditor key={pagina.id} pagina={pagina} editable={puedeEditar} nombres={nombres} />
+          <PaginaEditor
+            key={pagina.id}
+            pagina={pagina}
+            editable={puedeEditar}
+            nombres={nombres}
+            enlaces={enlaces}
+            listasDestino={datos.listasDestino}
+            onCrearTarea={crearTareaDesdeTexto}
+          />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
             <p className="text-sm text-ink-3">Este documento aún no tiene páginas.</p>
@@ -174,10 +191,16 @@ function PaginaEditor({
   pagina,
   editable,
   nombres,
+  enlaces,
+  listasDestino,
+  onCrearTarea,
 }: {
   pagina: NonNullable<DatosDoc["pagina"]>;
   editable: boolean;
   nombres: Map<string, string>;
+  enlaces: Record<string, EnlaceTarea>;
+  listasDestino: DatosDoc["listasDestino"];
+  onCrearTarea: (nombre: string, listaId: string) => ReturnType<typeof crearTareaDesdeDocAction>;
 }) {
   const aviso = useAviso();
   const [titulo, setTitulo] = useState(pagina.titulo);
@@ -260,6 +283,10 @@ function PaginaEditor({
         contenido={pagina.contenido}
         editable={editable}
         placeholder={editable ? "Empieza a escribir…" : "Esta página está vacía"}
+        enlaces={enlaces}
+        nombres={nombres}
+        listasDestino={listasDestino}
+        onCrearTarea={onCrearTarea}
         onCambio={(json) => {
           pendiente.current = json;
           setEstado("");

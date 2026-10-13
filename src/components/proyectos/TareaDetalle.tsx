@@ -38,13 +38,14 @@ import {
   eliminarComentarioAction,
   eliminarItemChecklistAction,
   eliminarTareaAction,
+  postergarTareaAction,
   actualizarItemChecklistAction,
   registrarAdjuntoAction,
   renombrarChecklistAction,
   setAsignadosAction,
   setEtiquetasTareaAction,
 } from "@/lib/proyectos/actions";
-import { BUCKET_ADJUNTOS, MAX_BYTES_ADJUNTO, etiquetaFecha, fechaHora, formatoBytes, hoyISO } from "@/lib/proyectos/utils";
+import { BUCKET_ADJUNTOS, MAX_BYTES_ADJUNTO, esPostergacion, etiquetaFecha, fechaHora, formatoBytes, hoyISO } from "@/lib/proyectos/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { Avatar, BotonPrimario, BotonSecundario, Modal, useAviso } from "@/components/proyectos/ui";
 import {
@@ -57,12 +58,13 @@ import {
   SelectorPrioridad,
 } from "@/components/proyectos/selectores";
 import { Editor } from "@/components/proyectos/Editor";
+import { DialogoPostergar, InsigniaPostergada, SeccionPostergaciones } from "@/components/proyectos/Postergaciones";
 import { Migas } from "@/components/proyectos/Migas";
 import { MarcarListaActiva } from "@/components/proyectos/ProyectosShell";
 
 type R = { ok: boolean; error?: string };
 
-export function TareaDetalleView({ datos, yoId }: { datos: DatosTarea; yoId: string }) {
+export function TareaDetalleView({ datos, yoId, esAdmin = false }: { datos: DatosTarea; yoId: string; esAdmin?: boolean }) {
   const { tarea, lista, espacio, carpeta, estados, etiquetas, miembros, directorio, padre } = datos;
   const aviso = useAviso();
   const router = useRouter();
@@ -105,6 +107,17 @@ export function TareaDetalleView({ datos, yoId }: { datos: DatosTarea; yoId: str
   const cerrada = cerrados.has(estadoId);
   const [confirmarBorrar, setConfirmarBorrar] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  // Acuerdo de nueva fecha: undefined = cerrado; { nueva } = ventana abierta.
+  const [acuerdo, setAcuerdo] = useState<{ nueva: string | null | undefined } | null>(null);
+
+  async function confirmarAcuerdo(destino: string | null, motivo: string): Promise<string | null> {
+    const r = await postergarTareaAction(tarea.id, destino, motivo);
+    if (!r.ok) return r.error;
+    setLimite(destino);
+    setAcuerdo(null);
+    router.refresh();
+    return null;
+  }
 
   const etiquetasTarea = etqIds.map((id) => etiquetas.find((e) => e.id === id)).filter(Boolean) as typeof etiquetas;
 
@@ -251,8 +264,13 @@ export function TareaDetalleView({ datos, yoId }: { datos: DatosTarea; yoId: str
                     conIcono={false}
                     vacioTexto="Límite"
                     deshabilitado={!puedeEditar}
-                    onCambiar={(f) => guardar(setLimite, limite, f, () => actualizarTareaAction(tarea.id, { fechaLimite: f }))}
+                    onCambiar={(f) =>
+                      esPostergacion(limite, f)
+                        ? setAcuerdo({ nueva: f })
+                        : guardar(setLimite, limite, f, () => actualizarTareaAction(tarea.id, { fechaLimite: f }))
+                    }
                   />
+                  <InsigniaPostergada veces={tarea.historialPostergaciones.length} />
                 </div>
               </div>
               <div className={fila}>
@@ -280,6 +298,14 @@ export function TareaDetalleView({ datos, yoId }: { datos: DatosTarea; yoId: str
           <Descripcion tareaId={tarea.id} inicial={tarea.descripcion} editable={puedeEditar} />
 
           <Subtareas datos={datos} puedeEditar={puedeEditar} nombres={nombres} />
+          <SeccionPostergaciones
+            historial={tarea.historialPostergaciones}
+            fechaLimite={limite}
+            puedeEditar={puedeEditar}
+            esAdmin={esAdmin}
+            nombreDe={nombreDe}
+            onAcordar={() => setAcuerdo({ nueva: undefined })}
+          />
           <Checklists tareaId={tarea.id} checklists={tarea.checklists} puedeEditar={puedeEditar} />
           <Adjuntos datos={datos} puedeEditar={puedeEditar} nombreDe={nombreDe} />
         </div>
@@ -304,6 +330,16 @@ export function TareaDetalleView({ datos, yoId }: { datos: DatosTarea; yoId: str
           hoy={hoy}
         />
       </aside>
+
+      {acuerdo && limite && (
+        <DialogoPostergar
+          actual={limite}
+          nueva={acuerdo.nueva}
+          veces={tarea.historialPostergaciones.length}
+          onConfirmar={confirmarAcuerdo}
+          onCancelar={() => setAcuerdo(null)}
+        />
+      )}
 
       {confirmarBorrar && (
         <Modal

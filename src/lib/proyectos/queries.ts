@@ -7,15 +7,18 @@ import type {
   Checklist,
   Comentario,
   DocResumen,
+  EnlaceTarea,
   EntradaActividad,
   Espacio,
   EspacioArbol,
   Estado,
   Etiqueta,
   Lista,
+  ListaDestino,
   Miembro,
   PaginaCompleta,
   PaginaResumen,
+  Postergacion,
   RolEspacio,
   Tarea,
   TareaDetalle,
@@ -74,6 +77,7 @@ function mapTarea(r: any): Tarea {
     etiquetas: (r.proy_tarea_etiquetas ?? []).map((e: any) => e.etiqueta_id),
     subtareasTotal: 0,
     subtareasHechas: 0,
+    postergaciones: 0,
   };
 }
 
@@ -200,7 +204,7 @@ export async function getLista(listaId: string, userId: string, isAdmin: boolean
     .maybeSingle();
   if (!l) return null;
 
-  const [esp, carp, est, tar, etq, miembros, directorio] = await Promise.all([
+  const [esp, carp, est, tar, etq, miembros, directorio, pos] = await Promise.all([
     sb.from("proy_espacios").select("id, nombre, color, privado, orden").eq("id", l.espacio_id).single(),
     l.carpeta_id
       ? sb.from("proy_carpetas").select("id, espacio_id, nombre, orden").eq("id", l.carpeta_id).maybeSingle()
@@ -210,14 +214,21 @@ export async function getLista(listaId: string, userId: string, isAdmin: boolean
     sb.from("proy_etiquetas").select("id, espacio_id, nombre, color").eq("espacio_id", l.espacio_id).order("nombre"),
     getMiembros(l.espacio_id),
     getDirectorio(),
+    sb.from("proy_postergaciones").select("tarea_id, proy_tareas!inner(lista_id)").eq("proy_tareas.lista_id", listaId),
   ]);
   if (esp.error || !esp.data) return null;
   if (est.error) throw new Error(est.error.message);
   if (tar.error) throw new Error(tar.error.message);
 
+  const vecesPostergada = new Map<string, number>();
+  for (const p of (pos.data ?? []) as any[]) vecesPostergada.set(p.tarea_id, (vecesPostergada.get(p.tarea_id) ?? 0) + 1);
+
   const rol = await rolEn(l.espacio_id, userId, isAdmin, esp.data.privado);
   const estados = (est.data ?? []).map(mapEstado);
-  const tareas = contarSubtareas((tar.data ?? []).map(mapTarea), estados);
+  const tareas = contarSubtareas((tar.data ?? []).map(mapTarea), estados).map((t) => ({
+    ...t,
+    postergaciones: vecesPostergada.get(t.id) ?? 0,
+  }));
 
   return {
     lista: { id: l.id, espacioId: l.espacio_id, carpetaId: l.carpeta_id, nombre: l.nombre, orden: l.orden, abiertas: 0 },
@@ -250,7 +261,7 @@ export async function getTarea(tareaId: string, userId: string, isAdmin: boolean
   if (!t) return null;
   const row = t as any;
 
-  const [lis, esp, est, sub, chk, adj, com, act, etq, miembros, directorio, padre] = await Promise.all([
+  const [lis, esp, est, sub, chk, adj, com, act, etq, miembros, directorio, padre, pos, posSub] = await Promise.all([
     sb.from("proy_listas").select("id, espacio_id, carpeta_id, nombre, orden").eq("id", row.lista_id).single(),
     sb.from("proy_espacios").select("id, nombre, color, privado, orden").eq("id", row.espacio_id).single(),
     sb.from("proy_estados").select("id, lista_id, nombre, tipo, color, orden").eq("lista_id", row.lista_id).order("orden"),
@@ -269,6 +280,12 @@ export async function getTarea(tareaId: string, userId: string, isAdmin: boolean
     row.parent_id
       ? sb.from("proy_tareas").select("id, nombre").eq("id", row.parent_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    sb
+      .from("proy_postergaciones")
+      .select("id, fecha_anterior, fecha_nueva, motivo, user_id, created_at")
+      .eq("tarea_id", tareaId)
+      .order("created_at"),
+    sb.from("proy_postergaciones").select("tarea_id, proy_tareas!inner(parent_id)").eq("proy_tareas.parent_id", tareaId),
   ]);
   if (lis.error || !lis.data || esp.error || !esp.data) return null;
 
@@ -323,8 +340,22 @@ export async function getTarea(tareaId: string, userId: string, isAdmin: boolean
     createdAt: a.created_at,
   }));
 
-  const subtareas = contarSubtareas((sub.data ?? []).map(mapTarea), estados);
-  const base = mapTarea(row);
+  const historialPostergaciones: Postergacion[] = ((pos.data ?? []) as any[]).map((p) => ({
+    id: p.id,
+    fechaAnterior: p.fecha_anterior,
+    fechaNueva: p.fecha_nueva,
+    motivo: p.motivo,
+    userId: p.user_id,
+    createdAt: p.created_at,
+  }));
+  const vecesSub = new Map<string, number>();
+  for (const p of (posSub.data ?? []) as any[]) vecesSub.set(p.tarea_id, (vecesSub.get(p.tarea_id) ?? 0) + 1);
+
+  const subtareas = contarSubtareas((sub.data ?? []).map(mapTarea), estados).map((s) => ({
+    ...s,
+    postergaciones: vecesSub.get(s.id) ?? 0,
+  }));
+  const base = { ...mapTarea(row), postergaciones: historialPostergaciones.length };
 
   return {
     tarea: {
@@ -339,6 +370,7 @@ export async function getTarea(tareaId: string, userId: string, isAdmin: boolean
       adjuntos,
       comentarios,
       actividad,
+      historialPostergaciones,
     },
     lista: {
       id: lis.data.id,
@@ -366,6 +398,23 @@ export interface DatosDoc {
   paginas: PaginaResumen[];
   pagina: PaginaCompleta | null;
   directorio: Usuario[];
+  /** Tareas enlazadas desde el texto de la página abierta (estado y responsables en vivo). */
+  enlaces: Record<string, EnlaceTarea>;
+  /** Listas donde el usuario puede crear tareas desde el documento. */
+  listasDestino: ListaDestino[];
+}
+
+const UUID_ID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+/** Ids de las tareas enlazadas dentro de un contenido de TipTap. */
+function idsEnlazados(nodo: unknown, acc: Set<string> = new Set()): Set<string> {
+  if (!nodo || typeof nodo !== "object") return acc;
+  const n = nodo as { type?: string; attrs?: { tareaId?: unknown }; content?: unknown[] };
+  if (n.type === "enlaceTarea" && typeof n.attrs?.tareaId === "string" && UUID_ID.test(n.attrs.tareaId)) {
+    acc.add(n.attrs.tareaId);
+  }
+  if (Array.isArray(n.content) && acc.size < 200) for (const h of n.content) idsEnlazados(h, acc);
+  return acc;
 }
 
 function mapPagina(r: any): PaginaResumen {
@@ -417,6 +466,42 @@ export async function getDoc(docId: string, paginaId: string | undefined, userId
     pagina = { ...elegida, contenido: (contenido?.contenido ?? null) as JSONContent | null };
   }
 
+  // Tareas que aparecen enlazadas en el texto (estado y responsables en vivo).
+  const enlaces: Record<string, EnlaceTarea> = {};
+  const ids = [...idsEnlazados(pagina?.contenido ?? null)];
+  if (ids.length > 0) {
+    const { data: ts } = await sb
+      .from("proy_tareas")
+      .select("id, nombre, lista_id, proy_estados(nombre, color, tipo), proy_tarea_asignados(user_id)")
+      .in("id", ids);
+    for (const t of (ts ?? []) as any[]) {
+      const est = Array.isArray(t.proy_estados) ? t.proy_estados[0] : t.proy_estados;
+      enlaces[t.id] = {
+        id: t.id,
+        nombre: t.nombre,
+        listaId: t.lista_id,
+        estado: est ? { nombre: est.nombre, color: est.color, tipo: est.tipo } : null,
+        asignados: (t.proy_tarea_asignados ?? []).map((a: any) => a.user_id),
+      };
+    }
+  }
+
+  // Listas donde puede crear tareas (propietario o editor), las de este espacio primero.
+  const arbol = await getArbol(userId, isAdmin);
+  const listasDestino: ListaDestino[] = [];
+  for (const e of arbol) {
+    if (e.espacio.rol === "lector") continue;
+    const base = { espacioId: e.espacio.id, espacioNombre: e.espacio.nombre, espacioColor: e.espacio.color };
+    for (const l of e.listas) listasDestino.push({ id: l.id, nombre: l.nombre, carpetaNombre: null, ...base });
+    for (const c of e.carpetas)
+      for (const l of c.listas) listasDestino.push({ id: l.id, nombre: l.nombre, carpetaNombre: c.nombre, ...base });
+  }
+  listasDestino.sort(
+    (a, b) =>
+      Number(b.espacioId === d.espacio_id) - Number(a.espacioId === d.espacio_id) ||
+      a.espacioNombre.localeCompare(b.espacioNombre, "es")
+  );
+
   return {
     doc: {
       id: d.id,
@@ -432,6 +517,8 @@ export async function getDoc(docId: string, paginaId: string | undefined, userId
     paginas,
     pagina,
     directorio,
+    enlaces,
+    listasDestino,
   };
 }
 

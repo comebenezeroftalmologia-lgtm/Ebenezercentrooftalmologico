@@ -110,3 +110,9 @@ export function mensajeError(e: { code?: string; message?: string } | null | und
   if (e.code === "P0001") return msg;
   return msg || "Error desconocido.";
 }
+
+/** ¿Cambiar la fecha límite de `actual` a `nueva` es una postergación (exige motivo)? */
+export function esPostergacion(actual: string | null, nueva: string | null): boolean {
+  if (!actual || actual === nueva) return false;
+  return nueva === null || nueva > actual;
+}
