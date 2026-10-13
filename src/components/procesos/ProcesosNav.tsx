@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, Building2, ClipboardCheck, Home, LayoutDashboard, LogOut, UserCircle } from "lucide-react";
+import { ArrowLeft, Building2, ClipboardCheck, Home, LayoutDashboard, LogOut, UserCircle, BarChart3 } from "lucide-react";
 import type { AppUser } from "@/lib/procesos/types";
 import { logoutAction } from "@/lib/procesos/actions";
 
-export function ProcesosNav({ user, puedeVerDashboard }: { user: AppUser; puedeVerDashboard: boolean }) {
+export function ProcesosNav({ user, puedeVerDashboard, tieneAnalytics }: { user: AppUser; puedeVerDashboard: boolean; tieneAnalytics?: boolean }) {
   const pathname = usePathname();
 
   const items = [
@@ -17,16 +17,9 @@ export function ProcesosNav({ user, puedeVerDashboard }: { user: AppUser; puedeV
     ...(puedeVerDashboard
       ? [{ href: "/procesos/dashboard", label: "Dashboard general", icon: LayoutDashboard }]
       : []),
-    // Analytics NO va aquí.
-    //
-    // Este menú es el de Procesos: lo que hay DENTRO de Procesos. Analytics
-    // no está dentro de Procesos — son dos grupos hermanos, y así está
-    // escrito en lib/modulos.ts, que es el mismo archivo del que salen los
-    // permisos por usuario en la pantalla de Usuarios. Colgar uno del otro
-    // dejaba la navegación diciendo una cosa y el sistema de accesos otra.
-    //
-    // Además ya estaba de más: Analytics tiene su propio ícono en el riel
-    // de la izquierda, a dos centímetros de aquí.
+    ...(tieneAnalytics
+      ? [{ href: "/analytics", label: "Analytics", icon: BarChart3 }]
+      : []),
   ];
 
   return (
