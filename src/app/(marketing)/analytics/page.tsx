@@ -8,6 +8,27 @@ import { Cifra, Chispa } from "@/components/eb";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * QUE HACE ESTA LINEA Y POR QUE HACE FALTA.
+ *
+ * La pagina tiene que ser dinamica: muestra los tableros de QUIEN entra,
+ * asi que no se puede pre-generar una sola version para todos.
+ *
+ * Pero "force-dynamic" en Next 14 hace algo que no se ve: pone TODOS los
+ * fetch de la pagina en no-store. Eso anulaba el `revalidate: 1800` que
+ * trae traerDiasTipicos(), y dia_tipico.json se bajaba de GitHub en cada
+ * visita. Medido en produccion: el servidor respondia en 82 ms pero la
+ * pagina tardaba 3.018 ms en cerrar, esperando ese archivo, para 6 KB de
+ * HTML.
+ *
+ * "default-cache" le devuelve a cada fetch el derecho a decidir su propia
+ * cache. La pagina sigue siendo dinamica y sigue respetando permisos: lo
+ * unico que cambia es que el archivo del dia tipico —11 KB, el mismo para
+ * todo el mundo, que cambia cuando corre el motor— se guarda media hora
+ * en vez de bajarse cada vez.
+ */
+export const fetchCache = "default-cache";
+
 const DIA_SEMANA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const DIA_CORTO = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 
