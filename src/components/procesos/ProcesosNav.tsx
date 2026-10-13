@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ClipboardCheck, Home, LayoutDashboard, BarChart3, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Building2, ClipboardCheck, Home, LayoutDashboard, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { AppUser } from "@/lib/procesos/types";
 
-export function ProcesosNav({ user, puedeVerDashboard, tieneAnalytics }: { user: AppUser; puedeVerDashboard: boolean; tieneAnalytics?: boolean }) {
+export function ProcesosNav({ user, puedeVerDashboard }: { user: AppUser; puedeVerDashboard: boolean }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
 
@@ -17,9 +17,8 @@ export function ProcesosNav({ user, puedeVerDashboard, tieneAnalytics }: { user:
     ...(puedeVerDashboard
       ? [{ href: "/procesos/dashboard", label: "Dashboard general", icon: LayoutDashboard }]
       : []),
-    ...(tieneAnalytics
-      ? [{ href: "/analytics", label: "Analytics", icon: BarChart3 }]
-      : []),
+    // Analytics no va aqui: es hermano de Procesos en lib/modulos.ts, no
+    // esta dentro. Y ya tiene su propio lugar en el riel de los tableros.
   ];
 
   return (
