@@ -96,7 +96,29 @@ export async function GET() {
       "Content-Type": "text/html; charset=utf-8",
       // Solo se puede mostrar dentro de esta misma plataforma.
       "Content-Security-Policy": "frame-ancestors 'self'",
-      "Cache-Control": "private, max-age=0, must-revalidate",
+      // EL TABLERO SE GUARDA EN EL NAVEGADOR DE CADA USUARIO.
+      //
+      // Antes iba con max-age=0, must-revalidate: el navegador no lo
+      // reutilizaba nunca y cada visita a Frecuencias bajaba 1,9 MB
+      // enteros desde GitHub. Medido en produccion: 3,8 segundos solo en
+      // eso, de los 5,8 que tardaba la pantalla.
+      //
+      // El revalidate de arriba no servia de nada para esto: el archivo
+      // pesa unos 7 MB sin comprimir y la cache de datos de Vercel no
+      // admite entradas de mas de 2 MB, asi que nunca llego a guardarse.
+      // La cache que si funciona es la del navegador.
+      //
+      //   private  -> queda SOLO en el navegador de quien lo pidio.
+      //               Nunca en un cache compartido: el tablero depende de
+      //               permisos y no puede viajar de un usuario a otro.
+      //   max-age=300 -> cinco minutos instantaneos.
+      //   stale-while-revalidate=900 -> hasta quince minutos mas lo
+      //               muestra al instante mientras baja la version nueva
+      //               por detras. Asi nadie espera y nadie ve algo viejo
+      //               por mucho rato.
+      //
+      // El motor corre unas pocas veces al dia, no cada cinco minutos.
+      "Cache-Control": "private, max-age=300, stale-while-revalidate=900",
     },
   });
 }
