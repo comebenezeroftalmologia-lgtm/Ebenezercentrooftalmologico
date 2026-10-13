@@ -1,3 +1,12 @@
+/**
+ * El marco de Procesos: su propio menu al lado del riel de modulos.
+ *
+ * Ya no calcula si el usuario tiene Analytics. Lo hacia para pintar un
+ * enlace a /analytics dentro de este menu, y ese enlace sobraba por dos
+ * razones: Analytics ya tiene su icono en el riel de la izquierda, y no
+ * es parte de Procesos — en lib/modulos.ts son dos grupos hermanos, y
+ * ese mismo archivo es el que gobierna los permisos por usuario.
+ */
 import { getMisAsignaciones, requireModuloAccess } from "@/lib/auth";
 import { ProcesosNav } from "@/components/procesos/ProcesosNav";
 
