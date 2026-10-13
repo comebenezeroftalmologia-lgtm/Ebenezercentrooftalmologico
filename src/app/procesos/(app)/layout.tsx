@@ -13,7 +13,9 @@ export default async function ProcesosAppLayout({ children }: { children: React.
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <ProcesosNav user={user} puedeVerDashboard={puedeVerDashboard} />
-      <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-white min-w-0 shadow-[-10px_0_15px_-10px_rgba(0,0,0,0.05)] z-10">
+      {/* El mismo papel cuadriculado del resto de la plataforma: la tarjeta
+          blanca resalta sola encima y no hay que subrayarla con sombra. */}
+      <main className="hoja-cuadriculada z-10 min-w-0 flex-1 overflow-y-auto p-4 shadow-[-10px_0_15px_-10px_rgba(0,0,0,0.05)] sm:p-8">
         {children}
       </main>
     </div>

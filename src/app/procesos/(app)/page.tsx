@@ -23,7 +23,7 @@ export default async function ProcesosHomePage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-navy">Hola, {user?.nombreCompleto.split(" ")[0]}</h1>
+        <h1 className="font-titulo text-3xl font-normal text-navy">Hola, {user?.nombreCompleto.split(" ")[0]}</h1>
         <p className="mt-1 text-sm text-ink-3">
           {misAsignaciones.length > 0
             ? `Participas en: ${misAsignaciones.map((a) => `${a.areaNombre} (${a.rol === "lider" ? "líder" : "colaborador"})`).join(", ")}.`
@@ -31,7 +31,7 @@ export default async function ProcesosHomePage() {
         </p>
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold text-navy">Áreas de la organización</h2>
+      <h2 className="mb-3 font-titulo text-lg font-normal text-navy">Áreas de la organización</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {areas.map((area) => (
           <Link
