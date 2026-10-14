@@ -2,38 +2,47 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
+import {
+  createServiceClient,
+  createSessionServerClient,
+} from "@/lib/supabase/server";
 import { requireAdmin, requireAppUser } from "@/lib/auth";
-import type { Modulo } from "@/lib/modulos";
+import { MODULOS, type Modulo } from "@/lib/modulos";
+import type { AppUser } from "@/lib/procesos/types";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function errorMsg(e: unknown): string {
-  return e instanceof Error ? e.message : "Error desconocido.";
+/**
+ * Si el usuario autenticado es Administrador en app_users, usamos el cliente
+ * de servicio para evitar bloqueos por desfases en politicas RLS de Supabase.
+ * Para lideres y colaboradores se mantiene el cliente de sesion con RLS.
+ */
+function dbForUser(user: AppUser) {
+  return user.isAdmin ? createServiceClient() : createSessionServerClient();
 }
 
-// --- Login / logout ---------------------------------------------------
+// --- Auth: login / logout / cambio de contraseÃ±a --------------------
 
 export async function loginAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const nextRaw = String(formData.get("next") ?? "").trim();
+  const destino =
+    nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/";
 
   if (!email || !password) {
-    return { error: "Ingresa correo y contraseña." };
+    return { error: "Escribe tu correo y contraseÃ±a." };
   }
 
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: "Correo o contraseña incorrectos." };
+    return { error: "Correo o contraseÃ±a incorrectos." };
   }
 
-  redirect("/");
+  redirect(destino);
 }
 
 export async function logoutAction() {
@@ -42,179 +51,206 @@ export async function logoutAction() {
   redirect("/login");
 }
 
-/** Primer login tras aceptar una invitación: la persona ya tiene
- * sesión (vino del link del correo vía /auth/callback), solo le falta
- * poner su propia contraseña. */
-export async function establecerPasswordInicialAction(
+export async function setNewPasswordAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const user = await requireAppUser();
   const password = String(formData.get("password") ?? "");
-  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (password.length < 8) {
+    return { error: "La contraseÃ±a debe tener al menos 8 caracteres." };
+  }
+  if (password !== confirm) {
+    return { error: "Las contraseÃ±as no coinciden." };
+  }
 
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: error.message };
+  if (error) {
+    return { error: error.message };
+  }
 
-  void user;
   redirect("/");
 }
 
-// Perfil (usuario ya autenticado, cambia su propia contraseña — se
-// queda en /perfil viendo el resultado, no se redirige).
-export async function cambiarPasswordAction(
-  _prevState: { error: string | null; ok?: boolean },
-  formData: FormData
-): Promise<{ error: string | null; ok?: boolean }> {
-  await requireAppUser();
-  const password = String(formData.get("password") ?? "");
-  const confirmar = String(formData.get("confirmar") ?? "");
+// --- Admin: crear y administrar usuarios -----------------------------
 
-  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
-  if (password !== confirmar) return { error: "Las contraseñas no coinciden." };
-
-  const supabase = createSessionServerClient();
-  const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: error.message };
-
-  return { error: null, ok: true };
+function parseModulosFromForm(formData: FormData): Modulo[] {
+  const raw = formData.getAll("modulos").map(String);
+  const validIds = new Set<string>(MODULOS.map((m) => m.id));
+  return raw.filter((v): v is Modulo => validIds.has(v));
 }
 
-// "Olvidé mi contraseña" (sin sesión): manda el correo de
-// recuperación. Supabase no revela si el correo existe o no — el
-// mensaje es siempre el mismo, para no filtrar qué correos están
-// registrados.
-export async function solicitarRecuperacionAction(
-  _prevState: { error: string | null; ok?: boolean },
-  formData: FormData
-): Promise<{ error: string | null; ok?: boolean }> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!EMAIL_PATTERN.test(email)) return { error: "Ingresa un correo válido." };
-
-  const supabase = createSessionServerClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${SITE_URL}/auth/callback?next=/restablecer-password`,
-  });
-
-  if (error) return { error: "No se pudo enviar el correo. Intenta de nuevo en unos minutos." };
-  return { error: null, ok: true };
+export interface CrearUsuarioState {
+  error: string | null;
+  ok: boolean;
+  credenciales?: {
+    nombreCompleto: string;
+    email: string;
+    passwordTemporal: string;
+  };
 }
 
-// --- Administración de usuarios (solo admin) ---------------------------
+function generarPasswordTemporal(): string {
+  const chars = "abcdefghijkmnpqrstuvwxyz23456789";
+  let sufijo = "";
+  for (let i = 0; i < 6; i++) {
+    sufijo += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return `Ebenezer-${sufijo}`;
+}
 
-export async function invitarUsuarioAction(
-  _prevState: { error: string | null; ok?: boolean },
+export async function crearUsuarioAction(
+  _prevState: CrearUsuarioState,
   formData: FormData
-): Promise<{ error: string | null; ok?: boolean }> {
+): Promise<CrearUsuarioState> {
   await requireAdmin();
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const nombreCompleto = String(formData.get("nombreCompleto") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const isAdmin = formData.get("isAdmin") === "on";
-  const modulos = formData.getAll("modulos").map(String) as Modulo[];
+  const passwordManual = String(formData.get("passwordTemporal") ?? "").trim();
+  const modulos = parseModulosFromForm(formData);
 
-  if (!EMAIL_PATTERN.test(email)) return { error: "Correo inválido." };
-  if (!nombreCompleto) return { error: "Falta el nombre completo." };
-
-  const admin = createServiceClient();
-
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${SITE_URL}/auth/callback?next=/invitacion`,
-  });
-
-  if (inviteError || !invited.user) {
-    return { error: `No se pudo invitar: ${inviteError?.message ?? "error desconocido"}` };
+  if (!nombreCompleto || !email) {
+    return { error: "Falta el nombre completo o el correo.", ok: false };
+  }
+  if (passwordManual && passwordManual.length < 8) {
+    return {
+      error: "La contraseÃ±a temporal debe tener al menos 8 caracteres (o dÃ©jala vacÃ­a para generarla sola).",
+      ok: false,
+    };
   }
 
-  const { error: profileError } = await admin.from("app_users").insert({
-    id: invited.user.id,
+  const passwordTemporal = passwordManual || generarPasswordTemporal();
+  const service = createServiceClient();
+
+  const { data: created, error: createErr } =
+    await service.auth.admin.createUser({
+      email,
+      password: passwordTemporal,
+      email_confirm: true,
+    });
+
+  if (createErr || !created?.user) {
+    return {
+      error: createErr?.message ?? "No se pudo crear el usuario.",
+      ok: false,
+    };
+  }
+
+  const { error: profileErr } = await service.from("app_users").insert({
+    id: created.user.id,
     nombre_completo: nombreCompleto,
     email,
     is_admin: isAdmin,
+    activo: true,
   });
 
-  if (profileError) {
-    return { error: `Invitación enviada pero falló el perfil: ${profileError.message}` };
+  if (profileErr) {
+    return { error: profileErr.message, ok: false };
   }
 
-  if (modulos.length > 0) {
-    const { error: modulosError } = await admin
-      .from("modulo_accesos")
-      .insert(modulos.map((modulo) => ({ user_id: invited.user!.id, modulo })));
-    if (modulosError) {
-      return { error: `Invitación enviada pero falló el acceso a módulos: ${modulosError.message}` };
+  if (!isAdmin && modulos.length > 0) {
+    const { error: accErr } = await service.from("modulo_accesos").insert(
+      modulos.map((modulo) => ({ user_id: created.user.id, modulo }))
+    );
+    if (accErr) {
+      return { error: accErr.message, ok: false };
     }
   }
 
-  revalidatePath("/usuarios");
-  return { error: null, ok: true };
+  revalidatePath("/procesos/usuarios");
+  return {
+    error: null,
+    ok: true,
+    credenciales: { nombreCompleto, email, passwordTemporal },
+  };
 }
 
-export async function actualizarAccesoUsuarioAction(
-  userId: string,
-  isAdmin: boolean,
-  modulos: Modulo[]
-) {
+export async function resetearPasswordUsuarioAction(
+  userId: string
+): Promise<{ error: string | null; credenciales?: { email: string; nombreCompleto: string; passwordTemporal: string } }> {
   await requireAdmin();
-  const admin = createServiceClient();
+  const service = createServiceClient();
 
-  const { error: updateError } = await admin.from("app_users").update({ is_admin: isAdmin }).eq("id", userId);
-  if (updateError) throw new Error(updateError.message);
-
-  const { error: deleteError } = await admin.from("modulo_accesos").delete().eq("user_id", userId);
-  if (deleteError) throw new Error(deleteError.message);
-
-  if (modulos.length > 0) {
-    const { error: insertError } = await admin
-      .from("modulo_accesos")
-      .insert(modulos.map((modulo) => ({ user_id: userId, modulo })));
-    if (insertError) throw new Error(insertError.message);
+  const { data: perfil } = await service
+    .from("app_users")
+    .select("nombre_completo, email")
+    .eq("id", userId)
+    .single();
+  if (!perfil) {
+    return { error: "Usuario no encontrado." };
   }
 
-  revalidatePath("/usuarios");
+  const passwordTemporal = generarPasswordTemporal();
+  const { error } = await service.auth.admin.updateUserById(userId, {
+    password: passwordTemporal,
+    email_confirm: true,
+  });
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {
+    error: null,
+    credenciales: {
+      nombreCompleto: perfil.nombre_completo,
+      email: perfil.email,
+      passwordTemporal,
+    },
+  };
 }
 
 export async function toggleActivoUsuarioAction(userId: string, activo: boolean) {
   await requireAdmin();
-  const admin = createServiceClient();
-  const { error } = await admin.from("app_users").update({ activo }).eq("id", userId);
+  const service = createServiceClient();
+  const { error } = await service
+    .from("app_users")
+    .update({ activo })
+    .eq("id", userId);
   if (error) throw new Error(error.message);
-  revalidatePath("/usuarios");
+  revalidatePath("/procesos/usuarios");
 }
 
-export async function eliminarUsuarioAction(userId: string) {
-  const yo = await requireAdmin();
-  if (userId === yo.id) throw new Error("No puedes eliminar tu propia cuenta.");
-  const admin = createServiceClient();
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/usuarios");
-}
-
-export async function restablecerPasswordAction(
+export async function actualizarAccesoUsuarioAction(
   userId: string,
-  _prevState: { error: string | null; ok?: boolean },
   formData: FormData
-): Promise<{ error: string | null; ok?: boolean }> {
-  await requireAdmin();
-  const password = String(formData.get("password") ?? "");
-  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
+) {
+  const admin = await requireAdmin();
+  const isAdmin = formData.get("isAdmin") === "on";
+  const modulos = parseModulosFromForm(formData);
 
-  const admin = createServiceClient();
-  // email_confirm: true evita que quede bloqueado el login si la persona
-  // nunca confirmó el correo de invitación (p. ej. si el admin le puso la
-  // contraseña directamente en vez de que ella aceptara la invitación).
-  const { error } = await admin.auth.admin.updateUserById(userId, {
-    password,
-    email_confirm: true,
-  });
-  if (error) return { error: error.message };
+  if (userId === admin.id && !isAdmin) {
+    throw new Error("No puedes quitarte el rol de administrador a ti mismo.");
+  }
 
-  return { error: null, ok: true };
+  const service = createServiceClient();
+
+  const { error: updErr } = await service
+    .from("app_users")
+    .update({ is_admin: isAdmin })
+    .eq("id", userId);
+  if (updErr) throw new Error(updErr.message);
+
+  const { error: delErr } = await service
+    .from("modulo_accesos")
+    .delete()
+    .eq("user_id", userId);
+  if (delErr) throw new Error(delErr.message);
+
+  if (!isAdmin && modulos.length > 0) {
+    const { error: insErr } = await service.from("modulo_accesos").insert(
+      modulos.map((modulo) => ({ user_id: userId, modulo }))
+    );
+    if (insErr) throw new Error(insErr.message);
+  }
+
+  revalidatePath("/procesos/usuarios");
 }
 
-// --- Áreas (solo admin) -------------------------------------------------
+// --- Ãreas y asignaciones (lÃ­der / colaborador) ----------------------
 
 export async function crearAreaAction(
   _prevState: { error: string | null },
@@ -222,61 +258,84 @@ export async function crearAreaAction(
 ): Promise<{ error: string | null }> {
   await requireAdmin();
   const nombre = String(formData.get("nombre") ?? "").trim();
-  if (!nombre) return { error: "Falta el nombre del área." };
+  if (!nombre) return { error: "Escribe el nombre del Ã¡rea." };
 
-  const supabase = createSessionServerClient();
-  const { data, error } = await supabase
-    .from("areas")
-    .insert({ nombre })
-    .select("id")
-    .single();
+  const supabase = createServiceClient();
+  const { error } = await supabase.from("areas").insert({ nombre });
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe un área con ese nombre." };
-    return { error: error.message };
+    return {
+      error:
+        error.code === "23505"
+          ? "Ya existe un Ã¡rea con ese nombre."
+          : error.message,
+    };
   }
-
   revalidatePath("/procesos/areas");
-  redirect(`/procesos/areas/${data.id}`);
+  revalidatePath("/procesos");
+  return { error: null };
 }
 
-// --- Asignaciones de área (líder / colaborador) ------------------------
-
-export async function asignarLiderAction(areaId: string, userId: string) {
+export async function asignarLiderAction(areaId: string, formData: FormData) {
   const admin = await requireAdmin();
-  const supabase = createSessionServerClient();
-  const { error } = await supabase.from("area_asignaciones").insert({
-    area_id: areaId,
-    user_id: userId,
-    rol: "lider",
-    asignado_por: admin.id,
-  });
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+
+  const supabase = createServiceClient();
+  const { error } = await supabase.from("area_asignaciones").upsert(
+    {
+      area_id: areaId,
+      user_id: userId,
+      rol: "lider",
+      asignado_por: admin.id,
+    },
+    { onConflict: "area_id,user_id" }
+  );
   if (error) throw new Error(error.message);
   revalidatePath(`/procesos/areas/${areaId}`);
   revalidatePath("/procesos/areas");
+  revalidatePath("/procesos");
 }
 
-export async function asignarColaboradorAction(areaId: string, userId: string) {
+export async function asignarColaboradorAction(
+  areaId: string,
+  formData: FormData
+) {
   const user = await requireAppUser();
-  const supabase = createSessionServerClient();
-  const { error } = await supabase.from("area_asignaciones").insert({
-    area_id: areaId,
-    user_id: userId,
-    rol: "colaborador",
-    asignado_por: user.id,
-  });
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+
+  const supabase = dbForUser(user);
+  const { error } = await supabase.from("area_asignaciones").upsert(
+    {
+      area_id: areaId,
+      user_id: userId,
+      rol: "colaborador",
+      asignado_por: user.id,
+    },
+    { onConflict: "area_id,user_id" }
+  );
   if (error) throw new Error(error.message);
   revalidatePath(`/procesos/areas/${areaId}`);
+  revalidatePath("/procesos");
 }
 
-export async function quitarAsignacionAction(asignacionId: string, areaId: string) {
-  await requireAppUser();
-  const supabase = createSessionServerClient();
-  const { error } = await supabase.from("area_asignaciones").delete().eq("id", asignacionId);
+export async function quitarAsignacionAction(
+  asignacionId: string,
+  areaId: string
+) {
+  const user = await requireAppUser();
+  const supabase = dbForUser(user);
+  const { error } = await supabase
+    .from("area_asignaciones")
+    .delete()
+    .eq("id", asignacionId);
   if (error) throw new Error(error.message);
   revalidatePath(`/procesos/areas/${areaId}`);
+  revalidatePath("/procesos/areas");
+  revalidatePath("/procesos");
 }
 
-// --- Procesos / actividades / tareas ------------------------------------
+// --- Procesos, actividades, tareas ----------------------------------
 
 export async function crearProcesoAction(
   areaId: string,
@@ -286,9 +345,9 @@ export async function crearProcesoAction(
   const user = await requireAppUser();
   const nombre = String(formData.get("nombre") ?? "").trim();
   const descripcion = String(formData.get("descripcion") ?? "").trim() || null;
-  if (!nombre) return { error: "Falta el nombre del proceso." };
+  if (!nombre) return { error: "Escribe el nombre del proceso." };
 
-  const supabase = createSessionServerClient();
+  const supabase = dbForUser(user);
   const { data, error } = await supabase
     .from("procesos")
     .insert({ area_id: areaId, nombre, descripcion, created_by: user.id })
@@ -296,21 +355,31 @@ export async function crearProcesoAction(
     .single();
   if (error) return { error: error.message };
 
+  revalidatePath(`/procesos/areas/${areaId}`);
+  revalidatePath("/procesos");
   redirect(`/procesos/procesos/${data.id}`);
 }
 
 export async function crearActividadAction(
   procesoId: string,
-  siguienteOrden: number,
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
   const user = await requireAppUser();
   const nombre = String(formData.get("nombre") ?? "").trim();
   const descripcion = String(formData.get("descripcion") ?? "").trim() || null;
-  if (!nombre) return { error: "Falta el nombre de la actividad." };
+  if (!nombre) return { error: "Escribe el nombre de la actividad." };
 
-  const supabase = createSessionServerClient();
+  const supabase = dbForUser(user);
+  const { data: ultima } = await supabase
+    .from("actividades")
+    .select("orden")
+    .eq("proceso_id", procesoId)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const siguienteOrden = (ultima?.orden ?? 0) + 1;
+
   const { error } = await supabase.from("actividades").insert({
     proceso_id: procesoId,
     nombre,
@@ -325,115 +394,99 @@ export async function crearActividadAction(
 }
 
 export async function moverActividadAction(
-  actividadId: string,
   procesoId: string,
+  actividadId: string,
   direccion: "arriba" | "abajo"
 ) {
-  await requireAppUser();
-  const supabase = createSessionServerClient();
-  const { data: actividades, error } = await supabase
+  const user = await requireAppUser();
+  const supabase = dbForUser(user);
+  const { data: lista } = await supabase
     .from("actividades")
     .select("id, orden")
     .eq("proceso_id", procesoId)
     .order("orden");
-  if (error || !actividades) throw new Error(error?.message ?? "No se pudo leer el orden.");
+  if (!lista) return;
 
-  const idx = actividades.findIndex((a) => a.id === actividadId);
-  const swapIdx = direccion === "arriba" ? idx - 1 : idx + 1;
-  if (idx === -1 || swapIdx < 0 || swapIdx >= actividades.length) return;
+  const idx = lista.findIndex((a) => a.id === actividadId);
+  const vecinoIdx = direccion === "arriba" ? idx - 1 : idx + 1;
+  if (idx < 0 || vecinoIdx < 0 || vecinoIdx >= lista.length) return;
 
-  const a = actividades[idx];
-  const b = actividades[swapIdx];
-  await supabase.from("actividades").update({ orden: b.orden }).eq("id", a.id);
-  await supabase.from("actividades").update({ orden: a.orden }).eq("id", b.id);
-
+  const actual = lista[idx];
+  const vecino = lista[vecinoIdx];
+  await supabase.from("actividades").update({ orden: vecino.orden }).eq("id", actual.id);
+  await supabase.from("actividades").update({ orden: actual.orden }).eq("id", vecino.id);
   revalidatePath(`/procesos/procesos/${procesoId}`);
 }
 
 export async function crearTareaAction(
   actividadId: string,
-  siguienteOrden: number,
-  _prevState: { error: string | null; ok?: boolean },
+  _prevState: { error: string | null },
   formData: FormData
-): Promise<{ error: string | null; ok?: boolean }> {
+): Promise<{ error: string | null }> {
   const user = await requireAppUser();
   const nombre = String(formData.get("nombre") ?? "").trim();
   const descripcion = String(formData.get("descripcion") ?? "").trim() || null;
-  const responsableUserId = String(formData.get("responsableUserId") ?? "").trim() || null;
+  const responsableUserId = String(formData.get("responsableUserId") ?? "") || null;
   const resultado = String(formData.get("resultado") ?? "").trim() || null;
   const impactoPaciente = String(formData.get("impactoPaciente") ?? "").trim() || null;
   const altoRiesgo = formData.get("altoRiesgo") === "on";
-  const slaHorasRaw = String(formData.get("slaHoras") ?? "").trim();
-  const slaHoras = slaHorasRaw ? Number(slaHorasRaw) : null;
-  if (slaHoras !== null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
-    return { error: "El SLA debe ser un número de horas mayor a 0." };
+  const slaRaw = String(formData.get("slaHoras") ?? "").trim();
+  const slaHoras = slaRaw ? Number(slaRaw) : null;
+  if (slaHoras != null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
+    return { error: "El tiempo objetivo (SLA) debe ser un nÃºmero mayor a 0." };
   }
-  // Relacionar con otra tarea (de cualquier área) desde el momento de
-  // crear — mismo mecanismo que el panel "Tareas relacionadas" del
-  // detalle, pero disponible ya en el formulario de creación.
-  const relacionarConTareaId = String(formData.get("relacionarConTareaId") ?? "").trim() || null;
-  const relacionarNota = String(formData.get("relacionarNota") ?? "").trim() || null;
-  if (!nombre) return { error: "Falta el nombre de la tarea." };
+  if (!nombre) return { error: "Escribe el nombre de la tarea." };
 
-  const supabase = createSessionServerClient();
-  const { data, error } = await supabase
+  const supabase = dbForUser(user);
+  const { data: ultima } = await supabase
     .from("tareas")
-    .insert({
-      actividad_id: actividadId,
-      nombre,
-      descripcion,
-      responsable_user_id: responsableUserId,
-      resultado,
-      impacto_paciente: impactoPaciente,
-      alto_riesgo: altoRiesgo,
-      sla_horas: slaHoras,
-      orden: siguienteOrden,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
+    .select("orden")
+    .eq("actividad_id", actividadId)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const siguienteOrden = (ultima?.orden ?? 0) + 1;
+
+  const { error } = await supabase.from("tareas").insert({
+    actividad_id: actividadId,
+    nombre,
+    descripcion,
+    responsable_user_id: responsableUserId,
+    resultado,
+    impacto_paciente: impactoPaciente,
+    alto_riesgo: altoRiesgo,
+    sla_horas: slaHoras,
+    orden: siguienteOrden,
+    created_by: user.id,
+  });
   if (error) return { error: error.message };
 
-  if (relacionarConTareaId) {
-    const { error: relError } = await supabase.from("tarea_relaciones").insert({
-      tarea_id: data.id,
-      tarea_relacionada_id: relacionarConTareaId,
-      nota: relacionarNota,
-      created_by: user.id,
-    });
-    if (relError) {
-      revalidatePath(`/procesos/actividades/${actividadId}`);
-      return { error: `La tarea se creó, pero no se pudo relacionar: ${relError.message}`, ok: true };
-    }
-  }
-
   revalidatePath(`/procesos/actividades/${actividadId}`);
-  return { error: null, ok: true };
+  return { error: null };
 }
 
 export async function moverTareaAction(
-  tareaId: string,
   actividadId: string,
+  tareaId: string,
   direccion: "arriba" | "abajo"
 ) {
-  await requireAppUser();
-  const supabase = createSessionServerClient();
-  const { data: tareas, error } = await supabase
+  const user = await requireAppUser();
+  const supabase = dbForUser(user);
+  const { data: lista } = await supabase
     .from("tareas")
     .select("id, orden")
     .eq("actividad_id", actividadId)
     .order("orden");
-  if (error || !tareas) throw new Error(error?.message ?? "No se pudo leer el orden.");
+  if (!lista) return;
 
-  const idx = tareas.findIndex((t) => t.id === tareaId);
-  const swapIdx = direccion === "arriba" ? idx - 1 : idx + 1;
-  if (idx === -1 || swapIdx < 0 || swapIdx >= tareas.length) return;
+  const idx = lista.findIndex((t) => t.id === tareaId);
+  const vecinoIdx = direccion === "arriba" ? idx - 1 : idx + 1;
+  if (idx < 0 || vecinoIdx < 0 || vecinoIdx >= lista.length) return;
 
-  const a = tareas[idx];
-  const b = tareas[swapIdx];
-  await supabase.from("tareas").update({ orden: b.orden }).eq("id", a.id);
-  await supabase.from("tareas").update({ orden: a.orden }).eq("id", b.id);
-
+  const actual = lista[idx];
+  const vecino = lista[vecinoIdx];
+  await supabase.from("tareas").update({ orden: vecino.orden }).eq("id", actual.id);
+  await supabase.from("tareas").update({ orden: actual.orden }).eq("id", vecino.id);
   revalidatePath(`/procesos/actividades/${actividadId}`);
 }
 
@@ -442,22 +495,22 @@ export async function actualizarTareaAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  await requireAppUser();
+  const user = await requireAppUser();
   const nombre = String(formData.get("nombre") ?? "").trim();
   const descripcion = String(formData.get("descripcion") ?? "").trim() || null;
-  const responsableUserId = String(formData.get("responsableUserId") ?? "").trim() || null;
+  const responsableUserId = String(formData.get("responsableUserId") ?? "") || null;
   const resultado = String(formData.get("resultado") ?? "").trim() || null;
   const impactoPaciente = String(formData.get("impactoPaciente") ?? "").trim() || null;
   const estado = String(formData.get("estado") ?? "pendiente");
   const altoRiesgo = formData.get("altoRiesgo") === "on";
-  const slaHorasRaw = String(formData.get("slaHoras") ?? "").trim();
-  const slaHoras = slaHorasRaw ? Number(slaHorasRaw) : null;
-  if (slaHoras !== null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
-    return { error: "El SLA debe ser un número de horas mayor a 0." };
+  const slaRaw = String(formData.get("slaHoras") ?? "").trim();
+  const slaHoras = slaRaw ? Number(slaRaw) : null;
+  if (slaHoras != null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
+    return { error: "El tiempo objetivo (SLA) debe ser un nÃºmero mayor a 0." };
   }
   if (!nombre) return { error: "Falta el nombre de la tarea." };
 
-  const supabase = createSessionServerClient();
+  const supabase = dbForUser(user);
   const { error } = await supabase
     .from("tareas")
     .update({
@@ -478,20 +531,17 @@ export async function actualizarTareaAction(
   return { error: null };
 }
 
-/** Colaborador actualizando SOLO su propia tarea (resultado/estado) —
- * RLS ya lo limita a filas donde responsable_user_id = auth.uid(), esto
- * es solo la acción de UI equivalente con menos campos expuestos. */
 export async function actualizarMiTareaAction(
   tareaId: string,
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  await requireAppUser();
+  const user = await requireAppUser();
   const resultado = String(formData.get("resultado") ?? "").trim() || null;
   const impactoPaciente = String(formData.get("impactoPaciente") ?? "").trim() || null;
   const estado = String(formData.get("estado") ?? "pendiente");
 
-  const supabase = createSessionServerClient();
+  const supabase = dbForUser(user);
   const { error } = await supabase
     .from("tareas")
     .update({ resultado, impacto_paciente: impactoPaciente, estado, updated_at: new Date().toISOString() })
@@ -510,7 +560,7 @@ export async function crearRelacionTareaAction(
 ) {
   const user = await requireAppUser();
   if (tareaId === tareaRelacionadaId) throw new Error("Una tarea no puede relacionarse consigo misma.");
-  const supabase = createSessionServerClient();
+  const supabase = dbForUser(user);
   const { error } = await supabase.from("tarea_relaciones").insert({
     tarea_id: tareaId,
     tarea_relacionada_id: tareaRelacionadaId,
@@ -522,14 +572,14 @@ export async function crearRelacionTareaAction(
 }
 
 export async function eliminarRelacionTareaAction(relacionId: string, tareaId: string) {
-  await requireAppUser();
-  const supabase = createSessionServerClient();
+  const user = await requireAppUser();
+  const supabase = dbForUser(user);
   const { error } = await supabase.from("tarea_relaciones").delete().eq("id", relacionId);
   if (error) throw new Error(error.message);
   revalidatePath(`/procesos/tareas/${tareaId}`);
 }
 
-// --- Búsqueda para relacionar tareas -----------------------------------
+// --- BÃºsqueda para relacionar tareas -----------------------------------
 
 export async function buscarTareasParaRelacionarAction(query: string, excluirTareaId?: string) {
   await requireAppUser();

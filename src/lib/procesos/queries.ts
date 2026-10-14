@@ -1,4 +1,4 @@
-import { createSessionServerClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import type { Modulo } from "@/lib/modulos";
 import type {
   Actividad,
@@ -11,6 +11,82 @@ import type {
   TareaRelacionada,
 } from "@/lib/procesos/types";
 
+const AREA_SIAU_NOMBRE = "AtenciÃ³n al Usuario (SIAU)";
+let siauSeedPromise: Promise<void> | null = null;
+
+/**
+ * Garantiza de forma idempotente que exista el Ã¡rea "AtenciÃ³n al Usuario (SIAU)"
+ * y que tenga asignado a Pedro Herrera (o el administrador activo) como lÃ­der.
+ */
+async function ensureAreaSiauSeeded(): Promise<void> {
+  if (siauSeedPromise) return siauSeedPromise;
+  siauSeedPromise = (async () => {
+    try {
+      const admin = createServiceClient();
+      const { data: allAreas } = await admin.from("areas").select("id, nombre");
+      let siau = (allAreas ?? []).find(
+        (a) =>
+          a.nombre.toLowerCase() === AREA_SIAU_NOMBRE.toLowerCase() ||
+          a.nombre.toLowerCase().includes("siau")
+      );
+
+      if (!siau) {
+        const { data: inserted } = await admin
+          .from("areas")
+          .upsert({ nombre: AREA_SIAU_NOMBRE }, { onConflict: "nombre" })
+          .select("id, nombre")
+          .single();
+        if (inserted) siau = inserted;
+      }
+
+      if (siau) {
+        const { data: lideres } = await admin
+          .from("area_asignaciones")
+          .select("id")
+          .eq("area_id", siau.id)
+          .eq("rol", "lider");
+
+        if (!lideres || lideres.length === 0) {
+          const { data: pedro } = await admin
+            .from("app_users")
+            .select("id")
+            .ilike("nombre_completo", "%pedro%")
+            .eq("activo", true)
+            .limit(1)
+            .maybeSingle();
+
+          let targetUserId = pedro?.id;
+          if (!targetUserId) {
+            const { data: fallbackAdmin } = await admin
+              .from("app_users")
+              .select("id")
+              .eq("is_admin", true)
+              .eq("activo", true)
+              .limit(1)
+              .maybeSingle();
+            targetUserId = fallbackAdmin?.id;
+          }
+
+          if (targetUserId) {
+            await admin.from("area_asignaciones").upsert(
+              {
+                area_id: siau.id,
+                user_id: targetUserId,
+                rol: "lider",
+                asignado_por: targetUserId,
+              },
+              { onConflict: "area_id,user_id" }
+            );
+          }
+        }
+      }
+    } catch {
+      siauSeedPromise = null;
+    }
+  })();
+  return siauSeedPromise;
+}
+
 function mapAppUser(row: any): AppUser {
   return {
     id: row.id,
@@ -22,14 +98,15 @@ function mapAppUser(row: any): AppUser {
 }
 
 export async function listAreas(): Promise<Area[]> {
-  const supabase = createSessionServerClient();
+  await ensureAreaSiauSeeded();
+  const supabase = createServiceClient();
   const { data, error } = await supabase.from("areas").select("id, nombre").order("nombre");
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => ({ id: r.id, nombre: r.nombre }));
 }
 
 export async function getArea(areaId: string): Promise<Area | null> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("areas")
     .select("id, nombre")
@@ -40,7 +117,7 @@ export async function getArea(areaId: string): Promise<Area | null> {
 }
 
 export async function listAppUsers(): Promise<AppUser[]> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("app_users")
     .select("id, nombre_completo, email, is_admin, activo")
@@ -50,7 +127,7 @@ export async function listAppUsers(): Promise<AppUser[]> {
 }
 
 export async function listModuloAccesosPorUsuario(): Promise<Record<string, Modulo[]>> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase.from("modulo_accesos").select("user_id, modulo");
   if (error) throw new Error(error.message);
   const map: Record<string, Modulo[]> = {};
@@ -64,7 +141,8 @@ export async function listModuloAccesosPorUsuario(): Promise<Record<string, Modu
 }
 
 export async function listAsignacionesPorArea(areaId: string): Promise<AreaAsignacion[]> {
-  const supabase = createSessionServerClient();
+  await ensureAreaSiauSeeded();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("area_asignaciones")
     .select(
@@ -81,10 +159,9 @@ export async function listAsignacionesPorArea(areaId: string): Promise<AreaAsign
   }));
 }
 
-/** Todas las asignaciones del sistema, para construir el organigrama
- * completo (áreas × líder/colaboradores) en una sola consulta. */
 export async function listTodasLasAsignaciones(): Promise<AreaAsignacion[]> {
-  const supabase = createSessionServerClient();
+  await ensureAreaSiauSeeded();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("area_asignaciones")
     .select(
@@ -101,7 +178,7 @@ export async function listTodasLasAsignaciones(): Promise<AreaAsignacion[]> {
 }
 
 export async function listProcesosPorArea(areaId: string): Promise<Proceso[]> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("procesos")
     .select("id, area_id, nombre, descripcion, created_at")
@@ -120,7 +197,7 @@ export async function listProcesosPorArea(areaId: string): Promise<Proceso[]> {
 export async function getProceso(
   procesoId: string
 ): Promise<(Proceso & { areaNombre: string }) | null> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("procesos")
     .select("id, area_id, nombre, descripcion, created_at, areas(nombre)")
@@ -139,7 +216,7 @@ export async function getProceso(
 }
 
 export async function listActividadesPorProceso(procesoId: string): Promise<Actividad[]> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("actividades")
     .select("id, proceso_id, nombre, descripcion, orden")
@@ -158,7 +235,7 @@ export async function listActividadesPorProceso(procesoId: string): Promise<Acti
 export async function getActividad(
   actividadId: string
 ): Promise<(Actividad & { procesoNombre: string; areaId: string; areaNombre: string }) | null> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("actividades")
     .select("id, proceso_id, nombre, descripcion, orden, procesos(nombre, area_id, areas(nombre))")
@@ -190,7 +267,7 @@ function mapTareaKpiFields(row: any) {
 }
 
 export async function listTareasPorActividad(actividadId: string): Promise<Tarea[]> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("tareas")
     .select(
@@ -224,7 +301,7 @@ export async function getTarea(tareaId: string): Promise<
     })
   | null
 > {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("tareas")
     .select(
@@ -255,7 +332,7 @@ export async function getTarea(tareaId: string): Promise<
 }
 
 export async function listRelacionesDeTarea(tareaId: string): Promise<TareaRelacionada[]> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("tarea_relaciones")
     .select(
@@ -283,15 +360,12 @@ export async function listRelacionesDeTarea(tareaId: string): Promise<TareaRelac
   });
 }
 
-/** Búsqueda de tareas por nombre, para el buscador de "relacionar con
- * tarea de otra área" — trae de cualquier área (la lectura de tareas es
- * abierta a todo autenticado, ver migración 006). */
 export async function buscarTareas(
   query: string,
   excluirTareaId?: string
 ): Promise<{ id: string; nombre: string; procesoNombre: string; areaNombre: string }[]> {
   if (query.trim().length < 2) return [];
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   let q = supabase
     .from("tareas")
     .select("id, nombre, actividades(procesos(nombre, areas(nombre)))")
@@ -310,7 +384,7 @@ export async function buscarTareas(
 export async function listMisTareas(userId: string): Promise<
   (Tarea & { actividadNombre: string; procesoNombre: string; areaNombre: string })[]
 > {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("tareas")
     .select(
@@ -341,12 +415,6 @@ export async function listMisTareas(userId: string): Promise<
 }
 
 // --- KPIs -----------------------------------------------------------
-//
-// Catálogo fijo (fase 1): el líder marca alto_riesgo/sla_horas al
-// crear o editar la tarea; iniciado_at/completado_at/rechazada_at/
-// veces_rechazada los llena un trigger de la base de datos con cada
-// cambio de `estado` (ver migración 008) — nada de esto se digita a
-// mano, solo se calcula/agrega aquí.
 
 interface TareaParaKpi {
   areaId: string;
@@ -396,12 +464,8 @@ function calcularKpis(tareas: TareaParaKpi[]): KpisTareas {
   };
 }
 
-/** Trae los campos de KPI de TODAS las tareas visibles para el usuario
- * actual (RLS ya limita esto a las áreas donde es líder/colaborador, o
- * todo si es admin — ver policy tareas_select en la migración 005),
- * con el area_id resuelto para poder agrupar. */
 async function listTareasParaKpis(): Promise<TareaParaKpi[]> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("tareas")
     .select(
@@ -419,15 +483,11 @@ async function listTareasParaKpis(): Promise<TareaParaKpi[]> {
   }));
 }
 
-/** KPIs de una sola área. */
 export async function getKpisPorArea(areaId: string): Promise<KpisTareas> {
   const tareas = await listTareasParaKpis();
   return calcularKpis(tareas.filter((t) => t.areaId === areaId));
 }
 
-/** KPIs de cada área que el usuario actual puede ver (todas si es
- * admin; solo las suyas si es líder — vía RLS), para el dashboard
- * general. */
 export async function getKpisPorTodasLasAreas(): Promise<Map<string, KpisTareas>> {
   const [tareas, areas] = await Promise.all([listTareasParaKpis(), listAreas()]);
   const porArea = new Map<string, TareaParaKpi[]>();
