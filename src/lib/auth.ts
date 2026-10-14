@@ -1,13 +1,8 @@
 import { redirect } from "next/navigation";
-import { createSessionServerClient } from "@/lib/supabase/server";
+import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
 import type { AppUser, Rol } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
 
-/** Perfil del usuario autenticado actual, o null si no hay sesión. Lee
- * de app_users a través del cliente de sesión (RLS ya limita cada quien
- * a ver su propia fila, salvo admins que ven todas). Compartido por
- * todo el sitio: el dashboard de mercadeo y /procesos usan el mismo
- * login y la misma tabla de usuarios. */
 export async function getCurrentAppUser(): Promise<AppUser | null> {
   const supabase = createSessionServerClient();
   const {
@@ -32,9 +27,6 @@ export async function getCurrentAppUser(): Promise<AppUser | null> {
   };
 }
 
-/** Para Server Components de página: exige sesión (el middleware ya
- * protege todo el sitio salvo /login, esto es una segunda capa de
- * defensa) y devuelve el perfil. */
 export async function requireAppUser(): Promise<AppUser> {
   const user = await getCurrentAppUser();
   if (!user || !user.activo) redirect("/login");
@@ -47,8 +39,6 @@ export async function requireAdmin(): Promise<AppUser> {
   return user;
 }
 
-/** Módulos del dashboard de mercadeo a los que el usuario tiene acceso
- * — un admin los tiene todos implícitamente, sin fila en la tabla. */
 export async function getMisModulos(userId: string, isAdmin: boolean): Promise<Set<Modulo>> {
   if (isAdmin) {
     const { MODULOS } = await import("@/lib/modulos");
@@ -60,8 +50,6 @@ export async function getMisModulos(userId: string, isAdmin: boolean): Promise<S
   return new Set(data.map((r) => r.modulo as Modulo));
 }
 
-/** Para el top de cada página de módulo del dashboard de mercadeo:
- * exige sesión Y acceso a ese módulo específico (o ser admin). */
 export async function requireModuloAccess(modulo: Modulo): Promise<AppUser> {
   const user = await requireAppUser();
   if (user.isAdmin) return user;
@@ -70,13 +58,10 @@ export async function requireModuloAccess(modulo: Modulo): Promise<AppUser> {
   return user;
 }
 
-/** Áreas del módulo de Procesos donde el usuario tiene alguna
- * asignación, con su rol en cada una. Un admin no necesariamente tiene
- * asignaciones — ve todo por fuera de esto. */
 export async function getMisAsignaciones(
   userId: string
 ): Promise<{ areaId: string; areaNombre: string; rol: Rol }[]> {
-  const supabase = createSessionServerClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("area_asignaciones")
     .select("area_id, rol, areas(nombre)")
