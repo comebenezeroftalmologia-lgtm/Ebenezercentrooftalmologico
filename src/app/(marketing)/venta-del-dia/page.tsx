@@ -93,7 +93,7 @@ export default async function VentaDelDia({
         {encabezado}
         <div className="flex items-start gap-3 rounded-xs border border-[#F2C744] bg-[#FEF8E7] p-4 text-[13px] text-[#8A6D00]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-          <span>No se pudo consultar SISMA para el {fecha}: {d.fetchError}</span>
+          <span>No se pudo consultar la información operativa para el {fecha}: {d.fetchError}</span>
         </div>
       </div>
     );

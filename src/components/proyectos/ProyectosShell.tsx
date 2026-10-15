@@ -1,15 +1,15 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Menu, X } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import type { EspacioArbol } from "@/lib/proyectos/types";
+import type { Modulo } from "@/lib/modulos";
 import { ArbolEspacios } from "@/components/proyectos/ArbolEspacios";
 import { EspacioModal } from "@/components/proyectos/CrearEspacioModal";
 import { AvisosProvider } from "@/components/proyectos/ui";
-import { useRouter } from "next/navigation";
+import { RielGlobal } from "@/components/Sidebar";
 
 // Las pantallas de tarea le dicen al árbol cuál es su lista, para resaltarla.
 const ListaActivaCtx = createContext<string | null>(null);
@@ -29,14 +29,17 @@ export function MarcarListaActiva({ listaId }: { listaId: string }) {
 export function ProyectosShell({
   arbol,
   usuario,
+  modulos = [],
   children,
 }: {
   arbol: EspacioArbol[];
   usuario: { id: string; nombre: string; esAdmin: boolean };
+  modulos?: Modulo[];
   children: React.ReactNode;
 }) {
   const [nuevoEspacio, setNuevoEspacio] = useState(false);
   const [menuMovil, setMenuMovil] = useState(false);
+  const [abierto, setAbierto] = useState(true);
   const [listaActiva, setListaActiva] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -47,25 +50,35 @@ export function ProyectosShell({
     <AvisosProvider>
       <ListaActivaCtx.Provider value={listaActiva}>
         <SetListaActivaCtx.Provider value={setListaActiva}>
-          <div className="flex h-screen overflow-hidden bg-white">
-            {/* Barra lateral */}
+          <div className="relative flex h-screen overflow-hidden bg-white">
+            <RielGlobal
+              modulos={modulos}
+              isAdmin={usuario.esAdmin}
+              onToggleBandeja={() => setAbierto((v) => !v)}
+            />
+
+            {/* Bandeja lateral acoplada estilo Clientify */}
             <aside
               className={`${
-                menuMovil ? "fixed inset-y-0 left-0 z-40 shadow-eb-4" : "hidden"
-              } w-[280px] shrink-0 flex-col border-r border-line bg-ebbg md:static md:flex md:shadow-none`}
+                menuMovil ? "fixed inset-y-0 left-[76px] z-40 flex w-[264px] shadow-eb-4" : "hidden"
+              } shrink-0 flex-col border-r border-line bg-[#F8FAFC] transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
+                abierto ? "md:w-[264px]" : "md:w-0 md:overflow-hidden md:border-r-0"
+              }`}
             >
-              <div className="flex items-center gap-2.5 px-4 pb-3 pt-4">
-                <Image
-                  src="/brand/logo/logo-claro.png"
-                  alt="Ebenezer"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 rounded-sm bg-navy object-contain p-0.5"
-                />
-                <div className="min-w-0 flex-1 leading-tight">
-                  <p className="text-sm font-semibold text-ink">Proyectos</p>
-                  <p className="truncate text-[11px] text-ink-3">{usuario.nombre}</p>
+              <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-line bg-white px-3.5">
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-[13.5px] font-semibold tracking-[-0.01em] text-navy">
+                    Proyectos
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setAbierto(false)}
+                  title="Contraer bandeja lateral"
+                  className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line bg-white text-ink-3 transition hover:border-navy-20 hover:text-navy md:flex"
+                >
+                  <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
+                </button>
                 <button
                   type="button"
                   className="rounded-sm p-1 text-ink-3 hover:bg-line-2 md:hidden"
@@ -76,25 +89,44 @@ export function ProyectosShell({
                 </button>
               </div>
 
-              <Link
-                href="/proyectos"
-                className="mx-2 mb-1 rounded-sm px-2.5 py-1.5 text-[13px] font-medium text-ink-2 hover:bg-line-2"
-              >
-                Inicio
-              </Link>
-
-              <ArbolEspacios arbol={arbol} yoId={usuario.id} onNuevoEspacio={() => setNuevoEspacio(true)} />
-
-              <div className="border-t border-line p-2">
+              <div className="p-2.5 pb-1">
                 <Link
-                  href="/"
-                  className="flex items-center gap-2 rounded-sm px-2.5 py-2 text-xs text-ink-3 hover:bg-line-2 hover:text-ink"
+                  href="/proyectos"
+                  className={`block rounded-lg px-2.5 py-2 text-[12.5px] transition ${
+                    pathname === "/proyectos"
+                      ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
+                      : "text-ink-2 hover:bg-white/80 hover:text-navy"
+                  }`}
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Volver a módulos
+                  Resumen de Proyectos
                 </Link>
               </div>
+
+              <ArbolEspacios
+                arbol={arbol}
+                yoId={usuario.id}
+                onNuevoEspacio={() => setNuevoEspacio(true)}
+              />
             </aside>
-            {menuMovil && <div className="fixed inset-0 z-30 bg-ink/30 md:hidden" onClick={() => setMenuMovil(false)} />}
+
+            {!abierto && (
+              <button
+                type="button"
+                onClick={() => setAbierto(true)}
+                title="Mostrar bandeja de Proyectos"
+                className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-[#F8FAFC]"
+              >
+                <PanelLeftOpen className="h-3.5 w-3.5 text-blue" strokeWidth={1.75} />
+                <span>Espacios</span>
+              </button>
+            )}
+
+            {menuMovil && (
+              <div
+                className="fixed inset-0 z-30 bg-ink/30 md:hidden"
+                onClick={() => setMenuMovil(false)}
+              />
+            )}
 
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex items-center gap-2 border-b border-line px-3 py-2 md:hidden">
@@ -123,3 +155,4 @@ export function ProyectosShell({
     </AvisosProvider>
   );
 }
+
