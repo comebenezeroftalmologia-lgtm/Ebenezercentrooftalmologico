@@ -95,9 +95,6 @@ export default async function ProcesosHomePage() {
                           />
                         </div>
                       </div>
-                      {area.descripcion && (
-                        <p className="mb-2 line-clamp-2 text-xs text-ink-3">{area.descripcion}</p>
-                      )}
                     </div>
 
                     <div className="mt-2 flex items-center justify-between border-t border-line/60 pt-2.5 text-xs text-ink-3">

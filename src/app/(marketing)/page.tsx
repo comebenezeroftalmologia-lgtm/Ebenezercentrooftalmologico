@@ -1,14 +1,12 @@
 import Link from "next/link";
 import {
-  Activity,
   ArrowRight,
-  BarChart3,
-  CalendarCheck2,
+  CalendarClock,
   FolderKanban,
   KanbanSquare,
-  Megaphone,
-  Stethoscope,
-  UserPlus,
+  LineChart,
+  Target,
+  Wallet,
 } from "lucide-react";
 import { requireAppUser, getMisModulos } from "@/lib/auth";
 import { MODULOS, type Modulo } from "@/lib/modulos";
@@ -43,17 +41,17 @@ function IconoTarjeta({ slug }: { slug: Modulo }) {
   const cls = "h-4 w-4 shrink-0 text-blue";
   switch (slug) {
     case "venta_del_dia":
-      return <CalendarCheck2 className={cls} strokeWidth={1.75} />;
+      return <CalendarClock className={cls} strokeWidth={1.75} />;
     case "frecuencias":
-      return <Activity className={cls} strokeWidth={1.75} />;
+      return <LineChart className={cls} strokeWidth={1.75} />;
     case "leads":
-      return <UserPlus className={cls} strokeWidth={1.75} />;
+      return <Target className={cls} strokeWidth={1.75} />;
     case "quirurgicos":
-      return <Stethoscope className={cls} strokeWidth={1.75} />;
+      return <Wallet className={cls} strokeWidth={1.75} />;
     case "no_quirurgicos":
-      return <BarChart3 className={cls} strokeWidth={1.75} />;
+      return <LineChart className={cls} strokeWidth={1.75} />;
     case "redes_sociales":
-      return <Megaphone className={cls} strokeWidth={1.75} />;
+      return <Target className={cls} strokeWidth={1.75} />;
     case "procesos":
       return <FolderKanban className={cls} strokeWidth={1.75} />;
     case "proyectos":

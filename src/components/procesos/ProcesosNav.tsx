@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
-  Search,
 } from "lucide-react";
 import type { AppUser, Area } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
@@ -76,16 +75,13 @@ export function ProcesosNav({
         </div>
 
         <div className="border-b border-line/60 bg-white px-3 py-2.5">
-          <div className="relative flex items-center">
-            <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-ink-3" />
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar área (ej. SIAU)..."
-              className="w-full rounded-md border border-line bg-[#F8FAFC] py-1.5 pl-8 pr-2.5 text-xs text-ink placeholder:text-ink-3 focus:border-blue focus:bg-white focus:outline-none"
-            />
-          </div>
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar área (ej. SIAU)..."
+            className="w-full rounded-md border border-line bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-blue focus:bg-white focus:outline-none"
+          />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2.5 py-3">

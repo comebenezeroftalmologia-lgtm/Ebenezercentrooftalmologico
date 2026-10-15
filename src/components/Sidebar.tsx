@@ -5,22 +5,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity,
-  BarChart3,
-  CalendarCheck2,
+  CalendarClock,
   FolderKanban,
   Home,
   KanbanSquare,
   LayoutGrid,
+  LineChart,
   LogOut,
-  Megaphone,
   PanelLeftClose,
   PanelLeftOpen,
-  Search,
-  Stethoscope,
+  Target,
   UserCircle,
   Users,
-   UserPlus,
+  Wallet,
 } from "lucide-react";
 import { MODULOS, type Modulo } from "@/lib/modulos";
 import { logoutAction } from "@/lib/procesos/actions";
@@ -50,17 +47,17 @@ const SUBTITULO_MODULO: Partial<Record<Modulo, string>> = {
 function IconoModulo({ slug, className }: { slug: Modulo; className?: string }) {
   switch (slug) {
     case "venta_del_dia":
-      return <CalendarCheck2 className={className} strokeWidth={1.75} />;
+      return <CalendarClock className={className} strokeWidth={1.75} />;
     case "frecuencias":
-      return <Activity className={className} strokeWidth={1.75} />;
+      return <LineChart className={className} strokeWidth={1.75} />;
     case "leads":
-      return <UserPlus className={className} strokeWidth={1.75} />;
+      return <Target className={className} strokeWidth={1.75} />;
     case "quirurgicos":
-      return <Stethoscope className={className} strokeWidth={1.75} />;
+      return <Wallet className={className} strokeWidth={1.75} />;
     case "no_quirurgicos":
-      return <BarChart3 className={className} strokeWidth={1.75} />;
+      return <LineChart className={className} strokeWidth={1.75} />;
     case "redes_sociales":
-      return <Megaphone className={className} strokeWidth={1.75} />;
+      return <Target className={className} strokeWidth={1.75} />;
     default:
       return <LayoutGrid className={className} strokeWidth={1.75} />;
   }
@@ -278,16 +275,13 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
         </div>
 
         <div className="border-b border-line/60 bg-white px-3 py-2.5">
-          <div className="relative flex items-center">
-            <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-ink-3" />
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Filtrar tablero..."
-              className="w-full rounded-md border border-line bg-[#F8FAFC] py-1.5 pl-8 pr-2.5 text-xs text-ink placeholder:text-ink-3 focus:border-blue focus:bg-white focus:outline-none"
-            />
-          </div>
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Filtrar tablero..."
+            className="w-full rounded-md border border-line bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-blue focus:bg-white focus:outline-none"
+          />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2.5 py-3">
