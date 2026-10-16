@@ -79,18 +79,18 @@ const ESTILOS_AJUSTE_FILTROS = `
             cajaMed = cajaMed.parentElement;
           }
           if (cajaMed && cajaMed !== document.body) {
-            cajaMed.style.background = '#F8FAFC';
-            cajaMed.style.backgroundColor = '#F8FAFC';
+            cajaMed.style.background = '#EAF1FB';
+            cajaMed.style.backgroundColor = '#EAF1FB';
             cajaMed.style.backgroundImage = 'none';
-            cajaMed.style.border = '1px solid #E2E8F0';
+            cajaMed.style.border = '1px solid #C9D9F0';
             cajaMed.style.boxShadow = 'none';
-            cajaMed.style.color = '#0F172A';
+            cajaMed.style.color = '#0C1F3F';
 
-            inputMed.style.border = '1px solid #CBD5E1';
+            inputMed.style.border = '1px solid #BFD2EE';
             inputMed.style.background = '#FFFFFF';
             inputMed.style.color = '#0F172A';
 
-            // Ajustar textos y sub-cajas dentro del bloque de médicos para que se lean perfecto sobre el fondo claro
+            // Ajustar textos y sub-cajas dentro del bloque de médicos sobre el azul sutil
             var internos = cajaMed.querySelectorAll('*');
             for (var j = 0; j < internos.length; j++) {
               var nodo = internos[j];
@@ -100,21 +100,21 @@ const ESTILOS_AJUSTE_FILTROS = `
                 var bgBtn = window.getComputedStyle(nodo).backgroundColor;
                 var esActivo = nodo.classList.contains('active') || nodo.classList.contains('on') || bgBtn === 'rgb(255, 255, 255)';
                 if (esActivo) {
-                  nodo.style.background = '#0C1F3F';
-                  nodo.style.color = '#FFFFFF';
-                  nodo.style.boxShadow = '0 1px 2px rgba(12,31,63,0.15)';
+                  nodo.style.background = '#FFFFFF';
+                  nodo.style.color = '#0C1F3F';
+                  nodo.style.boxShadow = '0 1px 3px rgba(12,31,63,0.12)';
                 } else {
                   nodo.style.background = 'transparent';
-                  nodo.style.color = '#475569';
+                  nodo.style.color = '#334E7B';
                 }
               } else if (tag === 'DIV' || tag === 'SPAN') {
                 var cs = window.getComputedStyle(nodo);
                 if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') {
-                  nodo.style.background = '#EEF2F7';
-                  nodo.style.borderColor = '#DCE3EE';
+                  nodo.style.background = '#DCE7F7';
+                  nodo.style.borderColor = '#C2D4EE';
                 }
                 if (cs.color === 'rgb(255, 255, 255)' || cs.color.indexOf('255, 255, 255') !== -1) {
-                  nodo.style.color = '#1E293B';
+                  nodo.style.color = '#0C1F3F';
                 }
               }
             }
