@@ -97,7 +97,7 @@ export default async function RedesSocialesPage({
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#E7E9F2] pb-5">
         <div>
           <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
-            Tableros Â· Embudo Comercial
+            Tableros · Embudo Comercial
           </div>
           <h1 className="text-[26px] font-medium leading-none tracking-[-0.02em] text-navy">
             Redes Sociales
@@ -120,13 +120,13 @@ export default async function RedesSocialesPage({
         <MetricCard
           label="Contenidos Publicados"
           value={formatNumber(posts.length)}
-          hint={`${platformLabel} â€” ${from} a ${to}`}
+          hint={`${platformLabel} — ${from} a ${to}`}
           icon={ImageIcon}
         />
         <MetricCard
           label="Alcance (Instagram)"
           value={formatNumber(totalReach)}
-          hint="Cuentas Ãºnicas alcanzadas en el perÃ­odo"
+          hint="Cuentas únicas alcanzadas en el período"
           icon={Eye}
         />
       </div>
@@ -135,13 +135,13 @@ export default async function RedesSocialesPage({
         <MetricCard
           label="Visitas al Perfil"
           value={formatNumber(profileViews)}
-          hint="Instagram â€” perÃ­odo seleccionado"
+          hint="Instagram — período seleccionado"
           icon={UserCheck}
         />
         <MetricCard
           label="Cuentas que Interactuaron"
           value={formatNumber(accountsEngaged)}
-          hint="Instagram â€” cuentas Ãºnicas con interacciÃ³n"
+          hint="Instagram — cuentas únicas con interacción"
           icon={Zap}
         />
         <MetricCard
@@ -155,13 +155,13 @@ export default async function RedesSocialesPage({
       <div className="mb-6 rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
         <div className="border-b border-[#F0F1F7] px-6 py-4">
           <h2 className="font-titulo text-[17px] font-medium tracking-[-0.012em] text-navy">
-            HistÃ³rico de Seguidores â€” Instagram
+            Histórico de Seguidores — Instagram
           </h2>
         </div>
         <div className="p-6">
           <FollowerHistoryChart data={monthlyFollowers} />
           <p className="mt-3 text-[11.5px] text-[#949BB4]">
-            Facebook acumula histÃ³rico diario a partir del primer dÃ­a de sincronizaciÃ³n.
+            Facebook acumula histórico diario a partir del primer día de sincronización.
           </p>
         </div>
       </div>
@@ -169,14 +169,14 @@ export default async function RedesSocialesPage({
       <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
         <div className="border-b border-[#F0F1F7] px-6 py-4">
           <h2 className="font-titulo text-[17px] font-medium tracking-[-0.012em] text-navy">
-            Top 5 Contenidos del PerÃ­odo
+            Top 5 Contenidos del Período
           </h2>
         </div>
         <div className="p-6">
           <TopContentList posts={posts} />
           {selected === "facebook" && (
             <p className="mt-3 text-[11.5px] text-[#949BB4]">
-              AÃºn no hay sincronizaciÃ³n de publicaciones individuales de Facebook.
+              Aún no hay sincronización de publicaciones individuales de Facebook.
             </p>
           )}
         </div>

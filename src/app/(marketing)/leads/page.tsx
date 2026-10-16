@@ -126,10 +126,10 @@ export default async function LeadsPage({
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#E7E9F2] pb-5">
         <div>
           <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
-            Tableros Â· Embudo Comercial
+            Tableros · Embudo Comercial
           </div>
           <h1 className="text-[26px] font-medium leading-none tracking-[-0.02em] text-navy">
-            GeneraciÃ³n de Clientes Potenciales
+            Generación de Clientes Potenciales
           </h1>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -151,23 +151,23 @@ export default async function LeadsPage({
       />
 
       <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="Gasto en Meta Ads" value={formatCOP(gasto)} hint={`${from} â€” ${to}`} icon={Wallet} />
+        <KpiCard label="Gasto en Meta Ads" value={formatCOP(gasto)} hint={`${from} — ${to}`} icon={Wallet} />
         <KpiCard
           label="Total IMPORTE"
           value={formatCOP(importeTotal)}
-          hint="Suma de todas las oportunidades del perÃ­odo, en cualquier etapa"
+          hint="Suma de todas las oportunidades del período, en cualquier etapa"
           comparison={{ pct: importePct }}
         />
         <KpiCard
           label="ROI"
-          value={roi !== null ? `${roi.toFixed(0)}%` : "â€”"}
-          hint="(Total IMPORTE âˆ’ Gasto) / Gasto"
+          value={roi !== null ? `${roi.toFixed(0)}%` : "—"}
+          hint="(Total IMPORTE − Gasto) / Gasto"
           icon={Percent}
         />
         <KpiCard
           label="Tiempo promedio de cierre"
-          value={avgClosingDays !== null ? `${avgClosingDays.toFixed(1)} dÃ­as` : "â€”"}
-          hint="CreaciÃ³n â†’ Fecha esperada de cierre, solo vendidas"
+          value={avgClosingDays !== null ? `${avgClosingDays.toFixed(1)} días` : "—"}
+          hint="Creación → Fecha esperada de cierre, solo vendidas"
           icon={CalendarClock}
         />
         <Link
@@ -196,7 +196,7 @@ export default async function LeadsPage({
               ) : (
                 <ArrowDown className="h-3 w-3" strokeWidth={2.5} />
               )}
-              {Math.abs(vendidasPct)}% vs. perÃ­odo anterior
+              {Math.abs(vendidasPct)}% vs. período anterior
             </span>
           )}
           <div className="mt-2.5 flex flex-col gap-0.5">
@@ -224,7 +224,7 @@ export default async function LeadsPage({
           </p>
           {proyeccionCirugias !== null && (
             <span className="mt-2.5 inline-flex items-center gap-1 rounded-pill bg-green-10 px-2.5 py-0.5 text-[11.5px] font-bold tabular-nums text-green">
-              ProyecciÃ³n: ~{formatNumber(proyeccionCirugias)} cirugÃ­as ({cierreRate}%)
+              Proyección: ~{formatNumber(proyeccionCirugias)} cirugías ({cierreRate}%)
             </span>
           )}
           <p className="mt-2 text-[11.5px] text-[#949BB4]">Ver etapas incluidas abajo</p>
@@ -249,7 +249,7 @@ export default async function LeadsPage({
         <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
           <div className="border-b border-[#F0F1F7] px-5 py-3.5">
             <h2 className="font-titulo text-[16.5px] font-medium tracking-[-0.012em] text-navy">
-              DistribuciÃ³n por Estado
+              Distribución por Estado
             </h2>
           </div>
           <div className="p-5">
@@ -259,7 +259,7 @@ export default async function LeadsPage({
         <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
           <div className="border-b border-[#F0F1F7] px-5 py-3.5">
             <h2 className="font-titulo text-[16.5px] font-medium tracking-[-0.012em] text-navy">
-              DistribuciÃ³n por Servicio
+              Distribución por Servicio
             </h2>
           </div>
           <div className="p-5">
