@@ -10,169 +10,130 @@ const CACHE_SEGUNDOS = 120;
 
 const ESTILOS_AJUSTE_FILTROS = `
 <style id="eb-frecuencias-inline-fix">
-  /* 1. Evitar cualquier barra de desplazamiento horizontal en el encabezado de filtros y pestañas */
-  header, .header, .filters, .filter-bar, .barra-filtros, .filtros-row, .tabs {
-    overflow-x: visible !important;
+  /* 1. En modo embebido, ocultar el escalón superior (.header) que dejaba espacio vacío a la izquierda */
+  .embebido .header {
+    display: none !important;
   }
 
-  /* 2. Que las 10 pestañas entren completas en pantalla sin que "Contrato Mutual" se corte a la derecha */
-  .tabs {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 4px !important;
+  /* 2. Barra de filtros (.period-bar) en una sola fila continua, con Mutual alineado a la derecha y sin scroll */
+  .embebido .period-bar {
+    padding: 10px 24px !important;
+    gap: 8px !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
   }
-  .tabs button {
+  .embebido .period-bar .dd-trig {
+    min-width: 0 !important;
     padding: 7px 11px !important;
-    font-size: 12.2px !important;
+    font-size: 0.8rem !important;
     white-space: nowrap !important;
   }
+  .embebido .period-bar #dias-btn {
+    min-width: 0 !important;
+  }
+  .embebido .period-bar .btn-apl {
+    padding: 8px 16px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .embebido .period-bar button[onclick*="limpiarFiltros"] {
+    padding: 7px 14px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .embebido .period-bar .tg-grupo {
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+  }
+  .embebido .medida {
+    padding: 8px 24px 0 !important;
+  }
+  .embebido #resumen-filtros {
+    padding: 5px 24px 7px !important;
+  }
 
-  /* 3. Evitar que las tablas anchas (como Ranking Completo de Médicos) se desborden por la derecha */
-  table {
-    width: 100% !important;
-    max-width: 100% !important;
-    border-collapse: collapse !important;
+  /* 3. Las 10 pestañas (.tabs) en una sola línea completa sin barra de desplazamiento */
+  .embebido .tabs {
+    padding: 4px 24px !important;
+    overflow-x: hidden !important;
+    flex-wrap: nowrap !important;
   }
-  table th,
-  table td {
-    padding-left: 7px !important;
-    padding-right: 7px !important;
-    box-sizing: border-box !important;
+  .embebido .tabs .tab {
+    padding: 10px 13px !important;
+    font-size: 0.78rem !important;
   }
-  table th:first-child,
-  table td:first-child {
+
+  /* 4. Aprovechamiento limpio del ancho en el área de contenido */
+  .embebido .content {
+    padding: 22px 24px !important;
+  }
+
+  /* 5. FILTROS DE MEDICOS (#p-medicos): conserva intacta su estructura original, cambiando solo el azul oscuro por azul sutil (#EAF1FB) */
+  #p-medicos > div:first-child {
+    background: #EAF1FB !important;
+    border: 1px solid #C7CDE0 !important;
+    box-shadow: 0 1px 3px rgba(14, 36, 94, 0.04) !important;
+  }
+  #p-medicos > div:first-child > div:first-child {
+    color: #0E245E !important;
+  }
+  #p-medicos > div:first-child > div:nth-child(2),
+  #p-medicos > div:first-child > div:nth-child(3) {
+    background: #DCE7F7 !important;
+    border: 1px solid #C2D4EE !important;
+  }
+  #p-medicos > div:first-child > div:nth-child(2) > span,
+  #p-medicos > div:first-child > div:nth-child(3) > span {
+    color: #3B4F8D !important;
+  }
+  #p-medicos .med-sede,
+  #p-medicos .med-uf {
+    color: #3B4F8D !important;
+  }
+  #p-medicos .med-sede:hover,
+  #p-medicos .med-uf:hover {
+    color: #0E245E !important;
+    background: rgba(14, 36, 94, 0.06) !important;
+  }
+  #p-medicos .med-sede.active,
+  #p-medicos .med-uf.active {
+    background: #FFFFFF !important;
+    color: #0E245E !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12) !important;
+  }
+  #p-medicos #med-search {
+    border: 1px solid #C7CDE0 !important;
+    background: #FFFFFF !important;
+    color: #0E245E !important;
+  }
+
+  /* 6. Ajuste fino de relleno en tablas de muchas columnas (#tbl-medicos, #tbl-dx, #tbl-apoyo)
+        para que entren completas en su tarjeta sin desbordar y respetando intacta la columna Participación */
+  #tbl-medicos th,
+  #tbl-dx th,
+  #tbl-apoyo th {
+    padding: 11px 8px !important;
+    letter-spacing: 0.05em !important;
+  }
+  #tbl-medicos td,
+  #tbl-dx td,
+  #tbl-apoyo td {
+    padding: 10px 8px !important;
+  }
+  #tbl-medicos th:first-child,
+  #tbl-medicos td:first-child {
+    width: 42px !important;
     padding-left: 14px !important;
+    padding-right: 6px !important;
   }
-  table th:last-child,
-  table td:last-child {
+  #tbl-medicos th:last-child,
+  #tbl-medicos td:last-child {
+    min-width: 140px !important;
     padding-right: 16px !important;
   }
-  /* Darle buen ancho al nombre del médico (2da columna después de #) y acotar la barrita derecha */
-  table td:nth-child(2) {
-    min-width: 180px !important;
-    line-height: 1.3 !important;
-  }
-  table td:last-child > div {
-    max-width: 54px !important;
-  }
 </style>
-<script id="eb-frecuencias-ui-clean">
-  (function() {
-    function limpiarTablero() {
-      try {
-        // A. Quitar el escalón superior ("276.493 registros · BASE_CLASIFICADA...") que deja un espacio vacío arriba a la izquierda
-        var todos = Array.from(document.querySelectorAll('div, span, p'));
-        for (var i = 0; i < todos.length; i++) {
-          var el = todos[i];
-          var txt = (el.textContent || '').trim();
-          if (txt.indexOf('BASE_CLASIFICADA') !== -1 && el.children.length <= 3) {
-            var filaSup = el.parentElement;
-            if (filaSup && (filaSup.textContent || '').trim() === txt) {
-              filaSup.style.display = 'none';
-            } else {
-              el.style.display = 'none';
-            }
-          }
-        }
-
-        // B. Mantener MUTUAL [Incluir | Excluir] en la misma fila de LIMPIAR, sin espacio muerto y sin barra de scroll
-        var botones = Array.from(document.querySelectorAll('button'));
-        var btnLimpiar = botones.find(function(b) { return (b.textContent || '').trim().toUpperCase() === 'LIMPIAR'; });
-        var btnIncluir = botones.find(function(b) { return (b.textContent || '').trim() === 'Incluir'; });
-        if (btnLimpiar && btnIncluir) {
-          var fila = btnLimpiar.parentElement;
-          var grupoMutual = btnIncluir.parentElement;
-          if (grupoMutual && grupoMutual.parentElement && grupoMutual.parentElement !== fila) {
-            var bloqueMutual = grupoMutual.parentElement;
-            if ((bloqueMutual.textContent || '').toUpperCase().indexOf('MUTUAL') !== -1 && bloqueMutual !== fila && !bloqueMutual.contains(btnLimpiar)) {
-              grupoMutual = bloqueMutual;
-            }
-          }
-          if (fila) {
-            fila.style.display = 'flex';
-            fila.style.flexWrap = 'nowrap';
-            fila.style.alignItems = 'center';
-            fila.style.justifyContent = 'flex-start';
-            fila.style.gap = '8px';
-            fila.style.overflow = 'visible';
-            if (grupoMutual && grupoMutual.parentElement !== fila && !grupoMutual.contains(fila)) {
-              fila.appendChild(grupoMutual);
-            }
-            if (grupoMutual) {
-              grupoMutual.style.marginLeft = '8px';
-              grupoMutual.style.marginTop = '0px';
-              grupoMutual.style.display = 'inline-flex';
-              grupoMutual.style.alignItems = 'center';
-              grupoMutual.style.flexShrink = '0';
-            }
-          }
-        }
-
-        // C. FILTROS DE MEDICOS: dejarlo exactamente como está en su posición y estructura, pero quitarle el fondo azul oscuro
-        var inputMed = document.querySelector('input[placeholder*="medico"], input[placeholder*="médico"]');
-        if (inputMed) {
-          var cajaMed = inputMed.parentElement;
-          while (cajaMed && cajaMed !== document.body) {
-            var t = (cajaMed.textContent || '').toUpperCase();
-            if (t.indexOf('FILTROS DE MEDICOS') !== -1 || t.indexOf('FILTROS DE MÉDICOS') !== -1) {
-              break;
-            }
-            cajaMed = cajaMed.parentElement;
-          }
-          if (cajaMed && cajaMed !== document.body) {
-            cajaMed.style.background = '#EAF1FB';
-            cajaMed.style.backgroundColor = '#EAF1FB';
-            cajaMed.style.backgroundImage = 'none';
-            cajaMed.style.border = '1px solid #C9D9F0';
-            cajaMed.style.boxShadow = 'none';
-            cajaMed.style.color = '#0C1F3F';
-
-            inputMed.style.border = '1px solid #BFD2EE';
-            inputMed.style.background = '#FFFFFF';
-            inputMed.style.color = '#0F172A';
-
-            // Ajustar textos y sub-cajas dentro del bloque de médicos sobre el azul sutil
-            var internos = cajaMed.querySelectorAll('*');
-            for (var j = 0; j < internos.length; j++) {
-              var nodo = internos[j];
-              if (nodo === inputMed) continue;
-              var tag = nodo.tagName;
-              if (tag === 'BUTTON') {
-                var bgBtn = window.getComputedStyle(nodo).backgroundColor;
-                var esActivo = nodo.classList.contains('active') || nodo.classList.contains('on') || bgBtn === 'rgb(255, 255, 255)';
-                if (esActivo) {
-                  nodo.style.background = '#FFFFFF';
-                  nodo.style.color = '#0C1F3F';
-                  nodo.style.boxShadow = '0 1px 3px rgba(12,31,63,0.12)';
-                } else {
-                  nodo.style.background = 'transparent';
-                  nodo.style.color = '#334E7B';
-                }
-              } else if (tag === 'DIV' || tag === 'SPAN') {
-                var cs = window.getComputedStyle(nodo);
-                if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') {
-                  nodo.style.background = '#DCE7F7';
-                  nodo.style.borderColor = '#C2D4EE';
-                }
-                if (cs.color === 'rgb(255, 255, 255)' || cs.color.indexOf('255, 255, 255') !== -1) {
-                  nodo.style.color = '#0C1F3F';
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', limpiarTablero);
-    } else {
-      limpiarTablero();
-    }
-    window.addEventListener('load', limpiarTablero);
-    document.addEventListener('click', function() { setTimeout(limpiarTablero, 30); });
-  })();
-</script>
 `;
 
 export async function GET() {
