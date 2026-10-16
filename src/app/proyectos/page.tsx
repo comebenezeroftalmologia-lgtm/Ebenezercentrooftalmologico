@@ -1,3 +1,4 @@
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import Link from "next/link";
 import { FolderKanban, Lock } from "lucide-react";
 import { requireModuloAccess } from "@/lib/auth";

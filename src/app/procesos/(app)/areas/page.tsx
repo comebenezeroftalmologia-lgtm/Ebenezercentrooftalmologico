@@ -1,72 +1,204 @@
 import Link from "next/link";
-import { Building2, ChevronRight } from "lucide-react";
-import { listAreas, listTodasLasAsignaciones } from "@/lib/procesos/queries";
-import { agruparAreasPorCadenaDeValor } from "@/lib/procesos/ordenAreas";
-import { requireAppUser } from "@/lib/auth";
+import {
+  ArrowRight,
+  CheckCircle2,
+  FolderKanban,
+  GitBranch,
+  Layers,
+} from "lucide-react";
+import { getCurrentAppUser } from "@/lib/auth/permissions";
+import {
+  agruparAreasPorCadenaDeValor,
+  getMisAsignaciones,
+  listAreas,
+  listTodasLasAsignaciones,
+} from "@/lib/procesos/queries";
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { CrearAreaForm } from "./CrearAreaForm";
 
-export const dynamic = "force-dynamic";
+export default async function ProcesosHomePage() {
+  const user = await getCurrentAppUser();
+  const [areas, todasAsignaciones, misAsignaciones] = await Promise.all([
+    listAreas(),
+    listTodasLasAsignaciones(),
+    user ? getMisAsignaciones(user.id) : Promise.resolve([]),
+  ]);
 
-export default async function AreasPage() {
-  const user = await requireAppUser();
-  const [areas, asignaciones] = await Promise.all([listAreas(), listTodasLasAsignaciones()]);
-
-  const liderPorArea = new Map<string, string>();
-  for (const a of asignaciones) {
-    if (a.rol === "lider") liderPorArea.set(a.areaId, a.usuario.nombreCompleto);
+  const misAreaIds = new Set(misAsignaciones.map((a) => a.areaId));
+  const lideresPorArea = new Map<string, string[]>();
+  for (const a of todasAsignaciones) {
+    if (a.rol === "lider" && a.userNombre) {
+      const prev = lideresPorArea.get(a.areaId) ?? [];
+      prev.push(a.userNombre);
+      lideresPorArea.set(a.areaId, prev);
+    }
   }
 
-  const bloques = agruparAreasPorCadenaDeValor(areas);
+  const totalProcesos = areas.reduce((s, a) => s + (a.totalProcesos ?? 0), 0);
+  const totalSubprocesos = areas.reduce(
+    (s, a) => s + (a.totalSubprocesos ?? 0),
+    0
+  );
+  const cadena = agruparAreasPorCadenaDeValor(areas);
 
   return (
-    <div className="max-w-[1080px] pb-12">
-      <h1 className="mb-1 text-2xl font-semibold text-navy">Áreas de la Organización</h1>
-      <p className="mb-6 text-sm text-ink-3">
-        Organizadas por cadena de valor. Entra a un área para ver su líder, su equipo y sus procesos.
-      </p>
+    <div className="space-y-5">
+      <ExecutiveHeader
+        title="Mapa de Áreas"
+        subtitle=" Cadena de valor y estructura operativa · Centro Oftalmológico Ebenezer"
+        variant="procesos"
+        rightContent={user?.isAdmin ? <CrearAreaForm /> : undefined}
+      />
+
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        <div className="rounded-[16px] border border-[#E6EBF2] bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12.5px] font-medium text-[#64748B]">
+              Áreas operativas
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[#2563EB]">
+              <FolderKanban className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="mt-2 text-[28px] font-bold leading-none tracking-tight text-[#0F172A]">
+            {areas.length}
+          </p>
+          <p className="mt-1.5 text-[11.5px] text-[#64748B]">
+            5 eslabones de la cadena de valor
+          </p>
+        </div>
+
+        <div className="rounded-[16px] border border-[#E6EBF2] bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12.5px] font-medium text-[#64748B]">
+              Procesos publicados
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[#2563EB]">
+              <GitBranch className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="mt-2 text-[28px] font-bold leading-none tracking-tight text-[#0F172A]">
+            {totalProcesos}
+          </p>
+          <p className="mt-1.5 text-[11.5px] text-[#64748B]">
+            Procesos L2 activos
+          </p>
+        </div>
+
+        <div className="rounded-[16px] border border-[#E6EBF2] bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12.5px] font-medium text-[#64748B]">
+              Sub-procesos (L3)
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[#2563EB]">
+              <Layers className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="mt-2 text-[28px] font-bold leading-none tracking-tight text-[#0F172A]">
+            {totalSubprocesos}
+          </p>
+          <p className="mt-1.5 text-[11.5px] text-[#64748B]">
+            Actividades estandarizadas
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-6">
-        {bloques.map((bloque) => (
-          <section key={bloque.id}>
-            <div className="mb-2.5 flex items-center gap-2">
-              <span className="rounded bg-navy px-2 py-0.5 text-[10.5px] font-bold tracking-wider text-aqua">
-                {bloque.numero}
+        {cadena.map((eslabon) => (
+          <section
+            key={eslabon.id}
+            className="rounded-[16px] border border-[#E6EBF2] bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.03)]"
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#F1F5F9] pb-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E6F0FD] text-[12px] font-bold text-[#1D58D8]">
+                  {eslabon.orden}
+                </span>
+                <div>
+                  <h2 className="text-[15px] font-bold text-[#0F172A]">
+                    {eslabon.nombre}
+                  </h2>
+                  <p className="text-[12px] text-[#64748B]">
+                    {eslabon.descripcion}
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#F1F5F9] px-2.5 py-1 text-[11px] font-semibold text-[#475569]">
+                {eslabon.areas.length}{" "}
+                {eslabon.areas.length === 1 ? "área" : "áreas"}
               </span>
-              <h2 className="text-sm font-semibold text-navy">{bloque.titulo}</h2>
             </div>
-            <div className="rounded-xl border border-line bg-white shadow-xs">
-              {bloque.areas.map((area, i) => (
-                <Link
-                  key={area.id}
-                  href={`/procesos/areas/${area.id}`}
-                  className={`flex items-center justify-between px-5 py-3.5 text-sm transition-colors duration-150 ease-eb-out hover:bg-line-2 ${
-                    i !== bloque.areas.length - 1 ? "border-b border-line-2" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Building2 className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />
+
+            <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+              {eslabon.areas.map((area) => {
+                const esMiArea = misAreaIds.has(area.id);
+                const lideres = lideresPorArea.get(area.id) ?? [];
+                return (
+                  <Link
+                    key={area.id}
+                    href={`/procesos/areas/${area.id}`}
+                    className="group flex flex-col justify-between rounded-[14px] border border-[#E6EBF2] bg-[#FAFBFD] p-4 transition-all hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:bg-white hover:shadow-[0_6px_18px_rgba(37,99,235,0.08)]"
+                  >
                     <div>
-                      <p className="font-medium text-ink-2">{area.nombre}</p>
-                      <p className="text-xs text-ink-3">
-                        Líder: {liderPorArea.get(area.id) ?? "Sin asignar"}
-                      </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[#2563EB]">
+                            <FolderKanban className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-[14px] font-bold text-[#0F172A] group-hover:text-[#1D58D8]">
+                              {area.nombre}
+                            </h3>
+                            <span className="text-[11px] font-medium text-[#94A3B8]">
+                              {area.codigo}
+                            </span>
+                          </div>
+                        </div>
+                        {esMiArea && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F0FD] px-2 py-0.5 text-[10.5px] font-semibold text-[#1D58D8]">
+                            <CheckCircle2 className="h-3 w-3" /> Tu área
+                          </span>
+                        )}
+                      </div>
+
+                      {area.descripcion && (
+                        <p className="mt-2.5 line-clamp-2 text-[12px] text-[#64748B]">
+                          {area.descripcion}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-ink-3" strokeWidth={1.75} />
-                </Link>
-              ))}
+
+                    <div className="mt-4 flex items-center justify-between border-t border-[#EEF2F6] pt-3 text-[11.5px] text-[#64748B]">
+                      <div className="flex items-center gap-3">
+                        <span>
+                          <strong className="font-semibold text-[#0F172A]">
+                            {area.totalProcesos ?? 0}
+                          </strong>{" "}
+                          procesos
+                        </span>
+                        <span>
+                          <strong className="font-semibold text-[#0F172A]">
+                            {area.totalSubprocesos ?? 0}
+                          </strong>{" "}
+                          sub
+                        </span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 font-semibold text-[#1D58D8]">
+                        Abrir <ArrowRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                    {lideres.length > 0 && (
+                      <p className="mt-1.5 truncate text-[11px] text-[#94A3B8]">
+                        Líder: {lideres.join(", ")}
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </section>
         ))}
       </div>
-
-      {user.isAdmin && (
-        <div className="mt-8 rounded-xl border border-line bg-white p-6 shadow-xs">
-          <h3 className="mb-4 text-base font-semibold text-navy">Crear área</h3>
-          <CrearAreaForm />
-        </div>
-      )}
     </div>
   );
 }
-

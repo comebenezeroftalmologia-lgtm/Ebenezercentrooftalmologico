@@ -1,115 +1,140 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Building2,
-  ClipboardCheck,
+  BarChart3,
+  CheckSquare,
+  ChevronRight,
+  FolderKanban,
   Home,
-  LayoutDashboard,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Menu,
+  Search,
+  X,
 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import type { AppUser, Area } from "@/lib/procesos/types";
-import type { Modulo } from "@/lib/modulos";
-import { RielGlobal } from "@/components/Sidebar";
-import { agruparAreasPorCadenaDeValor } from "@/lib/procesos/ordenAreas";
+import type { Modulo } from "@/lib/modulos/types";
+import { RielGlobal } from "@/components/navegacion/RielGlobal";
+
+interface Props {
+  user: AppUser;
+  puedeVerDashboard: boolean;
+  areas?: Area[];
+  modulos?: Modulo[];
+}
 
 export function ProcesosNav({
   user,
   puedeVerDashboard,
   areas = [],
   modulos = [],
-}: {
-  user: AppUser;
-  puedeVerDashboard: boolean;
-  areas?: Area[];
-  modulos?: Modulo[];
-}) {
+}: Props) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [busqueda, setBusqueda] = useState("");
+  const [areasExpandido, setAreasExpandido] = useState(true);
 
   const items = [
-    { href: "/procesos", label: "Mapa de Áreas", icon: Home },
-    { href: "/procesos/mis-tareas", label: "Mis Tareas", icon: ClipboardCheck },
+    { href: "/procesos", label: "Inicio", icon: Home, exact: true },
+    { href: "/procesos/areas", label: "Mapa de Áreas", icon: FolderKanban, exact: false },
+    { href: "/procesos/mis-tareas", label: "Mis Tareas", icon: CheckSquare, exact: false },
     ...(puedeVerDashboard
-      ? [{ href: "/procesos/dashboard", label: "Dashboard General", icon: LayoutDashboard }]
+      ? [{ href: "/procesos/dashboard", label: "Dashboard General", icon: BarChart3, exact: false }]
       : []),
   ];
 
-  const q = busqueda.trim().toLowerCase();
-  const areasFiltradas = q
-    ? areas.filter((a) => a.nombre.toLowerCase().includes(q))
-    : areas;
-  const bloques = agruparAreasPorCadenaDeValor(areasFiltradas);
+  const areasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return areas;
+    return areas.filter(
+      (a) =>
+        a.nombre.toLowerCase().includes(q) ||
+        a.codigo.toLowerCase().includes(q)
+    );
+  }, [areas, busqueda]);
 
   return (
-    <div className="relative flex h-full shrink-0">
-      <RielGlobal
-        modulos={modulos}
-        isAdmin={user.isAdmin}
-        onToggleBandeja={() => setIsOpen((v) => !v)}
-      />
-
-      <aside
-        className={`hidden h-full shrink-0 flex-col border-r border-line bg-[#F8FAFC] transition-all duration-200 ease-eb-out md:flex ${
-          isOpen ? "w-[264px]" : "w-0 overflow-hidden border-r-0"
-        }`}
+    <>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed left-16 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#E2E8F0] bg-white text-[#0F172A] shadow-sm lg:hidden"
+        aria-label="Abrir menú"
       >
-        <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-line bg-white px-3.5">
-          <div className="min-w-0">
-            <p className="truncate text-[13.5px] font-semibold tracking-[-0.01em] text-navy">
+        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-xs lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <div className="relative z-40 flex h-screen shrink-0 select-none">
+        <RielGlobal
+          modulos={modulos}
+          isAdmin={user.isAdmin}
+          onToggleBandeja={() => setIsOpen((v) => !v)}
+        />
+
+        <aside
+          className={cn(
+            "flex h-screen flex-col border-r border-[#E6EBF2] bg-white transition-all duration-200 ease-out",
+            isOpen
+              ? "w-[228px] opacity-100"
+              : "w-0 -translate-x-4 overflow-hidden border-r-0 opacity-0"
+          )}
+        >
+          <div className="flex h-14 items-center justify-between px-4 pt-2">
+            <span className="truncate text-[16px] font-bold tracking-tight text-[#0F172A]">
               Procesos y Áreas
-            </p>
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            title="Contraer bandeja lateral"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line bg-white text-ink-3 transition hover:border-navy-20 hover:text-navy"
-          >
-            <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
-          </button>
-        </div>
 
-        <div className="border-b border-line/60 bg-white px-3 py-2.5">
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar área (ej. SIAU)..."
-            className="w-full rounded-md border border-line bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-blue focus:bg-white focus:outline-none"
-          />
-        </div>
+          <div className="px-3 pb-3">
+            <div className="relative flex items-center">
+              <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-[#94A3B8]" />
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] py-1.5 pl-8 pr-3 text-[12.5px] text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#3B82F6] focus:bg-white focus:outline-none"
+              />
+            </div>
+          </div>
 
-        <nav className="flex-1 overflow-y-auto px-2.5 py-3">
-          {!q && (
-            <div className="mb-3">
-              <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-3">
-                Vistas Globales
-              </div>
-              <div className="flex flex-col gap-0.5">
+          <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+            <div>
+              <p className="mb-1.5 px-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">
+                Navegación
+              </p>
+              <div className="space-y-0.5">
                 {items.map((item) => {
-                  const active =
-                    item.href === "/procesos"
-                      ? pathname === "/procesos" || pathname === "/procesos/areas"
-                      : pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
+                  const active = item.exact
+                    ? pathname === item.href
+                    : pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] transition ${
+                      className={cn(
+                        "group flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] transition-all",
                         active
-                          ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
-                          : "text-ink-2 hover:bg-white/80 hover:text-navy"
-                      }`}
+                          ? "bg-[#E6F0FD] font-semibold text-[#1D58D8]"
+                          : "font-medium text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
+                      )}
                     >
                       <Icon
-                        className={`h-4 w-4 shrink-0 ${active ? "text-blue" : "text-ink-3"}`}
-                        strokeWidth={1.75}
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-colors",
+                          active
+                            ? "text-[#1D58D8]"
+                            : "text-[#64748B] group-hover:text-[#334155]"
+                        )}
                       />
                       <span className="truncate">{item.label}</span>
                     </Link>
@@ -117,69 +142,64 @@ export function ProcesosNav({
                 })}
               </div>
             </div>
-          )}
 
-          {bloques.map((bloque) => (
-            <div key={bloque.id} className="mb-3">
-              <div className="px-2 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-3">
-                {bloque.id === "atencion"
-                  ? "Atención y Comercial"
-                  : bloque.id === "direccion"
-                    ? "Dirección y Gobierno"
-                    : "Soporte y Operación"}
+            {areas.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setAreasExpandido((v) => !v)}
+                  className="mb-1.5 flex w-full items-center gap-1 px-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#94A3B8] hover:text-[#475569]"
+                >
+                  <ChevronRight
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      areasExpandido && "rotate-90"
+                    )}
+                  />
+                  <span>Áreas ({areasFiltradas.length})</span>
+                </button>
+
+                {areasExpandido && (
+                  <div className="space-y-0.5">
+                    {areasFiltradas.map((area) => {
+                      const active = pathname === `/procesos/areas/${area.id}`;
+                      return (
+                        <Link
+                          key={area.id}
+                          href={`/procesos/areas/${area.id}`}
+                          className={cn(
+                            "flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[12.5px] transition-all",
+                            active
+                              ? "bg-[#E6F0FD] font-semibold text-[#1D58D8]"
+                              : "font-medium text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              active ? "bg-[#1D58D8]" : "bg-[#CBD5E1]"
+                            )}
+                          />
+                          <span className="truncate">{area.nombre}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col gap-0.5">
-                {bloque.areas.map((area) => {
-                  const href = `/procesos/areas/${area.id}`;
-                  const active = pathname === href || pathname.startsWith(href + "/");
-                  const esSiau =
-                    area.nombre.toLowerCase().includes("siau") ||
-                    area.nombre.toLowerCase().includes("atención al usuario");
-                  return (
-                    <Link
-                      key={area.id}
-                      href={href}
-                      className={`group flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] transition ${
-                        active
-                          ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
-                          : "text-ink-2 hover:bg-white/80 hover:text-navy"
-                      }`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Building2
-                          className={`h-3.5 w-3.5 shrink-0 ${
-                            active ? "text-blue" : "text-ink-3 group-hover:text-navy"
-                          }`}
-                          strokeWidth={1.75}
-                        />
-                        <span className="truncate">{area.nombre}</span>
-                      </span>
-                      {esSiau && (
-                        <span className="shrink-0 rounded-full bg-blue/10 px-1.5 py-0.5 text-[9.5px] font-semibold text-blue">
-                          SIAU
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+            )}
+          </nav>
+
+          <div className="border-t border-[#E6EBF2] p-3">
+            <div className="rounded-[10px] bg-[#F8FAFC] px-3 py-2">
+              <p className="truncate text-[12px] font-semibold text-[#0F172A]">
+                {user.nombre}
+              </p>
+              <p className="truncate text-[11px] text-[#64748B]">{user.email}</p>
             </div>
-          ))}
-        </nav>
-      </aside>
-
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          title="Mostrar bandeja de Procesos"
-          className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-[#F8FAFC]"
-        >
-          <PanelLeftOpen className="h-3.5 w-3.5 text-blue" strokeWidth={1.75} />
-          <span>Áreas</span>
-        </button>
-      )}
-    </div>
+          </div>
+        </aside>
+      </div>
+    </>
   );
 }
-

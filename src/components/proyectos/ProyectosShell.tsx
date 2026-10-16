@@ -61,7 +61,7 @@ export function ProyectosShell({
             <aside
               className={`${
                 menuMovil ? "fixed inset-y-0 left-[76px] z-40 flex w-[264px] shadow-eb-4" : "hidden"
-              } shrink-0 flex-col border-r border-line bg-[#F8FAFC] transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
+              } shrink-0 flex-col border-r border-line bg-white transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
                 abierto ? "md:w-[264px]" : "md:w-0 md:overflow-hidden md:border-r-0"
               }`}
             >

@@ -158,11 +158,7 @@ body {
      intuye de reojo y no estorba a quien viene a leer números.
    --------------------------------------------------------------------- */
 .hoja-cuadriculada {
-  background-color: #f1f3f8;
-  background-image:
-    linear-gradient(#edeff5 1px, transparent 1px),
-    linear-gradient(90deg, #edeff5 1px, transparent 1px);
-  background-size: 8px 8px;
+  background: linear-gradient(180deg, #EAF2FC 0%, #F2F7FD 35%, #F8FAFE 100%);
 }
 
 h1, h2, h3 {
