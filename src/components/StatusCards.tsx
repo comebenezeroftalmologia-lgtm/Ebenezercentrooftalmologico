@@ -18,14 +18,14 @@ export function StatusCards({
   currentParams,
 }: {
   counts: StatusCounts;
-  /** Total de oportunidades del período anterior (mismo rango de días) —
+  /** Total de oportunidades del perÃ­odo anterior (mismo rango de dÃ­as) â€”
    * si se pasa, la tarjeta "Total Oportunidades" muestra el % de cambio. */
   previousTotal?: number | null;
   activeEstado?: string;
   currentParams: Record<string, string | undefined>;
 }) {
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <div className="mb-5 grid grid-cols-2 gap-3.5 sm:grid-cols-5">
       {CARDS.map((card) => {
         const isActive = card.key === "total" ? !activeEstado : activeEstado === card.key;
         const href = buildHref(currentParams, {
@@ -40,21 +40,25 @@ export function StatusCards({
           <Link
             key={card.key}
             href={href}
-            className={`rounded-xl border p-4 shadow-sm transition-colors duration-150 ease-eb-out ${
-              isActive ? "border-blue bg-blue-10" : "border-line bg-white hover:border-navy-20"
+            className={`rounded-[15px] border px-4 py-4 shadow-eb-1 transition-all duration-150 ease-eb-out ${
+              isActive
+                ? "border-blue bg-[#F4F7FE]"
+                : "border-[#E7E9F2] bg-white hover:border-navy-20"
             }`}
           >
-            <p className="eb-label text-[11px] text-ink-3">{card.label}</p>
-            <p className="mt-1 font-heading text-2xl font-semibold text-navy">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
+              {card.label}
+            </p>
+            <p className="mt-1.5 text-[28px] font-light leading-[1.05] tracking-[-0.025em] tabular-nums text-navy">
               {formatNumber(value)}
             </p>
             {pct !== null && (
               <p
-                className={`mt-1 text-[11px] font-semibold ${
-                  pct >= 0 ? "text-green" : "text-[#B3261E]"
+                className={`mt-2 inline-flex items-center rounded-pill px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                  pct >= 0 ? "bg-green-10 text-green" : "bg-[#FEE2E2] text-[#DC2626]"
                 }`}
               >
-                {pct >= 0 ? "↑" : "↓"} {Math.abs(pct)}% vs. anterior
+                {pct >= 0 ? "â–²" : "â–¼"} {Math.abs(pct)}% vs. anterior
               </p>
             )}
           </Link>

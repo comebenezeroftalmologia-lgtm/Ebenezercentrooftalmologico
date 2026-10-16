@@ -15,7 +15,7 @@ export function DateRangePicker({
         v ? <input key={k} type="hidden" name={k} value={v} /> : null
       )}
       <div className="flex flex-col">
-        <label htmlFor="desde" className="eb-label mb-1 text-[11px] text-ink-3">
+        <label htmlFor="desde" className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A92AD]">
           Inicio
         </label>
         <input
@@ -23,11 +23,11 @@ export function DateRangePicker({
           type="date"
           name="desde"
           defaultValue={from}
-          className="rounded-lg border border-line px-3 py-2 text-sm text-ink"
+          className="h-[36px] rounded-[9px] border border-[#E1E4EC] bg-white px-3 text-[13px] font-medium text-navy transition hover:border-navy-90 focus:border-blue focus:outline-none"
         />
       </div>
       <div className="flex flex-col">
-        <label htmlFor="hasta" className="eb-label mb-1 text-[11px] text-ink-3">
+        <label htmlFor="hasta" className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A92AD]">
           Fin
         </label>
         <input
@@ -35,14 +35,14 @@ export function DateRangePicker({
           type="date"
           name="hasta"
           defaultValue={to}
-          className="rounded-lg border border-line px-3 py-2 text-sm text-ink"
+          className="h-[36px] rounded-[9px] border border-[#E1E4EC] bg-white px-3 text-[13px] font-medium text-navy transition hover:border-navy-90 focus:border-blue focus:outline-none"
         />
       </div>
       <button
         type="submit"
-        className="flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white transition-colors duration-150 ease-eb-out hover:bg-navy-90"
+        className="flex h-[36px] items-center gap-1.5 rounded-pill bg-blue px-4 text-[12px] font-bold uppercase tracking-[0.05em] text-white shadow-[0_4px_10px_rgba(15,47,243,0.22)] transition hover:bg-navy"
       >
-        <CalendarRange className="h-4 w-4" strokeWidth={1.75} />
+        <CalendarRange className="h-3.5 w-3.5" strokeWidth={2} />
         Aplicar
       </button>
     </form>

@@ -24,23 +24,24 @@ import { logoutAction } from "@/lib/procesos/actions";
 
 const ANALYTICS_ITEMS = MODULOS.filter((m) => m.grupo === "Analytics");
 
-const OPERACION_SLUGS = new Set<Modulo>(["venta_del_dia", "frecuencias"]);
+const OPERACION_ORDER: Modulo[] = ["frecuencias", "venta_del_dia"];
+const OPERACION_SLUGS = new Set<Modulo>(OPERACION_ORDER);
 
 const NOMBRE_CORTO: Partial<Record<Modulo, string>> = {
-  leads: "Clientes Potenciales",
-  quirurgicos: "Ord. Quirúrgicos",
-  no_quirurgicos: "Ord. No Quirúrgicos",
-  redes_sociales: "Redes Sociales",
-  venta_del_dia: "Venta del Día",
   frecuencias: "Frecuencias",
+  venta_del_dia: "Venta del DÃ­a",
+  leads: "Clientes Potenciales",
+  no_quirurgicos: "Ord. No QuirÃºrgicos",
+  quirurgicos: "Ord. QuirÃºrgicos",
+  redes_sociales: "Redes Sociales",
 };
 
 const SUBTITULO_MODULO: Partial<Record<Modulo, string>> = {
-  venta_del_dia: "Atención diaria y espera",
-  frecuencias: "Producción y facturación",
+  frecuencias: "ProducciÃ³n y facturaciÃ³n",
+  venta_del_dia: "AtenciÃ³n diaria y espera",
   leads: "Embudo general CRM",
-  quirurgicos: "Conversión a cirugía",
-  no_quirurgicos: "Exámenes y procedimientos",
+  no_quirurgicos: "ExÃ¡menes y procedimientos",
+  quirurgicos: "ConversiÃ³n a cirugÃ­a",
   redes_sociales: "Pauta y alcance digital",
 };
 
@@ -102,7 +103,7 @@ export function RielGlobal({
       <Link
         href="/"
         className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
-        title="Centro Oftalmológico Ebenezer"
+        title="Centro OftalmolÃ³gico Ebenezer"
       >
         <Image
           src="/brand/logo/logo-claro.png"
@@ -146,7 +147,7 @@ export function RielGlobal({
         )}
 
         {procesosPermitido && (
-          <Link href="/procesos" className={itemClass(enProcesos)} title="Procesos y Áreas">
+          <Link href="/procesos" className={itemClass(enProcesos)} title="Procesos y Ãreas">
             {enProcesos && (
               <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-aqua" />
             )}
@@ -188,7 +189,7 @@ export function RielGlobal({
         <form action={logoutAction}>
           <button
             type="submit"
-            title="Cerrar sesión"
+            title="Cerrar sesiÃ³n"
             className="flex w-[62px] flex-col items-center justify-center gap-1 rounded-xl py-2 text-white/60 transition-colors duration-150 hover:bg-white/10 hover:text-white"
           >
             <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
@@ -201,16 +202,14 @@ export function RielGlobal({
 }
 
 /**
- * Navegación acoplada de 2 columnas estilo Clientify (new.clientify.com/team-inbox):
- * - Columna 1: RielGlobal fijo en azul oscuro.
- * - Columna 2: Bandeja lateral contextual acoplada y plegable con « / » para cambiar
- *   entre tableros con 1 solo clic sin menús flotantes que se escondan.
+ * NavegaciÃ³n acoplada de 2 columnas:
+ * - Columna 1: RielGlobal fijo en azul oscuro (Inicio, Analytics, Procesos, Proyectos).
+ * - Columna 2: Bandeja lateral contextual de Analytics (sin repetir Inicio, Procesos ni Proyectos,
+ *   eliminando el scroll vertical innecesario).
  */
 export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: boolean }) {
   const allowed = new Set(modulos);
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug) || isAdmin);
-  const procesosPermitido = allowed.has("procesos") || isAdmin;
-  const proyectosPermitido = allowed.has("proyectos") || isAdmin;
 
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(true);
@@ -245,22 +244,24 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
     return m.label.toLowerCase().includes(q) || corto.includes(q) || sub.includes(q);
   });
 
-  const operacion = filtrados.filter((m) => OPERACION_SLUGS.has(m.slug));
+  const operacion = OPERACION_ORDER.map((slug) => filtrados.find((m) => m.slug === slug)).filter(
+    (m): m is NonNullable<typeof m> => Boolean(m)
+  );
   const comercial = filtrados.filter((m) => !OPERACION_SLUGS.has(m.slug));
 
   return (
     <div className="relative flex h-full shrink-0">
       <RielGlobal modulos={modulos} isAdmin={isAdmin} onToggleBandeja={alternar} />
 
-      {/* Columna 2: Bandeja lateral acoplada estilo Clientify */}
+      {/* Columna 2: Bandeja lateral acoplada para Tableros y Vistas */}
       <aside
-        className={`hidden h-full shrink-0 flex-col border-r border-line bg-[#F8FAFC] transition-all duration-200 ease-eb-out md:flex ${
-          abierto ? "w-[220px]" : "w-0 overflow-hidden border-r-0"
+        className={`hidden h-full shrink-0 flex-col border-r border-[#E7E9F2] bg-[#F8FAFC] transition-all duration-200 ease-eb-out md:flex ${
+          abierto ? "w-[224px]" : "w-0 overflow-hidden border-r-0"
         }`}
       >
-        <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-line bg-white px-3.5">
+        <div className="flex h-[54px] shrink-0 items-center justify-between border-b border-[#E7E9F2] bg-white px-3.5">
           <div className="min-w-0">
-            <p className="truncate text-[13.5px] font-semibold tracking-[-0.01em] text-navy">
+            <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-navy">
               Tableros y Vistas
             </p>
           </div>
@@ -268,81 +269,73 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
             type="button"
             onClick={alternar}
             title="Contraer bandeja lateral"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line bg-white text-ink-3 transition hover:border-navy-20 hover:text-navy"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[#E7E9F2] bg-white text-ink-3 transition hover:border-navy-20 hover:text-navy"
           >
             <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
           </button>
         </div>
 
-        <div className="border-b border-line/60 bg-white px-3 py-2.5">
+        <div className="border-b border-[#E7E9F2] bg-white px-3 py-2.5">
           <input
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Filtrar tablero..."
-            className="w-full rounded-md border border-line bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-blue focus:bg-white focus:outline-none"
+            className="w-full rounded-lg border border-[#E1E4EC] bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 transition focus:border-blue focus:bg-white focus:outline-none"
           />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2.5 py-3">
-          <div className="mb-3">
-            <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-3">
-              Vista General
+          {!q && (
+            <div className="mb-3.5">
+              <div className="px-2 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
+                Vista General
+              </div>
+              <Link
+                href="/analytics"
+                className={`group relative flex items-center justify-between rounded-xl px-2.5 py-2 text-[12.5px] transition ${
+                  pathname === "/analytics"
+                    ? "border border-[#DDE3F4] bg-white font-semibold text-navy shadow-eb-1"
+                    : "text-ink-2 hover:bg-white/80 hover:text-navy"
+                }`}
+              >
+                {pathname === "/analytics" && (
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-blue" />
+                )}
+                <span className="flex items-center gap-2.5 truncate">
+                  <LayoutGrid
+                    className={`h-4 w-4 shrink-0 ${
+                      pathname === "/analytics" ? "text-blue" : "text-ink-3 group-hover:text-navy"
+                    }`}
+                    strokeWidth={1.75}
+                  />
+                  <span className="truncate">Resumen Analytics</span>
+                </span>
+              </Link>
             </div>
-            <Link
-              href="/"
-              className={`group flex items-center justify-between rounded-lg px-2.5 py-2 text-[12.5px] transition ${
-                pathname === "/"
-                  ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
-                  : "text-ink-2 hover:bg-white/80 hover:text-navy"
-              }`}
-            >
-              <span className="flex items-center gap-2.5 truncate">
-                <Home
-                  className={`h-4 w-4 shrink-0 ${pathname === "/" ? "text-blue" : "text-ink-3"}`}
-                  strokeWidth={1.75}
-                />
-                <span className="truncate">Portada de Inicio</span>
-              </span>
-            </Link>
-            <Link
-              href="/analytics"
-              className={`mt-0.5 group flex items-center justify-between rounded-lg px-2.5 py-2 text-[12.5px] transition ${
-                pathname === "/analytics"
-                  ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
-                  : "text-ink-2 hover:bg-white/80 hover:text-navy"
-              }`}
-            >
-              <span className="flex items-center gap-2.5 truncate">
-                <LayoutGrid
-                  className={`h-4 w-4 shrink-0 ${
-                    pathname === "/analytics" ? "text-blue" : "text-ink-3"
-                  }`}
-                  strokeWidth={1.75}
-                />
-                <span className="truncate">Resumen Analytics</span>
-              </span>
-            </Link>
-          </div>
+          )}
 
           {operacion.length > 0 && (
-            <div className="mb-3">
-              <div className="px-2 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-3">
-                Operación Clínica
+            <div className="mb-3.5">
+              <div className="px-2 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
+                OperaciÃ³n ClÃ­nica
               </div>
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 {operacion.map((item) => {
                   const activo = pathname === item.href;
                   return (
                     <Link
                       key={item.slug}
                       href={item.href}
-                      className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition ${
+                      className={`group relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition ${
                         activo
-                          ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
+                          ? "border border-[#DDE3F4] bg-white font-semibold text-navy shadow-eb-1"
                           : "text-ink-2 hover:bg-white/80 hover:text-navy"
                       }`}
                     >
+                      {activo && (
+                        <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-blue" />
+                      )}
                       <IconoModulo
                         slug={item.slug}
                         className={`h-4 w-4 shrink-0 ${
@@ -367,23 +360,26 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
           )}
 
           {comercial.length > 0 && (
-            <div className="mb-3">
-              <div className="px-2 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-3">
+            <div>
+              <div className="px-2 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
                 Embudo Comercial
               </div>
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 {comercial.map((item) => {
                   const activo = pathname === item.href;
                   return (
                     <Link
                       key={item.slug}
                       href={item.href}
-                      className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition ${
+                      className={`group relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition ${
                         activo
-                          ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
+                          ? "border border-[#DDE3F4] bg-white font-semibold text-navy shadow-eb-1"
                           : "text-ink-2 hover:bg-white/80 hover:text-navy"
                       }`}
                     >
+                      {activo && (
+                        <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-blue" />
+                      )}
                       <IconoModulo
                         slug={item.slug}
                         className={`h-4 w-4 shrink-0 ${
@@ -406,42 +402,10 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
               </div>
             </div>
           )}
-
-          {(procesosPermitido || proyectosPermitido) && !q && (
-            <div className="mt-2 border-t border-line/70 pt-3">
-              <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-3">
-                Gestión Interna
-              </div>
-              {procesosPermitido && (
-                <Link
-                  href="/procesos"
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] text-ink-2 transition hover:bg-white/80 hover:text-navy"
-                >
-                  <FolderKanban className="h-4 w-4 shrink-0 text-ink-3" strokeWidth={1.75} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate leading-tight">Procesos y Áreas</p>
-                    <p className="truncate text-[10.5px] text-ink-3">Mapa organizacional y SIAU</p>
-                  </div>
-                </Link>
-              )}
-              {proyectosPermitido && (
-                <Link
-                  href="/proyectos"
-                  className="mt-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] text-ink-2 transition hover:bg-white/80 hover:text-navy"
-                >
-                  <KanbanSquare className="h-4 w-4 shrink-0 text-ink-3" strokeWidth={1.75} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate leading-tight">Proyectos</p>
-                    <p className="truncate text-[10.5px] text-ink-3">Espacios y tableros Kanban</p>
-                  </div>
-                </Link>
-              )}
-            </div>
-          )}
         </nav>
       </aside>
 
-      {/* Botón flotante discreto para volver a desplegar la bandeja cuando está contraída */}
+      {/* BotÃ³n flotante discreto para volver a desplegar la bandeja cuando estÃ¡ contraÃ­da */}
       {!abierto && (
         <button
           type="button"
@@ -450,10 +414,9 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
           className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-[#F8FAFC]"
         >
           <PanelLeftOpen className="h-3.5 w-3.5 text-blue" strokeWidth={1.75} />
-          <span>Menú</span>
+          <span>MenÃº</span>
         </button>
       )}
     </div>
   );
 }
-

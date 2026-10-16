@@ -67,9 +67,16 @@ export default async function QuirurgicosPage({
   };
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-navy">Ordenamientos Quirúrgicos</h1>
+    <div className="pb-12">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#E7E9F2] pb-5">
+        <div>
+          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
+            Tableros Â· Embudo Comercial
+          </div>
+          <h1 className="text-[26px] font-medium leading-none tracking-[-0.02em] text-navy">
+            Ordenamientos QuirÃºrgicos
+          </h1>
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <ServiceFilter services={services} />
           <DateRangePicker
@@ -78,7 +85,7 @@ export default async function QuirurgicosPage({
             otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }}
           />
         </div>
-      </div>
+      </header>
 
       <StatusCards
         counts={counts}
@@ -87,17 +94,17 @@ export default async function QuirurgicosPage({
         currentParams={currentParams}
       />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mb-7 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <KpiCard
           label="Tiempo promedio de cierre"
-          value={avgClosingDays !== null ? `${avgClosingDays.toFixed(1)} días` : "—"}
-          hint="Solo cirugías cerradas"
+          value={avgClosingDays !== null ? `${avgClosingDays.toFixed(1)} dÃ­as` : "â€”"}
+          hint="Solo cirugÃ­as cerradas"
           icon={CalendarClock}
         />
         <KpiCard
           label="Total Vendidas"
           value={formatNumber(vendidas.length)}
-          hint="Ganadas + Programación de Cirguía"
+          hint="Ganadas + ProgramaciÃ³n de CirugÃ­a"
           href={buildHref(currentParams, { estado: "vendidas" })}
           active={searchParams.estado === "vendidas"}
           icon={Target}
@@ -105,18 +112,36 @@ export default async function QuirurgicosPage({
         />
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-navy">Distribución por Estado</h2>
-          <StatusDonutChart counts={counts} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
+          <div className="border-b border-[#F0F1F7] px-5 py-3.5">
+            <h2 className="font-titulo text-[16.5px] font-medium tracking-[-0.012em] text-navy">
+              DistribuciÃ³n por Estado
+            </h2>
+          </div>
+          <div className="p-5">
+            <StatusDonutChart counts={counts} />
+          </div>
         </div>
-        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-navy">Distribución por Servicio</h2>
-          <ServiceDistributionChart opportunities={filtered} serviceNames={serviceNames} />
+        <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
+          <div className="border-b border-[#F0F1F7] px-5 py-3.5">
+            <h2 className="font-titulo text-[16.5px] font-medium tracking-[-0.012em] text-navy">
+              DistribuciÃ³n por Servicio
+            </h2>
+          </div>
+          <div className="p-5">
+            <ServiceDistributionChart opportunities={filtered} serviceNames={serviceNames} />
+          </div>
         </div>
-        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-navy">Etapas de las Oportunidades</h2>
-          <StageFunnelChart data={funnel} />
+        <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
+          <div className="border-b border-[#F0F1F7] px-5 py-3.5">
+            <h2 className="font-titulo text-[16.5px] font-medium tracking-[-0.012em] text-navy">
+              Etapas de las Oportunidades
+            </h2>
+          </div>
+          <div className="p-5">
+            <StageFunnelChart data={funnel} color="#0E245E" />
+          </div>
         </div>
       </div>
     </div>

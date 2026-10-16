@@ -22,17 +22,19 @@ export function MetricCard({
   const isUp = (delta ?? 0) >= 0;
 
   return (
-    <div className="rounded-xl border border-line bg-white p-5 shadow-sm">
+    <div className="rounded-[15px] border border-[#E7E9F2] bg-white p-5 shadow-eb-1">
       <div className="flex items-center justify-between gap-2">
-        <p className="eb-label text-[11px] text-ink-3">{label}</p>
-        {Icon && <Icon className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />}
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">{label}</p>
+        {Icon && <Icon className="h-4 w-4 shrink-0 text-navy-70" strokeWidth={1.75} />}
       </div>
-      <p className="mt-1 font-heading text-3xl font-semibold text-navy">{value}</p>
-      <div className="mt-2 flex items-center gap-2">
+      <p className="mt-1.5 text-[34px] font-light leading-[1.05] tracking-[-0.025em] tabular-nums text-navy">
+        {value}
+      </p>
+      <div className="mt-2.5 flex items-center gap-2">
         {showDelta && (
           <span
-            className={`inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-xs font-semibold ${
-              isUp ? "bg-green-10 text-green" : "bg-[#FBEAE8] text-[#B3261E]"
+            className={`inline-flex items-center gap-1 rounded-pill px-2.5 py-0.5 text-[11.5px] font-bold tabular-nums ${
+              isUp ? "bg-green-10 text-green" : "bg-[#FEE2E2] text-[#DC2626]"
             }`}
           >
             {isUp ? (
@@ -43,9 +45,13 @@ export function MetricCard({
             {formatNumber(Math.abs(delta ?? 0))} {isUp ? "ganados" : "perdidos"} {deltaLabel}
           </span>
         )}
-        {!showDelta && hint && <p className="text-xs text-ink-3">{hint}</p>}
+        {!showDelta && hint && (
+          <p className="text-[11.5px] leading-relaxed text-[#949BB4]">{hint}</p>
+        )}
       </div>
-      {showDelta && hint && <p className="mt-1 text-xs text-ink-3">{hint}</p>}
+      {showDelta && hint && (
+        <p className="mt-1.5 text-[11.5px] leading-relaxed text-[#949BB4]">{hint}</p>
+      )}
     </div>
   );
 }

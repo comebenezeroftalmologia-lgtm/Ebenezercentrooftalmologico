@@ -36,11 +36,6 @@ export default async function RedesSocialesPage({
   const to = searchParams.hasta ?? defaults.to;
   const selected = searchParams.red === "instagram" || searchParams.red === "facebook" ? searchParams.red : "";
 
-  // Histórico de seguidores: ventana amplia (12 meses) para el gráfico
-  // mensual, independiente del rango de fechas elegido para el resto de
-  // la página. Hoy solo Instagram tiene histórico diario reconstruido
-  // (30 días vía la API de Meta); Facebook acumula desde el día del
-  // primer sync — por eso el gráfico se muestra siempre sobre Instagram.
   const followerHistoryFrom = new Date(Date.now() - 365 * 86400_000)
     .toISOString()
     .slice(0, 10);
@@ -98,17 +93,24 @@ export default async function RedesSocialesPage({
   const platformLabel = selected === "instagram" ? "Instagram" : selected === "facebook" ? "Facebook" : "todas las redes";
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-navy">Redes Sociales</h1>
+    <div className="pb-12">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#E7E9F2] pb-5">
+        <div>
+          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
+            Tableros Â· Embudo Comercial
+          </div>
+          <h1 className="text-[26px] font-medium leading-none tracking-[-0.02em] text-navy">
+            Redes Sociales
+          </h1>
+        </div>
         <DateRangePicker from={from} to={to} otherParams={{ red: searchParams.red }} />
-      </div>
+      </header>
 
       <div className="mb-6">
         <PlatformChips followers={chipsData} />
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           label="Seguidores"
           value={formatNumber(followersValue)}
@@ -118,59 +120,66 @@ export default async function RedesSocialesPage({
         <MetricCard
           label="Contenidos Publicados"
           value={formatNumber(posts.length)}
-          hint={`${platformLabel} — ${from} a ${to}`}
+          hint={`${platformLabel} â€” ${from} a ${to}`}
           icon={ImageIcon}
         />
         <MetricCard
           label="Alcance (Instagram)"
           value={formatNumber(totalReach)}
-          hint="Meta deprecó Impresiones — se usa Alcance en su lugar"
+          hint="Cuentas Ãºnicas alcanzadas en el perÃ­odo"
           icon={Eye}
         />
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mb-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           label="Visitas al Perfil"
           value={formatNumber(profileViews)}
-          hint="Instagram — dato adicional disponible vía Meta Graph API"
+          hint="Instagram â€” perÃ­odo seleccionado"
           icon={UserCheck}
         />
         <MetricCard
-          label="Cuentas Alcanzadas"
+          label="Cuentas que Interactuaron"
           value={formatNumber(accountsEngaged)}
-          hint="Instagram — cuentas únicas que interactuaron"
+          hint="Instagram â€” cuentas Ãºnicas con interacciÃ³n"
           icon={Zap}
         />
         <MetricCard
           label="Interacciones Totales"
           value={formatNumber(totalInteractions)}
-          hint="Instagram — likes + comentarios + guardados + compartidos"
+          hint="Likes, comentarios, guardados y compartidos"
           icon={TrendingUp}
         />
       </div>
 
-      <div className="mb-8 rounded-xl border border-line bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-blue" strokeWidth={1.75} />
-          <h2 className="text-lg font-semibold text-navy">Histórico de Seguidores — Instagram</h2>
+      <div className="mb-6 rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
+        <div className="border-b border-[#F0F1F7] px-6 py-4">
+          <h2 className="font-titulo text-[17px] font-medium tracking-[-0.012em] text-navy">
+            HistÃ³rico de Seguidores â€” Instagram
+          </h2>
         </div>
-        <FollowerHistoryChart data={monthlyFollowers} />
-        <p className="mt-3 text-xs text-ink-3">
-          Facebook aún no tiene histórico diario reconstruido — se empezará a acumular a partir del
-          primer día de sincronización real.
-        </p>
+        <div className="p-6">
+          <FollowerHistoryChart data={monthlyFollowers} />
+          <p className="mt-3 text-[11.5px] text-[#949BB4]">
+            Facebook acumula histÃ³rico diario a partir del primer dÃ­a de sincronizaciÃ³n.
+          </p>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-navy">Top 5 Contenidos</h2>
-        <TopContentList posts={posts} />
-        {selected === "facebook" && (
-          <p className="mt-3 text-xs text-ink-3">
-            Aún no hay sincronización de publicaciones de Facebook — solo se sincroniza contenido de
-            Instagram por ahora.
-          </p>
-        )}
+      <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
+        <div className="border-b border-[#F0F1F7] px-6 py-4">
+          <h2 className="font-titulo text-[17px] font-medium tracking-[-0.012em] text-navy">
+            Top 5 Contenidos del PerÃ­odo
+          </h2>
+        </div>
+        <div className="p-6">
+          <TopContentList posts={posts} />
+          {selected === "facebook" && (
+            <p className="mt-3 text-[11.5px] text-[#949BB4]">
+              AÃºn no hay sincronizaciÃ³n de publicaciones individuales de Facebook.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

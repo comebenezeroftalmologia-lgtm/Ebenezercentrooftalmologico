@@ -17,9 +17,9 @@ export function KpiCard({
   href?: string;
   active?: boolean;
   icon?: LucideIcon;
-  /** % de cambio vs. el período anterior (mismo rango de días,
+  /** % de cambio vs. el perÃ­odo anterior (mismo rango de dÃ­as,
    * inmediatamente anterior al seleccionado). pct === null = sin base
-   * de comparación (período anterior en cero) — no se muestra nada. */
+   * de comparaciÃ³n (perÃ­odo anterior en cero) â€” no se muestra nada. */
   comparison?: { pct: number | null; label?: string };
 }) {
   const showComparison = comparison && comparison.pct !== null;
@@ -27,15 +27,17 @@ export function KpiCard({
   const content = (
     <>
       <div className="flex items-center justify-between gap-2">
-        <p className="eb-label text-[11px] text-ink-3">{label}</p>
-        {Icon && <Icon className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />}
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">{label}</p>
+        {Icon && <Icon className="h-4 w-4 shrink-0 text-navy-70" strokeWidth={1.75} />}
       </div>
-      <p className="mt-1 font-heading text-3xl font-semibold text-navy">{value}</p>
-      <div className="mt-2 flex items-center gap-2">
+      <p className="mt-1.5 text-[34px] font-light leading-[1.05] tracking-[-0.025em] tabular-nums text-navy">
+        {value}
+      </p>
+      <div className="mt-2.5 flex items-center gap-2">
         {showComparison && (
           <span
-            className={`inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-xs font-semibold ${
-              (comparison!.pct as number) >= 0 ? "bg-green-10 text-green" : "bg-[#FBEAE8] text-[#B3261E]"
+            className={`inline-flex items-center gap-1 rounded-pill px-2.5 py-0.5 text-[11.5px] font-bold tabular-nums ${
+              (comparison!.pct as number) >= 0 ? "bg-green-10 text-green" : "bg-[#FEE2E2] text-[#DC2626]"
             }`}
           >
             {(comparison!.pct as number) >= 0 ? (
@@ -43,17 +45,21 @@ export function KpiCard({
             ) : (
               <ArrowDown className="h-3 w-3" strokeWidth={2.5} />
             )}
-            {Math.abs(comparison!.pct as number)}% {comparison!.label ?? "vs. período anterior"}
+            {Math.abs(comparison!.pct as number)}% {comparison!.label ?? "vs. perÃ­odo anterior"}
           </span>
         )}
-        {!showComparison && hint && <p className="text-xs text-ink-3">{hint}</p>}
+        {!showComparison && hint && (
+          <p className="text-[11.5px] leading-relaxed text-[#949BB4]">{hint}</p>
+        )}
       </div>
-      {showComparison && hint && <p className="mt-1 text-xs text-ink-3">{hint}</p>}
+      {showComparison && hint && (
+        <p className="mt-1.5 text-[11.5px] leading-relaxed text-[#949BB4]">{hint}</p>
+      )}
     </>
   );
 
-  const className = `rounded-xl border p-5 shadow-sm transition-colors duration-150 ease-eb-out ${
-    active ? "border-blue bg-blue-10" : "border-line bg-white"
+  const className = `rounded-[15px] border p-5 shadow-eb-1 transition-all duration-150 ease-eb-out ${
+    active ? "border-blue bg-[#F4F7FE]" : "border-[#E7E9F2] bg-white"
   } ${href ? "hover:border-navy-20" : ""}`;
 
   if (href) {
