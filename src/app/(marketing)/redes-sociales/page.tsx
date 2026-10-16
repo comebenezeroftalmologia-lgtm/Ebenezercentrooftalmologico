@@ -1,6 +1,7 @@
 import { requireModuloAccess } from "@/lib/auth";
 import { Eye, Image as ImageIcon, TrendingUp, UserCheck, Users, Zap } from "lucide-react";
 import { DateRangePicker } from "@/components/DateRangePicker";
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { FollowerHistoryChart } from "@/components/FollowerHistoryChart";
 import { MetricCard } from "@/components/MetricCard";
 import { PlatformChips } from "@/components/PlatformChips";
@@ -94,17 +95,7 @@ export default async function RedesSocialesPage({
 
   return (
     <div className="pb-12">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#E7E9F2] pb-5">
-        <div>
-          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
-            Tableros · Embudo Comercial
-          </div>
-          <h1 className="text-[26px] font-medium leading-none tracking-[-0.02em] text-navy">
-            Redes Sociales
-          </h1>
-        </div>
-        <DateRangePicker from={from} to={to} otherParams={{ red: searchParams.red }} />
-      </header>
+      <ExecutiveHeader overline="TABLEROS · EMBUDO COMERCIAL" title="Redes Sociales" subtitle="Pauta, alcance digital e interacción de comunidad." variant="redes_sociales" rightControls={<DateRangePicker from={from} to={to} otherParams={{ red: searchParams.red }} />} />
 
       <div className="mb-6">
         <PlatformChips followers={chipsData} />

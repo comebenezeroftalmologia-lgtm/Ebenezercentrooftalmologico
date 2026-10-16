@@ -1,6 +1,7 @@
 import { requireModuloAccess } from "@/lib/auth";
 import { CalendarClock, Target } from "lucide-react";
 import { DateRangePicker } from "@/components/DateRangePicker";
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
@@ -68,24 +69,7 @@ export default async function QuirurgicosPage({
 
   return (
     <div className="pb-12">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#E7E9F2] pb-5">
-        <div>
-          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
-            Tableros · Embudo Comercial
-          </div>
-          <h1 className="text-[26px] font-medium leading-none tracking-[-0.02em] text-navy">
-            Ordenamientos Quirúrgicos
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <ServiceFilter services={services} />
-          <DateRangePicker
-            from={from}
-            to={to}
-            otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }}
-          />
-        </div>
-      </header>
+      <ExecutiveHeader overline="TABLEROS · EMBUDO COMERCIAL" title="Ordenamientos Quirúrgicos" subtitle="Seguimiento de pacientes con orden de cirugía hasta programación efectiva." variant="quirurgicos" rightControls={<div className="flex flex-wrap items-end gap-2.5"><ServiceFilter services={services} /><DateRangePicker from={from} to={to} otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }} /></div>} />
 
       <StatusCards
         counts={counts}
