@@ -19,7 +19,11 @@ const ESTILOS_AJUSTE_FILTROS = `
     display: flex !important;
     flex-wrap: wrap !important;
     align-items: center !important;
-    background: #FFFFFF !important;
+    background-color: #EEF4FD !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 140' fill='none'%3E%3Cdefs%3E%3ClinearGradient id='b1' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%232563EB' stop-opacity='0.48'/%3E%3Cstop offset='100%25' stop-color='%2360A5FA' stop-opacity='0.06'/%3E%3C/linearGradient%3E%3ClinearGradient id='b2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%231D4ED8' stop-opacity='0.68'/%3E%3Cstop offset='100%25' stop-color='%233B82F6' stop-opacity='0.12'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='190' y='68' width='20' height='72' rx='4' fill='url(%23b1)'/%3E%3Crect x='220' y='48' width='20' height='92' rx='4' fill='url(%23b1)'/%3E%3Crect x='250' y='58' width='20' height='82' rx='4' fill='url(%23b1)'/%3E%3Crect x='280' y='32' width='20' height='108' rx='4' fill='url(%23b2)'/%3E%3Crect x='310' y='44' width='20' height='96' rx='4' fill='url(%23b1)'/%3E%3Crect x='340' y='18' width='20' height='122' rx='4' fill='url(%23b2)'/%3E%3Crect x='370' y='28' width='20' height='112' rx='4' fill='url(%23b1)'/%3E%3Cpath d='M 80 120 C 150 105 225 65 290 32 C 335 12 380 10 420 4' stroke='%231D4ED8' stroke-width='2' stroke-opacity='0.75'/%3E%3Cpath d='M 120 132 C 190 112 260 82 350 42 C 380 28 405 24 420 20' stroke='%232563EB' stroke-width='1.5' stroke-opacity='0.55'/%3E%3Ccircle cx='230' cy='48' r='3.5' fill='%23FFFFFF' stroke='%231D4ED8' stroke-width='2'/%3E%3Ccircle cx='290' cy='32' r='4' fill='%23FFFFFF' stroke='%231D4ED8' stroke-width='2'/%3E%3Ccircle cx='350' cy='18' r='4' fill='%23FFFFFF' stroke='%231D4ED8' stroke-width='2'/%3E%3C/svg%3E"), linear-gradient(90deg, #F4F8FE 0%, #E7F0FD 58%, #D4E5FA 100%) !important;
+    background-repeat: no-repeat, no-repeat !important;
+    background-position: right 0px top 0px, center !important;
+    background-size: 420px 140px, 100% 100% !important;
     box-shadow: 0 2px 10px rgba(14, 36, 94, 0.05) !important;
   }
 
@@ -33,7 +37,7 @@ const ESTILOS_AJUSTE_FILTROS = `
     align-items: center !important;
     flex-wrap: nowrap !important;
     overflow: visible !important;
-    border-bottom: 1px solid #EEF0F6 !important;
+    background: rgba(255, 255, 255, 0.55) !important; border-bottom: 1px solid rgba(213, 227, 247, 0.8) !important;
     box-shadow: none !important;
   }
   .embebido .period-bar .dd-trig {
@@ -71,7 +75,7 @@ const ESTILOS_AJUSTE_FILTROS = `
     flex: 0 0 auto !important;
     margin: 0 !important;
     padding: 6px 16px 6px 24px !important;
-    background: #FAFBFC !important;
+    background: rgba(250, 251, 252, 0.72) !important;
     border-bottom: 1px solid #E7E9F2 !important;
     height: 40px !important;
     box-sizing: border-box !important;
@@ -84,7 +88,7 @@ const ESTILOS_AJUSTE_FILTROS = `
     flex: 1 1 auto !important;
     margin: 0 !important;
     padding: 6px 24px 6px 12px !important;
-    background: #FAFBFC !important;
+    background: rgba(250, 251, 252, 0.72) !important;
     border-bottom: 1px solid #E7E9F2 !important;
     height: 40px !important;
     box-sizing: border-box !important;

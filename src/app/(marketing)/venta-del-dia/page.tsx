@@ -1,4 +1,5 @@
 import { requireModuloAccess } from "@/lib/auth";
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { AlertTriangle } from "lucide-react";
 import { formatNumber } from "@/lib/text";
 import {
@@ -72,19 +73,7 @@ export default async function VentaDelDia({
   const d = await calcularVentaDelDia({ fecha, sede });
 
   const encabezado = (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-5 pb-6">
-      <div className="animate-asomar">
-        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.07em] text-ink-3">
-          Tableros · Operación
-        </div>
-        <h1 className="text-[28px] font-medium leading-none tracking-[-0.02em] text-ink">
-          Venta del Día
-        </h1>
-      </div>
-      <div className="animate-asomar" style={{ animationDelay: "60ms" }}>
-        <Controles fecha={fecha} sede={sede} />
-      </div>
-    </header>
+    <ExecutiveHeader overline="TABLEROS · OPERACIÓN CLÍNICA" title="Venta del Día" subtitle="Atención diaria, oportunidad de primera vez y programación de cirugía." variant="analytics" rightControls={<Controles fecha={fecha} sede={sede} />} />
   );
 
   if (d.fetchError) {
