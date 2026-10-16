@@ -255,7 +255,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
       {/* Columna 2: Bandeja lateral acoplada estilo Clientify */}
       <aside
         className={`hidden h-full shrink-0 flex-col border-r border-line bg-[#F8FAFC] transition-all duration-200 ease-eb-out md:flex ${
-          abierto ? "w-[252px]" : "w-0 overflow-hidden border-r-0"
+          abierto ? "w-[220px]" : "w-0 overflow-hidden border-r-0"
         }`}
       >
         <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-line bg-white px-3.5">

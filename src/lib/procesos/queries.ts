@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Modulo } from "@/lib/modulos";
 import type {
@@ -97,13 +98,12 @@ function mapAppUser(row: any): AppUser {
   };
 }
 
-export async function listAreas(): Promise<Area[]> {
-  await ensureAreaSiauSeeded();
+export const listAreas = cache(async (): Promise<Area[]> => {
   const supabase = createServiceClient();
   const { data, error } = await supabase.from("areas").select("id, nombre").order("nombre");
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => ({ id: r.id, nombre: r.nombre }));
-}
+});
 
 export async function getArea(areaId: string): Promise<Area | null> {
   const supabase = createServiceClient();
@@ -141,7 +141,6 @@ export async function listModuloAccesosPorUsuario(): Promise<Record<string, Modu
 }
 
 export async function listAsignacionesPorArea(areaId: string): Promise<AreaAsignacion[]> {
-  await ensureAreaSiauSeeded();
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("area_asignaciones")
@@ -160,7 +159,6 @@ export async function listAsignacionesPorArea(areaId: string): Promise<AreaAsign
 }
 
 export async function listTodasLasAsignaciones(): Promise<AreaAsignacion[]> {
-  await ensureAreaSiauSeeded();
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("area_asignaciones")

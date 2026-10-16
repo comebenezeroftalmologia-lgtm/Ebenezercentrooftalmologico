@@ -92,11 +92,11 @@ export async function getVentasCandidatas({
     }
   }
 
-  await fetchAll((q) => q.eq("status", "won"));
   const ventaStages = VENTA_STAGES[pipeline];
-  if (ventaStages.length > 0) {
-    await fetchAll((q) => q.in("stage", ventaStages));
-  }
+  await Promise.all([
+    fetchAll((q) => q.eq("status", "won")),
+    ...(ventaStages.length > 0 ? [fetchAll((q) => q.in("stage", ventaStages))] : []),
+  ]);
 
   return Array.from(byId.values());
 }

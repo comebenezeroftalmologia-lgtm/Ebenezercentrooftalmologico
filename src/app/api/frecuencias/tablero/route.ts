@@ -1,42 +1,86 @@
 import { requireModuloAccess } from "@/lib/auth";
 
-/**
- * Sirve el tablero de Frecuencias completo.
- *
- * Por qué existe:
- * Durante un tiempo este módulo reconstruyó el tablero a mano, pestaña
- * por pestaña. Esa copia siempre iba por detrás del original: llegó a
- * tener dos pestañas vacías y a mostrar una diferencia de -24.927
- * atenciones que no era real (comparaba 9 meses de 2026 contra 12 de
- * 2025). El motor en Python es la única fuente de los números y ya
- * genera el tablero completo dos veces al día, así que aquí se muestra
- * ESE archivo en vez de reconstruirlo.
- *
- * Cómo funciona:
- * 1. Verifica que el usuario tenga acceso al módulo "frecuencias"
- *    (mismo login y mismos permisos que el resto de la plataforma).
- * 2. Trae Dashboard_Frecuencias.html del repositorio del tablero con un
- *    token de SOLO LECTURA (el mismo que ya usa la sincronización).
- * 3. Lo devuelve tal cual. No guarda copia: lo que se ve es siempre la
- *    última versión que generó el motor.
- *
- * El archivo va con los nombres de pacientes enmascarados
- * (TABLERO_PUBLICO=1 en el workflow que lo genera).
- */
-
 const REPO = "pedroluisherrerabenitez5-design/tablero-ebenezer";
 const ARCHIVO = "Dashboard_Frecuencias.html";
 
-// Depende de la sesión del usuario (verifica permisos), así que no se
-// puede pre-generar: tiene que resolverse en cada petición.
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Caché corta sobre la descarga: evita bajar 5 MB en cada clic dentro
-// de la sesión, pero sin que un cambio recién publicado tarde en verse.
-// (Con media hora, después de regenerar el tablero la página seguía
-// mostrando la versión anterior y parecía que no había servido.)
 const CACHE_SEGUNDOS = 120;
+
+const ESTILOS_AJUSTE_FILTROS = `
+<style id="eb-frecuencias-inline-fix">
+  /* Mantener todos los filtros + APLICAR + LIMPIAR + MUTUAL en una sola fila armónica */
+  .filters, .filter-bar, .barra-filtros, .filtros-row, .controls-row, .top-filters {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  /* Evitar que el bloque de Mutual salte a una segunda línea y ubicarlo justo al lado de LIMPIAR */
+  .filters > *, .filter-bar > *, .barra-filtros > * {
+    flex-shrink: 1 !important;
+    white-space: nowrap !important;
+  }
+  /* Ajuste fino de proporción en pantallas medianas para que quepan todos los controles en 1 renglón sin verse apretados */
+  @media (max-width: 1600px) {
+    .filters, .filter-bar, .barra-filtros {
+      gap: 6px !important;
+    }
+    .filters select, .filters button, .filter-bar select, .filter-bar button, .dd-btn, .f-btn, .btn-apply, .btn-clear {
+      padding-left: 10px !important;
+      padding-right: 10px !important;
+      font-size: 12.5px !important;
+    }
+  }
+</style>
+<script id="eb-frecuencias-mutual-row-fix">
+  (function() {
+    function alinearFilaFiltros() {
+      try {
+        // Buscar el botón LIMPIAR y el bloque de MUTUAL para asegurar que compartan el mismo contenedor en una sola fila
+        var botones = Array.from(document.querySelectorAll('button'));
+        var btnLimpiar = botones.find(function(b) { return (b.textContent || '').trim().toUpperCase() === 'LIMPIAR'; });
+        var btnIncluir = botones.find(function(b) { return (b.textContent || '').trim() === 'Incluir'; });
+        if (btnLimpiar && btnIncluir) {
+          var fila = btnLimpiar.parentElement;
+          var grupoMutual = btnIncluir.parentElement;
+          if (grupoMutual && grupoMutual.parentElement && grupoMutual.parentElement !== fila) {
+            // Si tiene el rótulo MUTUAL al lado, tomamos el contenedor que agrupa el rótulo + Incluir/Excluir
+            var bloqueMutual = grupoMutual.parentElement;
+            if ((bloqueMutual.textContent || '').toUpperCase().indexOf('MUTUAL') !== -1 && bloqueMutual !== fila && !bloqueMutual.contains(btnLimpiar)) {
+              grupoMutual = bloqueMutual;
+            }
+          }
+          if (fila) {
+            fila.style.display = 'flex';
+            fila.style.flexWrap = 'nowrap';
+            fila.style.alignItems = 'center';
+            fila.style.gap = '8px';
+            fila.style.width = '100%';
+            if (grupoMutual && grupoMutual.parentElement !== fila && !grupoMutual.contains(fila)) {
+              fila.appendChild(grupoMutual);
+            }
+            if (grupoMutual) {
+              grupoMutual.style.marginLeft = '4px';
+              grupoMutual.style.marginTop = '0px';
+              grupoMutual.style.display = 'inline-flex';
+              grupoMutual.style.alignItems = 'center';
+              grupoMutual.style.flexShrink = '0';
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', alinearFilaFiltros);
+    } else {
+      alinearFilaFiltros();
+    }
+    window.addEventListener('load', alinearFilaFiltros);
+  })();
+</script>
+`;
 
 export async function GET() {
   await requireModuloAccess("frecuencias");
@@ -88,36 +132,18 @@ export async function GET() {
     return html(aviso("No se pudo traer el tablero", detalle), 502);
   }
 
-  const contenido = await res.text();
+  let contenido = await res.text();
+  if (contenido.includes("</head>")) {
+    contenido = contenido.replace("</head>", `${ESTILOS_AJUSTE_FILTROS}</head>`);
+  } else {
+    contenido = ESTILOS_AJUSTE_FILTROS + contenido;
+  }
 
   return new Response(contenido, {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      // Solo se puede mostrar dentro de esta misma plataforma.
       "Content-Security-Policy": "frame-ancestors 'self'",
-      // EL TABLERO SE GUARDA EN EL NAVEGADOR DE CADA USUARIO.
-      //
-      // Antes iba con max-age=0, must-revalidate: el navegador no lo
-      // reutilizaba nunca y cada visita a Frecuencias bajaba 1,9 MB
-      // enteros desde GitHub. Medido en produccion: 3,8 segundos solo en
-      // eso, de los 5,8 que tardaba la pantalla.
-      //
-      // El revalidate de arriba no servia de nada para esto: el archivo
-      // pesa unos 7 MB sin comprimir y la cache de datos de Vercel no
-      // admite entradas de mas de 2 MB, asi que nunca llego a guardarse.
-      // La cache que si funciona es la del navegador.
-      //
-      //   private  -> queda SOLO en el navegador de quien lo pidio.
-      //               Nunca en un cache compartido: el tablero depende de
-      //               permisos y no puede viajar de un usuario a otro.
-      //   max-age=300 -> cinco minutos instantaneos.
-      //   stale-while-revalidate=900 -> hasta quince minutos mas lo
-      //               muestra al instante mientras baja la version nueva
-      //               por detras. Asi nadie espera y nadie ve algo viejo
-      //               por mucho rato.
-      //
-      // El motor corre unas pocas veces al dia, no cada cinco minutos.
       "Cache-Control": "private, max-age=300, stale-while-revalidate=900",
     },
   });

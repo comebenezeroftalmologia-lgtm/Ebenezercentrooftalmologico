@@ -1,19 +1,29 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
+import { MODULOS, type Modulo } from "@/lib/modulos";
 import type { AppUser, Rol } from "@/lib/procesos/types";
-import type { Modulo } from "@/lib/modulos";
 
-export async function getCurrentAppUser(): Promise<AppUser | null> {
+export const getCurrentAppUser = cache(async (): Promise<AppUser | null> => {
   const supabase = createSessionServerClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  const { data, error } = await supabase
+  let userId = session?.user?.id;
+  if (!userId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    userId = user?.id;
+  }
+  if (!userId) return null;
+
+  const admin = createServiceClient();
+  const { data, error } = await admin
     .from("app_users")
     .select("id, nombre_completo, email, is_admin, activo")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (error || !data) return null;
@@ -25,7 +35,7 @@ export async function getCurrentAppUser(): Promise<AppUser | null> {
     isAdmin: data.is_admin,
     activo: data.activo,
   };
-}
+});
 
 export async function requireAppUser(): Promise<AppUser> {
   const user = await getCurrentAppUser();
@@ -39,16 +49,15 @@ export async function requireAdmin(): Promise<AppUser> {
   return user;
 }
 
-export async function getMisModulos(userId: string, isAdmin: boolean): Promise<Set<Modulo>> {
+export const getMisModulos = cache(async (userId: string, isAdmin: boolean): Promise<Set<Modulo>> => {
   if (isAdmin) {
-    const { MODULOS } = await import("@/lib/modulos");
     return new Set(MODULOS.map((m) => m.slug));
   }
-  const supabase = createSessionServerClient();
-  const { data, error } = await supabase.from("modulo_accesos").select("modulo").eq("user_id", userId);
+  const admin = createServiceClient();
+  const { data, error } = await admin.from("modulo_accesos").select("modulo").eq("user_id", userId);
   if (error || !data) return new Set();
   return new Set(data.map((r) => r.modulo as Modulo));
-}
+});
 
 export async function requireModuloAccess(modulo: Modulo): Promise<AppUser> {
   const user = await requireAppUser();
@@ -58,20 +67,20 @@ export async function requireModuloAccess(modulo: Modulo): Promise<AppUser> {
   return user;
 }
 
-export async function getMisAsignaciones(
-  userId: string
-): Promise<{ areaId: string; areaNombre: string; rol: Rol }[]> {
-  const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("area_asignaciones")
-    .select("area_id, rol, areas(nombre)")
-    .eq("user_id", userId);
+export const getMisAsignaciones = cache(
+  async (userId: string): Promise<{ areaId: string; areaNombre: string; rol: Rol }[]> => {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from("area_asignaciones")
+      .select("area_id, rol, areas(nombre)")
+      .eq("user_id", userId);
 
-  if (error || !data) return [];
+    if (error || !data) return [];
 
-  return data.map((row: any) => ({
-    areaId: row.area_id,
-    areaNombre: row.areas?.nombre ?? "",
-    rol: row.rol,
-  }));
-}
+    return data.map((row: any) => ({
+      areaId: row.area_id,
+      areaNombre: row.areas?.nombre ?? "",
+      rol: row.rol,
+    }));
+  }
+);
