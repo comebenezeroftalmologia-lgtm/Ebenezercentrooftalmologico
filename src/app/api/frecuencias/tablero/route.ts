@@ -23,11 +23,12 @@ const ESTILOS_AJUSTE_FILTROS = `
     box-shadow: 0 2px 10px rgba(14, 36, 94, 0.05) !important;
   }
 
-  /* 2. Barra de filtros (.period-bar) en una sola fila continua, con Mutual alineado a la derecha */
+  /* 2. Barra de filtros (.period-bar) en una sola fila continua con aire superior y Mutual a la derecha */
   .embebido .period-bar {
+    order: 1 !important;
     width: 100% !important;
-    flex-basis: 100% !important;
-    padding: 9px 24px !important;
+    flex: 0 0 100% !important;
+    padding: 12px 24px 10px !important;
     gap: 8px !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
@@ -63,8 +64,12 @@ const ESTILOS_AJUSTE_FILTROS = `
     flex-shrink: 0 !important;
   }
 
-  /* 3. UNIDAD DE MEDIDA a la izquierda y resumen de filtros a la derecha en EL MISMO renglón */
+  /* 3. UNIDAD DE MEDIDA (izq) y #resumen-filtros (der) con el mismo order:2 para compartir exactamente el mismo renglón sin escalón intermedio */
   .embebido .medida {
+    order: 2 !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
     padding: 6px 16px 6px 24px !important;
     background: #FAFBFC !important;
     border-bottom: 1px solid #E7E9F2 !important;
@@ -72,10 +77,12 @@ const ESTILOS_AJUSTE_FILTROS = `
     box-sizing: border-box !important;
     display: flex !important;
     align-items: center !important;
-    flex-shrink: 0 !important;
   }
   .embebido #resumen-filtros {
+    order: 2 !important;
+    width: auto !important;
     flex: 1 1 auto !important;
+    margin: 0 !important;
     padding: 6px 24px 6px 12px !important;
     background: #FAFBFC !important;
     border-bottom: 1px solid #E7E9F2 !important;
@@ -88,19 +95,13 @@ const ESTILOS_AJUSTE_FILTROS = `
     font-size: 0.72rem !important;
     color: #5B6483 !important;
   }
-  .embebido #aviso-pacientes,
-  .embebido #aviso-rips,
-  .embebido #alerta-contratos,
-  .embebido #dias-banner {
-    width: calc(100% - 48px) !important;
-    flex-basis: calc(100% - 48px) !important;
-  }
 
-  /* 4. Las 10 pestañas (.tabs) en una sola línea completa sin barra de desplazamiento */
+  /* 4. Las 10 pestañas (.tabs) en una sola línea completa debajo de la franja de unidad de medida */
   .embebido .tabs {
+    order: 3 !important;
     width: 100% !important;
-    flex-basis: 100% !important;
-    padding: 5px 24px !important;
+    flex: 0 0 100% !important;
+    padding: 6px 24px !important;
     overflow-x: hidden !important;
     flex-wrap: nowrap !important;
     gap: 2px !important;
@@ -110,6 +111,14 @@ const ESTILOS_AJUSTE_FILTROS = `
     padding: 8px 13px !important;
     font-size: 0.775rem !important;
     border-radius: 999px !important;
+  }
+  .embebido #aviso-pacientes,
+  .embebido #aviso-rips,
+  .embebido #alerta-contratos,
+  .embebido #dias-banner {
+    order: 4 !important;
+    width: calc(100% - 48px) !important;
+    flex-basis: calc(100% - 48px) !important;
   }
 
   /* 5. Aprovechamiento limpio del ancho en el área de contenido */
