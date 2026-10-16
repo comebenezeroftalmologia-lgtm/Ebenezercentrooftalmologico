@@ -10,9 +10,50 @@ const CACHE_SEGUNDOS = 120;
 
 const ESTILOS_AJUSTE_FILTROS = `
 <style id="eb-frecuencias-inline-fix">
-  /* 1. Evitar cualquier barra de desplazamiento horizontal en el encabezado de filtros */
-  header, .header, .filters, .filter-bar, .barra-filtros, .filtros-row {
+  /* 1. Evitar cualquier barra de desplazamiento horizontal en el encabezado de filtros y pestañas */
+  header, .header, .filters, .filter-bar, .barra-filtros, .filtros-row, .tabs {
     overflow-x: visible !important;
+  }
+
+  /* 2. Que las 10 pestañas entren completas en pantalla sin que "Contrato Mutual" se corte a la derecha */
+  .tabs {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  .tabs button {
+    padding: 7px 11px !important;
+    font-size: 12.2px !important;
+    white-space: nowrap !important;
+  }
+
+  /* 3. Evitar que las tablas anchas (como Ranking Completo de Médicos) se desborden por la derecha */
+  table {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  table th,
+  table td {
+    padding-left: 7px !important;
+    padding-right: 7px !important;
+    box-sizing: border-box !important;
+  }
+  table th:first-child,
+  table td:first-child {
+    padding-left: 14px !important;
+  }
+  table th:last-child,
+  table td:last-child {
+    padding-right: 16px !important;
+  }
+  /* Darle buen ancho al nombre del médico (2da columna después de #) y acotar la barrita derecha */
+  table td:nth-child(2) {
+    min-width: 180px !important;
+    line-height: 1.3 !important;
+  }
+  table td:last-child > div {
+    max-width: 54px !important;
   }
 </style>
 <script id="eb-frecuencias-ui-clean">
