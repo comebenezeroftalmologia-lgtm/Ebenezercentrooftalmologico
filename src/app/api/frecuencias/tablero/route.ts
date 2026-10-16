@@ -10,7 +10,7 @@ const CACHE_SEGUNDOS = 120;
 
 const ESTILOS_AJUSTE_FILTROS = `
 <style id="eb-frecuencias-inline-fix">
-  /* 1. En modo embebido, ocultar el escalÃ³n superior (.header) y organizar .sticky-top
+  /* 1. En modo embebido, ocultar el escalón superior (.header) y organizar .sticky-top
         para que UNIDAD DE MEDIDA y el resumen de filtros compartan una sola franja limpia */
   .embebido .header {
     display: none !important;
@@ -63,7 +63,7 @@ const ESTILOS_AJUSTE_FILTROS = `
     flex-shrink: 0 !important;
   }
 
-  /* 3. UNIDAD DE MEDIDA a la izquierda y resumen de filtros a la derecha en EL MISMO renglÃ³n */
+  /* 3. UNIDAD DE MEDIDA a la izquierda y resumen de filtros a la derecha en EL MISMO renglón */
   .embebido .medida {
     padding: 6px 16px 6px 24px !important;
     background: #FAFBFC !important;
@@ -96,7 +96,7 @@ const ESTILOS_AJUSTE_FILTROS = `
     flex-basis: calc(100% - 48px) !important;
   }
 
-  /* 4. Las 10 pestaÃ±as (.tabs) en una sola lÃ­nea completa sin barra de desplazamiento */
+  /* 4. Las 10 pestañas (.tabs) en una sola línea completa sin barra de desplazamiento */
   .embebido .tabs {
     width: 100% !important;
     flex-basis: 100% !important;
@@ -112,12 +112,12 @@ const ESTILOS_AJUSTE_FILTROS = `
     border-radius: 999px !important;
   }
 
-  /* 5. Aprovechamiento limpio del ancho en el Ã¡rea de contenido */
+  /* 5. Aprovechamiento limpio del ancho en el área de contenido */
   .embebido .content {
     padding: 20px 24px 32px !important;
   }
 
-  /* 6. Barra de contexto (.ctx-bar): diseÃ±o ejecutivo sobre blanco para no apilar dos cajas azules sobre #hoy-strip */
+  /* 6. Barra de contexto (.ctx-bar): diseño ejecutivo sobre blanco para no apilar dos cajas azules sobre #hoy-strip */
   .ctx-bar {
     background: #FFFFFF !important;
     border: 1px solid #E7E9F2 !important;
@@ -133,7 +133,7 @@ const ESTILOS_AJUSTE_FILTROS = `
     font-weight: 600 !important;
   }
 
-  /* 7. Cierre del dÃ­a (#hoy-strip): armonizado con la tipografÃ­a liviana y bordes suaves del sistema */
+  /* 7. Cierre del día (#hoy-strip): armonizado con la tipografía liviana y bordes suaves del sistema */
   #hoy-strip > div[style*="#E7ECFE"] {
     background: linear-gradient(135deg, #F4F7FE 0%, #ECF2FC 100%) !important;
     border: 1px solid #D5E0F5 !important;
@@ -159,7 +159,7 @@ const ESTILOS_AJUSTE_FILTROS = `
     font-variant-numeric: tabular-nums !important;
   }
 
-  /* 8. Tarjeta de Meta (#meta-card): acabado ejecutivo sin borde rojo estridente, manteniendo el semÃ¡foro en el estado y en la cifra faltante */
+  /* 8. Tarjeta de Meta (#meta-card): acabado ejecutivo sin borde rojo estridente, manteniendo el semáforo en el estado y en la cifra faltante */
   #meta-card > div[style*="border-left"] {
     background: #FFFFFF !important;
     border: 1px solid #E7E9F2 !important;
@@ -252,7 +252,7 @@ const ESTILOS_AJUSTE_FILTROS = `
   }
 
   /* 11. Ajuste fino de relleno en tablas de muchas columnas (#tbl-medicos, #tbl-dx, #tbl-apoyo)
-         para que entren completas en su tarjeta sin desbordar y respetando intacta la columna ParticipaciÃ³n */
+         para que entren completas en su tarjeta sin desbordar y respetando intacta la columna Participación */
   #tbl-medicos th,
   #tbl-dx th,
   #tbl-apoyo th {
@@ -286,10 +286,10 @@ export async function GET() {
     return html(
       aviso(
         "Falta configurar el acceso al tablero",
-        "No estÃ¡ definida la variable <code>TABLERO_EBENEZER_PAT</code> en Vercel. " +
+        "No está definida la variable <code>TABLERO_EBENEZER_PAT</code> en Vercel. " +
           "Es el token de solo lectura del repositorio del tablero, el mismo que " +
-          "ya usa la sincronizaciÃ³n en GitHub. Se agrega en " +
-          "<strong>Vercel â†’ Settings â†’ Environment Variables</strong> y luego se vuelve a desplegar.",
+          "ya usa la sincronización en GitHub. Se agrega en " +
+          "<strong>Vercel → Settings → Environment Variables</strong> y luego se vuelve a desplegar.",
       ),
       500,
     );
@@ -312,7 +312,7 @@ export async function GET() {
     return html(
       aviso(
         "No se pudo contactar el repositorio",
-        "Puede ser una caÃ­da momentÃ¡nea de GitHub. Recargue en un minuto.",
+        "Puede ser una caída momentánea de GitHub. Recargue en un minuto.",
       ),
       502,
     );
@@ -321,10 +321,10 @@ export async function GET() {
   if (!res.ok) {
     const detalle =
       res.status === 401 || res.status === 403
-        ? "El token no tiene permiso de lectura sobre el repositorio, o estÃ¡ vencido."
+        ? "El token no tiene permiso de lectura sobre el repositorio, o está vencido."
         : res.status === 404
-          ? `No se encontrÃ³ <code>${ARCHIVO}</code> en la rama main del repositorio.`
-          : `GitHub respondiÃ³ ${res.status}.`;
+          ? `No se encontró <code>${ARCHIVO}</code> en la rama main del repositorio.`
+          : `GitHub respondió ${res.status}.`;
     return html(aviso("No se pudo traer el tablero", detalle), 502);
   }
 
@@ -355,7 +355,7 @@ function aviso(titulo: string, cuerpo: string) {
   <h1 style="font-size:19px;margin:8px 0 12px">${titulo}</h1>
   <p style="font-size:14px;line-height:1.6;color:#2A335A;margin:0">${cuerpo}</p>
   <p style="font-size:13px;line-height:1.6;color:#5B6483;margin:16px 0 0">
-    Los datos no se perdieron: el tablero se sigue generando cada dÃ­a. Esto solo afecta a esta pantalla.
+    Los datos no se perdieron: el tablero se sigue generando cada día. Esto solo afecta a esta pantalla.
   </p>
 </div></body></html>`;
 }

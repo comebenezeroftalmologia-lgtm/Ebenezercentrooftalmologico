@@ -18,7 +18,7 @@ export function StatusCards({
   currentParams,
 }: {
   counts: StatusCounts;
-  /** Total de oportunidades del perÃ­odo anterior (mismo rango de dÃ­as) â€”
+  /** Total de oportunidades del período anterior (mismo rango de días) —
    * si se pasa, la tarjeta "Total Oportunidades" muestra el % de cambio. */
   previousTotal?: number | null;
   activeEstado?: string;
@@ -58,7 +58,7 @@ export function StatusCards({
                   pct >= 0 ? "bg-green-10 text-green" : "bg-[#FEE2E2] text-[#DC2626]"
                 }`}
               >
-                {pct >= 0 ? "â–²" : "â–¼"} {Math.abs(pct)}% vs. anterior
+                {pct >= 0 ? "▲" : "▼"} {Math.abs(pct)}% vs. anterior
               </p>
             )}
           </Link>

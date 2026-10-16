@@ -29,19 +29,19 @@ const OPERACION_SLUGS = new Set<Modulo>(OPERACION_ORDER);
 
 const NOMBRE_CORTO: Partial<Record<Modulo, string>> = {
   frecuencias: "Frecuencias",
-  venta_del_dia: "Venta del DÃ­a",
+  venta_del_dia: "Venta del Día",
   leads: "Clientes Potenciales",
-  no_quirurgicos: "Ord. No QuirÃºrgicos",
-  quirurgicos: "Ord. QuirÃºrgicos",
+  no_quirurgicos: "Ord. No Quirúrgicos",
+  quirurgicos: "Ord. Quirúrgicos",
   redes_sociales: "Redes Sociales",
 };
 
 const SUBTITULO_MODULO: Partial<Record<Modulo, string>> = {
-  frecuencias: "ProducciÃ³n y facturaciÃ³n",
-  venta_del_dia: "AtenciÃ³n diaria y espera",
+  frecuencias: "Producción y facturación",
+  venta_del_dia: "Atención diaria y espera",
   leads: "Embudo general CRM",
-  no_quirurgicos: "ExÃ¡menes y procedimientos",
-  quirurgicos: "ConversiÃ³n a cirugÃ­a",
+  no_quirurgicos: "Exámenes y procedimientos",
+  quirurgicos: "Conversión a cirugía",
   redes_sociales: "Pauta y alcance digital",
 };
 
@@ -92,7 +92,7 @@ export function RielGlobal({
     pathname === "/analytics" || analyticsAllowed.some((m) => pathname === m.href);
 
   const itemClass = (activo: boolean) =>
-    `group relative flex w-[62px] flex-col items-center justify-center gap-1 rounded-xl py-2 transition-colors duration-150 ease-eb-out ${
+    `group relative flex w-[62px] flex-col items-center justify-center gap-1 rounded-[10px] py-2 transition-colors duration-150 ease-eb-out ${
       activo
         ? "bg-aqua/15 text-aqua font-semibold"
         : "text-white/75 hover:bg-white/10 hover:text-white"
@@ -102,8 +102,8 @@ export function RielGlobal({
     <aside className="z-20 flex w-[76px] shrink-0 select-none flex-col items-center bg-navy py-4 text-white">
       <Link
         href="/"
-        className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
-        title="Centro OftalmolÃ³gico Ebenezer"
+        className="mb-3 flex h-12 w-12 items-center justify-center rounded-[10px] bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
+        title="Centro Oftalmológico Ebenezer"
       >
         <Image
           src="/brand/logo/logo-claro.png"
@@ -147,7 +147,7 @@ export function RielGlobal({
         )}
 
         {procesosPermitido && (
-          <Link href="/procesos" className={itemClass(enProcesos)} title="Procesos y Ãreas">
+          <Link href="/procesos" className={itemClass(enProcesos)} title="Procesos y Áreas">
             {enProcesos && (
               <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r bg-aqua" />
             )}
@@ -189,8 +189,8 @@ export function RielGlobal({
         <form action={logoutAction}>
           <button
             type="submit"
-            title="Cerrar sesiÃ³n"
-            className="flex w-[62px] flex-col items-center justify-center gap-1 rounded-xl py-2 text-white/60 transition-colors duration-150 hover:bg-white/10 hover:text-white"
+            title="Cerrar sesión"
+            className="flex w-[62px] flex-col items-center justify-center gap-1 rounded-[10px] py-2 text-white/60 transition-colors duration-150 hover:bg-white/10 hover:text-white"
           >
             <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
             <span className="text-[10px] leading-none tracking-tight">Salir</span>
@@ -202,7 +202,7 @@ export function RielGlobal({
 }
 
 /**
- * NavegaciÃ³n acoplada de 2 columnas:
+ * Navegación acoplada de 2 columnas:
  * - Columna 1: RielGlobal fijo en azul oscuro (Inicio, Analytics, Procesos, Proyectos).
  * - Columna 2: Bandeja lateral contextual de Analytics (sin repetir Inicio, Procesos ni Proyectos,
  *   eliminando el scroll vertical innecesario).
@@ -269,7 +269,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
             type="button"
             onClick={alternar}
             title="Contraer bandeja lateral"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[#E7E9F2] bg-white text-ink-3 transition hover:border-navy-20 hover:text-navy"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] border border-[#E7E9F2] bg-white text-ink-3 transition hover:border-navy-20 hover:text-navy"
           >
             <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
           </button>
@@ -281,7 +281,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Filtrar tablero..."
-            className="w-full rounded-lg border border-[#E1E4EC] bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 transition focus:border-blue focus:bg-white focus:outline-none"
+            className="w-full rounded-[8px] border border-[#E1E4EC] bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 transition focus:border-blue focus:bg-white focus:outline-none"
           />
         </div>
 
@@ -293,7 +293,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
               </div>
               <Link
                 href="/analytics"
-                className={`group relative flex items-center justify-between rounded-xl px-2.5 py-2 text-[12.5px] transition ${
+                className={`group relative flex items-center justify-between overflow-hidden rounded-[10px] px-2.5 py-2 text-[12.5px] transition ${
                   pathname === "/analytics"
                     ? "border border-[#DDE3F4] bg-white font-semibold text-navy shadow-eb-1"
                     : "text-ink-2 hover:bg-white/80 hover:text-navy"
@@ -318,7 +318,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
           {operacion.length > 0 && (
             <div className="mb-3.5">
               <div className="px-2 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#949BB4]">
-                OperaciÃ³n ClÃ­nica
+                Operación Clínica
               </div>
               <div className="flex flex-col gap-1">
                 {operacion.map((item) => {
@@ -327,7 +327,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                     <Link
                       key={item.slug}
                       href={item.href}
-                      className={`group relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition ${
+                      className={`group relative flex items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 py-2 transition ${
                         activo
                           ? "border border-[#DDE3F4] bg-white font-semibold text-navy shadow-eb-1"
                           : "text-ink-2 hover:bg-white/80 hover:text-navy"
@@ -371,7 +371,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                     <Link
                       key={item.slug}
                       href={item.href}
-                      className={`group relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition ${
+                      className={`group relative flex items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 py-2 transition ${
                         activo
                           ? "border border-[#DDE3F4] bg-white font-semibold text-navy shadow-eb-1"
                           : "text-ink-2 hover:bg-white/80 hover:text-navy"
@@ -405,16 +405,16 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
         </nav>
       </aside>
 
-      {/* BotÃ³n flotante discreto para volver a desplegar la bandeja cuando estÃ¡ contraÃ­da */}
+      {/* Botón flotante discreto para volver a desplegar la bandeja cuando está contraída */}
       {!abierto && (
         <button
           type="button"
           onClick={alternar}
           title="Mostrar bandeja lateral"
-          className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-[#F8FAFC]"
+          className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-[#F8FAFC]"
         >
           <PanelLeftOpen className="h-3.5 w-3.5 text-blue" strokeWidth={1.75} />
-          <span>MenÃº</span>
+          <span>Menú</span>
         </button>
       )}
     </div>

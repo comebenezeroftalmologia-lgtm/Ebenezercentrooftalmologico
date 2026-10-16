@@ -17,9 +17,9 @@ export function KpiCard({
   href?: string;
   active?: boolean;
   icon?: LucideIcon;
-  /** % de cambio vs. el perÃ­odo anterior (mismo rango de dÃ­as,
+  /** % de cambio vs. el período anterior (mismo rango de días,
    * inmediatamente anterior al seleccionado). pct === null = sin base
-   * de comparaciÃ³n (perÃ­odo anterior en cero) â€” no se muestra nada. */
+   * de comparación (período anterior en cero) — no se muestra nada. */
   comparison?: { pct: number | null; label?: string };
 }) {
   const showComparison = comparison && comparison.pct !== null;
@@ -45,7 +45,7 @@ export function KpiCard({
             ) : (
               <ArrowDown className="h-3 w-3" strokeWidth={2.5} />
             )}
-            {Math.abs(comparison!.pct as number)}% {comparison!.label ?? "vs. perÃ­odo anterior"}
+            {Math.abs(comparison!.pct as number)}% {comparison!.label ?? "vs. período anterior"}
           </span>
         )}
         {!showComparison && hint && (

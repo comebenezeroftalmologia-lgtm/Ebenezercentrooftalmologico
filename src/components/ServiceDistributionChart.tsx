@@ -3,7 +3,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { Opportunity } from "@/lib/types";
 
-/* Una sola escala de azul Ebenezer (de oscuro a claro), igual que en Frecuencias y Venta del DÃ­a */
+/* Una sola escala de azul Ebenezer (de oscuro a claro), igual que en Frecuencias y Venta del Día */
 const PALETTE = [
   "#0E245E",
   "#2C4687",
@@ -23,7 +23,7 @@ export function ServiceDistributionChart({
   opportunities: Opportunity[];
   serviceNames: Map<number, string>;
 }) {
-  // Paleta estable por nombre de servicio (no por posiciÃ³n/conteo), para
+  // Paleta estable por nombre de servicio (no por posición/conteo), para
   // que el color de cada servicio no cambie al filtrar por estado.
   const allNames = Array.from(new Set(serviceNames.values())).sort((a, b) =>
     a.localeCompare(b, "es")
@@ -44,7 +44,7 @@ export function ServiceDistributionChart({
     .sort((a, b) => b.value - a.value);
 
   if (data.length === 0) {
-    return <p className="text-sm text-ink-3">Sin oportunidades para este filtro todavÃ­a.</p>;
+    return <p className="text-sm text-ink-3">Sin oportunidades para este filtro todavía.</p>;
   }
 
   return (
