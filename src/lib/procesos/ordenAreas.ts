@@ -68,7 +68,7 @@ export function agruparAreasPorCadenaDeValor(areas: Area[]): BloqueAreas[] {
   direccion.sort(ordenar);
   soporte.sort(ordenar);
 
-  return [
+  const bloques: BloqueAreas[] = [
     {
       id: "atencion",
       numero: "01",
@@ -90,5 +90,7 @@ export function agruparAreasPorCadenaDeValor(areas: Area[]): BloqueAreas[] {
       subtitulo: "Respaldo asistencial, facturación, suministro, talento humano y tecnología.",
       areas: soporte,
     },
-  ].filter((b) => b.areas.length > 0);
+  ];
+
+  return bloques.filter((b) => b.areas.length > 0);
 }
