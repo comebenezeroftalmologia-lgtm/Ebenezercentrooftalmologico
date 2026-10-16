@@ -10,35 +10,31 @@ const CACHE_SEGUNDOS = 120;
 
 const ESTILOS_AJUSTE_FILTROS = `
 <style id="eb-frecuencias-inline-fix">
-  /* Mantener todos los filtros + APLICAR + LIMPIAR + MUTUAL en una sola fila armónica */
-  .filters, .filter-bar, .barra-filtros, .filtros-row, .controls-row, .top-filters {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    gap: 8px !important;
-  }
-  /* Evitar que el bloque de Mutual salte a una segunda línea y ubicarlo justo al lado de LIMPIAR */
-  .filters > *, .filter-bar > *, .barra-filtros > * {
-    flex-shrink: 1 !important;
-    white-space: nowrap !important;
-  }
-  /* Ajuste fino de proporción en pantallas medianas para que quepan todos los controles en 1 renglón sin verse apretados */
-  @media (max-width: 1600px) {
-    .filters, .filter-bar, .barra-filtros {
-      gap: 6px !important;
-    }
-    .filters select, .filters button, .filter-bar select, .filter-bar button, .dd-btn, .f-btn, .btn-apply, .btn-clear {
-      padding-left: 10px !important;
-      padding-right: 10px !important;
-      font-size: 12.5px !important;
-    }
+  /* 1. Evitar cualquier barra de desplazamiento horizontal en el encabezado de filtros */
+  header, .header, .filters, .filter-bar, .barra-filtros, .filtros-row {
+    overflow-x: visible !important;
   }
 </style>
-<script id="eb-frecuencias-mutual-row-fix">
+<script id="eb-frecuencias-ui-clean">
   (function() {
-    function alinearFilaFiltros() {
+    function limpiarTablero() {
       try {
-        // Buscar el botón LIMPIAR y el bloque de MUTUAL para asegurar que compartan el mismo contenedor en una sola fila
+        // A. Quitar el escalón superior ("276.493 registros · BASE_CLASIFICADA...") que deja un espacio vacío arriba a la izquierda
+        var todos = Array.from(document.querySelectorAll('div, span, p'));
+        for (var i = 0; i < todos.length; i++) {
+          var el = todos[i];
+          var txt = (el.textContent || '').trim();
+          if (txt.indexOf('BASE_CLASIFICADA') !== -1 && el.children.length <= 3) {
+            var filaSup = el.parentElement;
+            if (filaSup && (filaSup.textContent || '').trim() === txt) {
+              filaSup.style.display = 'none';
+            } else {
+              el.style.display = 'none';
+            }
+          }
+        }
+
+        // B. Mantener MUTUAL [Incluir | Excluir] en la misma fila de LIMPIAR, sin espacio muerto y sin barra de scroll
         var botones = Array.from(document.querySelectorAll('button'));
         var btnLimpiar = botones.find(function(b) { return (b.textContent || '').trim().toUpperCase() === 'LIMPIAR'; });
         var btnIncluir = botones.find(function(b) { return (b.textContent || '').trim() === 'Incluir'; });
@@ -46,7 +42,6 @@ const ESTILOS_AJUSTE_FILTROS = `
           var fila = btnLimpiar.parentElement;
           var grupoMutual = btnIncluir.parentElement;
           if (grupoMutual && grupoMutual.parentElement && grupoMutual.parentElement !== fila) {
-            // Si tiene el rótulo MUTUAL al lado, tomamos el contenedor que agrupa el rótulo + Incluir/Excluir
             var bloqueMutual = grupoMutual.parentElement;
             if ((bloqueMutual.textContent || '').toUpperCase().indexOf('MUTUAL') !== -1 && bloqueMutual !== fila && !bloqueMutual.contains(btnLimpiar)) {
               grupoMutual = bloqueMutual;
@@ -56,13 +51,14 @@ const ESTILOS_AJUSTE_FILTROS = `
             fila.style.display = 'flex';
             fila.style.flexWrap = 'nowrap';
             fila.style.alignItems = 'center';
+            fila.style.justifyContent = 'flex-start';
             fila.style.gap = '8px';
-            fila.style.width = '100%';
+            fila.style.overflow = 'visible';
             if (grupoMutual && grupoMutual.parentElement !== fila && !grupoMutual.contains(fila)) {
               fila.appendChild(grupoMutual);
             }
             if (grupoMutual) {
-              grupoMutual.style.marginLeft = '4px';
+              grupoMutual.style.marginLeft = '8px';
               grupoMutual.style.marginTop = '0px';
               grupoMutual.style.display = 'inline-flex';
               grupoMutual.style.alignItems = 'center';
@@ -70,14 +66,70 @@ const ESTILOS_AJUSTE_FILTROS = `
             }
           }
         }
+
+        // C. FILTROS DE MEDICOS: dejarlo exactamente como está en su posición y estructura, pero quitarle el fondo azul oscuro
+        var inputMed = document.querySelector('input[placeholder*="medico"], input[placeholder*="médico"]');
+        if (inputMed) {
+          var cajaMed = inputMed.parentElement;
+          while (cajaMed && cajaMed !== document.body) {
+            var t = (cajaMed.textContent || '').toUpperCase();
+            if (t.indexOf('FILTROS DE MEDICOS') !== -1 || t.indexOf('FILTROS DE MÉDICOS') !== -1) {
+              break;
+            }
+            cajaMed = cajaMed.parentElement;
+          }
+          if (cajaMed && cajaMed !== document.body) {
+            cajaMed.style.background = '#F8FAFC';
+            cajaMed.style.backgroundColor = '#F8FAFC';
+            cajaMed.style.backgroundImage = 'none';
+            cajaMed.style.border = '1px solid #E2E8F0';
+            cajaMed.style.boxShadow = 'none';
+            cajaMed.style.color = '#0F172A';
+
+            inputMed.style.border = '1px solid #CBD5E1';
+            inputMed.style.background = '#FFFFFF';
+            inputMed.style.color = '#0F172A';
+
+            // Ajustar textos y sub-cajas dentro del bloque de médicos para que se lean perfecto sobre el fondo claro
+            var internos = cajaMed.querySelectorAll('*');
+            for (var j = 0; j < internos.length; j++) {
+              var nodo = internos[j];
+              if (nodo === inputMed) continue;
+              var tag = nodo.tagName;
+              if (tag === 'BUTTON') {
+                var bgBtn = window.getComputedStyle(nodo).backgroundColor;
+                var esActivo = nodo.classList.contains('active') || nodo.classList.contains('on') || bgBtn === 'rgb(255, 255, 255)';
+                if (esActivo) {
+                  nodo.style.background = '#0C1F3F';
+                  nodo.style.color = '#FFFFFF';
+                  nodo.style.boxShadow = '0 1px 2px rgba(12,31,63,0.15)';
+                } else {
+                  nodo.style.background = 'transparent';
+                  nodo.style.color = '#475569';
+                }
+              } else if (tag === 'DIV' || tag === 'SPAN') {
+                var cs = window.getComputedStyle(nodo);
+                if (cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') {
+                  nodo.style.background = '#EEF2F7';
+                  nodo.style.borderColor = '#DCE3EE';
+                }
+                if (cs.color === 'rgb(255, 255, 255)' || cs.color.indexOf('255, 255, 255') !== -1) {
+                  nodo.style.color = '#1E293B';
+                }
+              }
+            }
+          }
+        }
       } catch (e) {}
     }
+
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', alinearFilaFiltros);
+      document.addEventListener('DOMContentLoaded', limpiarTablero);
     } else {
-      alinearFilaFiltros();
+      limpiarTablero();
     }
-    window.addEventListener('load', alinearFilaFiltros);
+    window.addEventListener('load', limpiarTablero);
+    document.addEventListener('click', function() { setTimeout(limpiarTablero, 30); });
   })();
 </script>
 `;
@@ -144,7 +196,7 @@ export async function GET() {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy": "frame-ancestors 'self'",
-      "Cache-Control": "private, max-age=300, stale-while-revalidate=900",
+      "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
     },
   });
 }
