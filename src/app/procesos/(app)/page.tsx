@@ -10,15 +10,11 @@ import {
   UserCheck,
   Users,
 } from "lucide-react";
-import { getCurrentAppUser } from "@/lib/auth/session";
-import {
-  getMisAsignaciones,
-  listAreas,
-  listTodasLasAsignaciones,
-} from "@/lib/procesos/queries";
-import { agruparAreasPorCadenaDeValor } from "@/lib/procesos/cadena-valor";
-import { CrearAreaForm } from "./CrearAreaForm";
-import { ExecutiveHeader } from "@/components/ui/ExecutiveHeader";
+import { getCurrentAppUser, getMisAsignaciones } from "@/lib/auth";
+import { listAreas, listTodasLasAsignaciones } from "@/lib/procesos/queries";
+import { agruparAreasPorCadenaDeValor } from "@/lib/procesos/ordenAreas";
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
+import { CrearAreaForm } from "./areas/CrearAreaForm";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +44,7 @@ const BLOQUE_THEMES: Record<string, { border: string; badgeBg: string; badgeText
 
 export default async function ProcesosHomePage() {
   const user = await getCurrentAppUser();
-  const [areas, todasAsignaciones, misAsignaciones] = await Promise.all([
+  const [areas, asignaciones, misAsignaciones] = await Promise.all([
     listAreas(),
     listTodasLasAsignaciones(),
     user ? getMisAsignaciones(user.id) : Promise.resolve([]),
@@ -56,29 +52,22 @@ export default async function ProcesosHomePage() {
 
   const liderPorArea = new Map<string, string>();
   const colaboradoresPorArea = new Map<string, number>();
-
-  for (const a of todasAsignaciones) {
-    if (a.rolEnArea === "lider" && !liderPorArea.has(a.areaId)) {
-      liderPorArea.set(a.areaId, a.usuarioNombre);
-    }
-    if (a.rolEnArea === "colaborador") {
-      colaboradoresPorArea.set(
-        a.areaId,
-        (colaboradoresPorArea.get(a.areaId) ?? 0) + 1
-      );
-    }
+  for (const a of asignaciones) {
+    if (a.rol === "lider") liderPorArea.set(a.areaId, a.usuario.nombreCompleto);
+    else colaboradoresPorArea.set(a.areaId, (colaboradoresPorArea.get(a.areaId) ?? 0) + 1);
   }
 
   const totalColaboradores = Array.from(colaboradoresPorArea.values()).reduce((acc, v) => acc + v, 0);
   const coberturaLideres = areas.length > 0 ? Math.round((liderPorArea.size / areas.length) * 100) : 0;
   const bloques = agruparAreasPorCadenaDeValor(areas);
+  const primerNombre = user?.nombreCompleto ? user.nombreCompleto.split(" ")[0] : "Equipo";
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="mx-auto max-w-[1360px] space-y-6 pb-12">
       <ExecutiveHeader
-        overline="CADENA DE VALOR · CENTRO OFTALMOLÓGICO EBENEZER"
-        title="Mapa de Procesos y Áreas"
-        subtitle="Selecciona un área institucional para gestionar su hoja de ruta, manual de funciones, procesos y equipo."
+        overline={`GOBIERNO ORGANIZACIONAL · ${areas.length} ÁREAS ACTIVAS`}
+        title={`Hola, ${primerNombre}`}
+        subtitle="Mapa ejecutivo de procesos y cadena de valor institucional. Selecciona un área para gestionar su hoja de ruta, equipo y tareas."
         variant="procesos"
         rightControls={
           <div className="flex flex-wrap items-center gap-2">
@@ -96,12 +85,11 @@ export default async function ProcesosHomePage() {
               <Layers className="h-3.5 w-3.5" />
               Dashboard
             </Link>
-            {user?.isAdmin && <CrearAreaForm />}
           </div>
         }
       />
 
-      {/* Fila Ejecutiva de KPIs de Procesos */}
+      {/* Fila Ejecutiva de 4 KPIs de Procesos */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex items-start justify-between rounded-[16px] border border-[#E6EEF8] bg-white p-5 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
           <div>
@@ -150,7 +138,7 @@ export default async function ProcesosHomePage() {
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B]">Mi Participación</p>
             <p className="mt-2 font-display text-[30px] font-bold leading-none text-[#0F172A]">{misAsignaciones.length}</p>
             <span className="mt-2.5 inline-flex items-center gap-1 rounded-md bg-[#EFF6FF] px-2 py-0.5 text-[11px] font-semibold text-[#1D4ED8]">
-              Ver mis áreas y tareas <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              Ver mis tareas <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[#2563EB]">
@@ -169,19 +157,19 @@ export default async function ProcesosHomePage() {
               </span>
               <div>
                 <p className="text-[12px] font-bold text-[#0F172A]">Tus Áreas Asignadas</p>
-                <p className="text-[11px] text-[#64748B]">Acceso directo a los procesos donde participas directamente</p>
+                <p className="text-[11px] text-[#64748B]">Acceso directo a las áreas donde participas</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {misAsignaciones.map((asig) => (
                 <Link
-                  key={asig.id}
-                  href={`/procesos/areas/${asig.areaSlug}`}
+                  key={`${asig.areaId}-${asig.rol}`}
+                  href={`/procesos/areas/${asig.areaId}`}
                   className="inline-flex items-center gap-2 rounded-full border border-[#BFDBFE] bg-white px-3.5 py-1.5 text-[12px] font-semibold text-[#1E3A8A] shadow-sm transition hover:border-[#2563EB] hover:bg-[#EFF6FF]"
                 >
                   <span>{asig.areaNombre}</span>
                   <span className="rounded-full bg-[#EBF3FE] px-2 py-0.5 text-[10px] font-bold uppercase text-[#1D4ED8]">
-                    {asig.rolEnArea === "lider" ? "Líder" : "Colaborador"}
+                    {asig.rol === "lider" ? "Líder" : "Colaborador"}
                   </span>
                 </Link>
               ))}
@@ -215,13 +203,16 @@ export default async function ProcesosHomePage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {bloque.areas.map((area) => {
+                  const esSiau =
+                    area.nombre.toLowerCase().includes("siau") ||
+                    area.nombre.toLowerCase().includes("atención al usuario");
                   const lider = liderPorArea.get(area.id);
-                  const colaboradores = colaboradoresPorArea.get(area.id) ?? 0;
+                  const colabs = colaboradoresPorArea.get(area.id) ?? 0;
 
                   return (
                     <Link
                       key={area.id}
-                      href={`/procesos/areas/${area.slug}`}
+                      href={`/procesos/areas/${area.id}`}
                       className={`group flex flex-col justify-between rounded-[16px] border border-[#E6EEF8] border-l-[4px] ${theme.border} bg-white p-5 shadow-[0_2px_12px_rgba(14,36,94,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-[0_10px_28px_rgba(37,99,235,0.10)]`}
                     >
                       <div>
@@ -230,9 +221,9 @@ export default async function ProcesosHomePage() {
                             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${theme.iconBg} ${theme.iconColor}`}>
                               <Building2 className="h-4 w-4" />
                             </span>
-                            {area.codigo && (
-                              <span className={`rounded-md px-2 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-wider ${theme.badgeBg} ${theme.badgeText}`}>
-                                {area.codigo}
+                            {esSiau && (
+                              <span className="rounded-full bg-[#EBF3FE] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#1D4ED8]">
+                                SIAU
                               </span>
                             )}
                           </div>
@@ -245,8 +236,8 @@ export default async function ProcesosHomePage() {
                           {area.nombre}
                         </h3>
 
-                        <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-[#64748B]">
-                          {area.descripcion || area.objetivo || "Gestión documental, procesos, hoja de ruta e indicadores operativos del área."}
+                        <p className="mt-1.5 text-[12px] leading-relaxed text-[#64748B]">
+                          Hoja de ruta, manual de funciones, subprocesos y seguimiento del equipo.
                         </p>
                       </div>
 
@@ -261,7 +252,7 @@ export default async function ProcesosHomePage() {
                         </span>
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#F8FAFC] px-2.5 py-0.5 font-semibold text-[#475569] ring-1 ring-[#E2E8F0]">
                           <Users className="h-3 w-3 text-[#64748B]" />
-                          {colaboradores}
+                          {colabs} colab.
                         </span>
                       </div>
                     </Link>
@@ -272,6 +263,13 @@ export default async function ProcesosHomePage() {
           );
         })}
       </div>
+
+      {user?.isAdmin && (
+        <div className="rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
+          <h3 className="mb-4 font-display text-[15px] font-bold text-[#0F172A]">Crear nueva área</h3>
+          <CrearAreaForm />
+        </div>
+      )}
     </div>
   );
 }

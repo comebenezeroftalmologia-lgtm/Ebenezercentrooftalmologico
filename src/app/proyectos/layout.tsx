@@ -1,15 +1,10 @@
-import { requireModuloAccess } from "@/lib/auth/session";
-import { getMisModulos } from "@/lib/auth/modulos-queries";
+import { getMisModulos, requireModuloAccess } from "@/lib/auth";
 import { getArbol } from "@/lib/proyectos/queries";
 import { ProyectosShell } from "@/components/proyectos/ProyectosShell";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProyectosLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function ProyectosLayout({ children }: { children: React.ReactNode }) {
   const user = await requireModuloAccess("proyectos");
   const [arbol, modulos] = await Promise.all([
     getArbol(user.id, user.isAdmin),
@@ -19,11 +14,7 @@ export default async function ProyectosLayout({
   return (
     <ProyectosShell
       arbol={arbol}
-      usuario={{
-        id: user.id,
-        nombre: user.nombreCompleto,
-        esAdmin: user.isAdmin,
-      }}
+      usuario={{ id: user.id, nombre: user.nombreCompleto, esAdmin: user.isAdmin }}
       modulos={Array.from(modulos)}
     >
       {children}
