@@ -37,7 +37,7 @@ export default async function DashboardGeneralPage() {
         {areasVisibles.map((area) => {
           const kpis = kpisPorArea.get(area.id)!;
           return (
-            <div key={area.id} className="rounded-xl border border-line bg-white p-5 shadow-sm">
+            <div key={area.id} className="rounded-[16px] border border-[#E6EEF8] bg-white p-5 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
               <div className="mb-3 flex items-center justify-between">
                 <Link href={`/procesos/areas/${area.id}`} className="text-sm font-semibold text-navy hover:underline">
                   {area.nombre}

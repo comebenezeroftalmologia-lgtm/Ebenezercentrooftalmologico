@@ -62,7 +62,7 @@ export function KpisPanel({ kpis }: { kpis: KpisTareas }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {stats.map((s) => (
-        <div key={s.label} className="rounded-xl border border-line bg-white p-4 shadow-sm">
+        <div key={s.label} className="rounded-[16px] border border-[#E6EEF8] bg-white p-5 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
           <div className="mb-2 flex items-center gap-2 text-ink-3">
             <s.icon className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />
             <p className="text-xs">{s.label}</p>

@@ -22,7 +22,7 @@ export default async function MisTareasPage() {
     <div>
       <ExecutiveHeader overline="GOBIERNO ORGANIZACIONAL · EJECUCIÓN" title="Mis Tareas" subtitle="Tareas que tienes asignadas como responsable, en cualquier área." variant="procesos" />
 
-      <div className="rounded-xl border border-line bg-white shadow-sm">
+      <div className="overflow-hidden rounded-[16px] border border-[#E6EEF8] bg-white shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         {tareas.map((t, i) => {
           const Icon = ESTADO_ICON[t.estado];
           return (

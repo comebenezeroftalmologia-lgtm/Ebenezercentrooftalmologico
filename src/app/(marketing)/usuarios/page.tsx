@@ -1,3 +1,4 @@
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { requireAdmin } from "@/lib/auth";
 import { listAppUsers, listModuloAccesosPorUsuario } from "@/lib/procesos/queries";
 import { InvitarUsuarioForm } from "./InvitarUsuarioForm";
@@ -20,7 +21,7 @@ export default async function UsuariosPage() {
         cada área asignas quién es líder — el líder asigna a sus colaboradores.
       </p>
 
-      <div className="mb-8 rounded-xl border border-line bg-white p-6 shadow-sm">
+      <div className="mb-8 rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         <h2 className="mb-4 text-base font-semibold text-navy">Invitar usuario</h2>
         <InvitarUsuarioForm />
       </div>

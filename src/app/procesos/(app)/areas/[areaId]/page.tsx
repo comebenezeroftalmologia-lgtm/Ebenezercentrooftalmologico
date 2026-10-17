@@ -50,7 +50,7 @@ export default async function AreaDetailPage({ params }: { params: { areaId: str
       </p>
 
       <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+        <div className="rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
           <h2 className="mb-3 text-base font-semibold text-navy">Líder</h2>
           <ul className="mb-4 flex flex-col gap-2">
             {lideres.map((l) => (
@@ -64,7 +64,7 @@ export default async function AreaDetailPage({ params }: { params: { areaId: str
           {user.isAdmin && <AsignarLiderForm areaId={area.id} candidatos={candidatosLider} />}
         </div>
 
-        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+        <div className="rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
           <h2 className="mb-3 text-base font-semibold text-navy">
             Colaboradores ({colaboradores.length})
           </h2>
@@ -95,7 +95,7 @@ export default async function AreaDetailPage({ params }: { params: { areaId: str
       )}
 
       <h2 className="mb-3 text-lg font-semibold text-navy">Procesos</h2>
-      <div className="mb-6 rounded-xl border border-line bg-white shadow-sm">
+      <div className="mb-6 overflow-hidden rounded-[16px] border border-[#E6EEF8] bg-white shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         {procesos.map((p, i) => (
           <Link
             key={p.id}
@@ -117,7 +117,7 @@ export default async function AreaDetailPage({ params }: { params: { areaId: str
       </div>
 
       {puedeGestionarColaboradores && (
-        <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+        <div className="rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
           <h3 className="mb-4 text-base font-semibold text-navy">Crear proceso</h3>
           <CrearProcesoForm areaId={area.id} />
         </div>

@@ -1,3 +1,4 @@
+import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { requireAppUser } from "@/lib/auth";
 import { CambiarPasswordForm } from "./CambiarPasswordForm";
 
@@ -8,10 +9,9 @@ export default async function PerfilPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-semibold text-navy">Mi perfil</h1>
-      <p className="mb-6 text-sm text-ink-3">Tu información y acceso a la plataforma.</p>
+      <ExecutiveHeader overline="MI CUENTA · CONFIGURACIÓN PERSONAL" title="Mi Perfil" subtitle="Información de tu cuenta y actualización de contraseña." variant="inicio" />
 
-      <div className="mb-8 max-w-sm rounded-xl border border-line bg-white p-6 shadow-sm">
+      <div className="mb-8 max-w-sm rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         <p className="mb-1 text-xs text-ink-3">Nombre</p>
         <p className="mb-4 text-sm font-medium text-navy">{user.nombreCompleto}</p>
         <p className="mb-1 text-xs text-ink-3">Correo</p>
@@ -22,7 +22,7 @@ export default async function PerfilPage() {
         </p>
       </div>
 
-      <div className="max-w-sm rounded-xl border border-line bg-white p-6 shadow-sm">
+      <div className="max-w-sm rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         <h2 className="mb-4 text-base font-semibold text-navy">Cambiar contraseña</h2>
         <CambiarPasswordForm />
       </div>

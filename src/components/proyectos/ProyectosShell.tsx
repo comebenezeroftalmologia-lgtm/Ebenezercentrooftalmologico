@@ -61,8 +61,8 @@ export function ProyectosShell({
             <aside
               className={`${
                 menuMovil ? "fixed inset-y-0 left-[76px] z-40 flex w-[264px] shadow-eb-4" : "hidden"
-              } shrink-0 flex-col border-r border-line bg-white transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
-                abierto ? "md:w-[264px]" : "md:w-0 md:overflow-hidden md:border-r-0"
+              } shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
+                abierto ? "md:w-[236px]" : "md:w-0 md:overflow-hidden md:border-r-0"
               }`}
             >
               <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-line bg-white px-3.5">
@@ -133,14 +133,14 @@ export function ProyectosShell({
                 <button
                   type="button"
                   onClick={() => setMenuMovil(true)}
-                  className="rounded-sm p-1.5 text-ink-2 hover:bg-line-2"
+                  className="rounded-sm p-1.5 text-[#47597A] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                   aria-label="Abrir menú"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
                 <span className="text-sm font-semibold">Proyectos</span>
               </div>
-              <main className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</main>
+              <main className="hoja-cuadriculada min-h-0 min-w-0 flex-1 overflow-hidden">{children}</main>
             </div>
           </div>
 

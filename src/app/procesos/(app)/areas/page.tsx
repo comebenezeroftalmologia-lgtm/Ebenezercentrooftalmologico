@@ -42,7 +42,7 @@ export default async function AreasPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Building2 className="h-4 w-4 shrink-0 text-blue" strokeWidth={1.75} />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[#1D58D8]"><Building2 className="h-4 w-4" strokeWidth={1.9} /></div>
                     <div>
                       <p className="font-medium text-ink-2">{area.nombre}</p>
                       <p className="text-xs text-ink-3">

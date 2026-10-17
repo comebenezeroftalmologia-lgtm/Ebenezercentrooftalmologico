@@ -29,7 +29,7 @@ export default async function ProcesoDetailPage({ params }: { params: { procesoI
       {!proceso.descripcion && <div className="mb-6" />}
 
       <h2 className="mb-3 text-lg font-semibold text-navy">Actividades</h2>
-      <div className="mb-6 rounded-xl border border-line bg-white shadow-sm">
+      <div className="mb-6 overflow-hidden rounded-[16px] border border-[#E6EEF8] bg-white shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         {actividades.map((act, i) => (
           <div
             key={act.id}
@@ -57,7 +57,7 @@ export default async function ProcesoDetailPage({ params }: { params: { procesoI
         )}
       </div>
 
-      <div className="rounded-xl border border-line bg-white p-6 shadow-sm">
+      <div className="rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         <h3 className="mb-4 text-base font-semibold text-navy">Crear actividad</h3>
         <CrearActividadForm procesoId={proceso.id} siguienteOrden={siguienteOrden} />
       </div>

@@ -56,7 +56,7 @@ export function ProcesosNav({
 
       <aside
         className={`hidden h-full shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:flex ${
-          isOpen ? "w-[264px]" : "w-0 overflow-hidden border-r-0"
+          isOpen ? "w-[236px]" : "w-0 overflow-hidden border-r-0"
         }`}
       >
         <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-line bg-white px-3.5">
