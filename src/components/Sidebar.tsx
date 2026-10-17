@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart2,
   CalendarClock,
@@ -59,14 +59,27 @@ function IconoModulo({ slug, className }: { slug: Modulo; className?: string }) 
   }
 }
 
+export const BANDEJA_BLANCA_STYLE: React.CSSProperties = {
+  backgroundColor: "#FAFBFD",
+  backgroundImage: [
+    "linear-gradient(180deg, rgba(244,248,254,0.32) 0%, rgba(255,255,255,0.90) 28%, rgba(255,255,255,0.93) 72%, rgba(242,247,254,0.32) 100%)",
+    "radial-gradient(rgba(37,99,235,0.115) 0.8px, transparent 0.8px)",
+    "repeating-linear-gradient(45deg, rgba(37,99,235,0.042) 0px, rgba(37,99,235,0.042) 1px, transparent 1px, transparent 22px)",
+    "repeating-linear-gradient(-45deg, rgba(37,99,235,0.042) 0px, rgba(37,99,235,0.042) 1px, transparent 1px, transparent 22px)",
+  ].join(", "),
+  backgroundSize: "100% 100%, 14px 14px, 100% 100%, 100% 100%",
+};
+
 export function RielGlobal({
   modulos,
   isAdmin,
   onToggleBandeja,
+  onOpenBandeja,
 }: {
   modulos: Modulo[];
   isAdmin: boolean;
   onToggleBandeja?: () => void;
+  onOpenBandeja?: () => void;
 }) {
   const allowed = new Set(modulos);
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug));
@@ -74,6 +87,7 @@ export function RielGlobal({
   const proyectosPermitido = allowed.has("proyectos") || isAdmin;
 
   const pathname = usePathname();
+  const router = useRouter();
   const enInicio = pathname === "/";
   const enProcesos = pathname === "/procesos" || pathname.startsWith("/procesos/");
   const enProyectos = pathname === "/proyectos" || pathname.startsWith("/proyectos/");
@@ -88,12 +102,12 @@ export function RielGlobal({
 
   return (
     <aside style={{ backgroundImage: "linear-gradient(155deg, #091E42 0%, #091E42 36%, #102C60 54%, #081B3B 72%, #06132C 100%)" }} className="z-20 flex w-[78px] shrink-0 select-none flex-col items-center border-r border-white/10 bg-[#091E42] py-3.5 text-white shadow-[2px_0_12px_rgba(6,19,44,0.18)]">
-      <Link href="/" className="mb-3 flex flex-col items-center justify-center px-1 text-center transition opacity-95 hover:opacity-100" title="Centro Oftalmológico Ebenezer">
-        <Image src="/brand/logo/logo-claro.png" alt="Ebenezer" width={48} height={48} className="h-11 w-11 object-contain" priority />
+      <Link href="/" onClick={(e) => { try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} onOpenBandeja?.(); if (pathname === "/") { e.preventDefault(); router.push("/"); router.refresh(); window.scrollTo({ top: 0, behavior: "smooth" }); } }} className="group mb-3 flex cursor-pointer flex-col items-center justify-center rounded-xl px-1.5 py-1 text-center opacity-95 transition hover:bg-white/[0.08] hover:opacity-100 active:scale-95" title="Ir a Inicio · Centro Oftalmológico Ebenezer">
+        <Image src="/brand/logo/logo-claro.png" alt="Ebenezer" width={48} height={48} className="pointer-events-none h-11 w-11 object-contain transition-transform duration-150 group-hover:scale-105" priority />
       </Link>
 
       <nav className="flex flex-1 flex-col items-center gap-1.5">
-        <Link href="/" className={itemClass(enInicio)} title="Inicio">
+        <Link href="/" onClick={() => { try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} onOpenBandeja?.(); }} className={itemClass(enInicio)} title="Inicio">
           {enInicio && <span className="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r bg-[#38BDF8]" />}
           <Home className="h-[19px] w-[19px]" strokeWidth={1.75} />
           <span className="text-[10.5px] leading-none tracking-tight">Inicio</span>
@@ -164,6 +178,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
   const proyectosPermitido = allowed.has("proyectos") || isAdmin;
 
   const pathname = usePathname();
+  const router = useRouter();
   const [abierto, setAbierto] = useState(true);
   const [busqueda, setBusqueda] = useState("");
 
@@ -213,16 +228,16 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
   const comercial = filtrados.filter((m) => !OPERACION_SLUGS.has(m.slug));
   const pill = (activo: boolean) =>
     `group flex items-center gap-2.5 rounded-[10px] px-3 py-2 transition ${
-      activo ? "border-l-[3px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E] shadow-[0_1px_3px_rgba(37,99,235,0.06)]" : "border-l-[3px] border-l-transparent text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E] hover:translate-x-0.5"
+      activo ? "border border-[#C9DDFB] border-l-[3.5px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E] shadow-[0_2px_6px_rgba(37,99,235,0.08)]" : "border-l-[3px] border-l-transparent text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E] hover:translate-x-0.5"
     }`;
   const iconCls = (activo: boolean) =>
     `h-4 w-4 shrink-0 ${activo ? "text-[#1D58D8]" : "text-[#64748B] group-hover:text-[#0E245E]"}`;
 
   return (
     <div className="relative flex h-full shrink-0">
-      <RielGlobal modulos={modulos} isAdmin={isAdmin} onToggleBandeja={alternar} />
+      <RielGlobal modulos={modulos} isAdmin={isAdmin} onToggleBandeja={alternar} onOpenBandeja={() => { setAbierto(true); try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} }} />
 
-      <aside className={`hidden h-full shrink-0 flex-col border-r border-[#E6ECF5] bg-gradient-to-b from-[#F3F8FE] via-white to-white shadow-[4px_0_16px_rgba(14,36,94,0.03)] transition-all duration-200 ease-eb-out md:flex ${abierto ? "w-[236px]" : "w-0 overflow-hidden border-r-0"}`}>
+      <aside style={BANDEJA_BLANCA_STYLE} className={`hidden h-full shrink-0 flex-col border-r border-[#DCE7F7] bg-gradient-to-b from-[#F3F8FE] via-white to-white shadow-[4px_0_16px_rgba(14,36,94,0.03)] transition-all duration-200 ease-eb-out md:flex ${abierto ? "w-[236px]" : "w-0 overflow-hidden border-r-0"}`}>
         <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
           <p className="truncate text-[14.5px] font-bold tracking-[-0.015em] text-[#0E245E]">{tituloBandeja}</p>
           <button type="button" onClick={alternar} title="Contraer bandeja lateral" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] border border-[#DCE4F0] bg-white text-[#475569] transition hover:border-[#94A3B8] hover:text-[#0E245E]">

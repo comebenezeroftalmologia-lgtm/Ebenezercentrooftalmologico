@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { AppUser, Area } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
-import { RielGlobal } from "@/components/Sidebar";
+import { BANDEJA_BLANCA_STYLE, RielGlobal } from "@/components/Sidebar";
 import { agruparAreasPorCadenaDeValor } from "@/lib/procesos/ordenAreas";
 
 export function ProcesosNav({
@@ -51,10 +51,10 @@ export function ProcesosNav({
       <RielGlobal
         modulos={modulos}
         isAdmin={user.isAdmin}
-        onToggleBandeja={() => setIsOpen((v) => !v)}
+        onToggleBandeja={() => setIsOpen((v) => !v)} onOpenBandeja={() => setIsOpen(true)}
       />
 
-      <aside
+      <aside style={BANDEJA_BLANCA_STYLE}
         className={`hidden h-full shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:flex ${
           isOpen ? "w-[236px]" : "w-0 overflow-hidden border-r-0"
         }`}
@@ -108,7 +108,7 @@ export function ProcesosNav({
                       href={item.href}
                       className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-2 transition ${
                         active
-                          ? "border-l-[3px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E]"
+                          ? "border border-[#C9DDFB] border-l-[3.5px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E] shadow-[0_2px_6px_rgba(37,99,235,0.08)]"
                           : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                       }`}
                     >
@@ -151,7 +151,7 @@ export function ProcesosNav({
                       href={href}
                       className={`group flex items-center justify-between gap-2 rounded-[10px] px-3 py-2 text-[13px] transition ${
                         active
-                          ? "border-l-[3px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E]"
+                          ? "border border-[#C9DDFB] border-l-[3.5px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E] shadow-[0_2px_6px_rgba(37,99,235,0.08)]"
                           : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                       }`}
                     >

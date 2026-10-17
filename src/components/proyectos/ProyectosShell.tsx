@@ -9,7 +9,7 @@ import type { Modulo } from "@/lib/modulos";
 import { ArbolEspacios } from "@/components/proyectos/ArbolEspacios";
 import { EspacioModal } from "@/components/proyectos/CrearEspacioModal";
 import { AvisosProvider } from "@/components/proyectos/ui";
-import { RielGlobal } from "@/components/Sidebar";
+import { BANDEJA_BLANCA_STYLE, RielGlobal } from "@/components/Sidebar";
 
 const ListaActivaCtx = createContext<string | null>(null);
 const SetListaActivaCtx = createContext<(id: string | null) => void>(() => {});
@@ -52,10 +52,10 @@ export function ProyectosShell({
             <RielGlobal
               modulos={modulos}
               isAdmin={usuario.esAdmin}
-              onToggleBandeja={() => setAbierto((v) => !v)}
+              onToggleBandeja={() => setAbierto((v) => !v)} onOpenBandeja={() => setAbierto(true)}
             />
 
-            <aside
+            <aside style={BANDEJA_BLANCA_STYLE}
               className={`${
                 menuMovil ? "fixed inset-y-0 left-[78px] z-40 flex w-[236px] shadow-eb-4" : "hidden"
               } shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
@@ -92,7 +92,7 @@ export function ProyectosShell({
                   href="/proyectos"
                   className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] transition ${
                     pathname === "/proyectos"
-                      ? "bg-[#E6F0FD] font-semibold text-[#0E245E]"
+                      ? "border border-[#C9DDFB] border-l-[3.5px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E] shadow-[0_2px_6px_rgba(37,99,235,0.08)]"
                       : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                   }`}
                 >
