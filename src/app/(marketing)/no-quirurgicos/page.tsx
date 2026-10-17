@@ -8,6 +8,7 @@ import { StageFunnelChart } from "@/components/StageFunnelChart";
 import { StatusCards } from "@/components/StatusCards";
 import { ServiceDistributionChart } from "@/components/ServiceDistributionChart";
 import { StatusDonutChart } from "@/components/StatusDonutChart";
+import { OrdenadosVsRealizadosChart } from "@/components/OrdenadosVsRealizadosChart";
 import {
   avgDaysBetween,
   buildStageFunnel,
@@ -95,6 +96,8 @@ export default async function NoQuirurgicosPage({
           comparison={{ pct: vendidasPct }}
         />
       </div>
+
+      <OrdenadosVsRealizadosChart items={allOpportunities.map((o) => ({ createdAt: String(o.created_at), realizada: isVendida(o), abierta: o.status === "open" }))} from={from} to={to} tituloTipo="Exámenes y Procedimientos No Quirúrgicos" />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-[15px] border border-[#E7E9F2] bg-white shadow-eb-1">
