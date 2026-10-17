@@ -199,10 +199,24 @@ export function ExecutiveHeader({
       <div className="relative overflow-hidden rounded-[18px] border border-[#D5E3F7] bg-gradient-to-r from-[#EEF4FD] via-[#E5EFFC] to-[#D4E5FA] px-6 py-5 shadow-[0_2px_10px_rgba(14,36,94,0.04)]">
         <WatermarkArtwork variant={variant} />
 
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
+        <Link
+          href="/perfil"
+          title="Mi perfil"
+          className="absolute right-2.5 top-2.5 z-20 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-[#CBD9EE] bg-white/90 text-[#0E245E] shadow-[0_2px_6px_rgba(14,36,94,0.06)] backdrop-blur-sm transition hover:border-[#94A3B8] hover:bg-white"
+        >
+          <User className="h-4 w-4" strokeWidth={1.9} />
+        </Link>
+
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4 pr-10">
           <div className="min-w-0 max-w-[680px]">
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.09em] text-[#47597A]">
-              {overline}
+            <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
+              <span className="text-[11px] font-bold uppercase tracking-[0.09em] text-[#47597A]">
+                {overline}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#CBD9EE] bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-[#0E245E] shadow-[0_1px_3px_rgba(14,36,94,0.04)]">
+                <Calendar className="h-3 w-3 text-[#1D58D8]" strokeWidth={2} />
+                <span>{fechaTexto}</span>
+              </span>
             </div>
             <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[#0E245E]">
               {title}
@@ -210,21 +224,6 @@ export function ExecutiveHeader({
             {subtitle && (
               <p className="mt-1.5 text-[13.5px] font-medium text-[#47597A]">{subtitle}</p>
             )}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="inline-flex h-[38px] items-center gap-2 rounded-[10px] border border-[#CBD9EE] bg-white/95 px-3.5 text-[12.5px] font-semibold text-[#0E245E] shadow-[0_2px_6px_rgba(14,36,94,0.06)]">
-              <Calendar className="h-3.5 w-3.5 text-[#1D58D8]" strokeWidth={2} />
-              <span>{fechaTexto}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" strokeWidth={2} />
-            </div>
-            <Link
-              href="/perfil"
-              title="Mi perfil"
-              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-[#CBD9EE] bg-white/95 text-[#0E245E] shadow-[0_2px_6px_rgba(14,36,94,0.06)] transition hover:border-[#94A3B8]"
-            >
-              <User className="h-4 w-4" strokeWidth={1.9} />
-            </Link>
           </div>
         </div>
       </div>
