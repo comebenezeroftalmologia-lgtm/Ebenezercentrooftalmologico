@@ -143,7 +143,7 @@ export function ProyectosShell({
                   className="rounded-sm p-1.5 text-ink-2 hover:bg-line-2"
                   aria-label="Abrir menú"
                 >
-                  <Menu className="h-5 w-5" />\n                </button>
+                  <Menu className="h-5 w-5" />                </button>
                 <span className="text-sm font-semibold">Proyectos</span>
               </div>
               <main className="hoja-cuadriculada min-h-0 min-w-0 flex-1 overflow-hidden">{children}</main>

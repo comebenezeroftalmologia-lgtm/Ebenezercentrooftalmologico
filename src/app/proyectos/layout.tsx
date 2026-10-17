@@ -1,13 +1,15 @@
-import { getMisModulos, requireModuloAccess } from "@/lib/auth";
+import { requireModuloAccess } from "@/lib/auth/session";
+import { getMisModulos } from "@/lib/auth/modulos-queries";
 import { getArbol } from "@/lib/proyectos/queries";
 import { ProyectosShell } from "@/components/proyectos/ProyectosShell";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProyectosLayout({ children }: { children: React.ReactNode }) {
-  // "proyectos" es un módulo asignable más: un admin lo tiene implícito;
-  // el resto necesita que se lo asignen desde /usuarios. Dentro del módulo,
-  // cada espacio tiene sus propios miembros y roles (lo aplica la base de datos).
+export default async function ProyectosLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const user = await requireModuloAccess("proyectos");
   const [arbol, modulos] = await Promise.all([
     getArbol(user.id, user.isAdmin),
@@ -17,11 +19,14 @@ export default async function ProyectosLayout({ children }: { children: React.Re
   return (
     <ProyectosShell
       arbol={arbol}
-      usuario={{ id: user.id, nombre: user.nombreCompleto, esAdmin: user.isAdmin }}
+      usuario={{
+        id: user.id,
+        nombre: user.nombreCompleto,
+        esAdmin: user.isAdmin,
+      }}
       modulos={Array.from(modulos)}
     >
       {children}
     </ProyectosShell>
   );
 }
-
