@@ -491,10 +491,10 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
           </div>
         </div>
 
-        {/* Sección inferior: Tabla desplegable por Médico Real y Procedimiento (Izquierda) + Comparativo Mes a Mes (Derecha) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* Sección inferior: Tabla desplegable por Médico Real y Procedimiento (Izquierda) + Comparativo Mes a Mes (Derecha fijo) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
           {/* Tabla izquierda con filas desplegables (▾ / ▸) */}
-          <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/85 shadow-2xs p-3.5 flex flex-col justify-between">
+          <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/85 shadow-2xs p-3.5">
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                 <div className="flex items-center gap-2">
@@ -639,8 +639,8 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
             </div>
           </div>
 
-          {/* Gráfica derecha: Comparativo Mes a Mes (Origen de los Realizados) */}
-          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/85 shadow-2xs p-3.5 flex flex-col justify-between">
+          {/* Gráfica derecha: Comparativo Mes a Mes (altura fija e independiente de la tabla izquierda) */}
+          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/85 shadow-2xs p-3.5 self-start">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-[13.5px] font-bold text-slate-900">
@@ -668,16 +668,16 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
               </div>
             </div>
 
-            {/* Barras agrupadas y apiladas */}
-            <div className="pt-4 pb-1 px-1">
-              <div className="grid grid-cols-6 gap-2 items-end h-[215px] border-b border-slate-200 pb-1">
+            {/* Barras agrupadas y apiladas con espaciado uniforme */}
+            <div className="pt-6 pb-1 px-1">
+              <div className="grid grid-cols-6 gap-2 items-end h-[220px] border-b border-slate-200 pb-1">
                 {monthlySeries.map((item) => {
                   const ordHeight = Math.max(22, Math.round((item.ordenado / maxBar) * 165));
                   const totalRealHeight = Math.max(24, Math.round((item.totalRealizado / maxBar) * 165));
-                  const verdeHeight = Math.max(
-                    16,
-                    Math.round((item.vieneOtros / Math.max(item.totalRealizado, 1)) * totalRealHeight)
-                  );
+                  const verdeHeight =
+                    item.vieneOtros > 0
+                      ? Math.max(16, Math.round((item.vieneOtros / Math.max(item.totalRealizado, 1)) * totalRealHeight))
+                      : 0;
                   const azulOscuroHeight = Math.max(18, totalRealHeight - verdeHeight);
                   const isSelected = selectedMonth === item.key;
 
@@ -704,24 +704,24 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                         {/* Barra 2: Apilada (Verde arriba = Viene de otros meses, Azul oscuro abajo = Hecho del mismo mes) */}
                         <div className="flex flex-col items-center relative">
                           {item.key === selectedMonth && (
-                            <div className="-top-7 right-0 z-10 pointer-events-none hidden sm:flex flex-col items-center">
-                              <span className="px-1.5 py-0.5 rounded-full text-[9.5px] font-semibold bg-[#DDF3E8] text-[#1D6F4A] border border-[#A7DFC3] whitespace-nowrap shadow-2xs">
+                            <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-10 pointer-events-none hidden sm:flex">
+                              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-[#DDF3E8] text-[#1D6F4A] border border-[#A7DFC3] whitespace-nowrap shadow-2xs">
                                 +otros meses
                               </span>
                             </div>
                           )}
-                          {item.key !== selectedMonth && (
-                            <span className="text-[10.5px] font-semibold text-slate-800 mb-0.5">
-                              {item.totalRealizado}
-                            </span>
-                          )}
+                          <span className="text-[10.5px] font-semibold text-slate-800 mb-0.5">
+                            {item.totalRealizado}
+                          </span>
                           <div className="flex flex-col w-5 md:w-6 rounded-t-sm overflow-hidden border border-slate-300/60">
-                            <div
-                              style={{ height: `${verdeHeight}px` }}
-                              className="w-full bg-[#369F6E] flex items-center justify-center text-[9.5px] font-semibold text-slate-900 leading-none"
-                            >
-                              {item.vieneOtros}
-                            </div>
+                            {verdeHeight > 0 && (
+                              <div
+                                style={{ height: `${verdeHeight}px` }}
+                                className="w-full bg-[#369F6E] flex items-center justify-center text-[9.5px] font-semibold text-slate-900 leading-none"
+                              >
+                                {item.vieneOtros}
+                              </div>
+                            )}
                             <div
                               style={{ height: `${azulOscuroHeight}px` }}
                               className="w-full bg-[#1D4F9A] flex items-center justify-center text-[9.5px] font-semibold text-white leading-none"
