@@ -1,3 +1,4 @@
+import { injectCombinacionGanadora } from "@/lib/ebenezer-dashboard-theme";
 import { requireModuloAccess } from "@/lib/auth";
 
 const REPO = "pedroluisherrerabenitez5-design/tablero-ebenezer";
@@ -348,7 +349,7 @@ export async function GET() {
     contenido = ESTILOS_AJUSTE_FILTROS + contenido;
   }
 
-  return new Response(contenido, {
+  return new Response(injectCombinacionGanadora(contenido), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -374,7 +375,7 @@ function aviso(titulo: string, cuerpo: string) {
 }
 
 function html(cuerpo: string, status: number) {
-  return new Response(cuerpo, {
+  return new Response(injectCombinacionGanadora(cuerpo), {
     status,
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
