@@ -25,12 +25,7 @@ export default async function DashboardGeneralPage() {
   return (
     <div>
       <RutaProceso segmentos={[{ label: "Inicio", href: "/procesos" }, { label: "Dashboard general" }]} />
-      <h1 className="mb-1 text-2xl font-semibold text-navy">Dashboard general</h1>
-      <p className="mb-6 text-sm text-ink-3">
-        {user.isAdmin
-          ? "Consolidado de todas las áreas de la organización."
-          : "Consolidado de las áreas donde eres líder."}
-      </p>
+      <ExecutiveHeader overline="GOBIERNO ORGANIZACIONAL · INDICADORES" title="Dashboard General" subtitle={user.isAdmin ? "Consolidado de todas las áreas de la organización." : "Consolidado de las áreas donde eres líder."} variant="procesos" />
 
       <h2 className="mb-3 text-sm font-semibold text-navy">Todas las áreas</h2>
       <div className="mb-8">

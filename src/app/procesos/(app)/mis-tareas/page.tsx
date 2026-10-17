@@ -20,8 +20,7 @@ export default async function MisTareasPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-semibold text-navy">Mis Tareas</h1>
-      <p className="mb-6 text-sm text-ink-3">Tareas que tienes asignadas como responsable, en cualquier área.</p>
+      <ExecutiveHeader overline="GOBIERNO ORGANIZACIONAL · EJECUCIÓN" title="Mis Tareas" subtitle="Tareas que tienes asignadas como responsable, en cualquier área." variant="procesos" />
 
       <div className="rounded-xl border border-line bg-white shadow-sm">
         {tareas.map((t, i) => {

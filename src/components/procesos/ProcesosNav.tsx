@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
+  Search,
 } from "lucide-react";
 import type { AppUser, Area } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
@@ -54,7 +55,7 @@ export function ProcesosNav({
       />
 
       <aside
-        className={`hidden h-full shrink-0 flex-col border-r border-line bg-white transition-all duration-200 ease-eb-out md:flex ${
+        className={`hidden h-full shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:flex ${
           isOpen ? "w-[264px]" : "w-0 overflow-hidden border-r-0"
         }`}
       >
@@ -80,7 +81,7 @@ export function ProcesosNav({
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar área (ej. SIAU)..."
-            className="w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-blue focus:bg-white focus:outline-none"
+            className="w-full rounded-[9px] border border-[#E6ECF5] bg-[#F7F9FC] py-1.5 pl-3 pr-3 text-[12px] text-[#0E245E] placeholder:text-[#94A3B8] focus:border-[#2563EB] focus:bg-white focus:outline-none"
           />
         </div>
 
@@ -101,10 +102,10 @@ export function ProcesosNav({
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] transition ${
+                      className={`flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] transition ${
                         active
                           ? "bg-[#E6F0FD] font-semibold text-[#0E245E]"
-                          : "text-ink-2 hover:bg-white/80 hover:text-navy"
+                          : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                       }`}
                     >
                       <Icon
@@ -139,10 +140,10 @@ export function ProcesosNav({
                     <Link
                       key={area.id}
                       href={href}
-                      className={`group flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] transition ${
+                      className={`group flex items-center justify-between gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] transition ${
                         active
                           ? "bg-[#E6F0FD] font-semibold text-[#0E245E]"
-                          : "text-ink-2 hover:bg-white/80 hover:text-navy"
+                          : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                       }`}
                     >
                       <span className="flex min-w-0 items-center gap-2">
@@ -173,7 +174,7 @@ export function ProcesosNav({
           type="button"
           onClick={() => setIsOpen(true)}
           title="Mostrar bandeja de Procesos"
-          className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-white"
+          className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-[#F8FAFC]"
         >
           <PanelLeftOpen className="h-3.5 w-3.5 text-blue" strokeWidth={1.75} />
           <span>Áreas</span>

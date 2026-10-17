@@ -21,10 +21,7 @@ export default async function AreasPage() {
 
   return (
     <div className="max-w-[1080px] pb-12">
-      <h1 className="mb-1 text-2xl font-semibold text-navy">Áreas de la Organización</h1>
-      <p className="mb-6 text-sm text-ink-3">
-        Organizadas por cadena de valor. Entra a un área para ver su líder, su equipo y sus procesos.
-      </p>
+      <ExecutiveHeader overline="GOBIERNO ORGANIZACIONAL · PROCESOS" title="Áreas de la Organización" subtitle="Organizadas por cadena de valor. Entra a un área para ver su líder, su equipo y sus procesos." variant="procesos" />
 
       <div className="space-y-6">
         {bloques.map((bloque) => (
