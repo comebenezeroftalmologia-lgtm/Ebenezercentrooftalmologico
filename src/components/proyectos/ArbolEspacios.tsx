@@ -233,7 +233,7 @@ export function ArbolEspacios({
           onClick={onNuevoEspacio}
           aria-label="Nuevo espacio"
           title="Nuevo espacio"
-          className="rounded-sm p-1 text-ink-3 hover:bg-line-2 hover:text-ink"
+          className="rounded-sm p-1 text-ink-3 hover:bg-[#F3F7FD] hover:text-ink"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -424,7 +424,7 @@ function Fila({
   return (
     <div
       className={`group relative flex h-8 items-center gap-1 rounded-sm pr-1 ${
-        activo ? "bg-blue-10" : "hover:bg-line-2"
+        activo ? "bg-blue-10" : "hover:bg-[#F3F7FD]"
       }`}
       style={{ paddingLeft: 4 + sangria * 16 }}
     >
@@ -455,7 +455,7 @@ function Acciones({
   onCompartir?: () => void;
   onEliminar: () => void;
 }) {
-  const item = "flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-left text-[13px] text-ink-2 hover:bg-line-2";
+  const item = "flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-left text-[13px] text-ink-2 hover:bg-[#F3F7FD]";
   return (
     <>
       {puedeEditar && onNuevo && (

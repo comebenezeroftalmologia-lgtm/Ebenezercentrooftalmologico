@@ -4,10 +4,10 @@ import { ProcesosNav } from "@/components/procesos/ProcesosNav";
 
 export default async function ProcesosAppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireModuloAccess("procesos");
-  const [misAsignaciones, modulos, areas] = await Promise.all([
+  const [misAsignaciones, areas, modulos] = await Promise.all([
     getMisAsignaciones(user.id),
-    getMisModulos(user.id, user.isAdmin),
     listAreas(),
+    getMisModulos(user.id, user.isAdmin),
   ]);
   const puedeVerDashboard = user.isAdmin || misAsignaciones.some((a) => a.rol === "lider");
 
@@ -25,4 +25,3 @@ export default async function ProcesosAppLayout({ children }: { children: React.
     </div>
   );
 }
-
