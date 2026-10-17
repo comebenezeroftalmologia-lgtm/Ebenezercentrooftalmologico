@@ -15,15 +15,9 @@ export default async function InicioProyectos() {
   const nombre = user.nombreCompleto.split(" ")[0];
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="hoja-cuadriculada h-full overflow-y-auto">
       <div className="mx-auto max-w-[960px] px-6 pb-24 pt-8">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-ink">Hola, {nombre}</h1>
-            <p className="mt-1 text-sm text-ink-3">Tus espacios y tareas pendientes en un solo lugar.</p>
-          </div>
-          <BotonNuevoEspacio texto="Nuevo espacio" />
-        </div>
+        <ExecutiveHeader overline="MÓDULO · PROYECTOS E INICIATIVAS" title={`Hola, ${nombre}`} subtitle="Tus espacios y tareas pendientes en un solo lugar." variant="proyectos" rightControls={<BotonNuevoEspacio texto="Nuevo espacio" />} />
 
         {arbol.length === 0 ? (
           <div className="rounded-lg border border-dashed border-line p-10 text-center">

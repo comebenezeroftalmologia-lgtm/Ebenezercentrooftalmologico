@@ -1,131 +1,97 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireAppUser } from "@/lib/auth/permissions";
-import {
-  getKpisPorTodasLasAreas,
-  getMisAsignaciones,
-  listAreas,
-} from "@/lib/procesos/queries";
-import { KpisPanel } from "@/components/procesos/KpisPanel";
-import { RutaProceso } from "@/components/procesos/RutaProceso";
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
-import type { KpisTareas } from "@/lib/procesos/types";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { requireAppUser, getMisAsignaciones } from "@/lib/auth";
+import { getKpisPorTodasLasAreas, listAreas } from "@/lib/procesos/queries";
+import { RutaProceso } from "@/components/procesos/RutaProceso";
+import { KpisPanel } from "@/components/procesos/KpisPanel";
 
-export default async function DashboardProcesosPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardGeneralPage() {
   const user = await requireAppUser();
-  const asignaciones = await getMisAsignaciones(user.id);
-  const misAreasLider = asignaciones
-    .filter((a) => a.rol === "lider")
-    .map((a) => a.areaId);
+  const misAsignaciones = await getMisAsignaciones(user.id);
+  const areasLiderId = new Set(misAsignaciones.filter((a) => a.rol === "lider").map((a) => a.areaId));
 
-  if (!user.isAdmin && misAreasLider.length === 0) {
-    redirect("/procesos");
-  }
+  // Gerencia (admin) ve todas las áreas; un líder ve solo las suyas.
+  // Un colaborador sin liderazgo no tiene nada que ver aquí todavía.
+  if (!user.isAdmin && areasLiderId.size === 0) redirect("/procesos");
 
-  const [todasAreas, kpisPorArea] = await Promise.all([
-    listAreas(),
-    getKpisPorTodasLasAreas(),
-  ]);
+  const [areas, kpisPorArea] = await Promise.all([listAreas(), getKpisPorTodasLasAreas()]);
+  const areasVisibles = user.isAdmin ? areas : areas.filter((a) => areasLiderId.has(a.id));
 
-  const areasVisibles = user.isAdmin
-    ? todasAreas
-    : todasAreas.filter((a) => misAreasLider.includes(a.id));
-
-  const global: KpisTareas = {
-    total: 0,
-    pendientes: 0,
-    enCurso: 0,
-    bloqueadas: 0,
-    completadas: 0,
-    vencidas: 0,
-    porcentajeCumplimiento: 0,
-  };
-
-  for (const area of areasVisibles) {
-    const k = kpisPorArea[area.id];
-    if (!k) continue;
-    global.total += k.total;
-    global.pendientes += k.pendientes;
-    global.enCurso += k.enCurso;
-    global.bloqueadas += k.bloqueadas;
-    global.completadas += k.completadas;
-    global.vencidas += k.vencidas;
-  }
-  global.porcentajeCumplimiento =
-    global.total > 0 ? Math.round((global.completadas / global.total) * 100) : 0;
+  const kpisGlobales = getKpisAgregados(areasVisibles.map((a) => kpisPorArea.get(a.id)!));
 
   return (
-    <div className="space-y-5">
-      <ExecutiveHeader
-        title="Dashboard General"
-        subtitle=" Indicadores consolidados por área · Centro Oftalmológico Ebenezer"
-        variant="procesos"
-      />
+    <div>
+      <RutaProceso segmentos={[{ label: "Inicio", href: "/procesos" }, { label: "Dashboard general" }]} />
+      <h1 className="mb-1 text-2xl font-semibold text-navy">Dashboard general</h1>
+      <p className="mb-6 text-sm text-ink-3">
+        {user.isAdmin
+          ? "Consolidado de todas las áreas de la organización."
+          : "Consolidado de las áreas donde eres líder."}
+      </p>
 
-      <KpisPanel kpis={global} />
-
-      <div className="rounded-[16px] border border-[#E6EBF2] bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
-        <h2 className="mb-3 text-[15px] font-bold text-[#0F172A]">
-          Flujo operativo general
-        </h2>
-        <RutaProceso
-          etapas={[
-            { codigo: "1", nombre: "Planeación", descripcion: "Estrategia y metas", estado: "completado" },
-            { codigo: "2", nombre: "Captación", descripcion: "Atracción y agendamiento", estado: "completado" },
-            { codigo: "3", nombre: "Admisión", descripcion: "Recepción y facturación", estado: "activo" },
-            { codigo: "4", nombre: "Atención Médica", descripcion: "Consulta y cirugía", estado: "pendiente" },
-            { codigo: "5", nombre: "Soporte y Control", descripcion: "Calidad y seguimiento", estado: "pendiente" },
-          ]}
-        />
+      <h2 className="mb-3 text-sm font-semibold text-navy">Todas las áreas</h2>
+      <div className="mb-8">
+        <KpisPanel kpis={kpisGlobales} />
       </div>
 
-      <div className="overflow-hidden rounded-[16px] border border-[#E6EBF2] bg-white shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
-        <div className="border-b border-[#F1F5F9] px-5 py-4">
-          <h2 className="text-[15px] font-bold text-[#0F172A]">
-            Cumplimiento por área
-          </h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead className="bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
-              <tr>
-                <th className="px-5 py-3">Área</th>
-                <th className="px-4 py-3 text-right">Procesos</th>
-                <th className="px-4 py-3 text-right">Tareas</th>
-                <th className="px-4 py-3 text-right">En curso</th>
-                <th className="px-4 py-3 text-right">Completadas</th>
-                <th className="px-5 py-3 text-right">% Cumpl.</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F1F5F9]">
-              {areasVisibles.map((area) => {
-                const k = kpisPorArea[area.id] ?? {
-                  total: 0,
-                  enCurso: 0,
-                  completadas: 0,
-                  porcentajeCumplimiento: 0,
-                };
-                return (
-                  <tr key={area.id} className="hover:bg-[#F8FAFC]">
-                    <td className="px-5 py-3 font-semibold text-[#0F172A]">
-                      <Link href={`/procesos/areas/${area.id}`} className="hover:text-[#1D58D8]">
-                        {area.nombre}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-right text-[#475569]">{area.totalProcesos ?? 0}</td>
-                    <td className="px-4 py-3 text-right text-[#475569]">{k.total}</td>
-                    <td className="px-4 py-3 text-right text-[#1D58D8] font-medium">{k.enCurso}</td>
-                    <td className="px-4 py-3 text-right text-[#10B981] font-medium">{k.completadas}</td>
-                    <td className="px-5 py-3 text-right font-bold text-[#0F172A]">
-                      {k.porcentajeCumplimiento}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <h2 className="mb-3 text-sm font-semibold text-navy">Por área</h2>
+      <div className="flex flex-col gap-4">
+        {areasVisibles.map((area) => {
+          const kpis = kpisPorArea.get(area.id)!;
+          return (
+            <div key={area.id} className="rounded-xl border border-line bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <Link href={`/procesos/areas/${area.id}`} className="text-sm font-semibold text-navy hover:underline">
+                  {area.nombre}
+                </Link>
+                <span className="text-xs text-ink-3">{kpis.totalTareas} tarea(s)</span>
+              </div>
+              <KpisPanel kpis={kpis} />
+            </div>
+          );
+        })}
+        {areasVisibles.length === 0 && (
+          <p className="rounded-xl border border-line bg-white px-5 py-4 text-sm text-ink-3">
+            No hay áreas para mostrar.
+          </p>
+        )}
       </div>
     </div>
   );
+}
+
+function getKpisAgregados(lista: import("@/lib/procesos/types").KpisTareas[]) {
+  const suma = (f: (k: (typeof lista)[number]) => number) => lista.reduce((acc, k) => acc + f(k), 0);
+  const totalTareas = suma((k) => k.totalTareas);
+  const altoRiesgoTotal = suma((k) => k.altoRiesgoTotal);
+  const altoRiesgoMitigado = suma((k) => k.altoRiesgoMitigado);
+  const conSla = suma((k) => k.conSla);
+  const cumplenSla = suma((k) => k.cumplenSla);
+  const rechazadas = suma((k) => k.rechazadas);
+  const totalConCiclo = suma((k) => k.conCiclo);
+  // Promedio ponderado por cuántas tareas aportó cada área a su
+  // propio promedio (no un promedio simple de promedios).
+  const sumaHorasCiclo = lista.reduce(
+    (acc, k) => acc + (k.tiempoCicloPromedioHoras !== null ? k.tiempoCicloPromedioHoras * k.conCiclo : 0),
+    0
+  );
+
+  return {
+    totalTareas,
+    activas: suma((k) => k.activas),
+    completadas: suma((k) => k.completadas),
+    rechazadas,
+    altoRiesgoTotal,
+    altoRiesgoMitigado,
+    pctAltoRiesgoMitigado: altoRiesgoTotal > 0 ? (altoRiesgoMitigado / altoRiesgoTotal) * 100 : null,
+    conSla,
+    cumplenSla,
+    pctCumplimientoSla: conSla > 0 ? (cumplenSla / conSla) * 100 : null,
+    tasaRetrabajo: totalTareas > 0 ? (rechazadas / totalTareas) * 100 : null,
+    conCiclo: totalConCiclo,
+    tiempoCicloPromedioHoras: totalConCiclo > 0 ? sumaHorasCiclo / totalConCiclo : null,
+  };
 }

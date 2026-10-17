@@ -247,7 +247,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
   );
   const comercial = filtrados.filter((m) => !OPERACION_SLUGS.has(m.slug));
 
-  const resumenActivo = pathname === "/" || pathname === "/analytics";
+  const resumenActivo = pathname === "/analytics";
 
   return (
     <div className="relative flex h-full shrink-0">

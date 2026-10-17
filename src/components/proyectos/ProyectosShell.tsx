@@ -94,7 +94,7 @@ export function ProyectosShell({
                   href="/proyectos"
                   className={`block rounded-lg px-2.5 py-2 text-[12.5px] transition ${
                     pathname === "/proyectos"
-                      ? "border border-blue/20 bg-white font-semibold text-blue shadow-xs"
+                      ? "bg-[#E6F0FD] font-semibold text-[#0E245E]"
                       : "text-ink-2 hover:bg-white/80 hover:text-navy"
                   }`}
                 >
@@ -114,7 +114,7 @@ export function ProyectosShell({
                 type="button"
                 onClick={() => setAbierto(true)}
                 title="Mostrar bandeja de Proyectos"
-                className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-[#F8FAFC]"
+                className="hidden md:flex absolute left-[84px] top-3 z-20 items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-navy shadow-sm transition hover:border-navy-20 hover:bg-white"
               >
                 <PanelLeftOpen className="h-3.5 w-3.5 text-blue" strokeWidth={1.75} />
                 <span>Espacios</span>

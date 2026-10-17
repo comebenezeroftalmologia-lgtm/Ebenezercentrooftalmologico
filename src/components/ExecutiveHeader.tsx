@@ -1,154 +1,204 @@
-import React from "react";
+import Link from "next/link";
+import { Calendar, ChevronDown, User } from "lucide-react";
 
 export type HeaderVariant =
   | "inicio"
   | "analytics"
-  | "venta"
-  | "embudo"
+  | "leads"
   | "quirurgicos"
-  | "no-quirurgicos"
-  | "redes"
-  | "procesos"
-  | "proyectos";
+  | "no_quirurgicos"
+  | "redes_sociales" | "procesos" | "proyectos";
 
-interface ExecutiveHeaderProps {
-  title: string;
-  subtitle?: string;
-  variant?: HeaderVariant;
-  rightContent?: React.ReactNode;
+function fechaHoyFormateada(): string {
+  const d = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  const dias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  return `${dias[d.getUTCDay()]}, ${d.getUTCDate()} de ${meses[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
+}
+
+function WatermarkArtwork({ variant }: { variant: HeaderVariant }) {
+  if (variant === "inicio") {
+    return (
+      <div
+        className="pointer-events-none absolute right-0 top-0 h-full w-[480px] select-none overflow-hidden"
+        style={{
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.65) 28%, rgba(0,0,0,1) 58%)",
+          maskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.65) 28%, rgba(0,0,0,1) 58%)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/headers/header-ojo.jpg"
+          alt=""
+          className="h-full w-full object-cover object-right contrast-[1.38] saturate-[1.45] brightness-[0.92]"
+        />
+      </div>
+    );
+  }
+
+  if (variant === "analytics") {
+    return (
+      <svg viewBox="0 0 460 165" fill="none" className="pointer-events-none absolute right-0 top-0 h-full w-[460px] select-none" aria-hidden="true">
+        <defs>
+          <linearGradient id="eb-bar-1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.58" />
+            <stop offset="100%" stopColor="#60A5FA" stopOpacity="0.12" />
+          </linearGradient>
+          <linearGradient id="eb-bar-2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1D4ED8" stopOpacity="0.76" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.18" />
+          </linearGradient>
+          <linearGradient id="eb-wave-a" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <path d="M 110 165 L 110 115 C 185 95, 255 68, 340 44 C 390 30, 425 26, 460 18 L 460 165 Z" fill="url(#eb-wave-a)" />
+        <rect x="202" y="88" width="24" height="77" rx="5" fill="url(#eb-bar-1)" stroke="#2563EB" strokeOpacity="0.45" strokeWidth="1" />
+        <rect x="236" y="66" width="24" height="99" rx="5" fill="url(#eb-bar-1)" stroke="#2563EB" strokeOpacity="0.45" strokeWidth="1" />
+        <rect x="270" y="76" width="24" height="89" rx="5" fill="url(#eb-bar-1)" stroke="#2563EB" strokeOpacity="0.45" strokeWidth="1" />
+        <rect x="304" y="44" width="24" height="121" rx="5" fill="url(#eb-bar-2)" stroke="#1D4ED8" strokeOpacity="0.65" strokeWidth="1.2" />
+        <rect x="338" y="56" width="24" height="109" rx="5" fill="url(#eb-bar-1)" stroke="#2563EB" strokeOpacity="0.45" strokeWidth="1" />
+        <rect x="372" y="28" width="24" height="137" rx="5" fill="url(#eb-bar-2)" stroke="#1D4ED8" strokeOpacity="0.72" strokeWidth="1.2" />
+        <rect x="406" y="40" width="24" height="125" rx="5" fill="url(#eb-bar-1)" stroke="#2563EB" strokeOpacity="0.50" strokeWidth="1" />
+        <path d="M 85 138 C 165 122, 248 78, 316 44 C 362 22, 412 20, 460 12" stroke="#1D4ED8" strokeWidth="2.2" strokeOpacity="0.82" />
+        <path d="M 135 152 C 210 132, 285 98, 384 54 C 415 40, 440 36, 460 30" stroke="#2563EB" strokeWidth="1.7" strokeOpacity="0.62" />
+        <path d="M 160 8 C 215 74, 305 104, 460 68" stroke="#3B82F6" strokeWidth="1.4" strokeOpacity="0.52" strokeDasharray="4 4" />
+        <circle cx="248" cy="66" r="6" fill="#3B82F6" fillOpacity="0.28" />
+        <circle cx="248" cy="66" r="3.5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2" />
+        <circle cx="316" cy="44" r="7" fill="#2563EB" fillOpacity="0.32" />
+        <circle cx="316" cy="44" r="4" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
+        <circle cx="384" cy="28" r="7" fill="#1D4ED8" fillOpacity="0.35" />
+        <circle cx="384" cy="28" r="4" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
+      </svg>
+    );
+  }
+
+  if (variant === "leads") {
+    return (
+      <svg viewBox="0 0 460 165" fill="none" className="pointer-events-none absolute right-0 top-0 h-full w-[460px] select-none" aria-hidden="true">
+        <circle cx="348" cy="78" r="118" stroke="#3B82F6" strokeWidth="1.6" strokeOpacity="0.45" />
+        <circle cx="348" cy="78" r="88" fill="#3B82F6" fillOpacity="0.12" stroke="#2563EB" strokeWidth="2" strokeOpacity="0.58" />
+        <circle cx="348" cy="78" r="58" fill="#2563EB" fillOpacity="0.16" stroke="#1D4ED8" strokeWidth="2.2" strokeOpacity="0.68" />
+        <circle cx="348" cy="78" r="30" fill="#1D4ED8" fillOpacity="0.24" stroke="#1E40AF" strokeWidth="2.2" strokeOpacity="0.78" />
+        <circle cx="348" cy="78" r="9" fill="#1D4ED8" fillOpacity="0.85" />
+        <line x1="205" y1="78" x2="455" y2="78" stroke="#2563EB" strokeWidth="1.3" strokeOpacity="0.42" strokeDasharray="4 4" />
+        <line x1="348" y1="0" x2="348" y2="165" stroke="#2563EB" strokeWidth="1.3" strokeOpacity="0.42" strokeDasharray="4 4" />
+        <circle cx="260" cy="78" r="4.5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
+        <circle cx="290" cy="42" r="4.5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
+        <circle cx="392" cy="116" r="4.5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
+      </svg>
+    );
+  }
+
+  if (variant === "quirurgicos") {
+    return (
+      <svg viewBox="0 0 460 165" fill="none" className="pointer-events-none absolute right-0 top-0 h-full w-[460px] select-none" aria-hidden="true">
+        <defs>
+          <radialGradient id="eb-iol" cx="50%" cy="45%" r="55%">
+            <stop offset="0%" stopColor="#93C5FD" stopOpacity="0.55" />
+            <stop offset="65%" stopColor="#2563EB" stopOpacity="0.42" />
+            <stop offset="100%" stopColor="#1E40AF" stopOpacity="0.68" />
+          </radialGradient>
+        </defs>
+        <circle cx="342" cy="80" r="92" stroke="#3B82F6" strokeWidth="1.5" strokeOpacity="0.48" strokeDasharray="5 5" />
+        <circle cx="342" cy="80" r="68" stroke="#2563EB" strokeWidth="1.8" strokeOpacity="0.62" />
+        <circle cx="342" cy="80" r="44" fill="url(#eb-iol)" stroke="#1D4ED8" strokeWidth="2.4" strokeOpacity="0.85" />
+        <path d="M 316 62 A 28 28 0 0 1 362 56" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.85" />
+        <path d="M 302 58 C 252 22, 292 -4, 366 14" stroke="#1D4ED8" strokeWidth="4.2" strokeLinecap="round" strokeOpacity="0.72" />
+        <path d="M 382 102 C 432 138, 392 164, 318 146" stroke="#1D4ED8" strokeWidth="4.2" strokeLinecap="round" strokeOpacity="0.72" />
+        <circle cx="274" cy="112" r="4" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2" />
+        <circle cx="410" cy="48" r="4" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  if (variant === "no_quirurgicos") {
+    return (
+      <svg viewBox="0 0 460 165" fill="none" className="pointer-events-none absolute right-0 top-0 h-full w-[460px] select-none" aria-hidden="true">
+        <ellipse cx="344" cy="80" rx="112" ry="72" stroke="#3B82F6" strokeWidth="1.6" strokeOpacity="0.46" />
+        <ellipse cx="344" cy="80" rx="86" ry="55" fill="#3B82F6" fillOpacity="0.10" stroke="#2563EB" strokeWidth="1.9" strokeOpacity="0.60" />
+        <ellipse cx="344" cy="80" rx="60" ry="38" fill="#2563EB" fillOpacity="0.15" stroke="#1D4ED8" strokeWidth="2.1" strokeOpacity="0.72" />
+        <ellipse cx="344" cy="80" rx="34" ry="22" fill="#1D4ED8" fillOpacity="0.24" stroke="#1E40AF" strokeWidth="2.2" strokeOpacity="0.82" />
+        <circle cx="344" cy="80" r="8" fill="#1D4ED8" fillOpacity="0.85" />
+        <line x1="215" y1="80" x2="455" y2="80" stroke="#1D4ED8" strokeWidth="1.2" strokeOpacity="0.40" />
+        <line x1="344" y1="4" x2="344" y2="156" stroke="#1D4ED8" strokeWidth="1.2" strokeOpacity="0.40" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 460 165" fill="none" className="pointer-events-none absolute right-0 top-0 h-full w-[460px] select-none" aria-hidden="true">
+      <path d="M 165 138 Q 275 18 445 48" stroke="#1D4ED8" strokeWidth="2.2" strokeOpacity="0.72" />
+      <path d="M 205 156 Q 315 58 450 96" stroke="#2563EB" strokeWidth="1.8" strokeOpacity="0.58" />
+      <circle cx="290" cy="70" r="28" fill="#2563EB" fillOpacity="0.18" stroke="#1D4ED8" strokeWidth="2" strokeOpacity="0.72" />
+      <circle cx="378" cy="46" r="20" fill="#2563EB" fillOpacity="0.22" stroke="#1D4ED8" strokeWidth="2" strokeOpacity="0.76" />
+      <circle cx="352" cy="112" r="15" fill="#3B82F6" fillOpacity="0.20" stroke="#2563EB" strokeWidth="1.8" strokeOpacity="0.68" />
+      <circle cx="290" cy="70" r="5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.4" />
+      <circle cx="378" cy="46" r="4.5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.4" />
+      <circle cx="352" cy="112" r="4" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
+    </svg>
+  );
 }
 
 export function ExecutiveHeader({
+  overline = "CENTRO OFTALMOLÓGICO EBENEZER",
   title,
-  subtitle = " Centro Oftalmológico Ebenezer",
-  variant = "inicio",
-  rightContent,
-}: ExecutiveHeaderProps) {
+  subtitle,
+  variant,
+  rightControls,
+}: {
+  overline?: string;
+  title: string;
+  subtitle?: string;
+  variant: HeaderVariant;
+  rightControls?: React.ReactNode;
+}) {
+  const fechaTexto = fechaHoyFormateada();
+
   return (
-    <header className="relative -mx-4 -mt-4 mb-5 overflow-hidden px-4 pt-4 pb-3 sm:-mx-7 sm:-mt-5 sm:px-7 sm:pt-5 sm:pb-3.5">
-      {/* Resplandor azul ejecutivo en la esquina superior derecha */}
-      <div
-        className="pointer-events-none absolute right-0 top-0 h-full w-[420px] select-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 95% 90% at 88% 18%, rgba(147, 197, 253, 0.42) 0%, rgba(191, 219, 254, 0.22) 48%, rgba(234, 242, 252, 0) 80%)",
-        }}
-      />
+    <header className="mb-5">
+      <div className="relative overflow-hidden rounded-[18px] border border-[#D5E3F7] bg-gradient-to-r from-[#EEF4FD] via-[#E5EFFC] to-[#D4E5FA] px-6 py-5 shadow-[0_2px_10px_rgba(14,36,94,0.04)]">
+        <WatermarkArtwork variant={variant} />
 
-      {variant === "inicio" && (
-        <div
-          className="pointer-events-none absolute inset-0 select-none"
-          style={{
-            backgroundImage: "url('/brand/headers/header-ojo.jpg')",
-            backgroundSize: "cover",
-            backgroundPosition: "right center",
-            backgroundRepeat: "no-repeat",
-          }}
-        />
-      )}
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 max-w-[680px]">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.09em] text-[#47597A]">
+              {overline}
+            </div>
+            <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[#0E245E]">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="mt-1.5 text-[13.5px] font-medium text-[#47597A]">{subtitle}</p>
+            )}
+          </div>
 
-      {(variant === "analytics" || variant === "venta") && (
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-[380px] select-none">
-          <svg viewBox="0 0 380 120" fill="none" className="h-full w-full" preserveAspectRatio="xMaxYMid slice">
-            <defs>
-              <linearGradient id="agBar1" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.55" />
-                <stop offset="100%" stopColor="#93C5FD" stopOpacity="0.18" />
-              </linearGradient>
-              <linearGradient id="agBar2" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2563EB" stopOpacity="0.72" />
-                <stop offset="100%" stopColor="#60A5FA" stopOpacity="0.24" />
-              </linearGradient>
-              <linearGradient id="agBar3" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1D4ED8" stopOpacity="0.86" />
-                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.30" />
-              </linearGradient>
-            </defs>
-            <circle cx="330" cy="18" r="95" fill="#93C5FD" fillOpacity="0.22" />
-            <line x1="120" y1="98" x2="365" y2="98" stroke="#60A5FA" strokeOpacity="0.4" strokeWidth="1.5" />
-            <rect x="150" y="68" width="20" height="30" rx="5" fill="url(#agBar1)" />
-            <rect x="180" y="54" width="20" height="44" rx="5" fill="url(#agBar1)" />
-            <rect x="210" y="60" width="20" height="38" rx="5" fill="url(#agBar1)" />
-            <rect x="240" y="42" width="22" height="56" rx="5" fill="url(#agBar2)" />
-            <rect x="270" y="48" width="22" height="50" rx="5" fill="url(#agBar2)" />
-            <rect x="300" y="28" width="24" height="70" rx="5" fill="url(#agBar2)" />
-            <rect x="332" y="14" width="26" height="84" rx="6" fill="url(#agBar3)" />
-            <path
-              d="M145 72 C 185 62, 220 48, 255 44 C 290 40, 320 24, 350 12"
-              stroke="#1D58D8"
-              strokeOpacity="0.65"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-            <circle cx="255" cy="44" r="4" fill="#1D58D8" fillOpacity="0.7" />
-            <circle cx="312" cy="28" r="4" fill="#1D58D8" fillOpacity="0.8" />
-            <circle cx="350" cy="12" r="5" fill="#1D58D8" fillOpacity="0.9" />
-          </svg>
+          <div className="flex items-center gap-2.5">
+            <div className="inline-flex h-[38px] items-center gap-2 rounded-[10px] border border-[#CBD9EE] bg-white/95 px-3.5 text-[12.5px] font-semibold text-[#0E245E] shadow-[0_2px_6px_rgba(14,36,94,0.06)]">
+              <Calendar className="h-3.5 w-3.5 text-[#1D58D8]" strokeWidth={2} />
+              <span>{fechaTexto}</span>
+              <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" strokeWidth={2} />
+            </div>
+            <Link
+              href="/perfil"
+              title="Mi perfil"
+              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-[#CBD9EE] bg-white/95 text-[#0E245E] shadow-[0_2px_6px_rgba(14,36,94,0.06)] transition hover:border-[#94A3B8]"
+            >
+              <User className="h-4 w-4" strokeWidth={1.9} />
+            </Link>
+          </div>
         </div>
-      )}
-
-      {(variant === "embudo" || variant === "redes") && (
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-[380px] select-none">
-          <svg viewBox="0 0 380 120" fill="none" className="h-full w-full" preserveAspectRatio="xMaxYMid slice">
-            <circle cx="320" cy="58" r="78" stroke="#60A5FA" strokeOpacity="0.32" strokeWidth="1.5" />
-            <circle cx="320" cy="58" r="54" stroke="#3B82F6" strokeOpacity="0.42" strokeWidth="2" />
-            <circle cx="320" cy="58" r="32" fill="#93C5FD" fillOpacity="0.28" stroke="#2563EB" strokeOpacity="0.5" strokeWidth="2" />
-            <rect x="195" y="18" width="145" height="16" rx="8" fill="#60A5FA" fillOpacity="0.48" />
-            <rect x="215" y="42" width="105" height="16" rx="8" fill="#3B82F6" fillOpacity="0.62" />
-            <rect x="235" y="66" width="65" height="16" rx="8" fill="#2563EB" fillOpacity="0.76" />
-            <rect x="250" y="90" width="35" height="14" rx="7" fill="#1D4ED8" fillOpacity="0.88" />
-          </svg>
-        </div>
-      )}
-
-      {(variant === "quirurgicos" || variant === "no-quirurgicos") && (
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-[380px] select-none">
-          <svg viewBox="0 0 380 120" fill="none" className="h-full w-full" preserveAspectRatio="xMaxYMid slice">
-            <circle cx="315" cy="58" r="64" fill="#93C5FD" fillOpacity="0.22" stroke="#60A5FA" strokeOpacity="0.45" strokeWidth="1.8" />
-            <circle cx="315" cy="58" r="42" fill="#60A5FA" fillOpacity="0.22" stroke="#3B82F6" strokeOpacity="0.55" strokeWidth="2" />
-            <rect x="306" y="30" width="18" height="56" rx="5" fill="#2563EB" fillOpacity="0.72" />
-            <rect x="287" y="49" width="56" height="18" rx="5" fill="#2563EB" fillOpacity="0.72" />
-            <path
-              d="M140 76 L195 76 L210 52 L226 92 L244 38 L260 80 L274 66 L365 66"
-              stroke="#1D58D8"
-              strokeOpacity="0.65"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-      )}
-
-      {(variant === "procesos" || variant === "proyectos") && (
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-[380px] select-none">
-          <svg viewBox="0 0 380 120" fill="none" className="h-full w-full" preserveAspectRatio="xMaxYMid slice">
-            <circle cx="330" cy="30" r="80" fill="#93C5FD" fillOpacity="0.22" />
-            <path d="M185 68 H245 L270 38 H330" stroke="#3B82F6" strokeOpacity="0.55" strokeWidth="2.2" strokeLinecap="round" />
-            <path d="M245 68 L270 90 H340" stroke="#60A5FA" strokeOpacity="0.5" strokeWidth="2.2" strokeLinecap="round" />
-            <rect x="155" y="52" width="44" height="30" rx="8" fill="#60A5FA" fillOpacity="0.45" stroke="#2563EB" strokeOpacity="0.5" strokeWidth="1.5" />
-            <rect x="255" y="22" width="52" height="30" rx="8" fill="#3B82F6" fillOpacity="0.62" stroke="#1D4ED8" strokeOpacity="0.6" strokeWidth="1.5" />
-            <rect x="265" y="72" width="52" height="30" rx="8" fill="#2563EB" fillOpacity="0.52" stroke="#1D4ED8" strokeOpacity="0.5" strokeWidth="1.5" />
-            <rect x="325" y="18" width="38" height="84" rx="8" fill="#1D4ED8" fillOpacity="0.75" />
-            <circle cx="245" cy="68" r="5" fill="#1D58D8" fillOpacity="0.85" />
-          </svg>
-        </div>
-      )}
-
-      <div className="relative z-10 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-[#0F172A] sm:text-[25px]">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-[#475569]">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#64748B]" />
-              <span>{subtitle}</span>
-            </p>
-          )}
-        </div>
-        {rightContent && <div className="flex items-center gap-2.5">{rightContent}</div>}
       </div>
+
+      {rightControls && (
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3 rounded-[14px] border border-[#E2EBF8] bg-white px-5 py-3 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
+            Filtros del tablero
+          </span>
+          <div className="flex flex-wrap items-end gap-3">{rightControls}</div>
+        </div>
+      )}
     </header>
   );
 }
