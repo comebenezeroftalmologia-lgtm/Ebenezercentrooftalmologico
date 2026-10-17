@@ -69,22 +69,23 @@ export function TramaArquitectonicaBandeja() {
       className="pointer-events-none absolute inset-0 z-0 h-full w-full select-none overflow-hidden"
       style={{
         WebkitMaskImage:
-          "linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 26%, rgba(0,0,0,0.48) 52%, rgba(0,0,0,0.72) 78%, rgba(0,0,0,0.95) 100%)",
+          "linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.42) 22%, rgba(0,0,0,0.22) 50%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.72) 100%)",
         maskImage:
-          "linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 26%, rgba(0,0,0,0.48) 52%, rgba(0,0,0,0.72) 78%, rgba(0,0,0,0.95) 100%)",
+          "linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.42) 22%, rgba(0,0,0,0.22) 50%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.72) 100%)",
       }}
     >
       <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <pattern id="eb-op2-dots-full" width="8" height="8" patternUnits="userSpaceOnUse">
-            <circle cx="2" cy="2" r="1" fill="#7599CC" fillOpacity="0.46" />
+          <pattern id="eb-op2-dots-full" width="9" height="9" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="0.7" fill="#8AA8D6" fillOpacity="0.18" />
           </pattern>
-          <pattern id="eb-op2-diag-full" width="32" height="32" patternUnits="userSpaceOnUse">
+          <pattern id="eb-op2-diag-full" width="36" height="36" patternUnits="userSpaceOnUse">
             <path
-              d="M-8,8 l16,-16 M0,32 l32,-32 M24,40 l16,-16 M-8,24 l16,16 M0,0 l32,32 M24,-8 l16,16"
-              stroke="#7E9FD0"
-              strokeWidth="1"
-              strokeOpacity="0.44"
+              d="M-9,9 l18,-18 M0,36 l36,-36 M27,45 l18,-18 M-9,27 l18,18 M0,0 l36,36 M27,-9 l18,18"
+              stroke="#8FAJD8"
+              style={{ stroke: "#8EAAD4" }}
+              strokeWidth="0.7"
+              strokeOpacity="0.16"
             />
           </pattern>
         </defs>
