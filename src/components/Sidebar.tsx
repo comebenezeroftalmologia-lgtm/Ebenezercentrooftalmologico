@@ -65,65 +65,33 @@ export const BANDEJA_BLANCA_STYLE: React.CSSProperties = {
 
 export function TramaArquitectonicaBandeja() {
   return (
-    <>
-      {/* Trama arquitectónica superior (Opción 2: micro-puntos + líneas diagonales 45°) */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[175px] select-none overflow-hidden"
-        style={{
-          WebkitMaskImage:
-            "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.88) 52%, rgba(0,0,0,0.35) 82%, transparent 100%)",
-          maskImage:
-            "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.88) 52%, rgba(0,0,0,0.35) 82%, transparent 100%)",
-        }}
-      >
-        <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="eb-op2-dots-top" width="8" height="8" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="0.95" fill="#7B9FD0" fillOpacity="0.45" />
-            </pattern>
-            <pattern id="eb-op2-diag-top" width="32" height="32" patternUnits="userSpaceOnUse">
-              <path
-                d="M-8,8 l16,-16 M0,32 l32,-32 M24,40 l16,-16 M-8,24 l16,16 M0,0 l32,32 M24,-8 l16,16"
-                stroke="#85A7D6"
-                strokeWidth="0.95"
-                strokeOpacity="0.42"
-              />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#eb-op2-dots-top)" />
-          <rect width="100%" height="100%" fill="url(#eb-op2-diag-top)" />
-        </svg>
-      </div>
-
-      {/* Trama arquitectónica inferior (Opción 2: micro-puntos + líneas diagonales 45°) */}
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[210px] select-none overflow-hidden"
-        style={{
-          WebkitMaskImage:
-            "linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.82) 48%, rgba(0,0,0,0.28) 80%, transparent 100%)",
-          maskImage:
-            "linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.82) 48%, rgba(0,0,0,0.28) 80%, transparent 100%)",
-        }}
-      >
-        <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="eb-op2-dots-bot" width="8" height="8" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="0.95" fill="#7B9FD0" fillOpacity="0.42" />
-            </pattern>
-            <pattern id="eb-op2-diag-bot" width="32" height="32" patternUnits="userSpaceOnUse">
-              <path
-                d="M-8,8 l16,-16 M0,32 l32,-32 M24,40 l16,-16 M-8,24 l16,16 M0,0 l32,32 M24,-8 l16,16"
-                stroke="#85A7D6"
-                strokeWidth="0.95"
-                strokeOpacity="0.38"
-              />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#eb-op2-dots-bot)" />
-          <rect width="100%" height="100%" fill="url(#eb-op2-diag-bot)" />
-        </svg>
-      </div>
-    </>
+    <div
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full select-none overflow-hidden"
+      style={{
+        WebkitMaskImage:
+          "linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 26%, rgba(0,0,0,0.48) 52%, rgba(0,0,0,0.72) 78%, rgba(0,0,0,0.95) 100%)",
+        maskImage:
+          "linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 26%, rgba(0,0,0,0.48) 52%, rgba(0,0,0,0.72) 78%, rgba(0,0,0,0.95) 100%)",
+      }}
+    >
+      <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="eb-op2-dots-full" width="8" height="8" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1" fill="#7599CC" fillOpacity="0.46" />
+          </pattern>
+          <pattern id="eb-op2-diag-full" width="32" height="32" patternUnits="userSpaceOnUse">
+            <path
+              d="M-8,8 l16,-16 M0,32 l32,-32 M24,40 l16,-16 M-8,24 l16,16 M0,0 l32,32 M24,-8 l16,16"
+              stroke="#7E9FD0"
+              strokeWidth="1"
+              strokeOpacity="0.44"
+            />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#eb-op2-dots-full)" />
+        <rect width="100%" height="100%" fill="url(#eb-op2-diag-full)" />
+      </svg>
+    </div>
   );
 }
 export function RielGlobal({
@@ -153,18 +121,18 @@ export function RielGlobal({
 
   const itemClass = (activo: boolean) =>
     `group relative flex w-[64px] flex-col items-center justify-center gap-1.5 rounded-[12px] py-2.5 transition-colors duration-150 ${
-      activo ? "bg-gradient-to-b from-[#1E4282]/85 to-[#153163]/90 text-white font-medium border border-[#4B83E8]/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_2px_8px_rgba(14,36,94,0.25)]" : "text-white/75 hover:bg-white/[0.08] hover:text-white"
+      activo ? "bg-gradient-to-r from-[#234C96]/90 via-[#1D4285]/88 to-[#2855A6]/90 text-white font-medium border border-[#60A5FA]/50 shadow-[0_0_14px_rgba(59,130,246,0.28),inset_0_1px_1px_rgba(255,255,255,0.22)]" : "text-white/75 hover:bg-white/[0.08] hover:text-white"
     }`;
 
   return (
-    <aside style={{ backgroundImage: "linear-gradient(155deg, #091E42 0%, #091E42 36%, #102C60 54%, #081B3B 72%, #06132C 100%)" }} className="z-20 flex w-[78px] shrink-0 select-none flex-col items-center border-r border-white/10 bg-[#091E42] py-3.5 text-white shadow-[2px_0_12px_rgba(6,19,44,0.18)]">
+    <aside style={{ backgroundImage: "linear-gradient(180deg, #081A3A 0%, #081A3A 24%, #0B234D 45%, #071735 75%, #051129 100%)" }} className="relative z-20 flex w-[78px] shrink-0 select-none flex-col items-center overflow-hidden border-r border-white/10 bg-[#081A3A] py-3.5 text-white shadow-[2px_0_12px_rgba(6,19,44,0.18)]"><div className="pointer-events-none absolute inset-x-0 top-[22%] bottom-[12%] z-0" style={{ backgroundImage: "linear-gradient(135deg, transparent 0%, transparent 28%, rgba(43,98,196,0.34) 48%, rgba(96,165,250,0.18) 54%, transparent 74%)" }} />
       <Link href="/" onClick={(e) => { try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} onOpenBandeja?.(); if (pathname === "/") { e.preventDefault(); router.push("/"); router.refresh(); window.scrollTo({ top: 0, behavior: "smooth" }); } }} className="group mb-3 flex cursor-pointer flex-col items-center justify-center rounded-xl px-1.5 py-1 text-center opacity-95 transition hover:bg-white/[0.08] hover:opacity-100 active:scale-95" title="Ir a Inicio · Centro Oftalmológico Ebenezer">
         <Image src="/brand/logo/logo-claro.png" alt="Ebenezer" width={48} height={48} className="pointer-events-none h-11 w-11 object-contain transition-transform duration-150 group-hover:scale-105" priority />
       </Link>
 
-      <nav className="flex flex-1 flex-col items-center gap-1.5">
+      <nav className="relative z-10 flex flex-1 flex-col items-center gap-1.5">
         <Link href="/" onClick={() => { try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} onOpenBandeja?.(); }} className={itemClass(enInicio)} title="Inicio">
-          {enInicio && <span className="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r bg-[#38BDF8]" />}
+          {enInicio && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
           <Home className="h-[19px] w-[19px]" strokeWidth={1.75} />
           <span className="text-[10.5px] leading-none tracking-tight">Inicio</span>
         </Link>
@@ -176,7 +144,7 @@ export function RielGlobal({
             className={itemClass(enAnalytics)}
             title="Analytics"
           >
-            {enAnalytics && <span className="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r bg-[#38BDF8]" />}
+            {enAnalytics && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <BarChart2 className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="text-[10.5px] leading-none tracking-tight">Analytics</span>
           </Link>
@@ -184,7 +152,7 @@ export function RielGlobal({
 
         {procesosPermitido && (
           <Link href="/procesos" className={itemClass(enProcesos)} title="Procesos">
-            {enProcesos && <span className="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r bg-[#38BDF8]" />}
+            {enProcesos && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <Settings className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="text-[10.5px] leading-none tracking-tight">Procesos</span>
           </Link>
@@ -192,7 +160,7 @@ export function RielGlobal({
 
         {proyectosPermitido && (
           <Link href="/proyectos" className={itemClass(enProyectos)} title="Proyectos">
-            {enProyectos && <span className="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r bg-[#38BDF8]" />}
+            {enProyectos && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <Folder className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="text-[10.5px] leading-none tracking-tight">Proyectos</span>
           </Link>
@@ -202,20 +170,20 @@ export function RielGlobal({
 
         {isAdmin && (
           <Link href="/usuarios" className={itemClass(enUsuarios)} title="Usuarios">
-            {enUsuarios && <span className="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r bg-[#38BDF8]" />}
+            {enUsuarios && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <Users className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="text-[10.5px] leading-none tracking-tight">Usuarios</span>
           </Link>
         )}
 
         <Link href="/perfil" className={itemClass(enPerfil)} title="Perfil">
-          {enPerfil && <span className="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r bg-[#38BDF8]" />}
+          {enPerfil && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
           <UserCircle className="h-[19px] w-[19px]" strokeWidth={1.75} />
           <span className="text-[10.5px] leading-none tracking-tight">Perfil</span>
         </Link>
       </nav>
 
-      <div className="mt-auto pt-2">
+      <div className="relative z-10 mt-auto pt-2">
         <form action={logoutAction}>
           <button type="submit" title="Cerrar sesión" className="flex w-[64px] flex-col items-center justify-center gap-1.5 rounded-[12px] py-2 text-white/70 transition-colors duration-150 hover:bg-white/10 hover:text-white">
             <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
