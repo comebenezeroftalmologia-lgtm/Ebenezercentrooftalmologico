@@ -129,36 +129,39 @@ function WatermarkArtwork({ variant }: { variant: HeaderVariant }) {
 
   if (variant === "procesos") {
     return (
-      <svg viewBox="0 0 460 165" fill="none" className="pointer-events-none absolute right-0 top-0 h-full w-[460px] select-none" aria-hidden="true">
-        <circle cx="348" cy="82" r="96" stroke="#3B82F6" strokeWidth="1.4" strokeOpacity="0.38" strokeDasharray="5 5" />
-        <circle cx="348" cy="82" r="62" fill="#3B82F6" fillOpacity="0.10" stroke="#2563EB" strokeWidth="1.8" strokeOpacity="0.55" />
-        <path d="M 218 118 C 258 118, 268 48, 308 48 C 348 48, 354 112, 396 112" stroke="#1D4ED8" strokeWidth="2.2" strokeOpacity="0.78" />
-        <path d="M 248 44 C 288 44, 302 82, 348 82 C 388 82, 404 42, 438 42" stroke="#2563EB" strokeWidth="1.8" strokeOpacity="0.62" />
-        <rect x="292" y="34" width="32" height="28" rx="7" fill="#FFFFFF" fillOpacity="0.92" stroke="#1D4ED8" strokeWidth="2" />
-        <rect x="332" y="68" width="32" height="28" rx="7" fill="#1D4ED8" fillOpacity="0.22" stroke="#1D4ED8" strokeWidth="2.2" />
-        <rect x="380" y="98" width="32" height="28" rx="7" fill="#FFFFFF" fillOpacity="0.92" stroke="#2563EB" strokeWidth="2" />
-        <circle cx="248" cy="44" r="5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
-        <circle cx="218" cy="118" r="5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
-        <circle cx="426" cy="42" r="5" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2.2" />
-      </svg>
+      <div
+        className="pointer-events-none absolute right-0 top-0 h-full w-[480px] select-none overflow-hidden"
+        style={{
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0%, transparent 24%, rgba(0,0,0,0.65) 52%, rgba(0,0,0,1) 78%)",
+          maskImage: "linear-gradient(90deg, transparent 0%, transparent 24%, rgba(0,0,0,0.65) 52%, rgba(0,0,0,1) 78%)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/headers/header-procesos.jpg"
+          alt=""
+          className="h-full w-full object-cover object-right contrast-[1.08] saturate-[1.12]"
+        />
+      </div>
     );
   }
 
   if (variant === "proyectos") {
     return (
-      <svg viewBox="0 0 460 165" fill="none" className="pointer-events-none absolute right-0 top-0 h-full w-[460px] select-none" aria-hidden="true">
-        <rect x="236" y="24" width="58" height="116" rx="9" fill="#3B82F6" fillOpacity="0.12" stroke="#2563EB" strokeWidth="1.6" strokeOpacity="0.55" />
-        <rect x="304" y="24" width="58" height="116" rx="9" fill="#2563EB" fillOpacity="0.16" stroke="#1D4ED8" strokeWidth="1.8" strokeOpacity="0.68" />
-        <rect x="372" y="24" width="58" height="116" rx="9" fill="#3B82F6" fillOpacity="0.12" stroke="#2563EB" strokeWidth="1.6" strokeOpacity="0.55" />
-        <rect x="245" y="36" width="40" height="22" rx="5" fill="#FFFFFF" fillOpacity="0.9" stroke="#2563EB" strokeWidth="1.5" />
-        <rect x="245" y="66" width="40" height="22" rx="5" fill="#FFFFFF" fillOpacity="0.75" stroke="#3B82F6" strokeWidth="1.3" />
-        <rect x="313" y="36" width="40" height="26" rx="5" fill="#1D4ED8" fillOpacity="0.25" stroke="#1D4ED8" strokeWidth="1.8" />
-        <rect x="313" y="70" width="40" height="22" rx="5" fill="#FFFFFF" fillOpacity="0.9" stroke="#1D4ED8" strokeWidth="1.5" />
-        <rect x="381" y="36" width="40" height="22" rx="5" fill="#FFFFFF" fillOpacity="0.9" stroke="#2563EB" strokeWidth="1.5" />
-        <path d="M 196 126 C 248 112, 312 88, 438 30" stroke="#1D4ED8" strokeWidth="2" strokeOpacity="0.65" strokeDasharray="4 4" />
-        <circle cx="333" cy="49" r="4" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2" />
-        <circle cx="401" cy="47" r="4" fill="#FFFFFF" stroke="#1D4ED8" strokeWidth="2" />
-      </svg>
+      <div
+        className="pointer-events-none absolute right-0 top-0 h-full w-[480px] select-none overflow-hidden"
+        style={{
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0%, transparent 18%, rgba(0,0,0,0.68) 46%, rgba(0,0,0,1) 76%)",
+          maskImage: "linear-gradient(90deg, transparent 0%, transparent 18%, rgba(0,0,0,0.68) 46%, rgba(0,0,0,1) 76%)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/headers/header-proyectos.jpg"
+          alt=""
+          className="h-full w-full object-cover object-right contrast-[1.08] saturate-[1.12]"
+        />
+      </div>
     );
   }
 
@@ -229,7 +232,7 @@ export function ExecutiveHeader({
       {rightControls && (
         <div className="mt-3 flex flex-wrap items-end justify-between gap-3 rounded-[14px] border border-[#E2EBF8] bg-white px-5 py-3 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
           <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
-            Filtros del tablero
+            {variant === "procesos" || variant === "proyectos" ? "Acciones rápidas" : "Filtros del tablero"}
           </span>
           <div className="flex flex-wrap items-end gap-3">{rightControls}</div>
         </div>
