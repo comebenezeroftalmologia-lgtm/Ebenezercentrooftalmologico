@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -13,6 +14,24 @@ import {
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { ProduccionRecienteChart } from "@/components/ProduccionRecienteChart";
 
+type KpiItem = {
+  titulo: string;
+  valor: string;
+  delta: string;
+  subtitulo: string;
+  href: string;
+  icono: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  borderColor: string;
+  iconBg: string;
+  iconColor: string;
+  sparkColor: string;
+  sparkGradId: string;
+  sparkPath: string;
+  sparkArea: string;
+  endX: number;
+  endY: number;
+};
+
 export function ExecutiveOverview({
   mode,
   userName,
@@ -22,7 +41,7 @@ export function ExecutiveOverview({
 }) {
   const primerNombre = userName ? userName.trim().split(/\s+/)[0] : "Pedro";
 
-  const kpis = [
+  const kpis: KpiItem[] = [
     {
       titulo: "Atenciones facturadas",
       valor: "453",
@@ -135,22 +154,14 @@ export function ExecutiveOverview({
   return (
     <div className="mx-auto w-full max-w-[1440px]">
       <ExecutiveHeader
-        overline={
-          mode === "inicio"
-            ? "CENTRO OFTALMOLÓGICO EBENEZER · PORTAL EJECUTIVO"
-            : "CENTRO OFTALMOLÓGICO EBENEZER · ANALÍTICA CLÍNICA"
-        }
-        title={
-          mode === "inicio"
-            ? `Bienvenido, ${primerNombre}`
-            : "Resumen Ejecutivo de Analítica"
-        }
+        overline="CENTRO OFTALMOL├ôGICO EBENEZER"
+        title={mode === "inicio" ? `Hola, ${primerNombre}` : "Resumen de Anal├¡tica"}
         subtitle={
           mode === "inicio"
-            ? "Vista consolidada de operación clínica, producción diaria y desempeño asistencial."
-            : "Monitoreo integral de productividad, demanda de servicios y eficiencia operativa."
+            ? "Selecciona un tablero o ├írea en la bandeja izquierda, o entra directo desde aqu├¡."
+            : "Pulso consolidado de operaci├│n cl├¡nica y embudo comercial."
         }
-        illustration={mode === "inicio" ? "inicio" : "analytics"}
+        variant={mode}
       />
 
       {/* 4 Tarjetas Ejecutivas de KPIs (Combinación Ganadora: Opción 3 + Mini-Gráfica Opción 1) */}
@@ -165,7 +176,6 @@ export function ExecutiveOverview({
                 style={{ borderLeftColor: kpi.borderColor }}
                 className="group relative flex flex-col justify-between overflow-hidden rounded-[16px] border border-[#E2ECF8] border-l-[3.5px] bg-white shadow-[0_6px_18px_-8px_rgba(14,36,94,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C5DAF6] hover:shadow-[0_12px_24px_-10px_rgba(29,88,216,0.16)]"
               >
-                {/* Franja superior azul hielo suave con ícono circular y título completo sin recortar (Opción 3) */}
                 <div className="flex items-center gap-2.5 bg-gradient-to-b from-[#EDF4FD]/90 via-[#F5F9FF]/65 to-white px-4 pt-3.5 pb-2">
                   <span
                     style={{ backgroundColor: kpi.iconBg, color: kpi.iconColor }}
@@ -178,7 +188,6 @@ export function ExecutiveOverview({
                   </span>
                 </div>
 
-                {/* Cuerpo de la tarjeta: Valor + cápsula verde a la izquierda y mini-gráfica de área a la derecha (Opción 1) */}
                 <div className="flex items-end justify-between gap-2 px-4 pb-3.5 pt-1">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -206,7 +215,6 @@ export function ExecutiveOverview({
                     </p>
                   </div>
 
-                  {/* Mini-gráfica de tendencia dentro del recuadro (Opción 1) */}
                   <div className="shrink-0 pt-1">
                     <svg
                       className="h-[38px] w-[76px] overflow-visible"

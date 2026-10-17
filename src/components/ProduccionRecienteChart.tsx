@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { BarChart2, Calendar, ChevronDown } from "lucide-react";
 
-const DATOS_14_DIAS = [
+type DatoDia = {
+  etiqueta: string;
+  valorM: number;
+  destacado?: boolean;
+  esActual?: boolean;
+};
+
+const DATOS_14_DIAS: DatoDia[] = [
   { etiqueta: "2 oct", valorM: 18.2 },
   { etiqueta: "3 oct", valorM: 21.5 },
   { etiqueta: "4 oct", valorM: 19.8 },
@@ -154,7 +161,6 @@ export function ProduccionRecienteChart() {
                   className="group flex h-full flex-col items-center justify-end"
                 >
                   <div className="relative flex w-full flex-1 items-end justify-center">
-                    {/* Cápsula flotante permanente en 14 oct (30,2M) y 15 oct (28,4M), y en hover para el resto */}
                     {d.destacado ? (
                       <span
                         style={{ bottom: `calc(${alturaPct}% + 6px)` }}
@@ -175,7 +181,6 @@ export function ProduccionRecienteChart() {
                       </span>
                     )}
 
-                    {/* Barra vertical con degradado ejecutivo */}
                     <div
                       style={{
                         height: `${alturaPct}%`,
