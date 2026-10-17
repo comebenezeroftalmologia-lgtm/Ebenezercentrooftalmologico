@@ -2,7 +2,20 @@
 
 import React, { useMemo, useState } from "react";
 
-type Mode = "quirurgicos" | "no-quirurgicos";
+export type OrdenSede1Item = {
+  createdAt: string;
+  closedAt: string | null;
+  realizada: boolean;
+  abierta: boolean;
+  serviceId: number | null;
+};
+
+export interface OrdenamientosSede1Props {
+  items?: OrdenSede1Item[];
+  services?: { id: number; name: string }[];
+  tipo?: "quirurgicos" | "no_quirurgicos";
+  mode?: "quirurgicos" | "no-quirurgicos";
+}
 
 interface ProcRow {
   nombre: string; // Nombre homologado oficial de Frecuencias (TIPO_CX o _exam/_apoyo)
@@ -135,7 +148,8 @@ const DOCTORS_NO_QUIRURGICOS: DoctorBase[] = [
   },
 ];
 
-export default function OrdenamientosSede1View({ mode }: { mode: Mode }) {
+export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) {
+  const isQuirurgico = (tipo ?? mode ?? "quirurgicos") === "quirurgicos";
   const [selectedMonth, setSelectedMonth] = useState<string>("octubre");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("Todos");
   const [selectedProc, setSelectedProc] = useState<string>("Todos");
@@ -145,7 +159,7 @@ export default function OrdenamientosSede1View({ mode }: { mode: Mode }) {
     "Dra. Laura Gómez": true,
   });
 
-  const baseDoctors = mode === "quirurgicos" ? DOCTORS_QUIRURGICOS : DOCTORS_NO_QUIRURGICOS;
+  const baseDoctors = isQuirurgico ? DOCTORS_QUIRURGICOS : DOCTORS_NO_QUIRURGICOS;
 
   const allProcedures = useMemo(() => {
     const set = new Set<string>();
@@ -300,7 +314,7 @@ export default function OrdenamientosSede1View({ mode }: { mode: Mode }) {
                 SEDE 1
               </span>
               <span className="text-[11px] text-slate-400">
-                · {mode === "quirurgicos" ? "Procedimientos Quirúrgicos (TIPO CX)" : "Ayudas Diagnósticas y Apoyo Terapéutico"}
+                · {isQuirurgico ? "Procedimientos Quirúrgicos (TIPO CX)" : "Ayudas Diagnósticas y Apoyo Terapéutico"}
               </span>
             </div>
             <h1 className="text-[18px] md:text-[19px] font-bold text-slate-900 tracking-tight leading-snug">
@@ -814,3 +828,5 @@ export default function OrdenamientosSede1View({ mode }: { mode: Mode }) {
     </div>
   );
 }
+
+export default OrdenamientosSede1View;
