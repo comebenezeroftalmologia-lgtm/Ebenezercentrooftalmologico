@@ -1,0 +1,7535 @@
+{
+  "quirurgicos": {
+    "2026-01": [
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 17,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 14,
+            "hechosMes": 14,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 17,
+            "hechosMes": 6,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 10,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "LENTE FÁQUICO",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "ESTRABISMO",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-02": [
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 34,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 25,
+            "hechosMes": 4,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 14,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 5,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 3,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "ESTRABISMO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      }
+    ],
+    "2026-03": [
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 25,
+            "hechosMes": 16,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 10,
+            "hechosMes": 9,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 7,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 4,
+            "hechosMes": 2,
+            "vienenOtros": 2
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "ESTRABISMO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      }
+    ],
+    "2026-04": [
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 28,
+            "hechosMes": 15,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 17,
+            "hechosMes": 14,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 5,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 7,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "GLAUCOMA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-05": [
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 17,
+            "hechosMes": 13,
+            "vienenOtros": 4
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 12,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 7,
+            "hechosMes": 4,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "LENTE FÁQUICO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "ESTRABISMO",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-06": [
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 19,
+            "hechosMes": 15,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 10,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 8,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "ESTRABISMO",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 4,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-07": [
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 23,
+            "hechosMes": 23,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 17,
+            "hechosMes": 14,
+            "vienenOtros": 4
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Shirley Patry Pomares Castilla",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-08": [
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 12,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 6,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "ESTRABISMO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Shirley Patry Pomares Castilla",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-09": [
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 9,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 12,
+            "hechosMes": 6,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "APLI. DE MEDICAMENTO",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "SEG. ANTERIOR",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Shirley Patry Pomares Castilla",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-10": [
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 3,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OCULOPLASTIA MENOR",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "FACO + LIO",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "TRASPLANTE",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "OCULOPLASTIA MAYOR",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 2
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "OFT GENERAL",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "RETINA",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ]
+  },
+  "no_quirurgicos": {
+    "2026-01": [
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 47,
+            "hechosMes": 46,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 21,
+            "hechosMes": 21,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 19,
+            "hechosMes": 19,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 16,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 41,
+            "hechosMes": 41,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 18,
+            "hechosMes": 18,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 16,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 22,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 22,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 20,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 13,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 18,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 13,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 12,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 12,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 8,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Trabeculoplastia láser",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 7,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otras ayudas",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Sofía Margarita Jácome",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Liliana Mercedes Ospino Barrios",
+        "procedimientos": [
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-02": [
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 49,
+            "hechosMes": 47,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 21,
+            "hechosMes": 21,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 15,
+            "hechosMes": 14,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 10,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 29,
+            "hechosMes": 17,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 28,
+            "hechosMes": 28,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 21,
+            "hechosMes": 11,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 20,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 21,
+            "hechosMes": 20,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 17,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 16,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 16,
+            "hechosMes": 15,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 14,
+            "hechosMes": 13,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 40,
+            "hechosMes": 38,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 11,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otras ayudas",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 13,
+            "hechosMes": 13,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Trabeculoplastia láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Sofía Margarita Jácome",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-03": [
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 56,
+            "hechosMes": 53,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 15,
+            "hechosMes": 15,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otras ayudas",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 35,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 29,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 24,
+            "hechosMes": 8,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 19,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 35,
+            "hechosMes": 30,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 13,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 10,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 7,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 7,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 6,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 18,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 16,
+            "hechosMes": 14,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 16,
+            "hechosMes": 14,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 15,
+            "hechosMes": 13,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 9,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otras ayudas",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 19,
+            "hechosMes": 18,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 15,
+            "hechosMes": 14,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 10,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 7,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Trabeculoplastia láser",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 12,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Sofía Margarita Jácome",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 2,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Margienith Acosta",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otras ayudas",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-04": [
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 40,
+            "hechosMes": 38,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 23,
+            "hechosMes": 23,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 19,
+            "hechosMes": 17,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 13,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fototerapia",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 36,
+            "hechosMes": 18,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 27,
+            "hechosMes": 13,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 26,
+            "hechosMes": 25,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 24,
+            "hechosMes": 13,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 26,
+            "hechosMes": 21,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 14,
+            "hechosMes": 12,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 14,
+            "hechosMes": 13,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 14,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 13,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 45,
+            "hechosMes": 39,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 9,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 7,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 13,
+            "hechosMes": 12,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 12,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Trabeculoplastia láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otras ayudas",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 15,
+            "hechosMes": 14,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Margienith Acosta",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Sofía Margarita Jácome",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-05": [
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 32,
+            "hechosMes": 11,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 25,
+            "hechosMes": 9,
+            "vienenOtros": 3
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 19,
+            "hechosMes": 8,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 14,
+            "hechosMes": 13,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 26,
+            "hechosMes": 25,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 18,
+            "hechosMes": 18,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 19,
+            "hechosMes": 19,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 15,
+            "hechosMes": 15,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 12,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 13,
+            "hechosMes": 12,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 13,
+            "hechosMes": 12,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 12,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 12,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 28,
+            "hechosMes": 26,
+            "vienenOtros": 4
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Fotografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Sebastian Andres Bolaño Borja",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-06": [
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 44,
+            "hechosMes": 43,
+            "vienenOtros": 3
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 17,
+            "hechosMes": 6,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 15,
+            "hechosMes": 7,
+            "vienenOtros": 3
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 14,
+            "hechosMes": 7,
+            "vienenOtros": 3
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 15,
+            "hechosMes": 14,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 12,
+            "hechosMes": 11,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 10,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 10,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 6,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Trabeculoplastia láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridoplastia láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 10,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 9,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 7,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 7,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Karen Juliette Murcia Rojas",
+        "procedimientos": [
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Sofía Margarita Jácome",
+        "procedimientos": [
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-07": [
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 37,
+            "hechosMes": 16,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 26,
+            "hechosMes": 12,
+            "vienenOtros": 5
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 23,
+            "hechosMes": 11,
+            "vienenOtros": 5
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 23,
+            "hechosMes": 20,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 18,
+            "hechosMes": 18,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 13,
+            "hechosMes": 13,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 17,
+            "hechosMes": 17,
+            "vienenOtros": 5
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 15,
+            "hechosMes": 15,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 17,
+            "hechosMes": 17,
+            "vienenOtros": 4
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 7,
+            "hechosMes": 5,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Shirley Patry Pomares Castilla",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 6
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 2
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Sofía Margarita Jácome",
+        "procedimientos": [
+          {
+            "nombre": "Test de color",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-08": [
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 36,
+            "hechosMes": 9,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 27,
+            "hechosMes": 9,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 24,
+            "hechosMes": 8,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 12,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 28,
+            "hechosMes": 26,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 9,
+            "hechosMes": 8,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 9,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 34,
+            "hechosMes": 32,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 4,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 14,
+            "hechosMes": 14,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Fotografía",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 6,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 6,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 5,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Ecografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Shirley Patry Pomares Castilla",
+        "procedimientos": [
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Margienith Acosta",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Álvaro Cabanzo Perdomo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-09": [
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 44,
+            "hechosMes": 15,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 33,
+            "hechosMes": 15,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 33,
+            "hechosMes": 17,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 23,
+            "hechosMes": 13,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 6,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 5,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 2,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 17,
+            "hechosMes": 16,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 11,
+            "hechosMes": 11,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 6,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 5,
+            "hechosMes": 4,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 11,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 9,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 7,
+            "hechosMes": 6,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 6,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 6,
+            "hechosMes": 5,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 17,
+            "hechosMes": 16,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 9,
+            "hechosMes": 9,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 8,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 8,
+            "hechosMes": 8,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 10,
+            "hechosMes": 10,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Trabeculoplastia láser",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Interferometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 15,
+            "hechosMes": 15,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Iván Jesús Pérez Carvajal",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 7,
+            "hechosMes": 7,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Angiografía",
+            "ordeno": 3,
+            "hechosMes": 3,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Cynthia Tirado",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 4,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 4,
+            "hechosMes": 4,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Otros apoyos",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotocoagulación láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Shirley Patry Pomares Castilla",
+        "procedimientos": [
+          {
+            "nombre": "Angiografía",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Iridotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Ricardo Infante de Germán Ribón",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katerine Hernández Ayala",
+        "procedimientos": [
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      }
+    ],
+    "2026-10": [
+      {
+        "medico": "Dr. Alfredo José Ramírez Anaya",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 8,
+            "hechosMes": 3,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 5,
+            "hechosMes": 2,
+            "vienenOtros": 3
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 5,
+            "hechosMes": 2,
+            "vienenOtros": 3
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 5,
+            "hechosMes": 2,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 2,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Microscopía especular",
+            "ordeno": 2,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Analith Barriga de Gossaín",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 12,
+            "hechosMes": 9,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 2,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jennifer Corredor Arroyo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 1,
+            "vienenOtros": 3
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 3,
+            "hechosMes": 1,
+            "vienenOtros": 2
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Fototerapia",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Luz pulsada (IPL)",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Vías lagrimales",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Shirley Patry Pomares Castilla",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 3,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Óscar Teherán Forero",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 4,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Fotografía",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tonografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dr. Carlos Arturo Granados Lácera",
+        "procedimientos": [
+          {
+            "nombre": "Aberrometría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Biometría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Patricia Milena Osorio Bustillo",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 2,
+            "hechosMes": 2,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Ecografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Paquimetría",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Recuento endotelial",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Jaysi Pastrana",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Ana María Álvarez Castillo",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Cynthia Tirado",
+        "procedimientos": [
+          {
+            "nombre": "Campo visual",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Katya Elena Gutiérrez Brun",
+        "procedimientos": [
+          {
+            "nombre": "Topografía",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Liliana Mercedes Ospino Barrios",
+        "procedimientos": [
+          {
+            "nombre": "Capsulotomía láser",
+            "ordeno": 1,
+            "hechosMes": 1,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Milena Romero Ibarra",
+        "procedimientos": [
+          {
+            "nombre": "Angiografía",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          },
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 1,
+            "hechosMes": 0,
+            "vienenOtros": 0
+          }
+        ]
+      },
+      {
+        "medico": "Dra. Mónica Patricia Muñoz Lara",
+        "procedimientos": [
+          {
+            "nombre": "Tomografía / OCT",
+            "ordeno": 0,
+            "hechosMes": 0,
+            "vienenOtros": 1
+          }
+        ]
+      }
+    ]
+  }
+}

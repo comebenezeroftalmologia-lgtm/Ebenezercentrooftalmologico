@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import realDataJson from "@/lib/ordenamientos-sede1-real.json";
 
 export type OrdenSede1Item = {
   createdAt: string;
@@ -18,190 +19,125 @@ export interface OrdenamientosSede1Props {
 }
 
 interface ProcRow {
-  nombre: string; // Nombre homologado oficial de Frecuencias (TIPO_CX o _exam/_apoyo)
+  nombre: string;
   ordeno: number;
   hechosMes: number;
   vienenOtros: number;
 }
 
-interface DoctorBase {
+interface DoctorMonthRow {
   medico: string;
   procedimientos: ProcRow[];
 }
 
-interface MonthFactor {
+type MonthMap = Record<string, DoctorMonthRow[]>;
+
+const REAL_DATA: {
+  quirurgicos: MonthMap;
+  no_quirurgicos: MonthMap;
+} = realDataJson as unknown as {
+  quirurgicos: MonthMap;
+  no_quirurgicos: MonthMap;
+};
+
+interface MonthConfig {
   key: string;
   label: string;
   shortLabel: string;
   prevLabel: string;
-  factor: number;
-  carryFactor: number;
 }
 
-const MONTHS: MonthFactor[] = [
-  { key: "mayo", label: "Mayo", shortLabel: "MAY", prevLabel: "De Abr / Mar / Feb", factor: 0.686, carryFactor: 0.714 },
-  { key: "junio", label: "Junio", shortLabel: "JUN", prevLabel: "De May / Abr / Mar", factor: 0.800, carryFactor: 0.752 },
-  { key: "julio", label: "Julio", shortLabel: "JUL", prevLabel: "De Jun / May / Abr", factor: 0.886, carryFactor: 0.752 },
-  { key: "agosto", label: "Agosto", shortLabel: "AGO", prevLabel: "De Jul / Jun / May", factor: 0.943, carryFactor: 0.962 },
-  { key: "septiembre", label: "Septiembre", shortLabel: "SEP", prevLabel: "De Ago / Jul / Jun", factor: 0.971, carryFactor: 1.000 },
-  { key: "octubre", label: "Octubre 2026", shortLabel: "OCT", prevLabel: "De Sep / Ago / Jul", factor: 1.000, carryFactor: 1.000 },
-];
-
-// Homologaciones oficiales de Frecuencias (dic_tipocx.parquet / CIRUGIAS_POR_TIPO_final.xlsx)
-const DOCTORS_QUIRURGICOS: DoctorBase[] = [
-  {
-    medico: "Dr. Carlos Mendoza",
-    procedimientos: [
-      { nombre: "FACO + LIO", ordeno: 72, hechosMes: 42, vienenOtros: 16 },
-      { nombre: "SEG. ANTERIOR", ordeno: 26, hechosMes: 14, vienenOtros: 6 },
-    ],
-  },
-  {
-    medico: "Dra. Laura Gómez",
-    procedimientos: [
-      { nombre: "GLAUCOMA", ordeno: 58, hechosMes: 34, vienenOtros: 15 },
-      { nombre: "GLAUCOMA - VÁLVULA", ordeno: 18, hechosMes: 10, vienenOtros: 4 },
-    ],
-  },
-  {
-    medico: "Dr. Andrés Silva",
-    procedimientos: [
-      { nombre: "RETINA", ordeno: 42, hechosMes: 21, vienenOtros: 12 },
-      { nombre: "APLI. DE MEDICAMENTO", ordeno: 22, hechosMes: 11, vienenOtros: 6 },
-    ],
-  },
-  {
-    medico: "Dra. Sofía Medina",
-    procedimientos: [
-      { nombre: "OCULOPLASTIA MAYOR", ordeno: 34, hechosMes: 12, vienenOtros: 16 },
-      { nombre: "OCULOPLASTIA MENOR", ordeno: 18, hechosMes: 6, vienenOtros: 8 },
-    ],
-  },
-  {
-    medico: "Dr. Javier Córdoba",
-    procedimientos: [
-      { nombre: "FACO + LIO", ordeno: 20, hechosMes: 5, vienenOtros: 7 },
-      { nombre: "TRASPLANTE", ordeno: 9, hechosMes: 2, vienenOtros: 3 },
-      { nombre: "REFRACTIVA", ordeno: 7, hechosMes: 2, vienenOtros: 2 },
-    ],
-  },
-  {
-    medico: "Dra. Natalia Pineda",
-    procedimientos: [
-      { nombre: "ESTRABISMO", ordeno: 14, hechosMes: 4, vienenOtros: 6 },
-      { nombre: "OFT GENERAL", ordeno: 10, hechosMes: 2, vienenOtros: 4 },
-    ],
-  },
-];
-
-// Homologaciones oficiales de Frecuencias (_exam y _apoyo en dashboard.py)
-const DOCTORS_NO_QUIRURGICOS: DoctorBase[] = [
-  {
-    medico: "Dr. Carlos Mendoza",
-    procedimientos: [
-      { nombre: "Biometría", ordeno: 96, hechosMes: 62, vienenOtros: 24 },
-      { nombre: "Paquimetría", ordeno: 54, hechosMes: 34, vienenOtros: 14 },
-      { nombre: "Recuento endotelial", ordeno: 38, hechosMes: 22, vienenOtros: 10 },
-    ],
-  },
-  {
-    medico: "Dra. Laura Gómez",
-    procedimientos: [
-      { nombre: "Campo visual", ordeno: 88, hechosMes: 54, vienenOtros: 22 },
-      { nombre: "Tomografía / OCT", ordeno: 64, hechosMes: 40, vienenOtros: 16 },
-      { nombre: "Trabeculoplastia láser", ordeno: 24, hechosMes: 14, vienenOtros: 6 },
-      { nombre: "Iridotomía láser", ordeno: 18, hechosMes: 11, vienenOtros: 5 },
-    ],
-  },
-  {
-    medico: "Dr. Andrés Silva",
-    procedimientos: [
-      { nombre: "Tomografía / OCT", ordeno: 74, hechosMes: 44, vienenOtros: 18 },
-      { nombre: "Angiografía", ordeno: 42, hechosMes: 24, vienenOtros: 11 },
-      { nombre: "Fotocoagulación láser", ordeno: 28, hechosMes: 16, vienenOtros: 7 },
-      { nombre: "Ecografía", ordeno: 20, hechosMes: 12, vienenOtros: 5 },
-    ],
-  },
-  {
-    medico: "Dra. Sofía Medina",
-    procedimientos: [
-      { nombre: "Vías lagrimales", ordeno: 46, hechosMes: 26, vienenOtros: 14 },
-      { nombre: "Luz pulsada (IPL)", ordeno: 32, hechosMes: 18, vienenOtros: 9 },
-      { nombre: "Toxina botulínica", ordeno: 22, hechosMes: 12, vienenOtros: 6 },
-    ],
-  },
-  {
-    medico: "Dr. Javier Córdoba",
-    procedimientos: [
-      { nombre: "Topografía", ordeno: 48, hechosMes: 26, vienenOtros: 12 },
-      { nombre: "Aberrometría", ordeno: 28, hechosMes: 15, vienenOtros: 7 },
-      { nombre: "Capsulotomía láser", ordeno: 22, hechosMes: 12, vienenOtros: 6 },
-    ],
-  },
-  {
-    medico: "Dra. Natalia Pineda",
-    procedimientos: [
-      { nombre: "Campo visual", ordeno: 34, hechosMes: 18, vienenOtros: 8 },
-      { nombre: "Fotografía", ordeno: 22, hechosMes: 12, vienenOtros: 5 },
-      { nombre: "Gonioscopía", ordeno: 16, hechosMes: 8, vienenOtros: 4 },
-    ],
-  },
+const MONTHS: MonthConfig[] = [
+  { key: "2026-05", label: "Mayo", shortLabel: "MAY", prevLabel: "De Abr / Mar / Feb" },
+  { key: "2026-06", label: "Junio", shortLabel: "JUN", prevLabel: "De May / Abr / Mar" },
+  { key: "2026-07", label: "Julio", shortLabel: "JUL", prevLabel: "De Jun / May / Abr" },
+  { key: "2026-08", label: "Agosto", shortLabel: "AGO", prevLabel: "De Jul / Jun / May" },
+  { key: "2026-09", label: "Septiembre", shortLabel: "SEP", prevLabel: "De Ago / Jul / Jun" },
+  { key: "2026-10", label: "Octubre 2026", shortLabel: "OCT", prevLabel: "De Sep / Ago / Jul" },
 ];
 
 export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) {
   const isQuirurgico = (tipo ?? mode ?? "quirurgicos") === "quirurgicos";
-  const [selectedMonth, setSelectedMonth] = useState<string>("octubre");
+  const dataset: MonthMap = isQuirurgico ? REAL_DATA.quirurgicos : REAL_DATA.no_quirurgicos;
+
+  // Por defecto abrimos en Septiembre (último mes cerrado completo) o el mes que el usuario elija
+  const [selectedMonth, setSelectedMonth] = useState<string>("2026-09");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("Todos");
   const [selectedProc, setSelectedProc] = useState<string>("Todos");
-  // Por defecto los 2 primeros médicos aparecen desplegados tal como en la imagen aprobada
-  const [expandedDoctors, setExpandedDoctors] = useState<Record<string, boolean>>({
-    "Dr. Carlos Mendoza": true,
-    "Dra. Laura Gómez": true,
-  });
+  const [expandedDoctors, setExpandedDoctors] = useState<Record<string, boolean>>({});
 
-  const baseDoctors = isQuirurgico ? DOCTORS_QUIRURGICOS : DOCTORS_NO_QUIRURGICOS;
-
-  const allProcedures = useMemo(() => {
-    const set = new Set<string>();
-    baseDoctors.forEach((d) => d.procedimientos.forEach((p) => set.add(p.nombre)));
-    return Array.from(set);
-  }, [baseDoctors]);
+  // Lista única de todos los médicos reales y procedimientos homologados reales en Mayo-Octubre
+  const { allDoctors, allProcedures } = useMemo(() => {
+    const docSet = new Set<string>();
+    const procSet = new Set<string>();
+    MONTHS.forEach((m) => {
+      const list = dataset[m.key] || [];
+      list.forEach((d) => {
+        docSet.add(d.medico);
+        d.procedimientos.forEach((p) => procSet.add(p.nombre));
+      });
+    });
+    return {
+      allDoctors: Array.from(docSet).sort((a, b) => a.localeCompare(b, "es")),
+      allProcedures: Array.from(procSet).sort((a, b) => a.localeCompare(b, "es")),
+    };
+  }, [dataset]);
 
   const activeMonthObj = useMemo(() => {
     if (selectedMonth === "todos") {
       return {
         key: "todos",
-        label: "Mayo–Octubre",
+        label: "Mayo–Octubre 2026",
         shortLabel: "ACUM.",
         prevLabel: "De meses previos",
-        factor: 5.286,
-        carryFactor: 5.18,
       };
     }
-    return MONTHS.find((m) => m.key === selectedMonth) || MONTHS[5];
+    return MONTHS.find((m) => m.key === selectedMonth) || MONTHS[4];
   }, [selectedMonth]);
 
+  // Árbol real por médico -> procedimientos homologados para el mes seleccionado (o acumulado Mayo-Octubre)
   const doctorTree = useMemo(() => {
-    return baseDoctors
-      .filter((d) => selectedDoctor === "Todos" || d.medico === selectedDoctor)
-      .map((d) => {
-        const procs = d.procedimientos
-          .filter((p) => selectedProc === "Todos" || p.nombre === selectedProc)
-          .map((p) => {
-            const ordeno = Math.max(1, Math.round(p.ordeno * activeMonthObj.factor));
-            const hechosMes = Math.min(ordeno, Math.max(1, Math.round(p.hechosMes * activeMonthObj.factor)));
-            const vienenOtros = Math.max(1, Math.round(p.vienenOtros * activeMonthObj.carryFactor));
-            const totalRealizados = hechosMes + vienenOtros;
-            const pasanProxMes = Math.max(0, ordeno - hechosMes);
+    const targetMonths = selectedMonth === "todos" ? MONTHS.map((m) => m.key) : [selectedMonth];
+    const medMap = new Map<string, Map<string, { ordeno: number; hechosMes: number; vienenOtros: number }>>();
+
+    targetMonths.forEach((mKey) => {
+      const rows = dataset[mKey] || [];
+      rows.forEach((d) => {
+        if (selectedDoctor !== "Todos" && d.medico !== selectedDoctor) return;
+        let pMap = medMap.get(d.medico);
+        if (!pMap) {
+          pMap = new Map();
+          medMap.set(d.medico, pMap);
+        }
+        d.procedimientos.forEach((p) => {
+          if (selectedProc !== "Todos" && p.nombre !== selectedProc) return;
+          const prev = pMap!.get(p.nombre) || { ordeno: 0, hechosMes: 0, vienenOtros: 0 };
+          pMap!.set(p.nombre, {
+            ordeno: prev.ordeno + p.ordeno,
+            hechosMes: prev.hechosMes + p.hechosMes,
+            vienenOtros: prev.vienenOtros + p.vienenOtros,
+          });
+        });
+      });
+    });
+
+    const result = Array.from(medMap.entries())
+      .map(([medico, pMap]) => {
+        const procs = Array.from(pMap.entries())
+          .map(([nombre, vals]) => {
+            const totalRealizados = vals.hechosMes + vals.vienenOtros;
+            const pasanProxMes = Math.max(0, vals.ordeno - vals.hechosMes);
             return {
-              nombre: p.nombre,
-              ordeno,
-              hechosMes,
-              vienenOtros,
+              nombre,
+              ordeno: vals.ordeno,
+              hechosMes: vals.hechosMes,
+              vienenOtros: vals.vienenOtros,
               totalRealizados,
               pasanProxMes,
             };
-          });
+          })
+          .filter((p) => p.ordeno > 0 || p.totalRealizados > 0)
+          .sort((a, b) => b.ordeno + b.totalRealizados - (a.ordeno + a.totalRealizados));
 
         const ordeno = procs.reduce((a, r) => a + r.ordeno, 0);
         const hechosMes = procs.reduce((a, r) => a + r.hechosMes, 0);
@@ -210,7 +146,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
         const pasanProxMes = Math.max(0, ordeno - hechosMes);
 
         return {
-          medico: d.medico,
+          medico,
           procs,
           ordeno,
           hechosMes,
@@ -219,8 +155,17 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
           pasanProxMes,
         };
       })
-      .filter((d) => d.procs.length > 0);
-  }, [baseDoctors, selectedDoctor, selectedProc, activeMonthObj]);
+      .filter((d) => d.procs.length > 0)
+      .sort((a, b) => b.ordeno + b.totalRealizados - (a.ordeno + a.totalRealizados));
+
+    return result;
+  }, [dataset, selectedMonth, selectedDoctor, selectedProc]);
+
+  // Determinar si un médico está desplegado (por defecto los 2 primeros médicos del mes)
+  const isDoctorOpen = (medico: string, idx: number) => {
+    if (medico in expandedDoctors) return expandedDoctors[medico];
+    return idx < 2;
+  };
 
   const totals = useMemo(() => {
     const ordeno = doctorTree.reduce((acc, r) => acc + r.ordeno, 0);
@@ -229,42 +174,26 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
     const totalRealizados = hechosMes + vienenOtros;
     const pasanProxMes = doctorTree.reduce((acc, r) => acc + r.pasanProxMes, 0);
     const pctMismoMes = ordeno > 0 ? Math.round((hechosMes / ordeno) * 100) : 0;
-    const enControl = Math.round(pasanProxMes * 0.757);
+    const enControl = Math.round(pasanProxMes * 0.75);
     const vencidos = Math.max(0, pasanProxMes - enControl);
     return { ordeno, hechosMes, vienenOtros, totalRealizados, pasanProxMes, pctMismoMes, enControl, vencidos };
   }, [doctorTree]);
 
   const monthlySeries = useMemo(() => {
-    const filteredDocs = baseDoctors.filter((d) => selectedDoctor === "Todos" || d.medico === selectedDoctor);
-    const baseOrd = filteredDocs.reduce(
-      (acc, d) =>
-        acc +
-        d.procedimientos
-          .filter((p) => selectedProc === "Todos" || p.nombre === selectedProc)
-          .reduce((s, p) => s + p.ordeno, 0),
-      0
-    );
-    const baseHechos = filteredDocs.reduce(
-      (acc, d) =>
-        acc +
-        d.procedimientos
-          .filter((p) => selectedProc === "Todos" || p.nombre === selectedProc)
-          .reduce((s, p) => s + p.hechosMes, 0),
-      0
-    );
-    const baseOtros = filteredDocs.reduce(
-      (acc, d) =>
-        acc +
-        d.procedimientos
-          .filter((p) => selectedProc === "Todos" || p.nombre === selectedProc)
-          .reduce((s, p) => s + p.vienenOtros, 0),
-      0
-    );
-
     return MONTHS.map((m) => {
-      const ord = Math.max(1, Math.round(baseOrd * m.factor));
-      const hec = Math.min(ord, Math.max(1, Math.round(baseHechos * m.factor)));
-      const otr = Math.max(1, Math.round(baseOtros * m.carryFactor));
+      const rows = dataset[m.key] || [];
+      let ord = 0;
+      let hec = 0;
+      let otr = 0;
+      rows.forEach((d) => {
+        if (selectedDoctor !== "Todos" && d.medico !== selectedDoctor) return;
+        d.procedimientos.forEach((p) => {
+          if (selectedProc !== "Todos" && p.nombre !== selectedProc) return;
+          ord += p.ordeno;
+          hec += p.hechosMes;
+          otr += p.vienenOtros;
+        });
+      });
       return {
         key: m.key,
         mes: m.label.replace(" 2026", ""),
@@ -274,30 +203,33 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
         totalRealizado: hec + otr,
       };
     });
-  }, [baseDoctors, selectedDoctor, selectedProc]);
+  }, [dataset, selectedDoctor, selectedProc]);
 
   const maxBar = useMemo(() => {
     return Math.max(...monthlySeries.map((s) => Math.max(s.ordenado, s.totalRealizado)), 1);
   }, [monthlySeries]);
 
   const allExpanded = useMemo(() => {
-    return doctorTree.length > 0 && doctorTree.every((d) => !!expandedDoctors[d.medico]);
+    return doctorTree.length > 0 && doctorTree.every((d, i) => isDoctorOpen(d.medico, i));
   }, [doctorTree, expandedDoctors]);
 
-  const toggleDoctor = (medico: string) => {
-    setExpandedDoctors((prev) => ({ ...prev, [medico]: !prev[medico] }));
+  const toggleDoctor = (medico: string, idx: number) => {
+    const current = isDoctorOpen(medico, idx);
+    setExpandedDoctors((prev) => ({ ...prev, [medico]: !current }));
   };
 
   const toggleAll = () => {
+    const next: Record<string, boolean> = {};
     if (allExpanded) {
-      setExpandedDoctors({});
+      doctorTree.forEach((d) => {
+        next[d.medico] = false;
+      });
     } else {
-      const next: Record<string, boolean> = {};
       doctorTree.forEach((d) => {
         next[d.medico] = true;
       });
-      setExpandedDoctors(next);
     }
+    setExpandedDoctors(next);
   };
 
   const mesTitle = activeMonthObj.label.replace(" 2026", "");
@@ -314,7 +246,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                 SEDE 1
               </span>
               <span className="text-[11px] text-slate-400">
-                · {isQuirurgico ? "Procedimientos Quirúrgicos (TIPO CX)" : "Ayudas Diagnósticas y Apoyo Terapéutico"}
+                · {isQuirurgico ? "Procedimientos Quirúrgicos (TIPO CX · Frecuencias)" : "Ayudas Diagnósticas y Apoyo Terapéutico (Frecuencias)"}
               </span>
             </div>
             <h1 className="text-[18px] md:text-[19px] font-bold text-slate-900 tracking-tight leading-snug">
@@ -322,7 +254,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
             </h1>
           </div>
 
-          {/* Filtros por Mes, Médico y Procedimiento Homologado */}
+          {/* Filtros por Mes, Médico Real y Procedimiento Homologado */}
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="inline-flex flex-wrap items-center bg-white border border-slate-200/90 rounded-lg p-0.5 shadow-2xs">
               {MONTHS.map((m) => {
@@ -362,9 +294,9 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
               className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-[#2B579A]"
             >
               <option value="Todos">Médico: Todos los doctores</option>
-              {baseDoctors.map((d) => (
-                <option key={d.medico} value={d.medico}>
-                  Médico: {d.medico}
+              {allDoctors.map((med) => (
+                <option key={med} value={med}>
+                  Médico: {med}
                 </option>
               ))}
             </select>
@@ -489,7 +421,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                   </span>
                 </div>
                 <p className="text-[10.5px] text-slate-600 mt-1 leading-snug">
-                  Controles ordenados en meses anteriores · Total {activeMonthObj.shortLabel}: {totals.totalRealizados}
+                  Controles ordenados en meses anteriores · Total {activeMonthObj.shortLabel}: {totals.totalRealizados.toLocaleString("es-CO")}
                 </p>
               </div>
               <svg viewBox="0 0 80 34" className="w-16 h-8 shrink-0">
@@ -559,7 +491,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
           </div>
         </div>
 
-        {/* Sección inferior: Tabla desplegable por Médico y Procedimiento (Izquierda) + Comparativo Mes a Mes (Derecha) */}
+        {/* Sección inferior: Tabla desplegable por Médico Real y Procedimiento (Izquierda) + Comparativo Mes a Mes (Derecha) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
           {/* Tabla izquierda con filas desplegables (▾ / ▸) */}
           <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/85 shadow-2xs p-3.5 flex flex-col justify-between">
@@ -572,7 +504,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                     <span className="w-1 h-2.5 bg-[#2E9E6B] rounded-xs" />
                   </span>
                   <h2 className="text-[13.5px] font-bold text-slate-900">
-                    Detalle por Médico y Procedimiento · Sede 1
+                    Detalle por Médico y Procedimiento · Sede 1 ({mesTitle})
                   </h2>
                 </div>
 
@@ -618,13 +550,13 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                     </tr>
                   </thead>
                   <tbody className="text-[11.5px]">
-                    {doctorTree.map((row) => {
-                      const isOpen = !!expandedDoctors[row.medico];
+                    {doctorTree.map((row, idx) => {
+                      const isOpen = isDoctorOpen(row.medico, idx);
                       return (
                         <React.Fragment key={row.medico}>
-                          {/* Fila principal del médico (desplegable al hacer clic) */}
+                          {/* Fila principal del médico real (desplegable al hacer clic) */}
                           <tr
-                            onClick={() => toggleDoctor(row.medico)}
+                            onClick={() => toggleDoctor(row.medico, idx)}
                             className="border-b border-white/60 cursor-pointer select-none hover:brightness-98 transition-all"
                           >
                             <td className="py-1.5 pr-2 font-semibold text-slate-900 whitespace-nowrap bg-white">
@@ -650,7 +582,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                             </td>
                           </tr>
 
-                          {/* Sub-filas con los procedimientos homologados de Frecuencias */}
+                          {/* Sub-filas con los procedimientos homologados reales de Frecuencias */}
                           {isOpen &&
                             row.procs.map((p) => (
                               <tr
@@ -743,7 +675,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                   const ordHeight = Math.max(22, Math.round((item.ordenado / maxBar) * 165));
                   const totalRealHeight = Math.max(24, Math.round((item.totalRealizado / maxBar) * 165));
                   const verdeHeight = Math.max(
-                    18,
+                    16,
                     Math.round((item.vieneOtros / Math.max(item.totalRealizado, 1)) * totalRealHeight)
                   );
                   const azulOscuroHeight = Math.max(18, totalRealHeight - verdeHeight);
@@ -771,14 +703,14 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
 
                         {/* Barra 2: Apilada (Verde arriba = Viene de otros meses, Azul oscuro abajo = Hecho del mismo mes) */}
                         <div className="flex flex-col items-center relative">
-                          {item.key === "octubre" && (
-                            <div className=" -top-7 right-0 z-10 pointer-events-none hidden sm:flex flex-col items-center">
+                          {item.key === selectedMonth && (
+                            <div className="-top-7 right-0 z-10 pointer-events-none hidden sm:flex flex-col items-center">
                               <span className="px-1.5 py-0.5 rounded-full text-[9.5px] font-semibold bg-[#DDF3E8] text-[#1D6F4A] border border-[#A7DFC3] whitespace-nowrap shadow-2xs">
                                 +otros meses
                               </span>
                             </div>
                           )}
-                          {item.key !== "octubre" && (
+                          {item.key !== selectedMonth && (
                             <span className="text-[10.5px] font-semibold text-slate-800 mb-0.5">
                               {item.totalRealizado}
                             </span>
