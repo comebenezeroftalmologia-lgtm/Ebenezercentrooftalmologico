@@ -1,6 +1,8 @@
-import React from "react";
 import Link from "next/link";
 import {
+  ArrowDown,
+  ArrowUp,
+  BarChart2,
   Calendar,
   ChevronRight,
   CircleDollarSign,
@@ -14,24 +16,6 @@ import {
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { ProduccionRecienteChart } from "@/components/ProduccionRecienteChart";
 
-type KpiItem = {
-  titulo: string;
-  valor: string;
-  delta: string;
-  subtitulo: string;
-  href: string;
-  icono: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  borderColor: string;
-  iconBg: string;
-  iconColor: string;
-  sparkColor: string;
-  sparkGradId: string;
-  sparkPath: string;
-  sparkArea: string;
-  endX: number;
-  endY: number;
-};
-
 export function ExecutiveOverview({
   mode,
   userName,
@@ -41,14 +25,15 @@ export function ExecutiveOverview({
 }) {
   const primerNombre = userName ? userName.trim().split(/\s+/)[0] : "Pedro";
 
-  const kpis: KpiItem[] = [
+  const kpis = [
     {
       titulo: "Atenciones facturadas",
       valor: "453",
       delta: "+11,5%",
+      flecha: "up" as const,
       subtitulo: "vs. mismo período anterior",
       href: "/frecuencias",
-      icono: Users,
+      Icono: Users,
       borderColor: "#2563EB",
       iconBg: "#DCEBFE",
       iconColor: "#1D4ED8",
@@ -63,9 +48,10 @@ export function ExecutiveOverview({
       titulo: "Producción del día",
       valor: "$ 28,4 M",
       delta: "+8,2%",
+      flecha: "up" as const,
       subtitulo: "Acumulado mes: $ 342,0 M",
       href: "/venta-del-dia",
-      icono: CircleDollarSign,
+      Icono: CircleDollarSign,
       borderColor: "#10B981",
       iconBg: "#D1FAE5",
       iconColor: "#059669",
@@ -80,9 +66,10 @@ export function ExecutiveOverview({
       titulo: "Tiempo promedio de espera",
       valor: "14 min",
       delta: "-2,3%",
+      flecha: "down" as const,
       subtitulo: "Meta institucional: < 18 min",
       href: "/procesos",
-      icono: Clock,
+      Icono: Clock,
       borderColor: "#8B5CF6",
       iconBg: "#EDE9FE",
       iconColor: "#7C3AED",
@@ -97,9 +84,10 @@ export function ExecutiveOverview({
       titulo: "Cirugías programadas",
       valor: "38",
       delta: "+6,4%",
+      flecha: "up" as const,
       subtitulo: "Quirófano principal y láser",
       href: "/quirurgicos",
-      icono: Calendar,
+      Icono: Calendar,
       borderColor: "#F59E0B",
       iconBg: "#FEF3C7",
       iconColor: "#D97706",
@@ -112,47 +100,47 @@ export function ExecutiveOverview({
     },
   ];
 
+  void BarChart2;
+  void FileText;
+  void Sparkles;
+  void Target;
   const areas = [
     {
-      titulo: "Tableros y Analítica",
-      descripcion:
-        "Indicadores de demanda, frecuencias de atención, comportamiento quirúrgico y facturación diaria.",
-      href: "/analytics",
-      icono: Compass,
-      acento: "border-t-[#2B6BE4]",
-      fondoIcono: "bg-[#EBF2FF] text-[#1D58D8]",
+      titulo: "Operaci├│n Cl├¡nica y Asistencial",
+      descripcion: "Producci├│n, tiempos de espera, y atenci├│n cl├¡nica.",
+      href: "/frecuencias",
+      borde: "border-l-[#2563EB]",
+      fondoIcono: "bg-[#EBF3FE] text-[#2563EB]",
+      Icono: Target,
     },
     {
-      titulo: "Procesos y Calidad",
-      descripcion:
-        "Mapa de procesos institucional, caracterizaciones, formatos vigentes y mejora continua.",
-      href: "/procesos",
-      icono: FileText,
-      acento: "border-t-[#0EA5E9]",
-      fondoIcono: "bg-[#E0F2FE] text-[#0284C7]",
+      titulo: "Embudo Comercial y Pacientes",
+      descripcion: "Captaci├│n, conversi├│n y seguimiento de pacientes potenciales.",
+      href: "/leads",
+      borde: "border-l-[#10B981]",
+      fondoIcono: "bg-[#E6F8F1] text-[#10B981]",
+      Icono: BarChart2,
     },
     {
-      titulo: "Proyectos e Innovación",
-      descripcion:
-        "Portafolio estratégico de iniciativas, seguimiento de hitos, responsables y entregables.",
-      href: "/proyectos",
-      icono: Target,
-      acento: "border-t-[#6366F1]",
-      fondoIcono: "bg-[#EEF2FF] text-[#4F46E5]",
+      titulo: "Ordenamientos No Quir├║rgicos",
+      descripcion: "Conversi├│n de ├│rdenes de ex├ímenes diagn├│sticos y procedimientos.",
+      href: "/no-quirurgicos",
+      borde: "border-l-[#8B5CF6]",
+      fondoIcono: "bg-[#F3EEFF] text-[#8B5CF6]",
+      Icono: FileText,
     },
     {
-      titulo: "Crecimiento y Pacientes",
-      descripcion:
-        "Embudo de clientes potenciales, alcance en redes sociales y conversión de campañas.",
-      href: "/clientes-potenciales",
-      icono: Sparkles,
-      acento: "border-t-[#14B8A6]",
-      fondoIcono: "bg-[#CCFBF1] text-[#0D9488]",
+      titulo: "Ordenamientos Quir├║rgicos",
+      descripcion: "Seguimiento de pacientes con orden de cirug├¡a hasta programaci├│n efectiva.",
+      href: "/quirurgicos",
+      borde: "border-l-[#F59E0B]",
+      fondoIcono: "bg-[#FEF3E2] text-[#F59E0B]",
+      Icono: Sparkles,
     },
   ];
 
   return (
-    <div className="mx-auto w-full max-w-[1440px]">
+    <div className="mx-auto max-w-[1360px] pb-8">
       <ExecutiveHeader
         overline="CENTRO OFTALMOL├ôGICO EBENEZER"
         title={mode === "inicio" ? `Hola, ${primerNombre}` : "Resumen de Anal├¡tica"}
@@ -164,19 +152,20 @@ export function ExecutiveOverview({
         variant={mode}
       />
 
-      {/* 4 Tarjetas Ejecutivas de KPIs (Combinación Ganadora: Opción 3 + Mini-Gráfica Opción 1) */}
-      <section aria-label="Indicadores principales" className="mb-5">
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((kpi) => {
-            const Icon = kpi.icono;
-            return (
-              <Link
-                key={kpi.titulo}
-                href={kpi.href}
-                style={{ borderLeftColor: kpi.borderColor }}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-[16px] border border-[#E2ECF8] border-l-[3.5px] bg-white shadow-[0_6px_18px_-8px_rgba(14,36,94,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C5DAF6] hover:shadow-[0_12px_24px_-10px_rgba(29,88,216,0.16)]"
-              >
-                <div className="flex items-center gap-2.5 bg-gradient-to-b from-[#EDF4FD]/90 via-[#F5F9FF]/65 to-white px-4 pt-3.5 pb-2">
+      {/* Fila 1: 4 KPIs ejecutivos (Combinación Ganadora: Opción 3 + Mini-gráfica Opción 1) */}
+      <section className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((kpi) => {
+          const Icon = kpi.Icono;
+          return (
+            <Link
+              key={kpi.titulo}
+              href={kpi.href}
+              style={{ borderLeftColor: kpi.borderColor }}
+              className="group relative flex flex-col justify-between overflow-hidden rounded-[16px] border border-[#E2ECF8] border-l-[3.5px] bg-white shadow-[0_6px_18px_-8px_rgba(14,36,94,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFD4F4] hover:shadow-[0_12px_24px_-10px_rgba(29,88,216,0.16)]"
+            >
+              {/* Franja superior azul hielo suave con título completo sin recortar (Opción 3) */}
+              <div className="flex items-center justify-between gap-2 bg-gradient-to-b from-[#EDF4FD]/90 via-[#F5F9FF]/65 to-white px-4 pt-3.5 pb-2">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <span
                     style={{ backgroundColor: kpi.iconBg, color: kpi.iconColor }}
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.85)]"
@@ -187,102 +176,110 @@ export function ExecutiveOverview({
                     {kpi.titulo}
                   </span>
                 </div>
+                <ChevronRight
+                  className="h-3.5 w-3.5 shrink-0 text-[#94A3B8] transition-transform group-hover:translate-x-0.5 group-hover:text-[#1D58D8]"
+                  strokeWidth={2}
+                />
+              </div>
 
-                <div className="flex items-end justify-between gap-2 px-4 pb-3.5 pt-1">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[25px] font-extrabold leading-none tracking-[-0.03em] text-[#0E245E]">
-                        {kpi.valor}
-                      </span>
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[11px] font-bold text-[#15803D]">
-                        <svg
-                          className="h-2.5 w-2.5"
-                          viewBox="0 0 12 12"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M2.5 8.5 9.5 2.5" />
-                          <path d="M4.5 2.5h5v5" />
-                        </svg>
-                        {kpi.delta}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-[11.5px] font-medium text-[#64748B]">
-                      {kpi.subtitulo}
-                    </p>
+              {/* Cuerpo: Valor + cápsula verde a la izquierda y mini-gráfica de área a la derecha (Opción 1) */}
+              <div className="flex items-end justify-between gap-2 px-4 pb-3.5 pt-1">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[26px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-[#0E245E]">
+                      {kpi.valor}
+                    </span>
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[11px] font-bold tabular-nums text-[#15803D]">
+                      {kpi.flecha === "up" ? (
+                        <ArrowUp className="h-2.5 w-2.5" strokeWidth={2.5} />
+                      ) : (
+                        <ArrowDown className="h-2.5 w-2.5" strokeWidth={2.5} />
+                      )}
+                      {kpi.delta}
+                    </span>
                   </div>
-
-                  <div className="shrink-0 pt-1">
-                    <svg
-                      className="h-[38px] w-[76px] overflow-visible"
-                      viewBox="0 0 80 38"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <defs>
-                        <linearGradient id={kpi.sparkGradId} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={kpi.sparkColor} stopOpacity="0.28" />
-                          <stop offset="100%" stopColor={kpi.sparkColor} stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-                      <path d={kpi.sparkArea} fill={`url(#${kpi.sparkGradId})`} />
-                      <path
-                        d={kpi.sparkPath}
-                        stroke={kpi.sparkColor}
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <circle
-                        cx={kpi.endX}
-                        cy={kpi.endY}
-                        r="2.8"
-                        fill="#FFFFFF"
-                        stroke={kpi.sparkColor}
-                        strokeWidth="2"
-                      />
-                    </svg>
-                  </div>
+                  <p className="mt-1.5 text-[11.5px] font-medium text-[#64748B]">
+                    {kpi.subtitulo}
+                  </p>
                 </div>
-              </Link>
-            );
-          })}
-        </div>
+
+                {/* Mini-gráfica de área integrada en la tarjeta (Opción 1) */}
+                <div className="shrink-0 pt-1">
+                  <svg
+                    className="h-[38px] w-[76px] overflow-visible"
+                    viewBox="0 0 80 38"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient id={kpi.sparkGradId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={kpi.sparkColor} stopOpacity="0.28" />
+                        <stop offset="100%" stopColor={kpi.sparkColor} stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d={kpi.sparkArea} fill={`url(#${kpi.sparkGradId})`} />
+                    <path
+                      d={kpi.sparkPath}
+                      stroke={kpi.sparkColor}
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle
+                      cx={kpi.endX}
+                      cy={kpi.endY}
+                      r="2.8"
+                      fill="#FFFFFF"
+                      stroke={kpi.sparkColor}
+                      strokeWidth="2"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </section>
 
+      {/* Fila 2: Producci├│n reciente (14 d├¡as) */}
       <ProduccionRecienteChart />
 
-      <section aria-label="Áreas de trabajo">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[14.5px] font-bold tracking-[-0.01em] text-[#0E245E]">
-            Áreas de trabajo
-          </h2>
-          <span className="text-[11.5px] font-medium text-[#64748B]">
-            Acceso directo a módulos operativos
-          </span>
+      {/* Fila 3: Accesos por ├írea */}
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Compass className="h-[18px] w-[18px] text-[#1D58D8]" strokeWidth={2} />
+            <h2 className="text-[15.5px] font-bold tracking-[-0.015em] text-[#0E245E]">
+              Accesos por ├írea
+            </h2>
+          </div>
+          <Link
+            href="/frecuencias"
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-[#64748B] transition hover:text-[#0E245E]"
+          >
+            <span>Pulsa un tablero para ver m├ís detalles</span>
+            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {areas.map((area) => {
-            const Icon = area.icono;
+            const Icon = area.Icono;
             return (
               <Link
                 key={area.titulo}
                 href={area.href}
-                className={`group flex flex-col justify-between rounded-[14px] border border-[#E6EEF8] border-t-[3px] ${area.acento} bg-white p-4 shadow-[0_2px_8px_rgba(14,36,94,0.03)] transition-all hover:-translate-y-0.5 hover:border-[#BFD3EE] hover:shadow-[0_8px_20px_rgba(14,36,94,0.07)]`}
+                className={`group flex flex-col justify-between rounded-[16px] border border-[#E6EEF8] border-l-[3.5px] ${area.borde} bg-white p-4 shadow-[0_2px_12px_rgba(14,36,94,0.04)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#BFD4F4] hover:shadow-[0_6px_20px_rgba(14,36,94,0.07)]`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] ${area.fondoIcono}`}
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${area.fondoIcono}`}
                       >
-                        <Icon className="h-4 w-4" strokeWidth={2} />
+                        <Icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
                       </span>
-                      <h3 className="text-[13.5px] font-bold text-[#0E245E]">
+                      <h3 className="text-[13px] font-bold leading-snug tracking-[-0.01em] text-[#0E245E]">
                         {area.titulo}
                       </h3>
                     </div>
@@ -303,5 +300,3 @@ export function ExecutiveOverview({
     </div>
   );
 }
-
-export default ExecutiveOverview;
