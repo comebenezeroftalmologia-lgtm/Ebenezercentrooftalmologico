@@ -61,15 +61,71 @@ function IconoModulo({ slug, className }: { slug: Modulo; className?: string }) 
 
 export const BANDEJA_BLANCA_STYLE: React.CSSProperties = {
   backgroundColor: "#FAFBFD",
-  backgroundImage: [
-    "linear-gradient(180deg, rgba(244,248,254,0.32) 0%, rgba(255,255,255,0.90) 28%, rgba(255,255,255,0.93) 72%, rgba(242,247,254,0.32) 100%)",
-    "radial-gradient(rgba(37,99,235,0.115) 0.8px, transparent 0.8px)",
-    "repeating-linear-gradient(45deg, rgba(37,99,235,0.042) 0px, rgba(37,99,235,0.042) 1px, transparent 1px, transparent 22px)",
-    "repeating-linear-gradient(-45deg, rgba(37,99,235,0.042) 0px, rgba(37,99,235,0.042) 1px, transparent 1px, transparent 22px)",
-  ].join(", "),
-  backgroundSize: "100% 100%, 14px 14px, 100% 100%, 100% 100%",
 };
 
+export function TramaArquitectonicaBandeja() {
+  return (
+    <>
+      {/* Trama arquitectónica superior (Opción 2: micro-puntos + líneas diagonales 45°) */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[175px] select-none overflow-hidden"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.88) 52%, rgba(0,0,0,0.35) 82%, transparent 100%)",
+          maskImage:
+            "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.88) 52%, rgba(0,0,0,0.35) 82%, transparent 100%)",
+        }}
+      >
+        <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="eb-op2-dots-top" width="8" height="8" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="0.95" fill="#7B9FD0" fillOpacity="0.45" />
+            </pattern>
+            <pattern id="eb-op2-diag-top" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path
+                d="M-8,8 l16,-16 M0,32 l32,-32 M24,40 l16,-16 M-8,24 l16,16 M0,0 l32,32 M24,-8 l16,16"
+                stroke="#85A7D6"
+                strokeWidth="0.95"
+                strokeOpacity="0.42"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#eb-op2-dots-top)" />
+          <rect width="100%" height="100%" fill="url(#eb-op2-diag-top)" />
+        </svg>
+      </div>
+
+      {/* Trama arquitectónica inferior (Opción 2: micro-puntos + líneas diagonales 45°) */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[210px] select-none overflow-hidden"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.82) 48%, rgba(0,0,0,0.28) 80%, transparent 100%)",
+          maskImage:
+            "linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.82) 48%, rgba(0,0,0,0.28) 80%, transparent 100%)",
+        }}
+      >
+        <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="eb-op2-dots-bot" width="8" height="8" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="0.95" fill="#7B9FD0" fillOpacity="0.42" />
+            </pattern>
+            <pattern id="eb-op2-diag-bot" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path
+                d="M-8,8 l16,-16 M0,32 l32,-32 M24,40 l16,-16 M-8,24 l16,16 M0,0 l32,32 M24,-8 l16,16"
+                stroke="#85A7D6"
+                strokeWidth="0.95"
+                strokeOpacity="0.38"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#eb-op2-dots-bot)" />
+          <rect width="100%" height="100%" fill="url(#eb-op2-diag-bot)" />
+        </svg>
+      </div>
+    </>
+  );
+}
 export function RielGlobal({
   modulos,
   isAdmin,
@@ -237,22 +293,22 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
     <div className="relative flex h-full shrink-0">
       <RielGlobal modulos={modulos} isAdmin={isAdmin} onToggleBandeja={alternar} onOpenBandeja={() => { setAbierto(true); try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} }} />
 
-      <aside style={BANDEJA_BLANCA_STYLE} className={`hidden h-full shrink-0 flex-col border-r border-[#DCE7F7] bg-gradient-to-b from-[#F3F8FE] via-white to-white shadow-[4px_0_16px_rgba(14,36,94,0.03)] transition-all duration-200 ease-eb-out md:flex ${abierto ? "w-[236px]" : "w-0 overflow-hidden border-r-0"}`}>
-        <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
+      <aside style={BANDEJA_BLANCA_STYLE} className={`relative hidden h-full shrink-0 flex-col overflow-hidden border-r border-[#DCE7F7] bg-[#FAFBFD] shadow-[4px_0_16px_rgba(14,36,94,0.035)] transition-all duration-200 ease-eb-out md:flex ${abierto ? "w-[236px]" : "w-0 overflow-hidden border-r-0"}`}><TramaArquitectonicaBandeja />
+        <div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-2.5">
           <p className="truncate text-[14.5px] font-bold tracking-[-0.015em] text-[#0E245E]">{tituloBandeja}</p>
           <button type="button" onClick={alternar} title="Contraer bandeja lateral" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] border border-[#DCE4F0] bg-white text-[#475569] transition hover:border-[#94A3B8] hover:text-[#0E245E]">
             <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
           </button>
         </div>
 
-        <div className="px-3.5 pb-3">
+        <div className="relative z-10 px-3.5 pb-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94A3B8]" strokeWidth={2} />
-            <input type="text" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder={placeholderBusqueda} className="w-full rounded-[9px] border border-[#E6ECF5] bg-[#F7F9FC] py-1.5 pl-8 pr-3 text-[12px] text-[#0E245E] placeholder:text-[#94A3B8] transition focus:border-[#2563EB] focus:bg-white focus:outline-none" />
+            <input type="text" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder={placeholderBusqueda} className="w-full rounded-[10px] border border-[#CBD8EE] bg-white/95 py-1.5 pl-8 pr-3 shadow-[0_1px_4px_rgba(14,36,94,0.04)] text-[12px] text-[#0E245E] placeholder:text-[#94A3B8] transition focus:border-[#2563EB] focus:bg-white focus:outline-none" />
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-1">
+        <nav className="relative z-10 flex-1 overflow-y-auto px-3 py-1">
           {enInicio ? (
             <>
               <div className="mb-4">

@@ -9,7 +9,7 @@ import type { Modulo } from "@/lib/modulos";
 import { ArbolEspacios } from "@/components/proyectos/ArbolEspacios";
 import { EspacioModal } from "@/components/proyectos/CrearEspacioModal";
 import { AvisosProvider } from "@/components/proyectos/ui";
-import { BANDEJA_BLANCA_STYLE, RielGlobal } from "@/components/Sidebar";
+import { BANDEJA_BLANCA_STYLE, RielGlobal, TramaArquitectonicaBandeja } from "@/components/Sidebar";
 
 const ListaActivaCtx = createContext<string | null>(null);
 const SetListaActivaCtx = createContext<(id: string | null) => void>(() => {});
@@ -58,11 +58,11 @@ export function ProyectosShell({
             <aside style={BANDEJA_BLANCA_STYLE}
               className={`${
                 menuMovil ? "fixed inset-y-0 left-[78px] z-40 flex w-[236px] shadow-eb-4" : "hidden"
-              } shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
+              } relative shrink-0 flex-col overflow-hidden border-r border-[#DCE7F7] bg-[#FAFBFD] shadow-[4px_0_16px_rgba(14,36,94,0.035)] transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
                 abierto ? "md:w-[236px]" : "md:w-0 md:overflow-hidden md:border-r-0"
               }`}
             >
-              <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
+              <TramaArquitectonicaBandeja /><div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-2.5">
                 <p className="truncate text-[14.5px] font-bold tracking-[-0.015em] text-[#0E245E]">
                   Proyectos
                 </p>
@@ -84,7 +84,7 @@ export function ProyectosShell({
                 </button>
               </div>
 
-              <div className="px-3 pt-1 pb-2">
+              <div className="relative z-10 px-3 pt-1 pb-2">
                 <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">
                   Vista General
                 </div>

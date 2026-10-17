@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { AppUser, Area } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
-import { BANDEJA_BLANCA_STYLE, RielGlobal } from "@/components/Sidebar";
+import { BANDEJA_BLANCA_STYLE, RielGlobal, TramaArquitectonicaBandeja } from "@/components/Sidebar";
 import { agruparAreasPorCadenaDeValor } from "@/lib/procesos/ordenAreas";
 
 export function ProcesosNav({
@@ -55,11 +55,11 @@ export function ProcesosNav({
       />
 
       <aside style={BANDEJA_BLANCA_STYLE}
-        className={`hidden h-full shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:flex ${
+        className={`hidden h-full relative shrink-0 flex-col overflow-hidden border-r border-[#DCE7F7] bg-[#FAFBFD] shadow-[4px_0_16px_rgba(14,36,94,0.035)] transition-all duration-200 ease-eb-out md:flex ${
           isOpen ? "w-[236px]" : "w-0 overflow-hidden border-r-0"
         }`}
       >
-        <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
+        <TramaArquitectonicaBandeja /><div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-2.5">
           <p className="truncate text-[14.5px] font-bold tracking-[-0.015em] text-[#0E245E]">
             Procesos y Áreas
           </p>
@@ -73,7 +73,7 @@ export function ProcesosNav({
           </button>
         </div>
 
-        <div className="px-3.5 pb-3">
+        <div className="relative z-10 px-3.5 pb-3">
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94A3B8]"
@@ -84,12 +84,12 @@ export function ProcesosNav({
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar área (ej. SIAU)..."
-              className="w-full rounded-[9px] border border-[#E6ECF5] bg-[#F7F9FC] py-1.5 pl-8 pr-3 text-[12px] text-[#0E245E] placeholder:text-[#94A3B8] transition focus:border-[#2563EB] focus:bg-white focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CBD8EE] bg-white/95 py-1.5 pl-8 pr-3 shadow-[0_1px_4px_rgba(14,36,94,0.04)] text-[12px] text-[#0E245E] placeholder:text-[#94A3B8] transition focus:border-[#2563EB] focus:bg-white focus:outline-none"
             />
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-1">
+        <nav className="relative z-10 flex-1 overflow-y-auto px-3 py-1">
           {!q && (
             <div className="mb-4">
               <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">
