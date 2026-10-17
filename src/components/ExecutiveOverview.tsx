@@ -100,54 +100,50 @@ export function ExecutiveOverview({
     },
   ];
 
-  void BarChart2;
-  void FileText;
-  void Sparkles;
-  void Target;
   const areas = [
     {
-      titulo: "Operaci├│n Cl├¡nica y Asistencial",
-      descripcion: "Producci├│n, tiempos de espera, y atenci├│n cl├¡nica.",
+      titulo: "Operación Clínica y Asistencial",
+      descripcion: "Producción, tiempos de espera, y atención clínica.",
       href: "/frecuencias",
-      borde: "border-l-[#2563EB]",
-      fondoIcono: "bg-[#EBF3FE] text-[#2563EB]",
       Icono: Target,
+      borde: "border-l-[#2563EB]",
+      fondoIcono: "bg-[#EBF2FF] text-[#1D58D8]",
     },
     {
       titulo: "Embudo Comercial y Pacientes",
-      descripcion: "Captaci├│n, conversi├│n y seguimiento de pacientes potenciales.",
-      href: "/leads",
-      borde: "border-l-[#10B981]",
-      fondoIcono: "bg-[#E6F8F1] text-[#10B981]",
+      descripcion: "Captación, conversión y seguimiento de pacientes potenciales.",
+      href: "/clientes-potenciales",
       Icono: BarChart2,
+      borde: "border-l-[#10B981]",
+      fondoIcono: "bg-[#E6F9F1] text-[#059669]",
     },
     {
-      titulo: "Ordenamientos No Quir├║rgicos",
-      descripcion: "Conversi├│n de ├│rdenes de ex├ímenes diagn├│sticos y procedimientos.",
+      titulo: "Ordenamientos No Quirúrgicos",
+      descripcion: "Conversión de órdenes de exámenes diagnósticos y procedimientos.",
       href: "/no-quirurgicos",
-      borde: "border-l-[#8B5CF6]",
-      fondoIcono: "bg-[#F3EEFF] text-[#8B5CF6]",
       Icono: FileText,
+      borde: "border-l-[#8B5CF6]",
+      fondoIcono: "bg-[#F3EEFF] text-[#7C3AED]",
     },
     {
-      titulo: "Ordenamientos Quir├║rgicos",
-      descripcion: "Seguimiento de pacientes con orden de cirug├¡a hasta programaci├│n efectiva.",
+      titulo: "Ordenamientos Quirúrgicos",
+      descripcion: "Seguimiento de pacientes con orden de cirugía hasta programación efectiva.",
       href: "/quirurgicos",
-      borde: "border-l-[#F59E0B]",
-      fondoIcono: "bg-[#FEF3E2] text-[#F59E0B]",
       Icono: Sparkles,
+      borde: "border-l-[#F59E0B]",
+      fondoIcono: "bg-[#FEF5E7] text-[#D97706]",
     },
   ];
 
   return (
-    <div className="mx-auto max-w-[1360px] pb-8">
+    <div className="mx-auto w-full max-w-[1400px]">
       <ExecutiveHeader
-        overline="CENTRO OFTALMOL├ôGICO EBENEZER"
-        title={mode === "inicio" ? `Hola, ${primerNombre}` : "Resumen de Anal├¡tica"}
+        overline="CENTRO OFTALMOLÓGICO EBENEZER"
+        title={mode === "inicio" ? `Hola, ${primerNombre}` : "Resumen de Analítica"}
         subtitle={
           mode === "inicio"
-            ? "Selecciona un tablero o ├írea en la bandeja izquierda, o entra directo desde aqu├¡."
-            : "Pulso consolidado de operaci├│n cl├¡nica y embudo comercial."
+            ? "Selecciona un tablero o área en la bandeja izquierda, o entra directo desde aquí."
+            : "Pulso consolidado de operación clínica y embudo comercial."
         }
         variant={mode}
       />
@@ -241,23 +237,23 @@ export function ExecutiveOverview({
         })}
       </section>
 
-      {/* Fila 2: Producci├│n reciente (14 d├¡as) */}
+      {/* Fila 2: Producción reciente (14 días) */}
       <ProduccionRecienteChart />
 
-      {/* Fila 3: Accesos por ├írea */}
+      {/* Fila 3: Accesos por área */}
       <section>
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Compass className="h-[18px] w-[18px] text-[#1D58D8]" strokeWidth={2} />
             <h2 className="text-[15.5px] font-bold tracking-[-0.015em] text-[#0E245E]">
-              Accesos por ├írea
+              Accesos por área
             </h2>
           </div>
           <Link
             href="/frecuencias"
             className="inline-flex items-center gap-1 text-[12px] font-medium text-[#64748B] transition hover:text-[#0E245E]"
           >
-            <span>Pulsa un tablero para ver m├ís detalles</span>
+            <span>Pulsa un tablero para ver más detalles</span>
             <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
           </Link>
         </div>
