@@ -108,7 +108,7 @@ export function ProcesosNav({
                       href={item.href}
                       className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-2 transition ${
                         active
-                          ? "bg-[#E6F0FD] font-semibold text-[#0E245E]"
+                          ? "border-l-[3px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E]"
                           : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                       }`}
                     >
@@ -151,7 +151,7 @@ export function ProcesosNav({
                       href={href}
                       className={`group flex items-center justify-between gap-2 rounded-[10px] px-3 py-2 text-[13px] transition ${
                         active
-                          ? "bg-[#E6F0FD] font-semibold text-[#0E245E]"
+                          ? "border-l-[3px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E]"
                           : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                       }`}
                     >

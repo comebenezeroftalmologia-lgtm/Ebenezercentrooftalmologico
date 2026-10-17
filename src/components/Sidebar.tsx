@@ -83,11 +83,11 @@ export function RielGlobal({
 
   const itemClass = (activo: boolean) =>
     `group relative flex w-[64px] flex-col items-center justify-center gap-1.5 rounded-[12px] py-2.5 transition-colors duration-150 ${
-      activo ? "bg-[#163B6E] text-white font-medium" : "text-white/75 hover:bg-white/10 hover:text-white"
+      activo ? "bg-gradient-to-b from-[#1E4282]/85 to-[#153163]/90 text-white font-medium border border-[#4B83E8]/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_2px_8px_rgba(14,36,94,0.25)]" : "text-white/75 hover:bg-white/[0.08] hover:text-white"
     }`;
 
   return (
-    <aside className="z-20 flex w-[78px] shrink-0 select-none flex-col items-center bg-[#0B224C] py-3.5 text-white">
+    <aside style={{ backgroundImage: "linear-gradient(155deg, #091E42 0%, #091E42 36%, #102C60 54%, #081B3B 72%, #06132C 100%)" }} className="z-20 flex w-[78px] shrink-0 select-none flex-col items-center border-r border-white/10 bg-[#091E42] py-3.5 text-white shadow-[2px_0_12px_rgba(6,19,44,0.18)]">
       <Link href="/" className="mb-3 flex flex-col items-center justify-center px-1 text-center transition opacity-95 hover:opacity-100" title="Centro Oftalmológico Ebenezer">
         <Image src="/brand/logo/logo-claro.png" alt="Ebenezer" width={48} height={48} className="h-11 w-11 object-contain" priority />
       </Link>
@@ -213,7 +213,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
   const comercial = filtrados.filter((m) => !OPERACION_SLUGS.has(m.slug));
   const pill = (activo: boolean) =>
     `group flex items-center gap-2.5 rounded-[10px] px-3 py-2 transition ${
-      activo ? "bg-[#E6F0FD] font-semibold text-[#0E245E]" : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
+      activo ? "border-l-[3px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E] shadow-[0_1px_3px_rgba(37,99,235,0.06)]" : "border-l-[3px] border-l-transparent text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E] hover:translate-x-0.5"
     }`;
   const iconCls = (activo: boolean) =>
     `h-4 w-4 shrink-0 ${activo ? "text-[#1D58D8]" : "text-[#64748B] group-hover:text-[#0E245E]"}`;
@@ -222,7 +222,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
     <div className="relative flex h-full shrink-0">
       <RielGlobal modulos={modulos} isAdmin={isAdmin} onToggleBandeja={alternar} />
 
-      <aside className={`hidden h-full shrink-0 flex-col border-r border-[#E6ECF5] bg-white transition-all duration-200 ease-eb-out md:flex ${abierto ? "w-[236px]" : "w-0 overflow-hidden border-r-0"}`}>
+      <aside className={`hidden h-full shrink-0 flex-col border-r border-[#E6ECF5] bg-gradient-to-b from-[#F3F8FE] via-white to-white shadow-[4px_0_16px_rgba(14,36,94,0.03)] transition-all duration-200 ease-eb-out md:flex ${abierto ? "w-[236px]" : "w-0 overflow-hidden border-r-0"}`}>
         <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
           <p className="truncate text-[14.5px] font-bold tracking-[-0.015em] text-[#0E245E]">{tituloBandeja}</p>
           <button type="button" onClick={alternar} title="Contraer bandeja lateral" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] border border-[#DCE4F0] bg-white text-[#475569] transition hover:border-[#94A3B8] hover:text-[#0E245E]">
