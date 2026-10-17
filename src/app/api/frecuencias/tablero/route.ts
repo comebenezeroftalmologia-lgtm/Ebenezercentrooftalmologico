@@ -64,8 +64,13 @@ const ESTILOS_AJUSTE_FILTROS = `
     white-space: nowrap !important;
     flex-shrink: 0 !important;
   }
-  .embebido .period-bar .tg-grupo {
-    margin-left: auto !important;
+  .embebido .period-bar {
+    justify-content: flex-start !important;
+  }
+  .embebido .period-bar .tg-grupo,
+  .period-bar .tg-grupo {
+    margin-left: 10px !important;
+    margin-right: auto !important;
     flex-shrink: 0 !important;
   }
 

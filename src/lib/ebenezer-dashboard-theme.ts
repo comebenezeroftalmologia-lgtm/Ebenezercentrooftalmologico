@@ -1,6 +1,15 @@
 export const EBENEZER_COMBINACION_GANADORA_SNIPPET = `
 <style id="ebenezer-combinacion-ganadora-styles">
   /* === LA COMBINACIÓN GANADORA: ESTÁNDAR EJECUTIVO MULTI-HOJA === */
+  /* 0. Posición de MUTUAL (.tg-grupo) pegado a LIMPIAR a la izquierda para despejar ilustración derecha */
+  .embebido .period-bar, .period-bar {
+    justify-content: flex-start !important;
+  }
+  .embebido .period-bar .tg-grupo, .period-bar .tg-grupo, .tg-grupo {
+    margin-left: 10px !important;
+    margin-right: auto !important;
+    flex-shrink: 0 !important;
+  }
   
   /* 1. Cintillos de contexto / resumen (Opción 3) */
   .eb-cg-context-strip {
@@ -234,7 +243,7 @@ export const EBENEZER_COMBINACION_GANADORA_SNIPPET = `
       for (var i = 0; i < allEls.length; i++) {
         var el = allEls[i];
         var txt = (el.textContent || "").trim();
-        if (txt === "MUTUAL" && el.parentElement) {
+        if (txt === "MUTUAL" && el.parentElement) { el.parentElement.style.setProperty("margin-left", "10px", "important"); el.parentElement.style.setProperty("margin-right", "auto", "important"); if (el.parentElement.parentElement) el.parentElement.parentElement.style.setProperty("justify-content", "flex-start", "important");
           el.parentElement.style.marginLeft = "8px";
         }
       }
