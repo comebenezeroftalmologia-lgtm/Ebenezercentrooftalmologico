@@ -334,12 +334,12 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
               value={selectedDoctor}
               onChange={(e) => setSelectedDoctor(e.target.value)}
               aria-label="Filtrar por médico"
-              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[215px]"
+              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[215px]"
             >
-              <option value="Todos">Médico: Todos</option>
+              <option value="Todos">Todos los médicos</option>
               {allDoctors.map((med) => (
                 <option key={med} value={med}>
-                  Médico: {med}
+                  {med}
                 </option>
               ))}
             </select>
@@ -349,12 +349,12 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
               value={selectedProc}
               onChange={(e) => setSelectedProc(e.target.value)}
               aria-label="Filtrar por procedimiento homologado"
-              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[215px]"
+              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[215px]"
             >
-              <option value="Todos">Procedimiento: Todos</option>
+              <option value="Todos">Todos los procedimientos</option>
               {allProcedures.map((proc) => (
                 <option key={proc} value={proc}>
-                  Procedimiento: {proc}
+                  {proc}
                 </option>
               ))}
             </select>
