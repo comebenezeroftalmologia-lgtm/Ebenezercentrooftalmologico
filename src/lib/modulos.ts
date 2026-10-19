@@ -24,6 +24,7 @@ export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoM
   { slug: "redes_sociales", label: "Redes Sociales", href: "/redes-sociales", grupo: "Analytics" },
   { slug: "frecuencias", label: "Frecuencias", href: "/frecuencias", grupo: "Analytics" },
   { slug: "venta_del_dia", label: "Venta del Día", href: "/venta-del-dia", grupo: "Analytics" },
+  { slug: "venta_del_dia", label: 'Digiturno y Contact', href: '/digiturno-contact', grupo: "Analytics" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
   { slug: "proyectos", label: "Proyectos", href: "/proyectos", grupo: "Procesos" },
 ];
