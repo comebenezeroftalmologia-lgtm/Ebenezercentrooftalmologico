@@ -40,40 +40,51 @@ const REAL_DATA: {
   no_quirurgicos: MonthMap;
 };
 
-interface MonthConfig {
-  key: string;
+interface MonthDef {
+  mm: string;
   label: string;
   axisLabel: string;
   shortLabel: string;
   prevLabel: string;
 }
 
-const MONTHS: MonthConfig[] = [
-  { key: "2026-01", label: "Enero", axisLabel: "Ene", shortLabel: "ENE", prevLabel: "De meses previos" },
-  { key: "2026-02", label: "Febrero", axisLabel: "Feb", shortLabel: "FEB", prevLabel: "De Enero" },
-  { key: "2026-03", label: "Marzo", axisLabel: "Mar", shortLabel: "MAR", prevLabel: "De Feb / Ene" },
-  { key: "2026-04", label: "Abril", axisLabel: "Abr", shortLabel: "ABR", prevLabel: "De Mar / Feb / Ene" },
-  { key: "2026-05", label: "Mayo", axisLabel: "May", shortLabel: "MAY", prevLabel: "De Abr / Mar / Feb" },
-  { key: "2026-06", label: "Junio", axisLabel: "Jun", shortLabel: "JUN", prevLabel: "De May / Abr / Mar" },
-  { key: "2026-07", label: "Julio", axisLabel: "Jul", shortLabel: "JUL", prevLabel: "De Jun / May / Abr" },
-  { key: "2026-08", label: "Agosto", axisLabel: "Ago", shortLabel: "AGO", prevLabel: "De Jul / Jun / May" },
-  { key: "2026-09", label: "Septiembre", axisLabel: "Sep", shortLabel: "SEP", prevLabel: "De Ago / Jul / Jun" },
-  { key: "2026-10", label: "Octubre 2026", axisLabel: "Oct", shortLabel: "OCT", prevLabel: "De Sep / Ago / Jul" },
+const ALL_MONTH_DEFS: MonthDef[] = [
+  { mm: "01", label: "Enero", axisLabel: "Ene", shortLabel: "ENE", prevLabel: "De meses previos" },
+  { mm: "02", label: "Febrero", axisLabel: "Feb", shortLabel: "FEB", prevLabel: "De Enero" },
+  { mm: "03", label: "Marzo", axisLabel: "Mar", shortLabel: "MAR", prevLabel: "De Feb / Ene" },
+  { mm: "04", label: "Abril", axisLabel: "Abr", shortLabel: "ABR", prevLabel: "De Mar / Feb / Ene" },
+  { mm: "05", label: "Mayo", axisLabel: "May", shortLabel: "MAY", prevLabel: "De Abr / Mar / Feb" },
+  { mm: "06", label: "Junio", axisLabel: "Jun", shortLabel: "JUN", prevLabel: "De May / Abr / Mar" },
+  { mm: "07", label: "Julio", axisLabel: "Jul", shortLabel: "JUL", prevLabel: "De Jun / May / Abr" },
+  { mm: "08", label: "Agosto", axisLabel: "Ago", shortLabel: "AGO", prevLabel: "De Jul / Jun / May" },
+  { mm: "09", label: "Septiembre", axisLabel: "Sep", shortLabel: "SEP", prevLabel: "De Ago / Jul / Jun" },
+  { mm: "10", label: "Octubre", axisLabel: "Oct", shortLabel: "OCT", prevLabel: "De Sep / Ago / Jul" },
+  { mm: "11", label: "Noviembre", axisLabel: "Nov", shortLabel: "NOV", prevLabel: "De Oct / Sep / Ago" },
+  { mm: "12", label: "Diciembre", axisLabel: "Dic", shortLabel: "DIC", prevLabel: "De Nov / Oct / Sep" },
 ];
+
+const YEARS = ["2026", "2025", "2024"];
 
 export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) {
   const isQuirurgico = (tipo ?? mode ?? "quirurgicos") === "quirurgicos";
   const dataset: MonthMap = isQuirurgico ? REAL_DATA.quirurgicos : REAL_DATA.no_quirurgicos;
 
-  const [selectedMonth, setSelectedMonth] = useState<string>("2026-09");
+  const [selectedYear, setSelectedYear] = useState<string>("2026");
+  const [selectedMonthMm, setSelectedMonthMm] = useState<string>("09"); // "01".."12" o "todos"
   const [selectedDoctor, setSelectedDoctor] = useState<string>("Todos");
   const [selectedProc, setSelectedProc] = useState<string>("Todos");
   const [expandedDoctors, setExpandedDoctors] = useState<Record<string, boolean>>({});
+
+  const [yearMenuOpen, setYearMenuOpen] = useState<boolean>(false);
   const [monthMenuOpen, setMonthMenuOpen] = useState<boolean>(false);
+  const yearMenuRef = useRef<HTMLDivElement | null>(null);
   const monthMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (ev: MouseEvent) => {
+      if (yearMenuRef.current && !yearMenuRef.current.contains(ev.target as Node)) {
+        setYearMenuOpen(false);
+      }
       if (monthMenuRef.current && !monthMenuRef.current.contains(ev.target as Node)) {
         setMonthMenuOpen(false);
       }
@@ -82,11 +93,27 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Lista única de todos los médicos reales y procedimientos homologados reales de Enero a Octubre 2026
+  // Meses disponibles según el año seleccionado (2026 tiene Ene-Oct; 2025 y 2024 tienen Ene-Dic)
+  const yearMonths = useMemo(() => {
+    const defs = selectedYear === "2026" ? ALL_MONTH_DEFS.slice(0, 10) : ALL_MONTH_DEFS;
+    return defs.map((d) => ({
+      ...d,
+      key: `${selectedYear}-${d.mm}`,
+    }));
+  }, [selectedYear]);
+
+  // Si cambian a 2026 y estaban en Nov/Dic, ajustar a Septiembre ("09")
+  useEffect(() => {
+    if (selectedYear === "2026" && (selectedMonthMm === "11" || selectedMonthMm === "12")) {
+      setSelectedMonthMm("09");
+    }
+  }, [selectedYear, selectedMonthMm]);
+
+  // Lista única de todos los médicos reales y procedimientos homologados reales en el año seleccionado
   const { allDoctors, allProcedures } = useMemo(() => {
     const docSet = new Set<string>();
     const procSet = new Set<string>();
-    MONTHS.forEach((m) => {
+    yearMonths.forEach((m) => {
       const list = dataset[m.key] || [];
       list.forEach((d) => {
         docSet.add(d.medico);
@@ -97,11 +124,12 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
       allDoctors: Array.from(docSet).sort((a, b) => a.localeCompare(b, "es")),
       allProcedures: Array.from(procSet).sort((a, b) => a.localeCompare(b, "es")),
     };
-  }, [dataset]);
+  }, [dataset, yearMonths]);
 
   const activeMonthObj = useMemo(() => {
-    if (selectedMonth === "todos") {
+    if (selectedMonthMm === "todos") {
       return {
+        mm: "todos",
         key: "todos",
         label: "Todos los meses",
         axisLabel: "Todos",
@@ -109,15 +137,16 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
         prevLabel: "De meses previos",
       };
     }
-    return MONTHS.find((m) => m.key === selectedMonth) || MONTHS[8];
-  }, [selectedMonth]);
+    return yearMonths.find((m) => m.mm === selectedMonthMm) || yearMonths[yearMonths.length - 1];
+  }, [selectedMonthMm, yearMonths]);
 
-  // Árbol real por médico -> procedimientos homologados para el mes seleccionado (o acumulado Enero-Octubre)
+  // Árbol real por médico -> procedimientos homologados para el año y mes seleccionados
   const doctorTree = useMemo(() => {
-    const targetMonths = selectedMonth === "todos" ? MONTHS.map((m) => m.key) : [selectedMonth];
+    const targetMonthKeys =
+      selectedMonthMm === "todos" ? yearMonths.map((m) => m.key) : [`${selectedYear}-${selectedMonthMm}`];
     const medMap = new Map<string, Map<string, { ordeno: number; hechosMes: number; vienenOtros: number }>>();
 
-    targetMonths.forEach((mKey) => {
+    targetMonthKeys.forEach((mKey) => {
       const rows = dataset[mKey] || [];
       rows.forEach((d) => {
         if (selectedDoctor !== "Todos" && d.medico !== selectedDoctor) return;
@@ -176,7 +205,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
       .sort((a, b) => b.ordeno + b.totalRealizados - (a.ordeno + a.totalRealizados));
 
     return result;
-  }, [dataset, selectedMonth, selectedDoctor, selectedProc]);
+  }, [dataset, selectedYear, selectedMonthMm, yearMonths, selectedDoctor, selectedProc]);
 
   // Por defecto los 2 primeros médicos aparecen desplegados
   const isDoctorOpen = (medico: string, idx: number) => {
@@ -197,7 +226,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
   }, [doctorTree]);
 
   const monthlySeries = useMemo(() => {
-    return MONTHS.map((m) => {
+    return yearMonths.map((m) => {
       const rows = dataset[m.key] || [];
       let ord = 0;
       let hec = 0;
@@ -212,6 +241,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
         });
       });
       return {
+        mm: m.mm,
         key: m.key,
         mes: m.axisLabel,
         fullLabel: m.label,
@@ -221,7 +251,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
         totalRealizado: hec + otr,
       };
     });
-  }, [dataset, selectedDoctor, selectedProc]);
+  }, [dataset, yearMonths, selectedDoctor, selectedProc]);
 
   const maxBar = useMemo(() => {
     return Math.max(...monthlySeries.map((s) => Math.max(s.ordenado, s.totalRealizado)), 1);
@@ -251,12 +281,12 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
   };
 
   const mesTitle =
-    selectedMonth === "todos" ? "Enero–Octubre 2026" : activeMonthObj.label.replace(" 2026", "");
+    selectedMonthMm === "todos" ? `Año ${selectedYear}` : `${activeMonthObj.label} ${selectedYear}`;
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-slate-800 px-4 py-3 md:px-6 md:py-4 font-sans">
       <div className="max-w-[1440px] mx-auto space-y-3">
-        {/* Cabecera superior limpia en una sola línea con filtro vertical de Mes */}
+        {/* Cabecera superior limpia en una sola línea con filtros verticales de Año, Mes, Médico y Procedimiento */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 pb-1">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-medium text-slate-600">
@@ -273,45 +303,89 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
             </h1>
           </div>
 
-          {/* 3 Filtros compactos alineados horizontalmente: Mes (desplegable vertical), Médico y Procedimiento */}
+          {/* 4 Filtros verticales compactos alineados en una sola línea: Año, Mes, Médico y Procedimiento */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {/* Filtro vertical de Mes */}
+            {/* 1. Filtro vertical de Año */}
+            <div ref={yearMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setYearMenuOpen((v) => !v);
+                  setMonthMenuOpen(false);
+                }}
+                className="inline-flex items-center justify-between gap-2 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs transition-colors min-w-[108px]"
+              >
+                <span>Año: {selectedYear}</span>
+                <span className="text-[10px] text-slate-500">{yearMenuOpen ? "▴" : "▾"}</span>
+              </button>
+
+              {yearMenuOpen && (
+                <div className="absolute left-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-30">
+                  {YEARS.map((yr) => {
+                    const active = selectedYear === yr;
+                    return (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => {
+                          setSelectedYear(yr);
+                          setYearMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 text-[11.5px] flex items-center justify-between transition-colors ${
+                          active
+                            ? "bg-[#EAF2FA] text-[#1D4F9A] font-semibold"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{yr}</span>
+                        {active && <span className="text-[#1D4F9A] font-bold">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Filtro vertical de Mes */}
             <div ref={monthMenuRef} className="relative">
               <button
                 type="button"
-                onClick={() => setMonthMenuOpen((v) => !v)}
-                className="inline-flex items-center justify-between gap-2 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs transition-colors min-w-[165px]"
+                onClick={() => {
+                  setMonthMenuOpen((v) => !v);
+                  setYearMenuOpen(false);
+                }}
+                className="inline-flex items-center justify-between gap-2 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs transition-colors min-w-[150px]"
               >
                 <span>Mes: {activeMonthObj.label}</span>
                 <span className="text-[10px] text-slate-500">{monthMenuOpen ? "▴" : "▾"}</span>
               </button>
 
               {monthMenuOpen && (
-                <div className="absolute left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-30 max-h-80 overflow-y-auto">
+                <div className="absolute left-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-30 max-h-80 overflow-y-auto">
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedMonth("todos");
+                      setSelectedMonthMm("todos");
                       setMonthMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-1.5 text-[11.5px] flex items-center justify-between transition-colors ${
-                      selectedMonth === "todos"
+                      selectedMonthMm === "todos"
                         ? "bg-[#EAF2FA] text-[#1D4F9A] font-semibold"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
                   >
                     <span>Todos los meses</span>
-                    {selectedMonth === "todos" && <span className="text-[#1D4F9A] font-bold">✓</span>}
+                    {selectedMonthMm === "todos" && <span className="text-[#1D4F9A] font-bold">✓</span>}
                   </button>
                   <div className="my-0.5 border-t border-slate-100" />
-                  {MONTHS.map((m) => {
-                    const active = selectedMonth === m.key;
+                  {yearMonths.map((m) => {
+                    const active = selectedMonthMm === m.mm;
                     return (
                       <button
                         key={m.key}
                         type="button"
                         onClick={() => {
-                          setSelectedMonth(m.key);
+                          setSelectedMonthMm(m.mm);
                           setMonthMenuOpen(false);
                         }}
                         className={`w-full text-left px-3 py-1.5 text-[11.5px] flex items-center justify-between transition-colors ${
@@ -329,12 +403,12 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
               )}
             </div>
 
-            {/* Filtro de Médico */}
+            {/* 3. Filtro de Médico (solo nombres limpios) */}
             <select
               value={selectedDoctor}
               onChange={(e) => setSelectedDoctor(e.target.value)}
               aria-label="Filtrar por médico"
-              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[215px]"
+              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[205px]"
             >
               <option value="Todos">Todos los médicos</option>
               {allDoctors.map((med) => (
@@ -344,12 +418,12 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
               ))}
             </select>
 
-            {/* Filtro de Procedimiento Homologado */}
+            {/* 4. Filtro de Procedimiento Homologado (solo nombres limpios) */}
             <select
               value={selectedProc}
               onChange={(e) => setSelectedProc(e.target.value)}
               aria-label="Filtrar por procedimiento homologado"
-              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[215px]"
+              className="bg-white border border-slate-200/90 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#2B579A] max-w-[205px]"
             >
               <option value="Todos">Todos los procedimientos</option>
               {allProcedures.map((proc) => (
@@ -367,7 +441,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
           <div className="bg-white rounded-xl border border-slate-200/80 border-l-[3.5px] border-l-[#4F86C6] shadow-2xs overflow-hidden flex flex-col justify-between">
             <div className="bg-gradient-to-r from-[#EAF2FA] to-[#F5F9FD] px-3.5 py-1.5 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-800">
-                1. Ordenados en {mesTitle}
+                1. Ordenados en {activeMonthObj.label}
               </span>
             </div>
             <div className="px-3.5 py-2.5 flex items-end justify-between gap-2">
@@ -377,7 +451,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                   <span className="text-[12px] font-semibold text-slate-700">órdenes</span>
                 </div>
                 <p className="text-[10.5px] text-slate-600 mt-1.5 leading-snug">
-                  Formuladas por los médicos este mes
+                  Formuladas por los médicos ({mesTitle})
                 </p>
               </div>
               <svg viewBox="0 0 80 34" className="w-16 h-8 shrink-0">
@@ -421,7 +495,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                   </span>
                 </div>
                 <p className="text-[10.5px] text-slate-600 mt-1 leading-snug">
-                  Ordenados en {mesTitle} y hechos en {mesTitle}
+                  Ordenados y hechos en {activeMonthObj.label}
                 </p>
               </div>
               <svg viewBox="0 0 80 34" className="w-16 h-8 shrink-0">
@@ -689,7 +763,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-[13.5px] font-bold text-slate-900">
-                  Comparativo Mes a Mes (Origen de los Realizados)
+                  Comparativo Mes a Mes · {selectedYear} (Origen de los Realizados)
                 </h2>
               </div>
 
@@ -713,9 +787,12 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
               </div>
             </div>
 
-            {/* Barras agrupadas y apiladas de Enero a Octubre */}
+            {/* Barras agrupadas y apiladas del año seleccionado */}
             <div className="pt-6 pb-1 px-0.5">
-              <div className="grid grid-cols-10 gap-1 items-end h-[220px] border-b border-slate-200 pb-1">
+              <div
+                style={{ gridTemplateColumns: `repeat(${monthlySeries.length}, minmax(0, 1fr))` }}
+                className="grid gap-1 items-end h-[220px] border-b border-slate-200 pb-1"
+              >
                 {monthlySeries.map((item) => {
                   const ordHeight = Math.max(20, Math.round((item.ordenado / maxBar) * 165));
                   const totalRealHeight = Math.max(22, Math.round((item.totalRealizado / maxBar) * 165));
@@ -724,53 +801,53 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                       ? Math.max(14, Math.round((item.vieneOtros / Math.max(item.totalRealizado, 1)) * totalRealHeight))
                       : 0;
                   const azulOscuroHeight = Math.max(16, totalRealHeight - verdeHeight);
-                  const isSelected = selectedMonth === item.key;
+                  const isSelected = selectedMonthMm === item.mm;
 
                   return (
                     <div
                       key={item.key}
-                      onClick={() => setSelectedMonth(item.key)}
-                      title={`${item.fullLabel}: Ordenado ${item.ordenado} | Hecho mes ${item.hechoMes} | Otros meses +${item.vieneOtros}`}
+                      onClick={() => setSelectedMonthMm(item.mm)}
+                      title={`${item.fullLabel} ${selectedYear}: Ordenado ${item.ordenado} | Hecho mes ${item.hechoMes} | Otros meses +${item.vieneOtros}`}
                       className={`flex flex-col items-center cursor-pointer transition-opacity ${
-                        selectedMonth !== "todos" && !isSelected ? "opacity-85 hover:opacity-100" : "opacity-100"
+                        selectedMonthMm !== "todos" && !isSelected ? "opacity-85 hover:opacity-100" : "opacity-100"
                       }`}
                     >
                       <div className="flex items-end justify-center gap-0.5 w-full">
                         {/* Barra 1: Azul claro (Ordenado en el mes) */}
                         <div className="flex flex-col items-center">
-                          <span className="text-[9.5px] font-semibold text-slate-800 mb-0.5 leading-none">
+                          <span className="text-[9px] font-semibold text-slate-800 mb-0.5 leading-none">
                             {item.ordenado}
                           </span>
                           <div
                             style={{ height: `${ordHeight}px` }}
-                            className="w-3 md:w-3.5 rounded-t-2xs bg-gradient-to-b from-[#7FAEE7] to-[#BBD4F3] border border-[#6C9FDDF0]"
+                            className="w-2.5 md:w-3 rounded-t-2xs bg-gradient-to-b from-[#7FAEE7] to-[#BBD4F3] border border-[#6C9FDDF0]"
                           />
                         </div>
 
                         {/* Barra 2: Apilada (Verde arriba = Viene de otros meses, Azul oscuro abajo = Hecho del mismo mes) */}
                         <div className="flex flex-col items-center relative">
-                          {item.key === selectedMonth && (
+                          {isSelected && (
                             <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-10 pointer-events-none hidden sm:flex">
                               <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-semibold bg-[#DDF3E8] text-[#1D6F4A] border border-[#A7DFC3] whitespace-nowrap shadow-2xs">
                                 +otros meses
                               </span>
                             </div>
                           )}
-                          <span className="text-[9.5px] font-semibold text-slate-800 mb-0.5 leading-none">
+                          <span className="text-[9px] font-semibold text-slate-800 mb-0.5 leading-none">
                             {item.totalRealizado}
                           </span>
-                          <div className="flex flex-col w-3 md:w-3.5 rounded-t-2xs overflow-hidden border border-slate-300/60">
+                          <div className="flex flex-col w-2.5 md:w-3 rounded-t-2xs overflow-hidden border border-slate-300/60">
                             {verdeHeight > 0 && (
                               <div
                                 style={{ height: `${verdeHeight}px` }}
-                                className="w-full bg-[#369F6E] flex items-center justify-center text-[8px] font-semibold text-slate-900 leading-none"
+                                className="w-full bg-[#369F6E] flex items-center justify-center text-[7.5px] font-semibold text-slate-900 leading-none"
                               >
                                 {item.vieneOtros}
                               </div>
                             )}
                             <div
                               style={{ height: `${azulOscuroHeight}px` }}
-                              className="w-full bg-[#1D4F9A] flex items-center justify-center text-[8px] font-semibold text-white leading-none"
+                              className="w-full bg-[#1D4F9A] flex items-center justify-center text-[7.5px] font-semibold text-white leading-none"
                             >
                               {item.hechoMes}
                             </div>
@@ -782,15 +859,18 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                 })}
               </div>
 
-              {/* Etiquetas de meses (Ene a Oct) en eje X */}
-              <div className="grid grid-cols-10 gap-1 pt-1.5 text-center">
+              {/* Etiquetas de meses en eje X */}
+              <div
+                style={{ gridTemplateColumns: `repeat(${monthlySeries.length}, minmax(0, 1fr))` }}
+                className="grid gap-1 pt-1.5 text-center"
+              >
                 {monthlySeries.map((item) => (
                   <button
                     key={item.key}
                     type="button"
-                    onClick={() => setSelectedMonth(item.key)}
-                    className={`text-[10.5px] truncate ${
-                      selectedMonth === item.key
+                    onClick={() => setSelectedMonthMm(item.mm)}
+                    className={`text-[10px] truncate ${
+                      selectedMonthMm === item.mm
                         ? "font-bold text-[#1D4F9A]"
                         : "font-medium text-slate-700 hover:text-slate-950"
                     }`}
