@@ -1,3 +1,4 @@
+import TableroCarteraAnalytics from "./TableroCarteraAnalytics";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -396,6 +397,8 @@ export default async function AnalyticsOverview() {
           </section>
         ))}
       </div>
+    
+      <TableroCarteraAnalytics />
     </div>
   );
 }
