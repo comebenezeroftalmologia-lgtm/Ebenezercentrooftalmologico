@@ -1091,7 +1091,7 @@ export default function DigiturnoContactPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={contactComputed.monthlyChart}
-                  margin={{ top: 18, right: 10, left: -15, bottom: 0 }}
+                  margin={{ top: 28, right: 14, left: -10, bottom: 0 }}
                   barGap={4}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
@@ -1103,6 +1103,7 @@ export default function DigiturnoContactPage() {
                   />
                   <YAxis
                     tick={{ fontSize: 9, fill: '#94A3B8' }}
+                    tickFormatter={(v: number) => fmtNum(v)}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -1122,6 +1123,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="Recibidas"
                       position="top"
+                      offset={7}
                       formatter={(v: number) => fmtNum(v)}
                       style={{ fontSize: '9px', fill: '#334155', fontWeight: 600 }}
                     />
@@ -1135,6 +1137,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="Contestadas"
                       position="top"
+                      offset={7}
                       formatter={(v: number) => fmtNum(v)}
                       style={{ fontSize: '9px', fill: '#065F46', fontWeight: 600 }}
                     />
@@ -1148,6 +1151,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="Perdidas"
                       position="top"
+                      offset={7}
                       formatter={(v: number) => fmtNum(v)}
                       style={{ fontSize: '9px', fill: '#991B1B', fontWeight: 600 }}
                     />
@@ -1162,13 +1166,13 @@ export default function DigiturnoContactPage() {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                     <th className="text-left py-2.5 px-4">LÍNEA DE ATENCIÓN / AGENTE</th>
-                    <th className="text-right py-2.5 px-3">RECIBIDAS</th>
+                    <th className="text-right py-2.5 px-3">RECIBIDAS / TIMB.</th>
                     <th className="text-right py-2.5 px-3">CONTESTADAS</th>
-                    <th className="text-right py-2.5 px-3">LLAMADAS PERDIDAS</th>
+                    <th className="text-right py-2.5 px-3">PERDIDAS / NO CONT.</th>
                     <th className="text-right py-2.5 px-3">ESPERA PROM.</th>
-                    <th className="text-right py-2.5 px-4 w-56">% EFECTIVIDAD</th>
+                    <th className="text-right py-2.5 px-4 w-52">% EFECTIVIDAD</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[11px]">
@@ -1198,32 +1202,34 @@ export default function DigiturnoContactPage() {
                               : 'bg-[#EEF4FF]/90 hover:bg-[#DBEAFE]/75 border-l-[#2B579A]'
                           }`}
                         >
-                          <td className="py-2.5 px-4 font-bold text-[#0F172A] flex items-center gap-2">
-                            <span
-                              className={`w-5 h-5 rounded-md bg-white border flex items-center justify-center shadow-2xs shrink-0 ${
-                                isComercial
-                                  ? 'border-emerald-200 text-[#2E9E6B]'
-                                  : 'border-blue-200 text-[#2B579A]'
-                              }`}
-                            >
-                              {isOpen ? (
-                                <ChevronDown className="w-3.5 h-3.5 stroke-[2.4]" />
-                              ) : (
-                                <ChevronRight className="w-3.5 h-3.5 stroke-[2.4]" />
-                              )}
-                            </span>
-                            <span className="text-[12px] tracking-tight">{line.name}</span>
-                            <span
-                              className={`ml-1 px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase tracking-wider border ${
-                                isComercial
-                                  ? 'bg-emerald-100/80 text-emerald-800 border-emerald-300/70'
-                                  : 'bg-[#2B579A]/10 text-[#1E3A8A] border-[#2B579A]/20'
-                              }`}
-                            >
-                              {isComercial
-                                ? `Comercial · Total (${rawAgents.length} agentes)`
-                                : `Total Línea · ${rawAgents.length} agentes`}
-                            </span>
+                          <td className="py-2.5 px-4 font-bold text-[#0F172A] whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`w-5 h-5 rounded-md bg-white border flex items-center justify-center shadow-2xs shrink-0 ${
+                                  isComercial
+                                    ? 'border-emerald-200 text-[#2E9E6B]'
+                                    : 'border-blue-200 text-[#2B579A]'
+                                }`}
+                              >
+                                {isOpen ? (
+                                  <ChevronDown className="w-3.5 h-3.5 stroke-[2.4]" />
+                                ) : (
+                                  <ChevronRight className="w-3.5 h-3.5 stroke-[2.4]" />
+                                )}
+                              </span>
+                              <span className="text-[12px] tracking-tight whitespace-nowrap">
+                                {line.name}
+                              </span>
+                              <span
+                                className={`ml-1 px-2 py-0.5 rounded-full text-[9.5px] font-semibold whitespace-nowrap border shrink-0 ${
+                                  isComercial
+                                    ? 'bg-emerald-100/90 text-emerald-800 border-emerald-300/80'
+                                    : 'bg-[#2B579A]/10 text-[#1E3A8A] border-[#2B579A]/20'
+                                }`}
+                              >
+                                {rawAgents.length} agentes
+                              </span>
+                            </div>
                           </td>
                           <td className="py-2.5 px-3 text-right font-bold text-[11.5px] text-[#0F172A]">
                             {fmtNum(lineRecibidas)}
@@ -1476,8 +1482,8 @@ export default function DigiturnoContactPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={digiturnoComputed.monthlyChart}
-                  margin={{ top: 18, right: 10, left: -15, bottom: 0 }}
-                  barGap={6}
+                  margin={{ top: 28, right: 14, left: -10, bottom: 0 }}
+                  barGap={10}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                   <XAxis
@@ -1514,6 +1520,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="sede1"
                       position="top"
+                      offset={7}
                       formatter={(v: number) => `${v}m`}
                       style={{ fontSize: '9px', fill: '#334155', fontWeight: 600 }}
                     />
@@ -1528,6 +1535,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="sede2"
                       position="top"
+                      offset={7}
                       formatter={(v: number) => `${v}m`}
                       style={{ fontSize: '9px', fill: '#065F46', fontWeight: 600 }}
                     />
@@ -1564,18 +1572,20 @@ export default function DigiturnoContactPage() {
                           onClick={() => toggleStep(row.id)}
                           className="bg-[#EEF4FF]/90 hover:bg-[#DBEAFE]/75 border-l-4 border-l-[#2B579A] cursor-pointer transition-colors"
                         >
-                          <td className="py-2.5 px-4 font-bold text-[#0F172A] flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-md bg-white border border-blue-200 text-[#2B579A] flex items-center justify-center shadow-2xs shrink-0">
-                              {isOpen ? (
-                                <ChevronDown className="w-3.5 h-3.5 stroke-[2.4]" />
-                              ) : (
-                                <ChevronRight className="w-3.5 h-3.5 stroke-[2.4]" />
-                              )}
-                            </span>
-                            <span className="text-[12px] tracking-tight">{row.label}</span>
-                            <span className="ml-1 px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase tracking-wider bg-[#2B579A]/10 text-[#1E3A8A] border border-[#2B579A]/20">
-                              Total Etapa · 2 Sedes
-                            </span>
+                          <td className="py-2.5 px-4 font-bold text-[#0F172A] whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-md bg-white border border-blue-200 text-[#2B579A] flex items-center justify-center shadow-2xs shrink-0">
+                                {isOpen ? (
+                                  <ChevronDown className="w-3.5 h-3.5 stroke-[2.4]" />
+                                ) : (
+                                  <ChevronRight className="w-3.5 h-3.5 stroke-[2.4]" />
+                                )}
+                              </span>
+                              <span className="text-[12px] tracking-tight whitespace-nowrap">{row.label}</span>
+                              <span className="ml-1 px-2 py-0.5 rounded-full text-[9.5px] font-semibold whitespace-nowrap bg-[#2B579A]/10 text-[#1E3A8A] border border-[#2B579A]/20 shrink-0">
+                                2 sedes
+                              </span>
+                            </div>
                           </td>
                           <td className="py-2 px-3 text-right font-semibold text-slate-800">
                             {fmtNum(row.turnos)}
