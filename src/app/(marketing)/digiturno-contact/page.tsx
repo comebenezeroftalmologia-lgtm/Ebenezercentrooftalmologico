@@ -648,7 +648,7 @@ export default function DigiturnoContactPage() {
                   activeTab === 'digiturno' ? 'bg-white' : 'bg-slate-400'
                 }`}
               />
-              Digiturno (Sede 1 y 2)
+              Digiturno
             </button>
             <button
               type="button"
