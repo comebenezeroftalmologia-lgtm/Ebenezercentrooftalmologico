@@ -9,7 +9,7 @@ import {
   Users,
   ChevronRight,
   ChevronDown,
-  Ban, Briefcase, User, Headphones,
+  Briefcase, User,
   CheckCircle2,
   Activity,
   Calendar,
@@ -30,6 +30,16 @@ import {
 import rawData from '@/lib/digiturno-contact-data.json';
 
 type ActiveTab = 'digiturno' | 'contact';
+
+interface QueueAgentItem {
+  id: string;
+  name: string;
+  timbradas: number;
+  contestadas: number;
+  perdidas: number;
+  duracionMin: number;
+  efectividad?: number;
+}
 
 const MONTHS_ORDER = [
   'Enero',
@@ -383,7 +393,7 @@ export default function DigiturnoContactPage() {
         lineMap[l.id].esperaMin += l.esperaMin;
         lineMap[l.id].slaPct += l.slaPct;
         lineMap[l.id].count += 1;
-        ((l as any).agents || []).forEach((qa: any) => {
+        (l.agents || []).forEach((qa: QueueAgentItem) => {
           if (!lineMap[l.id].agentsMap[qa.id]) {
             lineMap[l.id].agentsMap[qa.id] = {
               id: qa.id,
@@ -887,7 +897,7 @@ export default function DigiturnoContactPage() {
                       line.name.toLowerCase().includes('refractiva');
 
                     // Agentes 100% reales que atendieron esta cola específica en Sonata PBX
-                    const rawAgents = (line as any).agents || [];
+                    const rawAgents: QueueAgentItem[] = line.agents || [];
                     const lineRecibidas = line.recibidas;
                     const lineContestadas = line.contestadas;
                     const linePerdidas = line.perdidas;
@@ -966,7 +976,7 @@ export default function DigiturnoContactPage() {
                         {/* FILAS DE AGENTES CON AVATAR EJECUTIVO DE USUARIO */}
                         {isOpen &&
                           rawAgents.map((ag) => {
-                            const agEfec = ag.timbradas > 0 ? (ag.contestadas / ag.timbradas) * 100 : ag.efectividad;
+                            const agEfec = ag.timbradas > 0 ? (ag.contestadas / ag.timbradas) * 100 : (ag.efectividad ?? 0);
                             const agColors = badgeColor(agEfec);
                             const statusDot =
                               agEfec >= 85
