@@ -10,8 +10,6 @@ const ARCHIVO = "Dashboard_Frecuencias.html";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const CACHE_SEGUNDOS = 120;
-
 const ESTILOS_AJUSTE_FILTROS = `
 <style id="eb-frecuencias-inline-fix">
   /* 1. En modo embebido, ocultar el escalón superior (.header) y organizar .sticky-top
@@ -300,10 +298,37 @@ const ESTILOS_AJUSTE_FILTROS = `
 </style>
 `;
 
-async function obtenerHtmlTablero(): Promise<string | null> {
+/* ---------------------------------------------------------------------
+   DE DONDE SALE EL TABLERO, Y POR QUE AHORA SE DICE.
+
+   El 20-10-2026 la pantalla mostró números del 13 de octubre durante una
+   semana entera, sin avisar. Reconstruido el camino, pasaba esto:
+
+     · Las dos descargas (1 y 2) pedían el archivo con `next.revalidate`,
+       que le pide a Next guardarlo en la Data Cache de Vercel. Esa cache
+       NO admite nada de más de 2 MB y el tablero pesa 7,5 MB: las dos
+       fallaban SIEMPRE, no de vez en cuando.
+     · Entonces caía al respaldo 3, una copia pegada en el build, del 13
+       de octubre.
+     · Y la mostraba callada, como si fuera la de hoy.
+
+   Dos correcciones, y la segunda importa más que la primera:
+
+     1. `cache: "no-store"`. El archivo nunca cupo en esa cache; pedirla
+        era pedirle a Next que fallara. El navegador lo sigue guardando
+        por su cuenta (Cache-Control más abajo), que es donde sí sirve.
+
+     2. La función devuelve DE DONDE salió. Un respaldo que no se anuncia
+        es peor que una pantalla en blanco: con la pantalla en blanco
+        alguien llama; con datos viejos que se ven normales, alguien
+        decide. Si no es la copia viva, ahora sale un aviso arriba.
+   --------------------------------------------------------------------- */
+type Origen = "motor" | "respaldo-repo" | "respaldo-build";
+
+async function obtenerHtmlTablero(): Promise<{ html: string; origen: Origen } | null> {
   const token = process.env.TABLERO_EBENEZER_PAT;
 
-  // 1. Intentar traer la versión en vivo del repositorio del motor
+  // 1. La copia viva del repositorio del motor. Es la que debe ganar siempre.
   if (token) {
     for (const ruta of [ARCHIVO, "publicar/index.html"]) {
       try {
@@ -315,12 +340,12 @@ async function obtenerHtmlTablero(): Promise<string | null> {
               Accept: "application/vnd.github.raw",
               "User-Agent": "ebenezer-plataforma",
             },
-            next: { revalidate: CACHE_SEGUNDOS },
+            cache: "no-store",
           },
         );
         if (res.ok) {
           const txt = await res.text();
-          if (txt && txt.includes("<html")) return txt;
+          if (txt && txt.includes("<html")) return { html: txt, origen: "motor" };
         }
       } catch {
         // Continúa al siguiente respaldo
@@ -328,29 +353,31 @@ async function obtenerHtmlTablero(): Promise<string | null> {
     }
   }
 
-  // 2. Respaldo automático desde la rama main del repositorio de la plataforma
+  // 2. Respaldo: la copia que vive en el repositorio de la plataforma.
   try {
     const resPub = await fetch(
       `https://raw.githubusercontent.com/${REPO_PUBLIC}/main/public/${ARCHIVO}`,
       {
         headers: { "User-Agent": "ebenezer-plataforma" },
-        next: { revalidate: CACHE_SEGUNDOS },
+        cache: "no-store",
       },
     );
     if (resPub.ok) {
       const txt = await resPub.text();
-      if (txt && txt.includes("<html")) return txt;
+      if (txt && txt.includes("<html")) return { html: txt, origen: "respaldo-repo" };
     }
   } catch {
     // Continúa al respaldo local en disco
   }
 
-  // 3. Respaldo local empaquetado en public/Dashboard_Frecuencias.html
+  // 3. Último recurso: la copia pegada en el build. Es la más vieja de todas
+  //    —no cambia hasta que la plataforma se vuelva a desplegar— y por eso
+  //    es la que más fuerte se anuncia.
   try {
     const localPath = path.join(process.cwd(), "public", ARCHIVO);
     if (fs.existsSync(localPath)) {
       const txt = fs.readFileSync(localPath, "utf-8");
-      if (txt && txt.includes("<html")) return txt;
+      if (txt && txt.includes("<html")) return { html: txt, origen: "respaldo-build" };
     }
   } catch {
     // Fin de respaldos
@@ -359,11 +386,25 @@ async function obtenerHtmlTablero(): Promise<string | null> {
   return null;
 }
 
+/** Franja de aviso cuando lo que se está viendo NO es la copia viva. */
+function franjaRespaldo(origen: Origen): string {
+  if (origen === "motor") return "";
+  const detalle =
+    origen === "respaldo-repo"
+      ? "una copia de respaldo del repositorio de la plataforma"
+      : "una copia guardada dentro de la plataforma, que puede tener varios días";
+  return `<div style="position:sticky;top:0;z-index:99999;background:#FFF4E5;border-bottom:1px solid #F0C98A;
+  color:#7A4A05;font:600 12.5px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;padding:9px 18px;text-align:center">
+  &#9888;&#65039; NO SE PUDO TRAER EL TABLERO DE HOY &mdash; está viendo ${detalle}.
+  Las cifras pueden estar atrasadas. Revise la fecha del último cierre antes de usarlas.
+</div>`;
+}
+
 export async function GET() {
   await requireModuloAccess("frecuencias");
 
-  let contenido = await obtenerHtmlTablero();
-  if (!contenido) {
+  const traido = await obtenerHtmlTablero();
+  if (!traido) {
     return html(
       aviso(
         "No se pudo traer el tablero",
@@ -373,10 +414,21 @@ export async function GET() {
     );
   }
 
+  let contenido = traido.html;
+
   if (contenido.includes("</head>")) {
     contenido = contenido.replace("</head>", `${ESTILOS_AJUSTE_FILTROS}</head>`);
   } else {
     contenido = ESTILOS_AJUSTE_FILTROS + contenido;
+  }
+
+  // Si no es la copia viva, se dice. Va pegado despues de <body> para que
+  // sea lo primero que se ve, antes de cualquier cifra.
+  const franja = franjaRespaldo(traido.origen);
+  if (franja) {
+    contenido = contenido.includes("<body")
+      ? contenido.replace(/(<body[^>]*>)/i, `$1${franja}`)
+      : franja + contenido;
   }
 
   return new Response(injectCombinacionGanadora(contenido), {
