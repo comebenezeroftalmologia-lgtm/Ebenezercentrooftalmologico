@@ -82,7 +82,8 @@ export default function DigiturnoContactPage() {
   });
 
   // Contact Center specific filters & expanded rows
-  const [excludeMutual, setExcludeMutual] = useState<boolean>(false);
+  const [segmentFilter, setSegmentFilter] = useState<'todas' | 'mutual' | 'comercial'>('todas');
+  const excludeMutual = segmentFilter === 'comercial';
   const [selectedLine, setSelectedLine] = useState<string>('Todas');
   const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({
     '506012': true,
@@ -299,7 +300,8 @@ export default function DigiturnoContactPage() {
 
     const monthlyChart = chartRecords.map((m) => {
       const validLines = m.lines.filter((l) => {
-        if (excludeMutual && l.isMutual) return false;
+        if (segmentFilter === 'comercial' && l.isMutual) return false;
+        if (segmentFilter === 'mutual' && !l.isMutual) return false;
         if (selectedLine !== 'Todas' && l.id !== selectedLine) return false;
         return true;
       });
@@ -328,6 +330,7 @@ export default function DigiturnoContactPage() {
         esperaMin: number;
         slaPct: number;
         count: number;
+        agentsMap: Record<string, { id: string; name: string; timbradas: number; contestadas: number; perdidas: number; duracionWeighted: number }>;
       }
     > = {};
 
@@ -356,7 +359,8 @@ export default function DigiturnoContactPage() {
           allWithoutMutualRec += l.recibidas;
           allWithoutMutualCon += l.contestadas;
         }
-        if (excludeMutual && l.isMutual) return;
+        if (segmentFilter === 'comercial' && l.isMutual) return;
+        if (segmentFilter === 'mutual' && !l.isMutual) return;
         if (selectedLine !== 'Todas' && l.id !== selectedLine) return;
 
         if (!lineMap[l.id]) {
@@ -370,6 +374,7 @@ export default function DigiturnoContactPage() {
             esperaMin: 0,
             slaPct: 0,
             count: 0,
+            agentsMap: {},
           };
         }
         lineMap[l.id].recibidas += l.recibidas;
@@ -378,6 +383,22 @@ export default function DigiturnoContactPage() {
         lineMap[l.id].esperaMin += l.esperaMin;
         lineMap[l.id].slaPct += l.slaPct;
         lineMap[l.id].count += 1;
+        ((l as any).agents || []).forEach((qa: any) => {
+          if (!lineMap[l.id].agentsMap[qa.id]) {
+            lineMap[l.id].agentsMap[qa.id] = {
+              id: qa.id,
+              name: qa.name,
+              timbradas: 0,
+              contestadas: 0,
+              perdidas: 0,
+              duracionWeighted: 0,
+            };
+          }
+          lineMap[l.id].agentsMap[qa.id].timbradas += qa.timbradas;
+          lineMap[l.id].agentsMap[qa.id].contestadas += qa.contestadas;
+          lineMap[l.id].agentsMap[qa.id].perdidas += qa.perdidas;
+          lineMap[l.id].agentsMap[qa.id].duracionWeighted += qa.duracionMin * Math.max(1, qa.contestadas);
+        });
       });
 
       r.agents.forEach((a) => {
@@ -404,11 +425,23 @@ export default function DigiturnoContactPage() {
       const espera = l.count > 0 ? l.esperaMin / l.count : 0;
       const sla = l.count > 0 ? l.slaPct / l.count : 0;
       const efect = l.recibidas > 0 ? (l.contestadas / l.recibidas) * 100 : 0;
+      const qAgents = Object.values(l.agentsMap)
+        .map((qa) => ({
+          id: qa.id,
+          name: qa.name,
+          timbradas: qa.timbradas,
+          contestadas: qa.contestadas,
+          perdidas: qa.perdidas,
+          duracionMin: Math.round((qa.duracionWeighted / Math.max(1, qa.contestadas)) * 10) / 10,
+          efectividad: qa.timbradas > 0 ? (qa.contestadas / qa.timbradas) * 100 : 0,
+        }))
+        .sort((a, b) => b.contestadas - a.contestadas);
       return {
         ...l,
         esperaMin: espera,
         slaPct: sla,
         efectividad: efect,
+        agents: qAgents,
       };
     });
 
@@ -474,7 +507,7 @@ export default function DigiturnoContactPage() {
       allWithoutMutualRec,
       sinMutualEfect,
     };
-  }, [selectedYear, selectedMonth, excludeMutual, selectedLine]);
+  }, [selectedYear, selectedMonth, segmentFilter, selectedLine]);
 
   const badgeColor = (pct: number) => {
     if (pct >= 85) {
@@ -555,20 +588,44 @@ export default function DigiturnoContactPage() {
         {/* Fila 2: Barra de filtros limpia dentro de la tarjeta */}
         <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-100">
 
-          {/* Botón Vista Comercial (PyP y Particular) en azul institucional */}
+          {/* Selector Rápido de 3 Vistas: Todas | Solo Mutual Ser | PyP y Particular */}
           {activeTab === 'contact' && (
-            <button
-              type="button"
-              onClick={() => setExcludeMutual((v) => !v)}
-              className={`px-3 py-1 rounded-xl text-[11px] font-semibold border transition-all flex items-center gap-1.5 ${
-                excludeMutual
-                  ? 'bg-[#2B579A] text-white border-[#2B579A] shadow-xs'
-                  : 'bg-[#EEF4FF] text-[#1E3A8A] border-[#BFDBFE] hover:bg-[#DBEAFE]'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              {excludeMutual ? 'Vista Comercial Activa (Solo PyP y Particular)' : 'Vista Comercial: PyP y Particular'}
-            </button>
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => setSegmentFilter('todas')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                  segmentFilter === 'todas'
+                    ? 'bg-[#2B579A] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Todas las líneas
+              </button>
+              <button
+                type="button"
+                onClick={() => setSegmentFilter('mutual')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                  segmentFilter === 'mutual'
+                    ? 'bg-[#2B579A] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Solo Mutual Ser
+              </button>
+              <button
+                type="button"
+                onClick={() => setSegmentFilter('comercial')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                  segmentFilter === 'comercial'
+                    ? 'bg-[#2E9E6B] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Briefcase className="w-3 h-3" />
+                PyP y Particular
+              </button>
+            </div>
           )}
 
           {/* Filtro Sede o Línea */}
@@ -829,49 +886,12 @@ export default function DigiturnoContactPage() {
                       line.name.toLowerCase().includes('prepagada') ||
                       line.name.toLowerCase().includes('refractiva');
 
-                    // Distribuir exactamente las llamadas de la línea entre las agentes según su peso real en PBX
-                    // para que la fila de título TOTALICE al 100% la suma de las agentes debajo
-                    const totalAgWeightTimb = Math.max(
-                      1,
-                      contactComputed.agentsList.reduce((acc, a) => acc + a.timbradas, 0)
-                    );
-                    const totalAgWeightCont = Math.max(
-                      1,
-                      contactComputed.agentsList.reduce((acc, a) => acc + a.contestadas, 0)
-                    );
-
-                    const rawAgents = contactComputed.agentsList.map((ag) => {
-                      const rec = Math.max(
-                        1,
-                        Math.round((ag.timbradas / totalAgWeightTimb) * line.recibidas)
-                      );
-                      const cont = Math.min(
-                        rec,
-                        Math.max(
-                          0,
-                          Math.round((ag.contestadas / totalAgWeightCont) * line.contestadas)
-                        )
-                      );
-                      return { ...ag, rec, cont, perd: Math.max(0, rec - cont) };
-                    });
-
-                    // Ajuste de redondeo en la primera agente para que la suma de agentes cuadre exacto con el total de la línea
-                    if (rawAgents.length > 0) {
-                      const sumRec = rawAgents.reduce((s, a) => s + a.rec, 0);
-                      const sumCont = rawAgents.reduce((s, a) => s + a.cont, 0);
-                      rawAgents[0].rec = Math.max(1, rawAgents[0].rec + (line.recibidas - sumRec));
-                      rawAgents[0].cont = Math.min(
-                        rawAgents[0].rec,
-                        Math.max(0, rawAgents[0].cont + (line.contestadas - sumCont))
-                      );
-                      rawAgents[0].perd = Math.max(0, rawAgents[0].rec - rawAgents[0].cont);
-                    }
-
-                    const lineRecibidas = rawAgents.reduce((s, a) => s + a.rec, 0);
-                    const lineContestadas = rawAgents.reduce((s, a) => s + a.cont, 0);
-                    const linePerdidas = rawAgents.reduce((s, a) => s + a.perd, 0);
-                    const lineEfectividad =
-                      lineRecibidas > 0 ? (lineContestadas / lineRecibidas) * 100 : 0;
+                    // Agentes 100% reales que atendieron esta cola específica en Sonata PBX
+                    const rawAgents = (line as any).agents || [];
+                    const lineRecibidas = line.recibidas;
+                    const lineContestadas = line.contestadas;
+                    const linePerdidas = line.perdidas;
+                    const lineEfectividad = line.efectividad;
                     const colors = badgeColor(lineEfectividad);
 
                     return (
@@ -946,7 +966,7 @@ export default function DigiturnoContactPage() {
                         {/* FILAS DE AGENTES CON AVATAR EJECUTIVO DE USUARIO */}
                         {isOpen &&
                           rawAgents.map((ag) => {
-                            const agEfec = ag.rec > 0 ? (ag.cont / ag.rec) * 100 : ag.efectividad;
+                            const agEfec = ag.timbradas > 0 ? (ag.contestadas / ag.timbradas) * 100 : ag.efectividad;
                             const agColors = badgeColor(agEfec);
                             const statusDot =
                               agEfec >= 85
@@ -975,13 +995,13 @@ export default function DigiturnoContactPage() {
                                   </div>
                                 </td>
                                 <td className="py-2 px-3 text-right font-medium text-slate-700">
-                                  {fmtNum(ag.rec)}
+                                  {fmtNum(ag.timbradas)} timb.
                                 </td>
                                 <td className="py-2 px-3 text-right font-medium text-slate-700">
-                                  {fmtNum(ag.cont)}
+                                  {fmtNum(ag.contestadas)}
                                 </td>
                                 <td className="py-2 px-3 text-right font-medium text-slate-700">
-                                  {fmtNum(ag.perd)}
+                                  {fmtNum(ag.perdidas)} no cont.
                                 </td>
                                 <td className="py-2 px-3 text-right text-slate-500">
                                   {fmtDec(ag.duracionMin)} min
