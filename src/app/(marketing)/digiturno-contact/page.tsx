@@ -1091,8 +1091,9 @@ export default function DigiturnoContactPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={contactComputed.monthlyChart}
-                  margin={{ top: 28, right: 14, left: -10, bottom: 0 }}
-                  barGap={4}
+                  margin={{ top: 32, right: 20, left: -8, bottom: 2 }}
+                  barGap={18}
+                  barCategoryGap="6%"
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                   <XAxis
