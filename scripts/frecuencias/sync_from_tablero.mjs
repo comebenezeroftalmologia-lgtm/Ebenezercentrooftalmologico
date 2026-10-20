@@ -1,19 +1,3 @@
-// Sincroniza el módulo "Frecuencias" con el tablero de Pedro Luis Herrera
-// (repo privado tablero-ebenezer, motor en Python + API SISMA).
-//
-// Qué hace:
-//   1. Clona (shallow) tablero-ebenezer usando TABLERO_EBENEZER_PAT
-//      (token fine-grained, Contents: Read-only, solo ese repo).
-//   2. Extrae el objeto `RAW` embebido en Dashboard_Frecuencias.html
-//      (el mismo dato que ya cargábamos a mano — ver ingest.mjs).
-//   3. Guarda una copia en scripts/frecuencias/data/frecuencias_raw.json.
-//   4. Llama a ingest.mjs para cargarlo en Supabase (upsert, no destructivo).
-//
-// No modifica el repo de Pedro en absoluto (solo lectura). Pensado para
-// correr en un cron de GitHub Actions de ESTE repo (Ebenezer Marketing_Platform).
-//
-// Uso: TABLERO_EBENEZER_PAT=... node scripts/frecuencias/sync_from_tablero.mjs
-
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -22,38 +6,48 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
+const localFallbackHtml = path.join(repoRoot, "public", "Dashboard_Frecuencias.html");
 
 const PAT = process.env.TABLERO_EBENEZER_PAT;
-if (!PAT) {
-  console.error("Falta TABLERO_EBENEZER_PAT en el entorno.");
-  process.exit(1);
-}
-
-const REMOTE = `https://${PAT}@github.com/pedroluisherrerabenitez5-design/tablero-ebenezer.git`;
-
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tablero-ebenezer-"));
 
 try {
-  console.log("Clonando tablero-ebenezer (solo lectura, shallow)...");
-  execFileSync(
-    "git",
-    ["clone", "--depth", "1", "--filter=blob:none", "--no-checkout", REMOTE, tmpDir],
-    { stdio: ["ignore", "inherit", "inherit"] }
-  );
-  execFileSync("git", ["-C", tmpDir, "checkout", "main", "--", "Dashboard_Frecuencias.html"], {
-    stdio: ["ignore", "inherit", "inherit"],
-  });
+  let htmlPath = null;
+  if (PAT) {
+    try {
+      const REMOTE = `https://${PAT}@github.com/pedroluisherrerabenitez5-design/tablero-ebenezer.git`;
+      console.log("Clonando tablero-ebenezer (solo lectura, shallow)...");
+      execFileSync(
+        "git",
+        ["clone", "--depth", "1", "--filter=blob:none", "--no-checkout", REMOTE, tmpDir],
+        { stdio: ["ignore", "inherit", "inherit"] }
+      );
+      execFileSync("git", ["-C", tmpDir, "checkout", "main", "--", "Dashboard_Frecuencias.html"], {
+        stdio: ["ignore", "inherit", "inherit"],
+      });
+      const clonedHtml = path.join(tmpDir, "Dashboard_Frecuencias.html");
+      if (fs.existsSync(clonedHtml)) {
+        htmlPath = clonedHtml;
+      }
+    } catch (err) {
+      console.warn("Aviso: No se pudo clonar tablero-ebenezer en vivo, usando respaldo local en public/Dashboard_Frecuencias.html");
+    }
+  }
 
-  const htmlPath = path.join(tmpDir, "Dashboard_Frecuencias.html");
-  if (!fs.existsSync(htmlPath)) {
-    console.error("No se encontró Dashboard_Frecuencias.html en el repo clonado.");
+  if (!htmlPath && fs.existsSync(localFallbackHtml)) {
+    console.log("Usando respaldo local:", localFallbackHtml);
+    htmlPath = localFallbackHtml;
+  }
+
+  if (!htmlPath || !fs.existsSync(htmlPath)) {
+    console.error("No se encontró Dashboard_Frecuencias.html ni en el repo remoto ni en public/.");
     process.exit(1);
   }
 
   const html = fs.readFileSync(htmlPath, "utf8");
   const m = html.match(/const RAW\s*=\s*(\{[\s\S]*?\});/);
   if (!m) {
-    console.error("No se encontró 'const RAW = {...};' en el HTML — ¿cambió el formato del template?");
+    console.error("No se encontró 'const RAW = {...};' en el HTML.");
     process.exit(1);
   }
 

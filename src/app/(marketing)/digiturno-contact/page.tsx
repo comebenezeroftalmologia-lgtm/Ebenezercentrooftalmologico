@@ -81,12 +81,60 @@ function fmtDec(n: number, decimals = 1): string {
 export default function DigiturnoContactPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('contact');
 
-  // Shared open filters
-  const [selectedYear, setSelectedYear] = useState<string>('2026');
-  const [selectedMonth, setSelectedMonth] = useState<string>('Todos');
+  // Shared multi-select filters (Años, Meses, Sedes)
+  const ALL_YEARS_OPTIONS = ['2026', '2025'];
+  const [selectedYears, setSelectedYears] = useState<string[]>(['2026']);
+  const [yearMenuOpen, setYearMenuOpen] = useState<boolean>(false);
 
-  // Digiturno specific filter & expanded rows
-  const [selectedSede, setSelectedSede] = useState<string>('Ambas');
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([...MONTHS_ORDER]);
+  const [monthMenuOpen, setMonthMenuOpen] = useState<boolean>(false);
+
+  const ALL_SEDES_OPTIONS = [
+    { id: 'Sede 1', label: 'Sede 1 · Principal' },
+    { id: 'Sede 2', label: 'Sede 2 · Consultorios' },
+  ];
+  const [selectedSedes, setSelectedSedes] = useState<string[]>(['Sede 1', 'Sede 2']);
+  const [sedeMenuOpen, setSedeMenuOpen] = useState<boolean>(false);
+
+  const selectedSede =
+    selectedSedes.length === 2
+      ? 'Ambas'
+      : selectedSedes.includes('Sede 1')
+      ? 'Sede 1'
+      : 'Sede 2';
+
+  const selectedYear =
+    selectedYears.length === 2 ? 'Todos' : selectedYears[0] ?? '2026';
+
+  const toggleSelectYear = (yr: string) => {
+    setSelectedYears((prev) => {
+      if (prev.includes(yr)) {
+        const next = prev.filter((x) => x !== yr);
+        return next.length === 0 ? ['2026'] : next;
+      }
+      return [...prev, yr];
+    });
+  };
+
+  const toggleSelectMonth = (m: string) => {
+    setSelectedMonths((prev) => {
+      if (prev.includes(m)) {
+        const next = prev.filter((x) => x !== m);
+        return next.length === 0 ? [...MONTHS_ORDER] : next;
+      }
+      return MONTHS_ORDER.filter((item) => prev.includes(item) || item === m);
+    });
+  };
+
+  const toggleSelectSede = (sedeId: string) => {
+    setSelectedSedes((prev) => {
+      if (prev.includes(sedeId)) {
+        const next = prev.filter((x) => x !== sedeId);
+        return next.length === 0 ? ['Sede 1', 'Sede 2'] : next;
+      }
+      return [...prev, sedeId];
+    });
+  };
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({
     step1: true,
   });
@@ -139,18 +187,20 @@ export default function DigiturnoContactPage() {
   // ============================================================================
   const digiturnoComputed = useMemo(() => {
     const records = (rawData.digiturnoMonthly || []).filter((item) => {
-      if (selectedYear !== 'Todos' && String(item.year) !== selectedYear) {
+      if (!selectedYears.includes(String(item.year))) {
         return false;
       }
-      if (selectedMonth !== 'Todos' && item.month !== selectedMonth) {
+      if (!selectedMonths.includes(item.month)) {
         return false;
       }
       return true;
     });
 
     // Chart data across months for the selected year
-    const chartRecords = (rawData.digiturnoMonthly || []).filter((item) =>
-      selectedYear === 'Todos' ? item.year === 2026 : String(item.year) === selectedYear
+    const chartRecords = (rawData.digiturnoMonthly || []).filter(
+      (item) =>
+        (selectedYear === 'Todos' ? item.year === 2026 : String(item.year) === selectedYear) &&
+        selectedMonths.includes(item.month)
     );
 
     const monthlyChart = chartRecords.map((m) => {
@@ -314,24 +364,26 @@ export default function DigiturnoContactPage() {
       atencionS2: sumAtencionS2,
       cumplGlobal,
     };
-  }, [selectedYear, selectedMonth, selectedSede]);
+  }, [selectedYear, selectedYears, selectedMonths, selectedSede]);
 
   // ============================================================================
   // 2. CÁLCULOS ARITMÉTICOS CONTACT CENTER (PBX) CON BOTÓN EXCLUIR MUTUAL
   // ============================================================================
   const contactComputed = useMemo(() => {
     const records = (rawData.contactCenterMonthly || []).filter((item) => {
-      if (selectedYear !== 'Todos' && String(item.year) !== selectedYear) {
+      if (!selectedYears.includes(String(item.year))) {
         return false;
       }
-      if (selectedMonth !== 'Todos' && item.month !== selectedMonth) {
+      if (!selectedMonths.includes(item.month)) {
         return false;
       }
       return true;
     });
 
-    const chartRecords = (rawData.contactCenterMonthly || []).filter((item) =>
-      selectedYear === 'Todos' ? item.year === 2026 : String(item.year) === selectedYear
+    const chartRecords = (rawData.contactCenterMonthly || []).filter(
+      (item) =>
+        selectedYears.includes(String(item.year)) &&
+        selectedMonths.includes(item.month)
     );
 
     const monthlyChart = chartRecords.map((m) => {
@@ -539,7 +591,7 @@ export default function DigiturnoContactPage() {
       allWithoutMutualRec,
       sinMutualEfect,
     };
-  }, [selectedYear, selectedMonth, selectedLines]);
+  }, [selectedYear, selectedYears, selectedMonths, selectedLines]);
 
   const badgeColor = (pct: number) => {
     if (pct >= 85) {
@@ -660,27 +712,72 @@ export default function DigiturnoContactPage() {
             </div>
           )}
 
-          {/* Filtro Sede o Desplegable Multiselección de Líneas */}
+          {/* Filtro Multiselección de Sede (Digiturno) o Líneas (Contact Center) */}
           {activeTab === 'digiturno' ? (
-            <div className="relative flex items-center">
-              <Building2 className="w-3 h-3 text-slate-400 absolute left-2.5 pointer-events-none" />
-              <select
-                value={selectedSede}
-                onChange={(e) => setSelectedSede(e.target.value)}
-                aria-label="Filtrar por Sede"
-                className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 focus:outline-none focus:border-indigo-400"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSedeMenuOpen((o) => !o)}
+                className="pl-2.5 pr-3 py-1 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-700 flex items-center gap-2 focus:outline-none transition-colors"
               >
-                <option value="Ambas">Sede: Ambas Sedes</option>
-                <option value="Sede 1">Sede: Sede 1</option>
-                <option value="Sede 2">Sede: Sede 2</option>
-              </select>
+                <Building2 className="w-3.5 h-3.5 text-[#2B579A]" />
+                <span>
+                  {selectedSedes.length === 2
+                    ? 'Sedes: Ambas (2)'
+                    : `Sede: ${selectedSedes[0]}`}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {sedeMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setSedeMenuOpen(false)}
+                  />
+                  <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-xl border border-slate-200 shadow-lg z-30 p-2 space-y-1">
+                    <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <span>Sedes</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSedes(['Sede 1', 'Sede 2'])}
+                        className="text-[#2B579A] hover:underline lowercase font-semibold"
+                      >
+                        marcar ambas
+                      </button>
+                    </div>
+                    {ALL_SEDES_OPTIONS.map((opt) => {
+                      const checked = selectedSedes.includes(opt.id);
+                      return (
+                        <div
+                          key={opt.id}
+                          onClick={() => toggleSelectSede(opt.id)}
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg cursor-pointer text-[11.5px] transition-colors select-none ${
+                            checked
+                              ? 'bg-[#EEF4FF]/90 text-[#0F172A] font-semibold'
+                              : 'text-slate-600 hover:bg-slate-50 font-medium'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            readOnly
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-[#2B579A] pointer-events-none"
+                          />
+                          <span className="truncate">{opt.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setLineMenuOpen((o) => !o)}
-                className="pl-2.5 pr-3 py-1 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-700 flex items-center gap-2 focus:outline-none focus:border-indigo-400 transition-colors"
+                className="pl-2.5 pr-3 py-1 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-700 flex items-center gap-2 focus:outline-none transition-colors"
               >
                 <Filter className="w-3 h-3 text-[#2B579A]" />
                 <span>
@@ -715,7 +812,7 @@ export default function DigiturnoContactPage() {
                     {ALL_LINES_OPTIONS.map((opt) => {
                       const checked = selectedLines.includes(opt.id);
                       return (
-                        <label
+                        <div
                           key={opt.id}
                           onClick={() => toggleSelectLineOption(opt.id)}
                           className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg cursor-pointer text-[11.5px] transition-colors select-none ${
@@ -727,11 +824,11 @@ export default function DigiturnoContactPage() {
                           <input
                             type="checkbox"
                             checked={checked}
-                            onChange={() => {}}
-                            className="w-3.5 h-3.5 rounded border-slate-300 text-[#2B579A] focus:ring-[#2B579A] cursor-pointer"
+                            readOnly
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-[#2B579A] pointer-events-none"
                           />
                           <span className="truncate">{opt.label}</span>
-                        </label>
+                        </div>
                       );
                     })}
                   </div>
@@ -740,34 +837,155 @@ export default function DigiturnoContactPage() {
             </div>
           )}
 
-          {/* Filtro Año sin limitante */}
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            aria-label="Seleccionar Año"
-            className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 focus:outline-none focus:border-indigo-400"
-          >
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="Todos">Todos los años</option>
-          </select>
-
-          {/* Filtro Mes en lista vertical sin limitante */}
-          <div className="relative flex items-center">
-            <Calendar className="w-3 h-3 text-slate-400 absolute left-2.5 pointer-events-none" />
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              aria-label="Seleccionar Mes"
-              className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 focus:outline-none focus:border-indigo-400"
+          {/* Filtro Multiselección de Año */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setYearMenuOpen((o) => !o)}
+              className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-700 flex items-center gap-1.5 focus:outline-none transition-colors"
             >
-              <option value="Todos">Todos los meses</option>
-              {MONTHS_ORDER.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              <span>
+                {selectedYears.length === 2
+                  ? 'Años: 2025 y 2026'
+                  : `Año: ${selectedYears[0] ?? '2026'}`}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {yearMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setYearMenuOpen(false)}
+                />
+                <div className="absolute left-0 mt-1.5 w-48 bg-white rounded-xl border border-slate-200 shadow-lg z-30 p-2 space-y-1">
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span>Años</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedYears(['2026', '2025'])}
+                      className="text-[#2B579A] hover:underline lowercase font-semibold"
+                    >
+                      marcar ambos
+                    </button>
+                  </div>
+                  {ALL_YEARS_OPTIONS.map((yr) => {
+                    const checked = selectedYears.includes(yr);
+                    return (
+                      <div
+                        key={yr}
+                        onClick={() => toggleSelectYear(yr)}
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg cursor-pointer text-[11.5px] transition-colors select-none ${
+                          checked
+                            ? 'bg-[#EEF4FF]/90 text-[#0F172A] font-semibold'
+                            : 'text-slate-600 hover:bg-slate-50 font-medium'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          readOnly
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-[#2B579A] pointer-events-none"
+                        />
+                        <span>{yr}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Filtro Multiselección de Meses */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMonthMenuOpen((o) => !o)}
+              className="pl-2.5 pr-3 py-1 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-700 flex items-center gap-2 focus:outline-none transition-colors"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[#2B579A]" />
+              <span>
+                {selectedMonths.length === MONTHS_ORDER.length
+                  ? 'Meses: Todos (12)'
+                  : selectedMonths.length === 1
+                  ? `Mes: ${selectedMonths[0]}`
+                  : selectedMonths.length <= 3
+                  ? `Meses: ${selectedMonths.map((m) => m.slice(0, 3)).join(', ')}`
+                  : `Meses: ${selectedMonths.length} seleccionados`}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {monthMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setMonthMenuOpen(false)}
+                />
+                <div className="absolute left-0 sm:right-0 sm:left-auto mt-1.5 w-64 bg-white rounded-xl border border-slate-200 shadow-lg z-30 p-2.5 space-y-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span>Seleccionar uno o varios</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonths([...MONTHS_ORDER])}
+                      className="text-[#2B579A] hover:underline lowercase font-semibold"
+                    >
+                      marcar todos
+                    </button>
+                  </div>
+
+                  {/* Atajos rápidos de meses */}
+                  <div className="flex flex-wrap gap-1 pb-1.5 border-b border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonths(['Octubre'])}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-[#EEF4FF] text-[10px] font-semibold text-slate-700 hover:text-[#2B579A] transition-colors"
+                    >
+                      Solo Octubre
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonths(['Septiembre', 'Octubre'])}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-[#EEF4FF] text-[10px] font-semibold text-slate-700 hover:text-[#2B579A] transition-colors"
+                    >
+                      Sep + Oct
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonths(['Agosto', 'Septiembre', 'Octubre'])}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-[#EEF4FF] text-[10px] font-semibold text-slate-700 hover:text-[#2B579A] transition-colors"
+                    >
+                      Últ. 3 meses
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1 max-h-60 overflow-y-auto pr-0.5">
+                    {MONTHS_ORDER.map((m) => {
+                      const checked = selectedMonths.includes(m);
+                      return (
+                        <div
+                          key={m}
+                          onClick={() => toggleSelectMonth(m)}
+                          className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-[11px] transition-colors select-none ${
+                            checked
+                              ? 'bg-[#EEF4FF]/90 text-[#0F172A] font-semibold'
+                              : 'text-slate-600 hover:bg-slate-50 font-medium'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            readOnly
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-[#2B579A] pointer-events-none"
+                          />
+                          <span className="truncate">{m}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

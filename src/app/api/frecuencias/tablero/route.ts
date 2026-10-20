@@ -1,7 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
 import { injectCombinacionGanadora } from "@/lib/ebenezer-dashboard-theme";
 import { requireModuloAccess } from "@/lib/auth";
 
 const REPO = "pedroluisherrerabenitez5-design/tablero-ebenezer";
+const REPO_PUBLIC = "comebenezeroftalmologia-lgtm/Ebenezercentrooftalmologico";
 const ARCHIVO = "Dashboard_Frecuencias.html";
 
 export const dynamic = "force-dynamic";
@@ -297,57 +300,79 @@ const ESTILOS_AJUSTE_FILTROS = `
 </style>
 `;
 
-export async function GET() {
-  await requireModuloAccess("frecuencias");
-
+async function obtenerHtmlTablero(): Promise<string | null> {
   const token = process.env.TABLERO_EBENEZER_PAT;
-  if (!token) {
-    return html(
-      aviso(
-        "Falta configurar el acceso al tablero",
-        "No está definida la variable <code>TABLERO_EBENEZER_PAT</code> en Vercel. " +
-          "Es el token de solo lectura del repositorio del tablero, el mismo que " +
-          "ya usa la sincronización en GitHub. Se agrega en " +
-          "<strong>Vercel → Settings → Environment Variables</strong> y luego se vuelve a desplegar.",
-      ),
-      500,
-    );
+
+  // 1. Intentar traer la versión en vivo del repositorio del motor
+  if (token) {
+    for (const ruta of [ARCHIVO, "publicar/index.html"]) {
+      try {
+        const res = await fetch(
+          `https://raw.githubusercontent.com/${REPO}/main/${ruta}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/vnd.github.raw",
+              "User-Agent": "ebenezer-plataforma",
+            },
+            next: { revalidate: CACHE_SEGUNDOS },
+          },
+        );
+        if (res.ok) {
+          const txt = await res.text();
+          if (txt && txt.includes("<html")) return txt;
+        }
+      } catch {
+        // Continúa al siguiente respaldo
+      }
+    }
   }
 
-  let res: Response;
+  // 2. Respaldo automático desde la rama main del repositorio de la plataforma
   try {
-    res = await fetch(
-      `https://raw.githubusercontent.com/${REPO}/main/${ARCHIVO}`,
+    const resPub = await fetch(
+      `https://raw.githubusercontent.com/${REPO_PUBLIC}/main/public/${ARCHIVO}`,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.raw",
-          "User-Agent": "ebenezer-plataforma",
-        },
+        headers: { "User-Agent": "ebenezer-plataforma" },
         next: { revalidate: CACHE_SEGUNDOS },
       },
     );
+    if (resPub.ok) {
+      const txt = await resPub.text();
+      if (txt && txt.includes("<html")) return txt;
+    }
   } catch {
+    // Continúa al respaldo local en disco
+  }
+
+  // 3. Respaldo local empaquetado en public/Dashboard_Frecuencias.html
+  try {
+    const localPath = path.join(process.cwd(), "public", ARCHIVO);
+    if (fs.existsSync(localPath)) {
+      const txt = fs.readFileSync(localPath, "utf-8");
+      if (txt && txt.includes("<html")) return txt;
+    }
+  } catch {
+    // Fin de respaldos
+  }
+
+  return null;
+}
+
+export async function GET() {
+  await requireModuloAccess("frecuencias");
+
+  let contenido = await obtenerHtmlTablero();
+  if (!contenido) {
     return html(
       aviso(
-        "No se pudo contactar el repositorio",
-        "Puede ser una caída momentánea de GitHub. Recargue en un minuto.",
+        "No se pudo traer el tablero",
+        `No se encontró <code>${ARCHIVO}</code> en el repositorio ni en el respaldo local.`,
       ),
       502,
     );
   }
 
-  if (!res.ok) {
-    const detalle =
-      res.status === 401 || res.status === 403
-        ? "El token no tiene permiso de lectura sobre el repositorio, o está vencido."
-        : res.status === 404
-          ? `No se encontró <code>${ARCHIVO}</code> en la rama main del repositorio.`
-          : `GitHub respondió ${res.status}.`;
-    return html(aviso("No se pudo traer el tablero", detalle), 502);
-  }
-
-  let contenido = await res.text();
   if (contenido.includes("</head>")) {
     contenido = contenido.replace("</head>", `${ESTILOS_AJUSTE_FILTROS}</head>`);
   } else {
@@ -363,7 +388,6 @@ export async function GET() {
     },
   });
 }
-
 function aviso(titulo: string, cuerpo: string) {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
