@@ -81,12 +81,18 @@ type ColDef = {
   key: string;
   label: string;
   align?: "left" | "right" | "center";
-  widthClass?: string;
+  width: string;
 };
 
 const formatCOP = (val: number | undefined) => {
   if (!val || isNaN(val)) return "$-";
   return "$" + Math.round(val).toLocaleString("es-CO");
+};
+
+const normalizarEtiquetaTipo = (tipoRaw: string | undefined): string => {
+  const t = String(tipoRaw || "").toUpperCase().trim();
+  if (t.includes("DEVOL")) return "DEVOLUCIÓN";
+  return "GLOSA";
 };
 
 const STORAGE_KEY = "ebenezer_sisma_back_mesa_v3";
@@ -258,6 +264,9 @@ export default function TableroCarteraAnalytics() {
 
   // Helper to get display value of a cell for column filter menu
   const obtenerValorCelda = (row: Record<string, unknown>, colKey: string): string => {
+    if (colKey === "tipo") {
+      return normalizarEtiquetaTipo(String(row.tipo || ""));
+    }
     if (colKey === "fechaRadicacion") {
       return String(row.fechaRadicacion || row.fechaFactura || "-");
     }
@@ -316,7 +325,7 @@ export default function TableroCarteraAnalytics() {
     const base = lista.filter((r) => {
       if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
       if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroTipo !== "TODOS" && !r.tipo.toUpperCase().includes(filtroTipo)) return false;
+      if (filtroTipo !== "TODOS" && !normalizarEtiquetaTipo(r.tipo).includes(filtroTipo)) return false;
       if (filtroEstado !== "TODOS") {
         const tieneReemplazo = Boolean(r.facturaReemplaza && r.facturaReemplaza.trim() !== "");
         if (filtroEstado === "REEMPLAZADA" && !tieneReemplazo) return false;
@@ -501,9 +510,10 @@ export default function TableroCarteraAnalytics() {
     return (
       <th
         key={col.key}
+        style={{ width: col.width }}
         className={`relative px-2 py-2.5 font-bold select-none ${
           col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"
-        } ${col.widthClass || ""}`}
+        }`}
       >
         <button
           type="button"
@@ -1114,44 +1124,50 @@ export default function TableroCarteraAnalytics() {
     document.body.removeChild(link);
   };
 
+  const [filasExpandidas, setFilasExpandidas] = useState<Record<string, boolean>>({});
+
+  const togglePersianaFila = (id: string) => {
+    setFilasExpandidas((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const columnasAnuladas: ColDef[] = [
-    { key: "anio", label: "Año", widthClass: "w-[5%]" },
-    { key: "empresa", label: "Empresa", widthClass: "w-[11%]" },
-    { key: "factura", label: "Factura", widthClass: "w-[8%]" },
-    { key: "fechaRadicacion", label: "Fecha Rad.", widthClass: "w-[8%]" },
-    { key: "valorRadicado", label: "Vlr. Facturado", align: "right", widthClass: "w-[9%]" },
-    { key: "valorGlosaDevolucion", label: "Vlr. Glosa/Dev.", align: "right", widthClass: "w-[9%]" },
-    { key: "tipo", label: "Tipo", widthClass: "w-[7%]" },
-    { key: "motivo", label: "Motivo / Revisión", widthClass: "w-[18%]" },
-    { key: "facturaReemplaza", label: "Reemplazo", widthClass: "w-[8%]" },
-    { key: "rips", label: "RIPS", widthClass: "w-[5%]" },
-    { key: "responsable", label: "Responsable", widthClass: "w-[7%]" },
+    { key: "anio", label: "Año", width: "4.5%" },
+    { key: "empresa", label: "Empresa", width: "9.5%" },
+    { key: "factura", label: "Factura", width: "7.5%" },
+    { key: "fechaRadicacion", label: "Fecha Rad.", width: "7.5%" },
+    { key: "valorRadicado", label: "Vlr. Facturado", align: "right", width: "8.5%" },
+    { key: "valorGlosaDevolucion", label: "Vlr. Glosa/Dev.", align: "right", width: "8.5%" },
+    { key: "tipo", label: "Tipo", width: "6.5%" },
+    { key: "motivo", label: "Motivo / Revisión", width: "24.5%" },
+    { key: "facturaReemplaza", label: "Reemplazo", width: "7.5%" },
+    { key: "rips", label: "RIPS", width: "4.5%" },
+    { key: "responsable", label: "Responsable", width: "6.5%" },
   ];
 
   const columnasGlosas: ColDef[] = [
-    { key: "subtabla", label: "Estado", widthClass: "w-[9%]" },
-    { key: "anio", label: "Año", widthClass: "w-[5%]" },
-    { key: "empresa", label: "Empresa", widthClass: "w-[11%]" },
-    { key: "factura", label: "Factura", widthClass: "w-[8%]" },
-    { key: "valorFactura", label: "Vlr. Factura", align: "right", widthClass: "w-[9%]" },
-    { key: "valorGlosado", label: "Vlr. Glosado", align: "right", widthClass: "w-[9%]" },
-    { key: "motivoGlosa", label: "Motivo de Glosa", widthClass: "w-[18%]" },
-    { key: "observacionInterna", label: "Respuesta / Obs.", widthClass: "w-[13%]" },
-    { key: "facturador", label: "Facturador", widthClass: "w-[8%]" },
-    { key: "notaCredito", label: "Nota Crédito", widthClass: "w-[5%]" },
+    { key: "subtabla", label: "Estado", width: "8.5%" },
+    { key: "anio", label: "Año", width: "4.5%" },
+    { key: "empresa", label: "Empresa", width: "10%" },
+    { key: "factura", label: "Factura", width: "7.5%" },
+    { key: "valorFactura", label: "Vlr. Factura", align: "right", width: "8.5%" },
+    { key: "valorGlosado", label: "Vlr. Glosado", align: "right", width: "8.5%" },
+    { key: "motivoGlosa", label: "Motivo de Glosa", width: "21%" },
+    { key: "observacionInterna", label: "Respuesta / Obs.", width: "14%" },
+    { key: "facturador", label: "Facturador", width: "7.5%" },
+    { key: "notaCredito", label: "Nota Crédito", width: "5.5%" },
   ];
 
   const columnasPendientes: ColDef[] = [
-    { key: "estado", label: "Estado", widthClass: "w-[7%]" },
-    { key: "empresa", label: "Empresa", widthClass: "w-[10%]" },
-    { key: "contrato", label: "Contrato", widthClass: "w-[11%]" },
-    { key: "cups", label: "CUPS", widthClass: "w-[6%]" },
-    { key: "descripcion", label: "Descripción Servicio", widthClass: "w-[20%]" },
-    { key: "fechaServicio", label: "Fecha", widthClass: "w-[8%]" },
-    { key: "medico", label: "Médico", widthClass: "w-[10%]" },
-    { key: "valorServicio", label: "Vlr. Servicio", align: "right", widthClass: "w-[8%]" },
-    { key: "responsable", label: "Responsable", widthClass: "w-[7%]" },
-    { key: "observaciones", label: "Observaciones", widthClass: "w-[8%]" },
+    { key: "estado", label: "Estado", width: "7%" },
+    { key: "empresa", label: "Empresa", width: "9.5%" },
+    { key: "contrato", label: "Contrato", width: "11%" },
+    { key: "cups", label: "CUPS", width: "5.5%" },
+    { key: "descripcion", label: "Descripción Servicio", width: "22%" },
+    { key: "fechaServicio", label: "Fecha", width: "7.5%" },
+    { key: "medico", label: "Médico", width: "10%" },
+    { key: "valorServicio", label: "Vlr. Servicio", align: "right", width: "8%" },
+    { key: "responsable", label: "Responsable", width: "6.5%" },
+    { key: "observaciones", label: "Observaciones", width: "8.5%" },
   ];
 
   return (
@@ -1894,227 +1910,415 @@ export default function TableroCarteraAnalytics() {
           </div>
         </div>
 
-        {/* TABLA AJUSTADA AL 100% DEL ANCHO CON MENÚ DESPLEGABLE (▾) POR COLUMNA */}
+        {/* TABLA AJUSTADA AL 100% DEL ANCHO CON MENÚ DESPLEGABLE (▾) Y PERSIANA AL CLIC */}
         <div className="border rounded-xl overflow-visible" style={{ borderColor: "#E2ECF8" }}>
           {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
-            <table className="w-full text-[11px] border-collapse">
+            <table
+              className="w-full text-[11px] border-collapse"
+              style={{ tableLayout: "fixed", width: "100%" }}
+            >
               <thead>
                 <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
                   {columnasAnuladas.map((col, idx) =>
                     renderCeldaHeaderConFiltro(col, idx, columnasAnuladas.length + 1)
                   )}
-                  <th className="px-2 py-2.5 text-center font-bold w-[5%]">Acción</th>
+                  <th style={{ width: "4.5%" }} className="px-2 py-2.5 text-center font-bold">
+                    Acción
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                {(listaActivaPaginada.items as AnuladaRow[]).map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50 align-middle">
-                    <td className="px-2 py-2.5 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                      {r.anio}
-                    </td>
-                    <td className="px-2 py-2.5 font-bold leading-tight" style={{ color: "#0E245E" }}>
-                      {r.empresa}
-                    </td>
-                    <td className="px-2 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                      {r.factura}
-                    </td>
-                    <td className="px-2 py-2.5 whitespace-nowrap" style={{ color: "#334155" }}>
-                      {r.fechaRadicacion || r.fechaFactura || "-"}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                      {formatCOP(r.valorRadicado)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono font-semibold whitespace-nowrap" style={{ color: "#BE123C" }}>
-                      {formatCOP(r.valorGlosaDevolucion)}
-                    </td>
-                    <td className="px-2 py-2.5 whitespace-nowrap">
-                      <span
-                        className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                        style={{
-                          backgroundColor: r.tipo.includes("GLOSA") ? "#FFE4E6" : "#EFF6FF",
-                          color: r.tipo.includes("GLOSA") ? "#BE123C" : "#1D58D8",
-                        }}
-                      >
-                        {r.tipo}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2.5 leading-tight" style={{ color: "#334155" }}>
-                      {r.motivo || "-"}
-                      {r.revisionFinanciera ? (
-                        <span className="block text-[10px] mt-0.5 font-medium" style={{ color: "#047857" }}>
-                          Rev: {r.revisionFinanciera}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-2 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#047857" }}>
-                      {r.facturaReemplaza || "PENDIENTE"}
-                    </td>
-                    <td className="px-2 py-2.5 font-mono whitespace-nowrap" style={{ color: "#334155" }}>
-                      {r.rips || "-"}
-                    </td>
-                    <td className="px-2 py-2.5 font-semibold leading-tight" style={{ color: "#0E245E" }}>
-                      {r.responsable}
-                    </td>
-                    <td className="px-2 py-2.5 text-center whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setFilaEditando({ ...r })}
-                        className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                        style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {(listaActivaPaginada.items as AnuladaRow[]).map((r) => {
+                  const abierta = Boolean(filasExpandidas[r.id]);
+                  const etiquetaTipo = normalizarEtiquetaTipo(r.tipo);
+                  const textoMotivoBase =
+                    r.motivo && r.motivo !== "-"
+                      ? r.motivo
+                      : r.tipo && r.tipo.length > 15
+                      ? r.tipo
+                      : "Sin motivo registrado";
+
+                  return (
+                    <React.Fragment key={r.id}>
+                      <tr className="hover:bg-slate-50 align-middle">
+                        <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                          {r.anio}
+                        </td>
+                        <td className="px-2 py-2 font-bold truncate" style={{ color: "#0E245E" }} title={r.empresa}>
+                          {r.empresa}
+                        </td>
+                        <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
+                          {r.factura}
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
+                          {r.fechaRadicacion || r.fechaFactura || "-"}
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                          {formatCOP(r.valorRadicado)}
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono font-semibold whitespace-nowrap" style={{ color: "#BE123C" }}>
+                          {formatCOP(r.valorGlosaDevolucion)}
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold inline-block"
+                            style={{
+                              backgroundColor: etiquetaTipo === "GLOSA" ? "#FFE4E6" : "#EFF6FF",
+                              color: etiquetaTipo === "GLOSA" ? "#BE123C" : "#1D58D8",
+                            }}
+                          >
+                            {etiquetaTipo}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2" style={{ color: "#334155" }}>
+                          <button
+                            type="button"
+                            onClick={() => togglePersianaFila(r.id)}
+                            className="w-full text-left flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg border transition cursor-pointer"
+                            style={{
+                              backgroundColor: abierta ? "#EFF6FF" : "#F8FAFC",
+                              borderColor: abierta ? "#93C5FD" : "#E2ECF8",
+                              color: "#0E245E",
+                            }}
+                            title="Haz clic para abrir o cerrar el detalle completo"
+                          >
+                            <span className="truncate font-medium">{textoMotivoBase}</span>
+                            <span
+                              className="text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded"
+                              style={{
+                                backgroundColor: abierta ? "#1D58D8" : "#E2ECF8",
+                                color: abierta ? "#FFFFFF" : "#0E245E",
+                              }}
+                            >
+                              {abierta ? "▴" : "▾"}
+                            </span>
+                          </button>
+                        </td>
+                        <td className="px-2 py-2 font-mono font-bold truncate" style={{ color: "#047857" }}>
+                          {r.facturaReemplaza || "PENDIENTE"}
+                        </td>
+                        <td className="px-2 py-2 font-mono truncate" style={{ color: "#334155" }}>
+                          {r.rips || "-"}
+                        </td>
+                        <td className="px-2 py-2 font-semibold truncate" style={{ color: "#0E245E" }} title={r.responsable}>
+                          {r.responsable}
+                        </td>
+                        <td className="px-2 py-2 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setFilaEditando({ ...r })}
+                            className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
+                            style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
+                          >
+                            Editar
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* PERSIANA DESPLEGABLE CON EL DETALLE COMPLETO */}
+                      {abierta && (
+                        <tr style={{ backgroundColor: "#F4F8FD" }}>
+                          <td colSpan={12} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                              <div className="md:col-span-2 space-y-1">
+                                <div className="font-extrabold text-[11px] uppercase" style={{ color: "#1D58D8" }}>
+                                  Motivo Completo de Anulación / Devolución ({r.factura})
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-white border leading-relaxed" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
+                                  {textoMotivoBase}
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="font-extrabold text-[11px] uppercase" style={{ color: "#047857" }}>
+                                  Revisión Financiera y Trazabilidad
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
+                                  <div>
+                                    <strong>Revisión:</strong> {r.revisionFinanciera || "En revisión"}
+                                  </div>
+                                  <div>
+                                    <strong>Factura Reemplaza:</strong>{" "}
+                                    <span className="font-mono font-bold" style={{ color: "#047857" }}>
+                                      {r.facturaReemplaza || "PENDIENTE"}
+                                    </span>{" "}
+                                    | <strong>RIPS:</strong> {r.rips || "-"}
+                                  </div>
+                                  <div>
+                                    <strong>Fecha Factura:</strong> {r.fechaFactura || "-"} |{" "}
+                                    <strong>Responsable:</strong> {r.responsable}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}
 
           {tabActiva === "glosas" && (
-            <table className="w-full text-[11px] border-collapse">
+            <table
+              className="w-full text-[11px] border-collapse"
+              style={{ tableLayout: "fixed", width: "100%" }}
+            >
               <thead>
                 <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
                   {columnasGlosas.map((col, idx) =>
                     renderCeldaHeaderConFiltro(col, idx, columnasGlosas.length + 1)
                   )}
-                  <th className="px-2 py-2.5 text-center font-bold w-[5%]">Acción</th>
+                  <th style={{ width: "4.5%" }} className="px-2 py-2.5 text-center font-bold">
+                    Acción
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                {(listaActivaPaginada.items as GlosaRow[]).map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50 align-middle">
-                    <td className="px-2 py-2.5 whitespace-nowrap">
-                      <span
-                        className="px-2 py-0.5 rounded-full font-bold text-[10px]"
-                        style={{
-                          backgroundColor:
-                            r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                              ? "#FFE4E6"
+                {(listaActivaPaginada.items as GlosaRow[]).map((r) => {
+                  const abierta = Boolean(filasExpandidas[r.id]);
+                  return (
+                    <React.Fragment key={r.id}>
+                      <tr className="hover:bg-slate-50 align-middle">
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <span
+                            className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
+                            style={{
+                              backgroundColor:
+                                r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                                  ? "#FFE4E6"
+                                  : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
+                                  ? "#ECFDF5"
+                                  : "#FEF3C7",
+                              color:
+                                r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                                  ? "#BE123C"
+                                  : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
+                                  ? "#047857"
+                                  : "#B45309",
+                            }}
+                          >
+                            {r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                              ? "Aceptada (NC)"
                               : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                              ? "#ECFDF5"
-                              : "#FEF3C7",
-                          color:
-                            r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                              ? "#BE123C"
-                              : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                              ? "#047857"
-                              : "#B45309",
-                        }}
-                      >
-                        {r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                          ? "Aceptada (NC)"
-                          : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                          ? "Respondida"
-                          : "En Gestión"}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2.5 font-bold" style={{ color: "#0E245E" }}>
-                      {r.anio}
-                    </td>
-                    <td className="px-2 py-2.5 font-bold leading-tight" style={{ color: "#0E245E" }}>
-                      {r.empresa}
-                    </td>
-                    <td className="px-2 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                      {r.factura}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono whitespace-nowrap" style={{ color: "#0E245E" }}>
-                      {formatCOP(r.valorFactura || r.valorRadicado)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#BE123C" }}>
-                      {formatCOP(r.valorGlosado)}
-                    </td>
-                    <td className="px-2 py-2.5 leading-tight" style={{ color: "#334155" }}>
-                      {r.motivoGlosa || "-"}
-                    </td>
-                    <td className="px-2 py-2.5 leading-tight" style={{ color: "#334155" }}>
-                      {r.observacionInterna || "-"}
-                    </td>
-                    <td className="px-2 py-2.5 font-semibold leading-tight" style={{ color: "#0E245E" }}>
-                      {r.facturador}
-                    </td>
-                    <td className="px-2 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#6D28D9" }}>
-                      {r.notaCredito || "-"}
-                    </td>
-                    <td className="px-2 py-2.5 text-center whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setFilaEditando({ ...r })}
-                        className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                        style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                              ? "Respondida"
+                              : "En Gestión"}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 font-bold" style={{ color: "#0E245E" }}>
+                          {r.anio}
+                        </td>
+                        <td className="px-2 py-2 font-bold truncate" style={{ color: "#0E245E" }} title={r.empresa}>
+                          {r.empresa}
+                        </td>
+                        <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
+                          {r.factura}
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono whitespace-nowrap" style={{ color: "#0E245E" }}>
+                          {formatCOP(r.valorFactura || r.valorRadicado)}
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#BE123C" }}>
+                          {formatCOP(r.valorGlosado)}
+                        </td>
+                        <td className="px-2 py-2" style={{ color: "#334155" }}>
+                          <button
+                            type="button"
+                            onClick={() => togglePersianaFila(r.id)}
+                            className="w-full text-left flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg border transition cursor-pointer"
+                            style={{
+                              backgroundColor: abierta ? "#EFF6FF" : "#F8FAFC",
+                              borderColor: abierta ? "#93C5FD" : "#E2ECF8",
+                              color: "#0E245E",
+                            }}
+                          >
+                            <span className="truncate font-medium">{r.motivoGlosa || "-"}</span>
+                            <span
+                              className="text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded"
+                              style={{
+                                backgroundColor: abierta ? "#1D58D8" : "#E2ECF8",
+                                color: abierta ? "#FFFFFF" : "#0E245E",
+                              }}
+                            >
+                              {abierta ? "▴" : "▾"}
+                            </span>
+                          </button>
+                        </td>
+                        <td className="px-2 py-2 truncate" style={{ color: "#334155" }} title={r.observacionInterna}>
+                          {r.observacionInterna || "-"}
+                        </td>
+                        <td className="px-2 py-2 font-semibold truncate" style={{ color: "#0E245E" }}>
+                          {r.facturador}
+                        </td>
+                        <td className="px-2 py-2 font-mono font-bold truncate" style={{ color: "#6D28D9" }}>
+                          {r.notaCredito || "-"}
+                        </td>
+                        <td className="px-2 py-2 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setFilaEditando({ ...r })}
+                            className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
+                            style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
+                          >
+                            Editar
+                          </button>
+                        </td>
+                      </tr>
+
+                      {abierta && (
+                        <tr style={{ backgroundColor: "#F4F8FD" }}>
+                          <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
+                                  Motivo Completo de Glosa ({r.factura})
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
+                                  {r.motivoGlosa || "-"}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
+                                  Respuesta / Observación Interna
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
+                                  {r.observacionInterna || "Sin observación adicional"}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}
 
           {tabActiva === "pendientes" && (
-            <table className="w-full text-[11px] border-collapse">
+            <table
+              className="w-full text-[11px] border-collapse"
+              style={{ tableLayout: "fixed", width: "100%" }}
+            >
               <thead>
                 <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
                   {columnasPendientes.map((col, idx) =>
                     renderCeldaHeaderConFiltro(col, idx, columnasPendientes.length + 1)
                   )}
-                  <th className="px-2 py-2.5 text-center font-bold w-[5%]">Acción</th>
+                  <th style={{ width: "4.5%" }} className="px-2 py-2.5 text-center font-bold">
+                    Acción
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                {(listaActivaPaginada.items as PendienteRow[]).map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50 align-middle">
-                    <td className="px-2 py-2.5 whitespace-nowrap">
-                      <span
-                        className="px-2 py-0.5 rounded-full font-bold text-[10px]"
-                        style={{
-                          backgroundColor: r.estado === "FACTURADO" ? "#ECFDF5" : "#FEF3C7",
-                          color: r.estado === "FACTURADO" ? "#047857" : "#B45309",
-                        }}
-                      >
-                        {r.estado}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2.5 font-bold leading-tight" style={{ color: "#0E245E" }}>
-                      {r.empresa}
-                    </td>
-                    <td className="px-2 py-2.5 leading-tight" style={{ color: "#334155" }}>
-                      {r.contrato}
-                    </td>
-                    <td className="px-2 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                      {r.cups}
-                    </td>
-                    <td className="px-2 py-2.5 leading-tight" style={{ color: "#334155" }}>
-                      {r.descripcion}
-                    </td>
-                    <td className="px-2 py-2.5 whitespace-nowrap" style={{ color: "#334155" }}>
-                      {r.fechaServicio}
-                    </td>
-                    <td className="px-2 py-2.5 leading-tight" style={{ color: "#334155" }}>
-                      {r.medico}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                      {formatCOP(r.valorServicio)}
-                    </td>
-                    <td className="px-2 py-2.5 font-semibold leading-tight" style={{ color: "#0E245E" }}>
-                      {r.responsable}
-                    </td>
-                    <td className="px-2 py-2.5 leading-tight" style={{ color: "#334155" }}>
-                      {r.observaciones || "-"}
-                    </td>
-                    <td className="px-2 py-2.5 text-center whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setFilaEditando({ ...r })}
-                        className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                        style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {(listaActivaPaginada.items as PendienteRow[]).map((r) => {
+                  const abierta = Boolean(filasExpandidas[r.id]);
+                  return (
+                    <React.Fragment key={r.id}>
+                      <tr className="hover:bg-slate-50 align-middle">
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <span
+                            className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
+                            style={{
+                              backgroundColor: r.estado === "FACTURADO" ? "#ECFDF5" : "#FEF3C7",
+                              color: r.estado === "FACTURADO" ? "#047857" : "#B45309",
+                            }}
+                          >
+                            {r.estado}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 font-bold truncate" style={{ color: "#0E245E" }} title={r.empresa}>
+                          {r.empresa}
+                        </td>
+                        <td className="px-2 py-2 truncate" style={{ color: "#334155" }} title={r.contrato}>
+                          {r.contrato}
+                        </td>
+                        <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
+                          {r.cups}
+                        </td>
+                        <td className="px-2 py-2" style={{ color: "#334155" }}>
+                          <button
+                            type="button"
+                            onClick={() => togglePersianaFila(r.id)}
+                            className="w-full text-left flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg border transition cursor-pointer"
+                            style={{
+                              backgroundColor: abierta ? "#EFF6FF" : "#F8FAFC",
+                              borderColor: abierta ? "#93C5FD" : "#E2ECF8",
+                              color: "#0E245E",
+                            }}
+                          >
+                            <span className="truncate font-medium">{r.descripcion}</span>
+                            <span
+                              className="text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded"
+                              style={{
+                                backgroundColor: abierta ? "#1D58D8" : "#E2ECF8",
+                                color: abierta ? "#FFFFFF" : "#0E245E",
+                              }}
+                            >
+                              {abierta ? "▴" : "▾"}
+                            </span>
+                          </button>
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
+                          {r.fechaServicio}
+                        </td>
+                        <td className="px-2 py-2 truncate" style={{ color: "#334155" }} title={r.medico}>
+                          {r.medico}
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                          {formatCOP(r.valorServicio)}
+                        </td>
+                        <td className="px-2 py-2 font-semibold truncate" style={{ color: "#0E245E" }}>
+                          {r.responsable}
+                        </td>
+                        <td className="px-2 py-2 truncate" style={{ color: "#334155" }} title={r.observaciones}>
+                          {r.observaciones || "-"}
+                        </td>
+                        <td className="px-2 py-2 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setFilaEditando({ ...r })}
+                            className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
+                            style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
+                          >
+                            Editar
+                          </button>
+                        </td>
+                      </tr>
+
+                      {abierta && (
+                        <tr style={{ backgroundColor: "#F4F8FD" }}>
+                          <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
+                                  Descripción Completa del Procedimiento ({r.cups})
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
+                                  {r.descripcion}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
+                                  Contrato y Observaciones
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
+                                  <div>
+                                    <strong>Contrato:</strong> {r.contrato}
+                                  </div>
+                                  <div>
+                                    <strong>Observación:</strong> {r.observaciones || "Pendiente por facturar"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}
