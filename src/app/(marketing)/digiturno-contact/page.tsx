@@ -143,8 +143,8 @@ export default function DigiturnoContactPage() {
   const ALL_LINES_OPTIONS = [
     { id: '506012', label: 'Mutual Subsidiado', isMutual: true },
     { id: '506013', label: 'Mutual Contributivo', isMutual: true },
-    { id: '506014', label: 'Prepagadas y Particular · PyP', isMutual: false },
-    { id: '506015', label: 'Cirugía Refractiva · Particular', isMutual: false },
+    { id: '506014', label: 'PYP (Particular y Prepagada) y Ecopetrol', isMutual: false },
+    { id: '506015', label: 'Cirugía Refractiva', isMutual: false },
   ];
   const [selectedLines, setSelectedLines] = useState<string[]>(['506012', '506013', '506014', '506015']);
   const [lineMenuOpen, setLineMenuOpen] = useState<boolean>(false);
@@ -707,7 +707,7 @@ export default function DigiturnoContactPage() {
                 }`}
               >
                 <Briefcase className="w-3 h-3" />
-                PyP y Particular
+                PYP (Particular y Prepagada) y Ecopetrol
               </button>
             </div>
           )}
@@ -1008,7 +1008,7 @@ export default function DigiturnoContactPage() {
                 {fmtNum(contactComputed.totalRecibidas)}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Prom: {fmtNum(Math.max(1, contactComputed.totalRecibidas / 48))} llamadas/día · Comercial (PyP/Part):{' '}
+                Prom: {fmtNum(Math.max(1, contactComputed.totalRecibidas / 48))} llamadas/día · PYP y Ecopetrol:{' '}
                 <span className="font-semibold text-slate-700">
                   {fmtNum(contactComputed.allWithoutMutualRec)}
                 </span>
@@ -1026,7 +1026,7 @@ export default function DigiturnoContactPage() {
                 {fmtNum(contactComputed.totalContestadas)}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                {fmtDec(contactComputed.efectividadGlobal)}% efectividad · Comercial (PyP/Part):{' '}
+                {fmtDec(contactComputed.efectividadGlobal)}% efectividad · PYP y Ecopetrol:{' '}
                 <span className="font-semibold text-emerald-700">
                   {fmtDec(contactComputed.sinMutualEfect)}%
                 </span>
@@ -1060,7 +1060,7 @@ export default function DigiturnoContactPage() {
                 {fmtDec(contactComputed.weightedSla)}%
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Espera prom: {fmtDec(contactComputed.weightedEspera)} min · Comercial (PyP/Part):{' '}
+                Espera prom: {fmtDec(contactComputed.weightedEspera)} min · PYP y Ecopetrol:{' '}
                 <span className="font-semibold text-slate-700">0,5 min</span>
               </div>
             </div>
