@@ -108,7 +108,7 @@ const normalizarResponsableReal = (respRaw: string | undefined, empresaRaw: stri
   return "YULEIBIS";
 };
 
-const STORAGE_KEY = "ebenezer_sisma_back_mesa_v4";
+const STORAGE_KEY = "ebenezer_sisma_back_mesa_v5";
 
 export default function TableroCarteraAnalytics() {
   const [cortesTodas, setCortesTodas] = useState<CorteSismaBack[]>(
@@ -143,7 +143,7 @@ export default function TableroCarteraAnalytics() {
   );
 
   const [modalidadSisma, setModalidadSisma] = useState<"TODAS" | "PYP">("TODAS");
-  const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(2);
+  const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(carteraInitialData.sismaBack.cortes.TODAS.length - 1);
 
   // Persiana states for the main cards/boxes
   const [persianaResumenAbierta, setPersianaResumenAbierta] = useState<boolean>(true);
@@ -186,7 +186,9 @@ export default function TableroCarteraAnalytics() {
       pendienteRadicar: number;
       total: number;
     }[];
-  } | null>(null);
+  } | null>(
+    (carteraInitialData.sismaBack as unknown as { datosSismaVivo?: typeof datosSismaVivo }).datosSismaVivo || null
+  );
 
   // 6 Top Bar Filters
   const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
@@ -289,7 +291,7 @@ export default function TableroCarteraAnalytics() {
             }))
           );
         }
-        if (Array.isArray(parsed.cortesTodas)) setCortesTodas(parsed.cortesTodas);
+        if (Array.isArray(parsed.cortesTodas) && parsed.cortesTodas.length >= carteraInitialData.sismaBack.cortes.TODAS.length) setCortesTodas(parsed.cortesTodas);
         if (Array.isArray(parsed.cortesPyp)) setCortesPyp(parsed.cortesPyp);
       }
     } catch {
@@ -1369,57 +1371,6 @@ export default function TableroCarteraAnalytics() {
           </button>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <div
-              className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 border"
-              style={{ backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" }}
-            >
-              <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
-              <span className="text-[11px] font-extrabold" style={{ color: "#065F46" }}>
-                Corte SISMA:
-              </span>
-              <input
-                type="date"
-                value={fechaCorteVivo}
-                onChange={(e) => setFechaCorteVivo(e.target.value)}
-                className="rounded-lg border bg-white px-2 py-0.5 text-xs font-bold"
-                style={{ borderColor: "#6EE7B7", color: "#065F46" }}
-              />
-              <button
-                type="button"
-                disabled={cargandoSismaVivo}
-                onClick={() => sincronizarConSismaVivo(fechaCorteVivo, false)}
-                className="px-2.5 py-1 rounded-lg text-xs font-extrabold transition cursor-pointer disabled:opacity-60"
-                style={{ backgroundColor: "#059669", color: "#FFFFFF" }}
-              >
-                {cargandoSismaVivo ? "Consultando..." : "🔄 Sincronizar API"}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setMostrarPanelCarga(!mostrarPanelCarga)}
-              className="px-3.5 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer border shadow-2xs"
-              style={{
-                backgroundColor: "#1D58D8",
-                color: "#FFFFFF",
-                borderColor: "#1D58D8",
-              }}
-            >
-              📂 Cargar Archivo Excel / CSV
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMostrarModalCorte(true)}
-              className="px-3.5 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer border"
-              style={{
-                backgroundColor: "#F8FAFC",
-                color: "#0E245E",
-                borderColor: "#CBD5E1",
-              }}
-            >
-              + Registrar Corte
-            </button>
 
             <div
               className="inline-flex rounded-xl p-1 border"
@@ -1465,7 +1416,14 @@ export default function TableroCarteraAnalytics() {
                   <button
                     type="button"
                     key={c.fechaCorte}
-                    onClick={() => setIndiceCorteActivo(idx)}
+                    onClick={() => {
+                      setIndiceCorteActivo(idx);
+                      const partes = c.fechaCorte.slice(0, 10).split("/");
+                      if (partes.length === 3) {
+                        const iso = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                        setFechaCorteVivo(iso);
+                      }
+                    }}
                     className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
                     style={{
                       backgroundColor: activo ? "#0E245E" : "transparent",

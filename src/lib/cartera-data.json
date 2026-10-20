@@ -54,6 +54,17 @@
           "glosasPendientesGestionar": 0,
           "anticiposPorCruzar": 1670178968,
           "totalCarteraReal": 3598528643
+        },
+        {
+          "fechaCorte": "20/10/2026",
+          "modalidad": "Todas las Empresas",
+          "carteraCorriente": 2962146862,
+          "carteraVencida": 1224440885,
+          "carteraTotal": 4186587747,
+          "facturasPendientesRadicar": 69789935,
+          "glosasPendientesGestionar": 0,
+          "anticiposPorCruzar": 1365651121,
+          "totalCarteraReal": 2820936626
         }
       ],
       "PYP": [
@@ -111,7 +122,183 @@
           "saldo_inicial, debito, credito, saldo_final_por_cruzar"
         ]
       }
-    ]
+    ],
+    "datosSismaVivo": {
+      "corteISO": "2026-10-20",
+      "fechaCorte": "20/10/2026",
+      "filasFacturas": 4322,
+      "edades": {
+        "porVencer": 1739888793,
+        "d30": 1083826033,
+        "d60": 138432036,
+        "d90": 21265358,
+        "d120": 462272173,
+        "d180": 64000593,
+        "d360": 293208512,
+        "mas360": 383694249,
+        "saldoTotal": 4186587747
+      },
+      "cuentasGirosDetalle": [
+        {
+          "codigo": "1301250602",
+          "nombre": "GIROS POR APLICAR A CARTERA NO IDENTIFIC",
+          "saldo": 38971299,
+          "saldoAbsoluto": 38971299,
+          "documentos": 18
+        },
+        {
+          "codigo": "2501010602",
+          "nombre": "GIROS PARA ABONO DE CARTERA PENDIENTE",
+          "saldo": 0,
+          "saldoAbsoluto": 0,
+          "documentos": 0
+        },
+        {
+          "codigo": "2501010607",
+          "nombre": "GIROS DE CARTERA PENDIENTE POR APLICAR",
+          "saldo": -1326679822,
+          "saldoAbsoluto": 1326679822,
+          "documentos": 2217
+        }
+      ],
+      "topEmpresas": [
+        {
+          "nit": "806008394",
+          "razonSocial": "ASOCIACION MUTUAL SER EMPRESA SOLIDARIA DE SALUD, ENTIDAD PROMOTORA DE SALUD. MUTUAL SER EPS",
+          "facturasCount": 3372,
+          "corriente": 1671348824,
+          "vencida": 998364971,
+          "pendienteRadicar": 28959119,
+          "total": 2669713795
+        },
+        {
+          "nit": "899999068",
+          "razonSocial": "ECOPETROL SA",
+          "facturasCount": 30,
+          "corriente": 344172442,
+          "vencida": 0,
+          "pendienteRadicar": 0,
+          "total": 344172442
+        },
+        {
+          "nit": "800088702",
+          "razonSocial": "EPS SURAMERICANA S.A",
+          "facturasCount": 243,
+          "corriente": 257371580,
+          "vencida": 68910604,
+          "pendienteRadicar": 24816089,
+          "total": 326282184
+        },
+        {
+          "nit": "900178724",
+          "razonSocial": "MEDPLUS MEDICINA PREPAGADA SA",
+          "facturasCount": 198,
+          "corriente": 173081021,
+          "vencida": 81675471,
+          "pendienteRadicar": 7835808,
+          "total": 254756492
+        },
+        {
+          "nit": "860078828",
+          "razonSocial": "COMPAÑIA DE MEDICINA PREPAGADA COLSANITAS SA",
+          "facturasCount": 76,
+          "corriente": 153165408,
+          "vencida": 0,
+          "pendienteRadicar": 3630691,
+          "total": 153165408
+        },
+        {
+          "nit": "800106339",
+          "razonSocial": "COLMEDICA MEDICINA PREPAGADA S.A",
+          "facturasCount": 97,
+          "corriente": 118708737,
+          "vencida": 6115789,
+          "pendienteRadicar": 3743192,
+          "total": 124824526
+        },
+        {
+          "nit": "890903790",
+          "razonSocial": "SEGUROS DE VIDA SURAMERICANA S.A.",
+          "facturasCount": 48,
+          "corriente": 70143523,
+          "vencida": 0,
+          "pendienteRadicar": 173600,
+          "total": 70143523
+        },
+        {
+          "nit": "805009741",
+          "razonSocial": "COOMEVA MEDICINA PREPAGADA SA",
+          "facturasCount": 75,
+          "corriente": 43803784,
+          "vencida": 23260449,
+          "pendienteRadicar": -36600,
+          "total": 67064233
+        },
+        {
+          "nit": "860002503",
+          "razonSocial": "COMPAÑIA DE SEGUROS BOLIVAR SA",
+          "facturasCount": 29,
+          "corriente": 41444700,
+          "vencida": 21960310,
+          "pendienteRadicar": 668036,
+          "total": 63405010
+        },
+        {
+          "nit": "860027404",
+          "razonSocial": "ALLIANZ SEGUROS DE VIDA SA",
+          "facturasCount": 26,
+          "corriente": 26833778,
+          "vencida": 0,
+          "pendienteRadicar": 0,
+          "total": 26833778
+        },
+        {
+          "nit": "900640334",
+          "razonSocial": "AXA COLPATRIA MEDICINA PREPAGADA S.A.",
+          "facturasCount": 30,
+          "corriente": 5052735,
+          "vencida": 18361719,
+          "pendienteRadicar": 0,
+          "total": 23414454
+        },
+        {
+          "nit": "860039988",
+          "razonSocial": "HDI SEGUROS COLOMBIA S.A.S",
+          "facturasCount": 18,
+          "corriente": 20403751,
+          "vencida": 333817,
+          "pendienteRadicar": 0,
+          "total": 20737568
+        },
+        {
+          "nit": "800251440",
+          "razonSocial": "ENTIDAD PROMOTORA DE SALUD SANITAS SAS",
+          "facturasCount": 53,
+          "corriente": 11535676,
+          "vencida": 0,
+          "pendienteRadicar": 0,
+          "total": 11535676
+        },
+        {
+          "nit": "860002183",
+          "razonSocial": "AXA COLPATRIA SEGUROS DE VIDA S.A.",
+          "facturasCount": 9,
+          "corriente": 2608561,
+          "vencida": 3586184,
+          "pendienteRadicar": 0,
+          "total": 6194745
+        },
+        {
+          "nit": "890480023",
+          "razonSocial": "CAJA DE COMPENSACION FAMILIAR DE FENALCO-ANDI COMFENALCO-CARTAGENA",
+          "facturasCount": 1,
+          "corriente": 5034714,
+          "vencida": 0,
+          "pendienteRadicar": 0,
+          "total": 5034714
+        }
+      ]
+    }
   },
   "aniosDisponibles": [
     "2021",

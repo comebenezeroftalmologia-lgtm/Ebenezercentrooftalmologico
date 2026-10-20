@@ -282,7 +282,7 @@ export async function GET(req: NextRequest) {
       fechaCorte: fechaCorteLabel,
       filasFacturas: edadesData.filas || 0,
       resumenCorte: {
-        fechaCorte: `${fechaCorteLabel} (SISMA Vivo)`,
+        fechaCorte: fechaCorteLabel,
         modalidad: "Todas las Empresas",
         carteraCorriente,
         carteraVencida,
