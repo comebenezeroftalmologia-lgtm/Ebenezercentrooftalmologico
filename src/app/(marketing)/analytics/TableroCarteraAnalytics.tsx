@@ -104,24 +104,43 @@ export default function TableroCarteraAnalytics() {
     carteraInitialData.pendientes as PendienteRow[]
   );
 
-  const [apiConectada, setApiConectada] = useState<boolean>(false);
   const [modalidadSisma, setModalidadSisma] = useState<"TODAS" | "PYP">("TODAS");
   const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(2);
 
-  // Operational workbench state
+  // Operational workbench state & filters (top bar + per-column filters)
   const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
   const [filtroAnio, setFiltroAnio] = useState<string>("TODOS");
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>("TODAS");
   const [filtroResponsable, setFiltroResponsable] = useState<string>("TODAS");
   const [filtroSubtablaGlosa, setFiltroSubtablaGlosa] = useState<string>("TODAS");
   const [busqueda, setBusqueda] = useState<string>("");
+
+  // Per-column filters (Excel-style autofilter row)
+  const [colFactura, setColFactura] = useState<string>("");
+  const [colFecha, setColFecha] = useState<string>("");
+  const [colTipo, setColTipo] = useState<string>("TODOS");
+  const [colMotivo, setColMotivo] = useState<string>("");
+  const [colReemplazo, setColReemplazo] = useState<string>("");
+  const [colRips, setColRips] = useState<string>("");
+  const [colNotaCredito, setColNotaCredito] = useState<string>("");
+  const [colRespuesta, setColRespuesta] = useState<string>("");
+  const [colEstadoPendiente, setColEstadoPendiente] = useState<string>("TODOS");
+  const [colContrato, setColContrato] = useState<string>("");
+  const [colCups, setColCups] = useState<string>("");
+  const [colMedico, setColMedico] = useState<string>("");
+
+  // Column sorting
+  const [ordenColumna, setOrdenColumna] = useState<{
+    campo: string;
+    dir: "asc" | "desc";
+  } | null>(null);
+
   const [paginaActual, setPaginaActual] = useState<number>(1);
   const filasPorPagina = 20;
 
   // Modals & Upload state
   const [mostrarPanelCarga, setMostrarPanelCarga] = useState<boolean>(false);
   const [tipoArchivoCarga, setTipoArchivoCarga] = useState<"VENCIMIENTO" | "GIROS" | "GLOSAS">("VENCIMIENTO");
-  const [mostrarModalFaber, setMostrarModalFaber] = useState<boolean>(false);
   const [mostrarModalCorte, setMostrarModalCorte] = useState<boolean>(false);
   const [mostrarModalNuevo, setMostrarModalNuevo] = useState<boolean>(false);
   const [filaEditando, setFilaEditando] = useState<Record<string, string | number> | null>(null);
@@ -174,15 +193,6 @@ export default function TableroCarteraAnalytics() {
     } catch {
       // Ignore storage error
     }
-
-    fetch("/api/cartera")
-      .then((r) => r.json())
-      .then((res) => {
-        if (res && typeof res.conexionSismaBackActiva === "boolean") {
-          setApiConectada(res.conexionSismaBackActiva);
-        }
-      })
-      .catch(() => {});
   }, []);
 
   const persistAll = (
@@ -206,273 +216,315 @@ export default function TableroCarteraAnalytics() {
         })
       );
     } catch {
-      // Ignore quota
+      // Ignore storage error
     }
   };
 
-  const mostrarAviso = (msg: string) => {
+  const mostrarMensaje = (msg: string) => {
     setNotificacion(msg);
-    setTimeout(() => setNotificacion(""), 4500);
+    setTimeout(() => setNotificacion(""), 4000);
   };
 
-  // Handle Excel / CSV File Upload
+  const limpiarTodosLosFiltros = () => {
+    setFiltroAnio("TODOS");
+    setFiltroEmpresa("TODAS");
+    setFiltroResponsable("TODAS");
+    setFiltroSubtablaGlosa("TODAS");
+    setBusqueda("");
+    setColFactura("");
+    setColFecha("");
+    setColTipo("TODOS");
+    setColMotivo("");
+    setColReemplazo("");
+    setColRips("");
+    setColNotaCredito("");
+    setColRespuesta("");
+    setColEstadoPendiente("TODOS");
+    setColContrato("");
+    setColCups("");
+    setColMedico("");
+    setOrdenColumna(null);
+    setPaginaActual(1);
+  };
+
+  const hayFiltrosActivos =
+    filtroAnio !== "TODOS" ||
+    filtroEmpresa !== "TODAS" ||
+    filtroResponsable !== "TODAS" ||
+    filtroSubtablaGlosa !== "TODAS" ||
+    busqueda.trim() !== "" ||
+    colFactura.trim() !== "" ||
+    colFecha.trim() !== "" ||
+    colTipo !== "TODOS" ||
+    colMotivo.trim() !== "" ||
+    colReemplazo.trim() !== "" ||
+    colRips.trim() !== "" ||
+    colNotaCredito.trim() !== "" ||
+    colRespuesta.trim() !== "" ||
+    colEstadoPendiente !== "TODOS" ||
+    colContrato.trim() !== "" ||
+    colCups.trim() !== "" ||
+    colMedico.trim() !== "" ||
+    ordenColumna !== null;
+
+  const alternarOrden = (campo: string) => {
+    setOrdenColumna((prev) => {
+      if (!prev || prev.campo !== campo) return { campo, dir: "desc" };
+      if (prev.dir === "desc") return { campo, dir: "asc" };
+      return null;
+    });
+    setPaginaActual(1);
+  };
+
+  const iconoOrden = (campo: string) => {
+    if (!ordenColumna || ordenColumna.campo !== campo) return "⇅";
+    return ordenColumna.dir === "asc" ? "▲" : "▼";
+  };
+
+  const listaCortesActiva = modalidadSisma === "TODAS" ? cortesTodas : cortesPyp;
+  const corteSeleccionado =
+    listaCortesActiva[Math.min(indiceCorteActivo, listaCortesActiva.length - 1)] ||
+    listaCortesActiva[listaCortesActiva.length - 1];
+
+  // CSV / File Upload handler
   const manejarArchivoSubido = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = String(evt.target?.result || "");
-      const lines = text
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-
+    reader.onload = (ev) => {
+      const content = String(ev.target?.result || "");
+      const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
       if (lines.length < 2) {
-        mostrarAviso("El archivo seleccionado está vacío o requiere formato CSV/TXT delimitado.");
+        mostrarMensaje("El archivo seleccionado no contiene filas válidas.");
         return;
       }
 
       const sep = lines[0].includes(";") ? ";" : ",";
-      const parseNum = (s: string) => {
-        const clean = String(s || "")
-          .replace(/[$"'\s]/g, "")
-          .replace(/[,.]00$/, "")
-          .replace(/[^0-9]/g, "");
-        return Number(clean) || 0;
-      };
+      const rows = lines.slice(1).map((line) =>
+        line.split(sep).map((cell) => cell.replace(/^"|"$/g, "").trim())
+      );
 
-      if (tipoArchivoCarga === "VENCIMIENTO" || tipoArchivoCarga === "GIROS") {
-        let sumCorriente = 0;
-        let sumVencida = 0;
-        let sumGiros = 0;
-
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(sep).map((c) => c.replace(/^"|"$/g, "").trim());
-          if (tipoArchivoCarga === "VENCIMIENTO") {
-            const dias = parseNum(cols[4] || "0");
-            const saldo = parseNum(cols[cols.length - 1] || "0");
-            if (dias >= 60) sumVencida += saldo;
-            else sumCorriente += saldo;
+      if (tipoArchivoCarga === "VENCIMIENTO") {
+        let sumaCorriente = 0;
+        let sumaVencida = 0;
+        rows.forEach((cols) => {
+          const nums = cols
+            .map((c) => Number(c.replace(/[^0-9.-]/g, "")))
+            .filter((n) => !isNaN(n) && n > 1000);
+          if (nums.length >= 2) {
+            sumaCorriente += nums[0];
+            sumaVencida += nums[1];
+          }
+        });
+        if (sumaCorriente > 0 || sumaVencida > 0) {
+          const total = sumaCorriente + sumaVencida;
+          const anticipos = corteSeleccionado.anticiposPorCruzar;
+          const nuevo: CorteSismaBack = {
+            fechaCorte: new Date().toLocaleDateString("es-CO"),
+            modalidad: modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP",
+            carteraCorriente: sumaCorriente,
+            carteraVencida: sumaVencida,
+            carteraTotal: total,
+            facturasPendientesRadicar: corteSeleccionado.facturasPendientesRadicar,
+            glosasPendientesGestionar: corteSeleccionado.glosasPendientesGestionar,
+            anticiposPorCruzar: anticipos,
+            totalCarteraReal: total - anticipos,
+          };
+          if (modalidadSisma === "TODAS") {
+            const next = [...cortesTodas, nuevo];
+            setCortesTodas(next);
+            setIndiceCorteActivo(next.length - 1);
+            persistAll(anuladas, legalizadas, glosas, pendientes, next, cortesPyp);
           } else {
-            const lineaUpper = lines[i].toUpperCase();
-            if (
-              lineaUpper.includes("1301250602") ||
-              lineaUpper.includes("2501010602") ||
-              lineaUpper.includes("2501010607") ||
-              lineaUpper.includes("GIRO")
-            ) {
-              sumGiros += parseNum(cols[cols.length - 1] || "0");
+            const next = [...cortesPyp, nuevo];
+            setCortesPyp(next);
+            setIndiceCorteActivo(next.length - 1);
+            persistAll(anuladas, legalizadas, glosas, pendientes, cortesTodas, next);
+          }
+          mostrarMensaje(`Archivo "${file.name}" procesado: nuevo corte de Cartera actualizado.`);
+        } else {
+          mostrarMensaje(`Archivo "${file.name}" leído (${rows.length} filas). Puedes ajustar el corte manual.`);
+          setMostrarModalCorte(true);
+        }
+      } else if (tipoArchivoCarga === "GIROS") {
+        let sumaGiros = 0;
+        rows.forEach((cols) => {
+          const joined = cols.join(" ");
+          if (
+            joined.includes("1301250602") ||
+            joined.includes("2501010602") ||
+            joined.includes("2501010607") ||
+            cols.length >= 2
+          ) {
+            const nums = cols
+              .map((c) => Number(c.replace(/[^0-9.-]/g, "")))
+              .filter((n) => !isNaN(n) && n > 1000);
+            if (nums.length > 0) {
+              sumaGiros += nums[nums.length - 1];
             }
           }
-        }
-
-        const hoy = new Date().toLocaleDateString("es-CO");
-        if (tipoArchivoCarga === "VENCIMIENTO" && (sumCorriente > 0 || sumVencida > 0)) {
-          const ultimo = cortesTodas[cortesTodas.length - 1];
-          const ant = ultimo ? ultimo.anticiposPorCruzar : 0;
-          const nuevo: CorteSismaBack = {
-            fechaCorte: hoy,
-            modalidad: "Todas las Empresas",
-            carteraCorriente: sumCorriente,
-            carteraVencida: sumVencida,
-            carteraTotal: sumCorriente + sumVencida,
-            facturasPendientesRadicar: 0,
-            glosasPendientesGestionar: 0,
-            anticiposPorCruzar: ant,
-            totalCarteraReal: Math.max(0, sumCorriente + sumVencida - ant),
-          };
-          const next = [...cortesTodas, nuevo];
-          setCortesTodas(next);
-          setIndiceCorteActivo(next.length - 1);
-          persistAll(anuladas, legalizadas, glosas, pendientes, next, cortesPyp);
-          mostrarAviso(`Reporte de Análisis de Vencimiento cargado (${lines.length - 1} filas procesadas).`);
-        } else if (tipoArchivoCarga === "GIROS" && sumGiros > 0) {
-          const next = cortesTodas.map((c, idx) =>
-            idx === cortesTodas.length - 1
-              ? {
-                  ...c,
-                  anticiposPorCruzar: sumGiros,
-                  totalCarteraReal: Math.max(0, c.carteraTotal - sumGiros),
-                }
-              : c
-          );
-          setCortesTodas(next);
-          persistAll(anuladas, legalizadas, glosas, pendientes, next, cortesPyp);
-          mostrarAviso(`Auxiliar Abierto de Giros actualizado (${formatCOP(sumGiros)}).`);
+        });
+        if (sumaGiros > 0) {
+          const actualizarLista = (lista: CorteSismaBack[]) =>
+            lista.map((c, idx) =>
+              idx === lista.length - 1
+                ? {
+                    ...c,
+                    anticiposPorCruzar: sumaGiros,
+                    totalCarteraReal: c.carteraTotal - sumaGiros,
+                  }
+                : c
+            );
+          if (modalidadSisma === "TODAS") {
+            const next = actualizarLista(cortesTodas);
+            setCortesTodas(next);
+            persistAll(anuladas, legalizadas, glosas, pendientes, next, cortesPyp);
+          } else {
+            const next = actualizarLista(cortesPyp);
+            setCortesPyp(next);
+            persistAll(anuladas, legalizadas, glosas, pendientes, cortesTodas, next);
+          }
+          mostrarMensaje(`Auxiliar de Giros "${file.name}" aplicado al corte activo.`);
         } else {
-          setMostrarModalCorte(true);
-          mostrarAviso(`Archivo leído (${file.name}). Confirma los totales del corte en la ventana.`);
+          mostrarMensaje(`Archivo "${file.name}" cargado (${rows.length} líneas).`);
         }
       } else {
-        // Import operational rows into active tab
-        const nuevasFilas: AnuladaRow[] = [];
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(sep).map((c) => c.replace(/^"|"$/g, "").trim());
-          if (cols.length < 4) continue;
-          nuevasFilas.push({
+        const nuevasAnuladas: AnuladaRow[] = [];
+        rows.forEach((cols, i) => {
+          if (cols.length < 4) return;
+          const emp = (cols[0] || "MUTUAL SER").toUpperCase();
+          const fac = cols.find((c) => c.toUpperCase().startsWith("FCOE")) || cols[2] || `FCOE-${i + 1}`;
+          const val = Number((cols[4] || "0").replace(/[^0-9]/g, "")) || 0;
+          nuevasAnuladas.push({
             id: `IMP-${Date.now()}-${i}`,
-            numero: anuladas.length + i,
-            empresa: (cols[1] || "MUTUAL SER").toUpperCase(),
-            empresaOriginal: cols[1] || "",
-            fechaFactura: cols[2] || "",
-            periodo: cols[3] === "-" ? "" : cols[3] || "",
-            anio: cols[4] || "2026",
-            factura: cols[5] || cols[0] || "",
-            fechaRadicacion: cols[6] || "",
-            valorRadicado: parseNum(cols[7] || "0"),
-            copagos: parseNum(cols[8] || "0"),
-            valorGlosaDevolucion: parseNum(cols[9] || "0"),
+            numero: anuladas.length + i + 1,
+            empresa: emp,
+            empresaOriginal: emp,
+            fechaFactura: cols[1] || "2026-10-19",
+            periodo: "",
+            anio: "2026",
+            factura: fac,
+            fechaRadicacion: cols[3] || "2026-10-19",
+            valorRadicado: val,
+            copagos: 0,
+            valorGlosaDevolucion: val,
             tipo: "GLOSA",
-            motivo: cols[10] || "",
-            facturaReemplaza: cols[11] || "",
-            fechaAnulacion: cols[12] || "",
-            fechaRadicacionReemplazo: cols[13] || "",
-            rips: cols[14] || "",
-            revisionFinanciera: cols[15] || "",
+            motivo: cols[5] || "Importado desde archivo",
+            facturaReemplaza: cols[6] || "",
+            fechaAnulacion: "",
+            fechaRadicacionReemplazo: "",
+            rips: cols[7] || "",
+            revisionFinanciera: cols[8] || "",
             preagrupado: "",
-            responsable: (cols[17] || "MARIA ALEJANDRA").toUpperCase(),
-            estadoGestion: cols[11] ? "REEMPLAZADA" : "EN GESTIÓN",
+            responsable: (cols[9] || "MARIA ALEJANDRA").toUpperCase(),
+            estadoGestion: cols[6] ? "REEMPLAZADA" : "PENDIENTE REEMPLAZO",
           });
-        }
-        if (nuevasFilas.length > 0) {
-          const next = [...nuevasFilas, ...anuladas];
+        });
+        if (nuevasAnuladas.length > 0) {
+          const next = [...nuevasAnuladas, ...anuladas];
           setAnuladas(next);
-          persistAll(next, legalizadas, glosas, pendientes);
-          mostrarAviso(`Se importaron ${nuevasFilas.length} registros del archivo ${file.name}.`);
+          persistAll(next, legalizadas, glosas, pendientes, cortesTodas, cortesPyp);
+          mostrarMensaje(`Se importaron ${nuevasAnuladas.length} registros desde "${file.name}".`);
         }
       }
+      setMostrarPanelCarga(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     };
     reader.readAsText(file, "utf-8");
   };
 
-  const listaCortesActiva = modalidadSisma === "TODAS" ? cortesTodas : cortesPyp;
-  const corteSeleccionado =
-    listaCortesActiva[indiceCorteActivo] ||
-    listaCortesActiva[listaCortesActiva.length - 1];
+  // Save new SISMA Back Cut
+  const guardarNuevoCorteSismaBack = () => {
+    const corr = Number(nuevoCorteForm.carteraCorriente.replace(/[^0-9]/g, "")) || 0;
+    const venc = Number(nuevoCorteForm.carteraVencida.replace(/[^0-9]/g, "")) || 0;
+    const total = corr + venc;
+    const pendRad = Number(nuevoCorteForm.facturasPendientesRadicar.replace(/[^0-9]/g, "")) || 0;
+    const glosasPend = Number(nuevoCorteForm.glosasPendientesGestionar.replace(/[^0-9]/g, "")) || 0;
+    const antic = Number(nuevoCorteForm.anticiposPorCruzar.replace(/[^0-9]/g, "")) || 0;
+    const real = total - antic;
 
-  // Dynamic filtering for operational tables
-  const anuladasFiltradas = useMemo(() => {
-    const q = busqueda.trim().toUpperCase();
-    return anuladas.filter((r) => {
-      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
-      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
-      if (q) {
-        const hay = `${r.factura} ${r.facturaReemplaza} ${r.motivo} ${r.empresa} ${r.responsable} ${r.revisionFinanciera}`.toUpperCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [anuladas, filtroAnio, filtroEmpresa, filtroResponsable, busqueda]);
-
-  const legalizadasFiltradas = useMemo(() => {
-    const q = busqueda.trim().toUpperCase();
-    return legalizadas.filter((r) => {
-      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
-      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
-      if (q) {
-        const hay = `${r.factura} ${r.facturaReemplaza} ${r.motivo} ${r.empresa} ${r.responsable}`.toUpperCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [legalizadas, filtroAnio, filtroEmpresa, filtroResponsable, busqueda]);
-
-  const glosasFiltradas = useMemo(() => {
-    const q = busqueda.trim().toUpperCase();
-    return glosas.filter((r) => {
-      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
-      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && r.facturador !== filtroResponsable) return false;
-      if (filtroSubtablaGlosa !== "TODAS" && r.subtabla !== filtroSubtablaGlosa) return false;
-      if (q) {
-        const hay = `${r.factura} ${r.motivoGlosa} ${r.notaCredito} ${r.observacionInterna} ${r.empresa} ${r.facturador}`.toUpperCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [glosas, filtroAnio, filtroEmpresa, filtroResponsable, filtroSubtablaGlosa, busqueda]);
-
-  const pendientesFiltradas = useMemo(() => {
-    const q = busqueda.trim().toUpperCase();
-    return pendientes.filter((r) => {
-      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
-      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
-      if (q) {
-        const hay = `${r.empresa} ${r.contrato} ${r.cups} ${r.descripcion} ${r.medico} ${r.observaciones} ${r.responsable}`.toUpperCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [pendientes, filtroAnio, filtroEmpresa, filtroResponsable, busqueda]);
-
-  const kpisOperativos = useMemo(() => {
-    const totalAnuladasVal = anuladasFiltradas.reduce((acc, r) => acc + (r.valorRadicado || 0), 0);
-    const reemplazadasOk = anuladasFiltradas.filter(
-      (r) => r.facturaReemplaza && r.facturaReemplaza.toUpperCase().includes("FCOE")
-    ).length;
-    const totalLegalizadasVal = legalizadasFiltradas.reduce((acc, r) => acc + (r.valorRadicado || 0), 0);
-    const totalGlosadoVal = glosasFiltradas.reduce((acc, r) => acc + (r.valorGlosado || r.valorRadicado || 0), 0);
-    const totalPendientesVal = pendientesFiltradas.reduce((acc, r) => acc + (r.valorServicio || 0), 0);
-
-    return {
-      totalAnuladasVal,
-      reemplazadasOk,
-      pendientesReemplazo: anuladasFiltradas.length - reemplazadasOk,
-      totalLegalizadasVal,
-      totalGlosadoVal,
-      totalPendientesVal,
+    const nuevo: CorteSismaBack = {
+      fechaCorte: nuevoCorteForm.fechaCorte,
+      modalidad: nuevoCorteForm.modalidad === "TODAS" ? "Todas las Empresas" : "Modalidad PYP",
+      carteraCorriente: corr,
+      carteraVencida: venc,
+      carteraTotal: total,
+      facturasPendientesRadicar: pendRad,
+      glosasPendientesGestionar: glosasPend,
+      anticiposPorCruzar: antic,
+      totalCarteraReal: real,
     };
-  }, [anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas]);
 
-  const guardarEdicionFila = async () => {
+    if (nuevoCorteForm.modalidad === "TODAS") {
+      const next = [...cortesTodas, nuevo];
+      setCortesTodas(next);
+      setModalidadSisma("TODAS");
+      setIndiceCorteActivo(next.length - 1);
+      persistAll(anuladas, legalizadas, glosas, pendientes, next, cortesPyp);
+    } else {
+      const next = [...cortesPyp, nuevo];
+      setCortesPyp(next);
+      setModalidadSisma("PYP");
+      setIndiceCorteActivo(next.length - 1);
+      persistAll(anuladas, legalizadas, glosas, pendientes, cortesTodas, next);
+    }
+
+    setMostrarModalCorte(false);
+    mostrarMensaje(`Corte ${nuevo.fechaCorte} (${nuevo.modalidad}) registrado.`);
+  };
+
+  // Save edited row
+  const guardarEdicionFila = () => {
     if (!filaEditando) return;
     const id = String(filaEditando.id);
 
     if (tabActiva === "anuladas") {
-      const next = anuladas.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as AnuladaRow) : r));
+      const next = anuladas.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              ...(filaEditando as unknown as AnuladaRow),
+              estadoGestion: String(filaEditando.facturaReemplaza || "").toUpperCase().includes("FCOE")
+                ? "REEMPLAZADA"
+                : "PENDIENTE REEMPLAZO",
+            }
+          : r
+      );
       setAnuladas(next);
-      persistAll(next, legalizadas, glosas, pendientes);
+      persistAll(next, legalizadas, glosas, pendientes, cortesTodas, cortesPyp);
     } else if (tabActiva === "legalizadas") {
-      const next = legalizadas.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as AnuladaRow) : r));
+      const next = legalizadas.map((r) =>
+        r.id === id ? { ...r, ...(filaEditando as unknown as AnuladaRow) } : r
+      );
       setLegalizadas(next);
-      persistAll(anuladas, next, glosas, pendientes);
+      persistAll(anuladas, next, glosas, pendientes, cortesTodas, cortesPyp);
     } else if (tabActiva === "glosas") {
-      const next = glosas.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as GlosaRow) : r));
+      const next = glosas.map((r) =>
+        r.id === id ? { ...r, ...(filaEditando as unknown as GlosaRow) } : r
+      );
       setGlosas(next);
-      persistAll(anuladas, legalizadas, next, pendientes);
+      persistAll(anuladas, legalizadas, next, pendientes, cortesTodas, cortesPyp);
     } else if (tabActiva === "pendientes") {
-      const next = pendientes.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as PendienteRow) : r));
+      const next = pendientes.map((r) =>
+        r.id === id ? { ...r, ...(filaEditando as unknown as PendienteRow) } : r
+      );
       setPendientes(next);
-      persistAll(anuladas, legalizadas, glosas, next);
-    }
-
-    try {
-      await fetch("/api/cartera", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "update_row", seccion: tabActiva, item: filaEditando }),
-      });
-    } catch {
-      // Local persistence active
+      persistAll(anuladas, legalizadas, glosas, next, cortesTodas, cortesPyp);
     }
 
     setFilaEditando(null);
-    mostrarAviso("Registro guardado correctamente.");
+    mostrarMensaje(`Registro ${id} actualizado.`);
   };
 
-  const crearNuevoRegistro = async () => {
-    const id = `NEW-${Date.now()}`;
-    const valRad = Number(String(nuevoRegistroForm.valorRadicado).replace(/\D/g, "")) || 0;
-    const valGlo = Number(String(nuevoRegistroForm.valorGlosado).replace(/\D/g, "")) || 0;
+  // Create new row in active tab
+  const crearNuevoRegistro = () => {
+    const valRad = Number(nuevoRegistroForm.valorRadicado.replace(/[^0-9]/g, "")) || 0;
+    const valGlo = Number(nuevoRegistroForm.valorGlosado.replace(/[^0-9]/g, "")) || valRad;
 
     if (tabActiva === "anuladas" || tabActiva === "legalizadas") {
-      const nuevo: AnuladaRow = {
-        id,
+      const nueva: AnuladaRow = {
+        id: `${tabActiva === "anuladas" ? "ANU" : "LEG"}-${Date.now()}`,
         numero: (tabActiva === "anuladas" ? anuladas.length : legalizadas.length) + 1,
         empresa: nuevoRegistroForm.empresa,
         empresaOriginal: nuevoRegistroForm.empresa,
@@ -493,26 +545,23 @@ export default function TableroCarteraAnalytics() {
         revisionFinanciera: nuevoRegistroForm.revisionFinanciera,
         preagrupado: "",
         responsable: nuevoRegistroForm.responsable,
-        estadoGestion:
-          tabActiva === "legalizadas"
-            ? "LEGALIZADA"
-            : nuevoRegistroForm.facturaReemplaza
-            ? "REEMPLAZADA"
-            : "EN GESTIÓN",
+        estadoGestion: nuevoRegistroForm.facturaReemplaza.toUpperCase().includes("FCOE")
+          ? "REEMPLAZADA"
+          : "PENDIENTE REEMPLAZO",
       };
       if (tabActiva === "anuladas") {
-        const next = [nuevo, ...anuladas];
+        const next = [nueva, ...anuladas];
         setAnuladas(next);
-        persistAll(next, legalizadas, glosas, pendientes);
+        persistAll(next, legalizadas, glosas, pendientes, cortesTodas, cortesPyp);
       } else {
-        const next = [nuevo, ...legalizadas];
+        const next = [nueva, ...legalizadas];
         setLegalizadas(next);
-        persistAll(anuladas, next, glosas, pendientes);
+        persistAll(anuladas, next, glosas, pendientes, cortesTodas, cortesPyp);
       }
     } else if (tabActiva === "glosas") {
-      const nuevo: GlosaRow = {
-        id,
-        subtabla: nuevoRegistroForm.notaCredito ? "ACEPTADA_NOTA_CREDITO" : "RESPONDIDA_NO_ACEPTADA",
+      const nueva: GlosaRow = {
+        id: `GLO-${Date.now()}`,
+        subtabla: nuevoRegistroForm.notaCredito ? "ACEPTADA_NOTA_CREDITO" : "EN_GESTION",
         empresa: nuevoRegistroForm.empresa,
         empresaOriginal: nuevoRegistroForm.empresa,
         fechaFactura: nuevoRegistroForm.fechaFactura,
@@ -522,121 +571,380 @@ export default function TableroCarteraAnalytics() {
         fechaRadicacion: nuevoRegistroForm.fechaRadicacion,
         valorRadicado: valRad,
         valorFactura: valRad,
-        valorGlosado: valGlo || valRad,
+        valorGlosado: valGlo,
         motivoGlosa: nuevoRegistroForm.motivo,
         facturador: nuevoRegistroForm.responsable,
         responsableAceptacion: nuevoRegistroForm.responsable,
         observacionInterna: nuevoRegistroForm.revisionFinanciera,
         notaCredito: nuevoRegistroForm.notaCredito,
       };
-      const next = [nuevo, ...glosas];
+      const next = [nueva, ...glosas];
       setGlosas(next);
-      persistAll(anuladas, legalizadas, next, pendientes);
+      persistAll(anuladas, legalizadas, next, pendientes, cortesTodas, cortesPyp);
     } else {
-      const nuevo: PendienteRow = {
-        id,
+      const nueva: PendienteRow = {
+        id: `PEN-${Date.now()}`,
         empresa: nuevoRegistroForm.empresa,
         empresaOriginal: nuevoRegistroForm.empresa,
-        contrato: nuevoRegistroForm.contrato || "GENERAL",
+        contrato: nuevoRegistroForm.contrato || nuevoRegistroForm.empresa,
         unidadFuncional: "CONSULTA EXTERNA",
-        cups: nuevoRegistroForm.cups || "890276",
-        descripcion: nuevoRegistroForm.motivo || "SERVICIO OFTALMOLÓGICO",
+        cups: nuevoRegistroForm.cups || "890207",
+        descripcion: nuevoRegistroForm.motivo || "PROCEDIMIENTO OFTALMOLÓGICO",
         fechaServicio: nuevoRegistroForm.fechaFactura,
         anio: nuevoRegistroForm.anio,
-        medico: nuevoRegistroForm.medico || "ESPECIALISTA EBENEZER",
+        medico: nuevoRegistroForm.medico || "ESPECIALISTA OFTALMOLOGÍA",
         valorServicio: valRad,
         responsable: nuevoRegistroForm.responsable,
         observaciones: nuevoRegistroForm.revisionFinanciera,
         estado: "PENDIENTE",
       };
-      const next = [nuevo, ...pendientes];
+      const next = [nueva, ...pendientes];
       setPendientes(next);
-      persistAll(anuladas, legalizadas, glosas, next);
+      persistAll(anuladas, legalizadas, glosas, next, cortesTodas, cortesPyp);
     }
 
     setMostrarModalNuevo(false);
-    mostrarAviso("Nuevo registro agregado exitosamente.");
+    mostrarMensaje(`Nuevo registro agregado en ${tabActiva.toUpperCase()}.`);
   };
 
-  const guardarNuevoCorteSismaBack = async () => {
-    const corr = Number(String(nuevoCorteForm.carteraCorriente).replace(/\D/g, "")) || 0;
-    const venc = Number(String(nuevoCorteForm.carteraVencida).replace(/\D/g, "")) || 0;
-    const pendRad = Number(String(nuevoCorteForm.facturasPendientesRadicar).replace(/\D/g, "")) || 0;
-    const gloPend = Number(String(nuevoCorteForm.glosasPendientesGestionar).replace(/\D/g, "")) || 0;
-    const ant = Number(String(nuevoCorteForm.anticiposPorCruzar).replace(/\D/g, "")) || 0;
-    const total = corr + venc;
-    const real = Math.max(0, total - ant);
+  // Export current filtered table to CSV (Excel compatible UTF-8 BOM)
+  const exportarVistaExcelCSV = () => {
+    let headers: string[] = [];
+    let rows: (string | number)[][] = [];
 
-    const nuevoCorte: CorteSismaBack = {
-      fechaCorte: nuevoCorteForm.fechaCorte,
-      modalidad: nuevoCorteForm.modalidad === "TODAS" ? "Todas las Empresas" : "PYP",
-      carteraCorriente: corr,
-      carteraVencida: venc,
-      carteraTotal: total,
-      facturasPendientesRadicar: pendRad,
-      glosasPendientesGestionar: gloPend,
-      anticiposPorCruzar: ant,
-      totalCarteraReal: real,
-    };
-
-    if (nuevoCorteForm.modalidad === "TODAS") {
-      const next = [...cortesTodas, nuevoCorte];
-      setCortesTodas(next);
-      setModalidadSisma("TODAS");
-      setIndiceCorteActivo(next.length - 1);
-      persistAll(anuladas, legalizadas, glosas, pendientes, next, cortesPyp);
+    if (tabActiva === "anuladas" || tabActiva === "legalizadas") {
+      const source = tabActiva === "anuladas" ? anuladasFiltradas : legalizadasFiltradas;
+      headers = [
+        "ID",
+        "Año",
+        "Periodo",
+        "Empresa",
+        "Factura",
+        "Fecha Radicacion",
+        "Valor Facturado",
+        "Valor Glosa/Devolucion",
+        "Tipo",
+        "Motivo",
+        "Factura Reemplaza",
+        "RIPS",
+        "Revision Financiera",
+        "Responsable",
+        "Estado",
+      ];
+      rows = source.map((r) => [
+        r.id,
+        r.anio,
+        r.periodo,
+        r.empresa,
+        r.factura,
+        r.fechaRadicacion,
+        r.valorRadicado,
+        r.valorGlosaDevolucion || 0,
+        r.tipo,
+        r.motivo,
+        r.facturaReemplaza,
+        r.rips,
+        r.revisionFinanciera,
+        r.responsable,
+        r.estadoGestion,
+      ]);
+    } else if (tabActiva === "glosas") {
+      headers = [
+        "ID",
+        "Estado Glosa",
+        "Año",
+        "Empresa",
+        "Factura",
+        "Fecha Radicacion",
+        "Valor Factura",
+        "Valor Glosado",
+        "Motivo Glosa",
+        "Facturador",
+        "Observacion Interna",
+        "Nota Credito",
+      ];
+      rows = glosasFiltradas.map((r) => [
+        r.id,
+        r.subtabla,
+        r.anio,
+        r.empresa,
+        r.factura,
+        r.fechaRadicacion,
+        r.valorFactura || r.valorRadicado,
+        r.valorGlosado,
+        r.motivoGlosa,
+        r.facturador,
+        r.observacionInterna,
+        r.notaCredito,
+      ]);
     } else {
-      const next = [...cortesPyp, nuevoCorte];
-      setCortesPyp(next);
-      setModalidadSisma("PYP");
-      setIndiceCorteActivo(next.length - 1);
-      persistAll(anuladas, legalizadas, glosas, pendientes, cortesTodas, next);
+      headers = [
+        "ID",
+        "Año",
+        "Empresa",
+        "Contrato",
+        "CUPS",
+        "Descripcion",
+        "Fecha Servicio",
+        "Medico",
+        "Valor Servicio",
+        "Responsable",
+        "Observaciones",
+        "Estado",
+      ];
+      rows = pendientesFiltradas.map((r) => [
+        r.id,
+        r.anio,
+        r.empresa,
+        r.contrato,
+        r.cups,
+        r.descripcion,
+        r.fechaServicio,
+        r.medico,
+        r.valorServicio,
+        r.responsable,
+        r.observaciones,
+        r.estado,
+      ]);
     }
 
-    setMostrarModalCorte(false);
-    mostrarAviso(`Corte ${nuevoCorte.fechaCorte} guardado correctamente.`);
-  };
+    const csvContent =
+      "\uFEFF" +
+      [headers, ...rows]
+        .map((e) => e.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(";"))
+        .join("\n");
 
-  const exportarVistaExcelCSV = () => {
-    let rows: Record<string, string | number | undefined>[] = [];
-    if (tabActiva === "anuladas") rows = anuladasFiltradas;
-    else if (tabActiva === "legalizadas") rows = legalizadasFiltradas;
-    else if (tabActiva === "glosas") rows = glosasFiltradas;
-    else rows = pendientesFiltradas;
-
-    if (!rows.length) return;
-    const headers = Object.keys(rows[0]);
-    const csvLines = [
-      headers.join(";"),
-      ...rows.map((r) =>
-        headers.map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(";")
-      ),
-    ];
-    const blob = new Blob(["\uFEFF" + csvLines.join("\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Cartera_${tabActiva}_${filtroAnio}_${filtroEmpresa}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `ebenezer_cartera_${tabActiva}_${filtroAnio}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
+
+  // Filtered & Sorted lists (combining top filters + per-column Excel filters + sorting)
+  const filtrarYOrdenarAnuladas = (lista: AnuladaRow[]) => {
+    const q = busqueda.toLowerCase().trim();
+    const qFac = colFactura.toLowerCase().trim();
+    const qFec = colFecha.toLowerCase().trim();
+    const qMot = colMotivo.toLowerCase().trim();
+    const qRee = colReemplazo.toLowerCase().trim();
+    const qRip = colRips.toLowerCase().trim();
+
+    const filtrada = lista.filter((r) => {
+      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
+      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
+      if (colTipo !== "TODOS" && !r.tipo.toUpperCase().includes(colTipo)) return false;
+      if (qFac && !r.factura.toLowerCase().includes(qFac)) return false;
+      if (qFec && !(r.fechaRadicacion || r.fechaFactura || "").toLowerCase().includes(qFec)) return false;
+      if (
+        qMot &&
+        !`${r.motivo} ${r.revisionFinanciera}`.toLowerCase().includes(qMot)
+      )
+        return false;
+      if (qRee) {
+        const textoReemp = (r.facturaReemplaza || "PENDIENTE").toLowerCase();
+        if (!textoReemp.includes(qRee)) return false;
+      }
+      if (qRip && !(r.rips || "").toLowerCase().includes(qRip)) return false;
+      if (q) {
+        const texto = `${r.factura} ${r.empresa} ${r.motivo} ${r.facturaReemplaza} ${r.responsable} ${r.revisionFinanciera} ${r.rips}`.toLowerCase();
+        if (!texto.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (!ordenColumna) return filtrada;
+    const { campo, dir } = ordenColumna;
+    return [...filtrada].sort((a, b) => {
+      const va = (a as Record<string, string | number | undefined>)[campo];
+      const vb = (b as Record<string, string | number | undefined>)[campo];
+      if (typeof va === "number" || typeof vb === "number") {
+        return dir === "asc"
+          ? (Number(va) || 0) - (Number(vb) || 0)
+          : (Number(vb) || 0) - (Number(va) || 0);
+      }
+      return dir === "asc"
+        ? String(va ?? "").localeCompare(String(vb ?? ""))
+        : String(vb ?? "").localeCompare(String(va ?? ""));
+    });
+  };
+
+  const anuladasFiltradas = useMemo(
+    () => filtrarYOrdenarAnuladas(anuladas),
+    [
+      anuladas,
+      filtroAnio,
+      filtroEmpresa,
+      filtroResponsable,
+      busqueda,
+      colFactura,
+      colFecha,
+      colTipo,
+      colMotivo,
+      colReemplazo,
+      colRips,
+      ordenColumna,
+    ]
+  );
+
+  const legalizadasFiltradas = useMemo(
+    () => filtrarYOrdenarAnuladas(legalizadas),
+    [
+      legalizadas,
+      filtroAnio,
+      filtroEmpresa,
+      filtroResponsable,
+      busqueda,
+      colFactura,
+      colFecha,
+      colTipo,
+      colMotivo,
+      colReemplazo,
+      colRips,
+      ordenColumna,
+    ]
+  );
+
+  const glosasFiltradas = useMemo(() => {
+    const q = busqueda.toLowerCase().trim();
+    const qFac = colFactura.toLowerCase().trim();
+    const qMot = colMotivo.toLowerCase().trim();
+    const qRes = colRespuesta.toLowerCase().trim();
+    const qNc = colNotaCredito.toLowerCase().trim();
+
+    const filtrada = glosas.filter((r) => {
+      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
+      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (filtroResponsable !== "TODAS" && r.facturador !== filtroResponsable) return false;
+      if (filtroSubtablaGlosa !== "TODAS" && r.subtabla !== filtroSubtablaGlosa) return false;
+      if (qFac && !r.factura.toLowerCase().includes(qFac)) return false;
+      if (qMot && !(r.motivoGlosa || "").toLowerCase().includes(qMot)) return false;
+      if (qRes && !(r.observacionInterna || "").toLowerCase().includes(qRes)) return false;
+      if (qNc && !(r.notaCredito || "").toLowerCase().includes(qNc)) return false;
+      if (q) {
+        const texto = `${r.factura} ${r.empresa} ${r.motivoGlosa} ${r.observacionInterna} ${r.notaCredito} ${r.facturador}`.toLowerCase();
+        if (!texto.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (!ordenColumna) return filtrada;
+    const { campo, dir } = ordenColumna;
+    return [...filtrada].sort((a, b) => {
+      const va = (a as Record<string, string | number | undefined>)[campo];
+      const vb = (b as Record<string, string | number | undefined>)[campo];
+      if (typeof va === "number" || typeof vb === "number") {
+        return dir === "asc"
+          ? (Number(va) || 0) - (Number(vb) || 0)
+          : (Number(vb) || 0) - (Number(va) || 0);
+      }
+      return dir === "asc"
+        ? String(va ?? "").localeCompare(String(vb ?? ""))
+        : String(vb ?? "").localeCompare(String(va ?? ""));
+    });
+  }, [
+    glosas,
+    filtroAnio,
+    filtroEmpresa,
+    filtroResponsable,
+    filtroSubtablaGlosa,
+    busqueda,
+    colFactura,
+    colMotivo,
+    colRespuesta,
+    colNotaCredito,
+    ordenColumna,
+  ]);
+
+  const pendientesFiltradas = useMemo(() => {
+    const q = busqueda.toLowerCase().trim();
+    const qCon = colContrato.toLowerCase().trim();
+    const qCup = colCups.toLowerCase().trim();
+    const qMot = colMotivo.toLowerCase().trim();
+    const qFec = colFecha.toLowerCase().trim();
+    const qMed = colMedico.toLowerCase().trim();
+    const qRes = colRespuesta.toLowerCase().trim();
+
+    const filtrada = pendientes.filter((r) => {
+      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
+      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
+      if (colEstadoPendiente !== "TODOS" && r.estado !== colEstadoPendiente) return false;
+      if (qCon && !(r.contrato || "").toLowerCase().includes(qCon)) return false;
+      if (qCup && !(r.cups || "").toLowerCase().includes(qCup)) return false;
+      if (qMot && !(r.descripcion || "").toLowerCase().includes(qMot)) return false;
+      if (qFec && !(r.fechaServicio || "").toLowerCase().includes(qFec)) return false;
+      if (qMed && !(r.medico || "").toLowerCase().includes(qMed)) return false;
+      if (qRes && !(r.observaciones || "").toLowerCase().includes(qRes)) return false;
+      if (q) {
+        const texto = `${r.cups} ${r.descripcion} ${r.empresa} ${r.medico} ${r.observaciones} ${r.responsable}`.toLowerCase();
+        if (!texto.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (!ordenColumna) return filtrada;
+    const { campo, dir } = ordenColumna;
+    return [...filtrada].sort((a, b) => {
+      const va = (a as Record<string, string | number | undefined>)[campo];
+      const vb = (b as Record<string, string | number | undefined>)[campo];
+      if (typeof va === "number" || typeof vb === "number") {
+        return dir === "asc"
+          ? (Number(va) || 0) - (Number(vb) || 0)
+          : (Number(vb) || 0) - (Number(va) || 0);
+      }
+      return dir === "asc"
+        ? String(va ?? "").localeCompare(String(vb ?? ""))
+        : String(vb ?? "").localeCompare(String(va ?? ""));
+    });
+  }, [
+    pendientes,
+    filtroAnio,
+    filtroEmpresa,
+    filtroResponsable,
+    colEstadoPendiente,
+    colContrato,
+    colCups,
+    colMotivo,
+    colFecha,
+    colMedico,
+    colRespuesta,
+    busqueda,
+    ordenColumna,
+  ]);
 
   const listaActivaPaginada = useMemo(() => {
-    const source =
-      tabActiva === "anuladas"
-        ? anuladasFiltradas
-        : tabActiva === "legalizadas"
-        ? legalizadasFiltradas
-        : tabActiva === "glosas"
-        ? glosasFiltradas
-        : pendientesFiltradas;
     const start = (paginaActual - 1) * filasPorPagina;
+    const end = start + filasPorPagina;
+    if (tabActiva === "anuladas") {
+      return {
+        total: anuladasFiltradas.length,
+        totalPaginas: Math.max(1, Math.ceil(anuladasFiltradas.length / filasPorPagina)),
+        items: anuladasFiltradas.slice(start, end),
+      };
+    }
+    if (tabActiva === "legalizadas") {
+      return {
+        total: legalizadasFiltradas.length,
+        totalPaginas: Math.max(1, Math.ceil(legalizadasFiltradas.length / filasPorPagina)),
+        items: legalizadasFiltradas.slice(start, end),
+      };
+    }
+    if (tabActiva === "glosas") {
+      return {
+        total: glosasFiltradas.length,
+        totalPaginas: Math.max(1, Math.ceil(glosasFiltradas.length / filasPorPagina)),
+        items: glosasFiltradas.slice(start, end),
+      };
+    }
     return {
-      total: source.length,
-      totalPaginas: Math.max(1, Math.ceil(source.length / filasPorPagina)),
-      items: source.slice(start, start + filasPorPagina),
+      total: pendientesFiltradas.length,
+      totalPaginas: Math.max(1, Math.ceil(pendientesFiltradas.length / filasPorPagina)),
+      items: pendientesFiltradas.slice(start, end),
     };
   }, [tabActiva, anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas, paginaActual]);
 
@@ -657,175 +965,57 @@ export default function TableroCarteraAnalytics() {
         </div>
       )}
 
-      {/* BARRA SUPERIOR LIMPIA DE ACCIONES Y CARGA DE ARCHIVOS (TEMA CLARO EBENEZER) */}
-      <div
-        className="rounded-2xl p-5 shadow-xs border flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <span
-            className="px-3 py-1 rounded-full text-xs font-bold border"
-            style={{
-              backgroundColor: apiConectada ? "#ECFDF5" : "#EFF6FF",
-              color: apiConectada ? "#047857" : "#1D58D8",
-              borderColor: apiConectada ? "#A7F3D0" : "#BFDBFE",
-            }}
-          >
-            {apiConectada ? "● Conectado a SISMA Back" : "● Fuente: SISMA Back (Cortes y Base de Glosas)"}
-          </span>
-          <span className="text-xs font-medium" style={{ color: "#475569" }}>
-            Cuentas Giros Auxiliar Abierto: <strong>1301250602</strong> · <strong>2501010602</strong> ·{" "}
-            <strong>2501010607</strong>
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setMostrarPanelCarga(!mostrarPanelCarga)}
-            className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer border shadow-2xs"
-            style={{
-              backgroundColor: "#1D58D8",
-              color: "#FFFFFF",
-              borderColor: "#1D58D8",
-            }}
-          >
-            📂 Cargar Archivo Excel / CSV
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMostrarModalCorte(true)}
-            className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer border"
-            style={{
-              backgroundColor: "#F8FAFC",
-              color: "#0E245E",
-              borderColor: "#CBD5E1",
-            }}
-          >
-            + Registrar Corte Manual
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMostrarModalFaber(true)}
-            className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer border"
-            style={{
-              backgroundColor: "#F8FAFC",
-              color: "#1D58D8",
-              borderColor: "#BFDBFE",
-            }}
-          >
-            ⚡ Endpoints API (Faber)
-          </button>
-        </div>
-      </div>
-
-      {/* PANEL DESPLEGABLE DE CARGA DIRECTA DE ARCHIVOS EXCEL / CSV */}
-      {mostrarPanelCarga && (
-        <div
-          className="rounded-2xl p-5 border shadow-xs space-y-4"
-          style={{ backgroundColor: "#F4F8FD", borderColor: "#BFDBFE" }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-extrabold" style={{ color: "#0E245E" }}>
-                Cargar Información desde Archivo (SISMA Back o Base Operativa)
-              </h3>
-              <p className="text-xs" style={{ color: "#475569" }}>
-                Selecciona qué reporte deseas subir desde tu computador (.csv / .xlsx exportado de SISMA Back)
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMostrarPanelCarga(false)}
-              className="text-sm font-bold px-2.5 py-1 rounded-lg border cursor-pointer"
-              style={{ backgroundColor: "#FFFFFF", color: "#475569", borderColor: "#CBD5E1" }}
-            >
-              Cerrar ✕
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {[
-              {
-                id: "VENCIMIENTO" as const,
-                titulo: "1. Análisis de Vencimiento (SISMA Back)",
-                desc: "Actualiza Cartera Corriente (< 60 días) y Cartera Vencida (>= 60 días)",
-              },
-              {
-                id: "GIROS" as const,
-                titulo: "2. Auxiliar Abierto de Giros (SISMA Back)",
-                desc: "Actualiza las cuentas 1301250602, 2501010602 y 2501010607",
-              },
-              {
-                id: "GLOSAS" as const,
-                titulo: "3. Base de Glosas / Facturas Anuladas",
-                desc: "Importa nuevas filas a la Mesa de Trabajo operativa",
-              },
-            ].map((op) => {
-              const activo = tipoArchivoCarga === op.id;
-              return (
-                <div
-                  key={op.id}
-                  onClick={() => setTipoArchivoCarga(op.id)}
-                  className="p-3.5 rounded-xl border cursor-pointer transition"
-                  style={{
-                    backgroundColor: activo ? "#FFFFFF" : "#F8FAFC",
-                    borderColor: activo ? "#1D58D8" : "#CBD5E1",
-                    boxShadow: activo ? "0 0 0 2px rgba(29,88,216,0.15)" : "none",
-                  }}
-                >
-                  <div className="font-bold text-xs sm:text-sm" style={{ color: "#0E245E" }}>
-                    {op.titulo}
-                  </div>
-                  <div className="text-xs mt-1" style={{ color: "#64748B" }}>
-                    {op.desc}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 pt-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.txt,.xlsx,.xls"
-              onChange={manejarArchivoSubido}
-              className="text-xs sm:text-sm file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:cursor-pointer"
-              style={{ color: "#0E245E" }}
-            />
-            <span className="text-xs" style={{ color: "#475569" }}>
-              Al elegir el archivo, el tablero procesa y actualiza las cifras automáticamente.
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* ===================================================================== */}
-      {/* BLOQUE 1: RESUMEN DE CARTERA SISMA BACK (DISEÑO CLARO A ANCHO 100%)   */}
+      {/* BLOQUE 1: RESUMEN DE CARTERA (DISEÑO CLARO A ANCHO 100%)              */}
       {/* ===================================================================== */}
       <div
         className="rounded-2xl p-6 shadow-xs border space-y-6"
         style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
       >
-        {/* Cabecera y Selectores con Contraste Garantizado */}
+        {/* Cabecera Ejecutiva con Controles y Botones de Carga */}
         <div
-          className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b"
+          className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-4 border-b"
           style={{ borderColor: "#E2ECF8" }}
         >
           <div>
             <h3 className="text-lg font-extrabold" style={{ color: "#0E245E" }}>
-              1. Resumen de Cartera SISMA Back ({corteSeleccionado.modalidad} — Corte {corteSeleccionado.fechaCorte})
+              Resumen de Cartera ({corteSeleccionado.modalidad} — Corte {corteSeleccionado.fechaCorte})
             </h3>
             <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
-              Fórmula de pizarra: Cartera Corriente (&lt; 60 días) + Cartera Vencida (&gt;= 60 días) − Giros por cruzar = Total Cartera Real
+              Cartera Corriente (&lt; 60 días) + Cartera Vencida (&gt;= 60 días) − Giros por cruzar = Total Cartera Real
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Selector Modalidad con colores hexadecimales explícitos (nunca blanco sobre blanco) */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Botón Cargar Archivo Excel / CSV */}
+            <button
+              type="button"
+              onClick={() => setMostrarPanelCarga(!mostrarPanelCarga)}
+              className="px-3.5 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer border shadow-2xs"
+              style={{
+                backgroundColor: "#1D58D8",
+                color: "#FFFFFF",
+                borderColor: "#1D58D8",
+              }}
+            >
+              📂 Cargar Archivo Excel / CSV
+            </button>
+
+            {/* Botón Registrar Corte */}
+            <button
+              type="button"
+              onClick={() => setMostrarModalCorte(true)}
+              className="px-3.5 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer border"
+              style={{
+                backgroundColor: "#F8FAFC",
+                color: "#0E245E",
+                borderColor: "#CBD5E1",
+              }}
+            >
+              + Registrar Corte
+            </button>
+
+            {/* Selector Modalidad */}
             <div
               className="inline-flex rounded-xl p-1 border"
               style={{ backgroundColor: "#F1F5F9", borderColor: "#CBD5E1" }}
@@ -836,7 +1026,7 @@ export default function TableroCarteraAnalytics() {
                   setModalidadSisma("TODAS");
                   setIndiceCorteActivo(cortesTodas.length - 1);
                 }}
-                className="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition cursor-pointer"
+                className="px-3 py-1 rounded-lg text-xs sm:text-sm font-bold transition cursor-pointer"
                 style={{
                   backgroundColor: modalidadSisma === "TODAS" ? "#1D58D8" : "transparent",
                   color: modalidadSisma === "TODAS" ? "#FFFFFF" : "#0E245E",
@@ -850,7 +1040,7 @@ export default function TableroCarteraAnalytics() {
                   setModalidadSisma("PYP");
                   setIndiceCorteActivo(cortesPyp.length - 1);
                 }}
-                className="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition cursor-pointer"
+                className="px-3 py-1 rounded-lg text-xs sm:text-sm font-bold transition cursor-pointer"
                 style={{
                   backgroundColor: modalidadSisma === "PYP" ? "#1D58D8" : "transparent",
                   color: modalidadSisma === "PYP" ? "#FFFFFF" : "#0E245E",
@@ -872,7 +1062,7 @@ export default function TableroCarteraAnalytics() {
                     type="button"
                     key={c.fechaCorte}
                     onClick={() => setIndiceCorteActivo(idx)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
                     style={{
                       backgroundColor: activo ? "#0E245E" : "transparent",
                       color: activo ? "#FFFFFF" : "#334155",
@@ -886,7 +1076,89 @@ export default function TableroCarteraAnalytics() {
           </div>
         </div>
 
-        {/* 5 TARJETAS EJECUTIVAS DE LA FÓRMULA DE PIZARRA (ANCHO COMPLETO, TEMA CLARO) */}
+        {/* PANEL DESPLEGABLE DE CARGA DIRECTA DE ARCHIVOS EXCEL / CSV */}
+        {mostrarPanelCarga && (
+          <div
+            className="rounded-xl p-5 border space-y-4"
+            style={{ backgroundColor: "#F4F8FD", borderColor: "#BFDBFE" }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm sm:text-base font-extrabold" style={{ color: "#0E245E" }}>
+                  Cargar Información desde Archivo (.csv / .xlsx)
+                </h4>
+                <p className="text-xs" style={{ color: "#475569" }}>
+                  Selecciona el tipo de reporte que deseas subir desde tu computador:
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarPanelCarga(false)}
+                className="text-xs font-bold px-2.5 py-1 rounded-lg border cursor-pointer"
+                style={{ backgroundColor: "#FFFFFF", color: "#475569", borderColor: "#CBD5E1" }}
+              >
+                Cerrar ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {[
+                {
+                  id: "VENCIMIENTO" as const,
+                  titulo: "1. Análisis de Vencimiento",
+                  desc: "Actualiza Cartera Corriente (< 60 días) y Cartera Vencida (>= 60 días)",
+                },
+                {
+                  id: "GIROS" as const,
+                  titulo: "2. Auxiliar Abierto de Giros",
+                  desc: "Actualiza los giros y anticipos pendientes por cruzar",
+                },
+                {
+                  id: "GLOSAS" as const,
+                  titulo: "3. Base de Glosas / Facturas Anuladas",
+                  desc: "Importa nuevas filas a la tabla de gestión",
+                },
+              ].map((op) => {
+                const activo = tipoArchivoCarga === op.id;
+                return (
+                  <div
+                    key={op.id}
+                    onClick={() => setTipoArchivoCarga(op.id)}
+                    className="p-3.5 rounded-xl border cursor-pointer transition"
+                    style={{
+                      backgroundColor: activo ? "#FFFFFF" : "#F8FAFC",
+                      borderColor: activo ? "#1D58D8" : "#CBD5E1",
+                      boxShadow: activo ? "0 0 0 2px rgba(29,88,216,0.15)" : "none",
+                    }}
+                  >
+                    <div className="font-bold text-xs sm:text-sm" style={{ color: "#0E245E" }}>
+                      {op.titulo}
+                    </div>
+                    <div className="text-xs mt-1" style={{ color: "#64748B" }}>
+                      {op.desc}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 pt-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.txt,.xlsx,.xls"
+                onChange={manejarArchivoSubido}
+                className="text-xs sm:text-sm file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:cursor-pointer"
+                style={{ color: "#0E245E" }}
+              />
+              <span className="text-xs" style={{ color: "#475569" }}>
+                Al seleccionar el archivo, las cifras se actualizan automáticamente.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* 5 TARJETAS EJECUTIVAS DE LA FÓRMULA (ANCHO COMPLETO, TEMA CLARO) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
           <div
             className="rounded-xl p-4 border"
@@ -948,7 +1220,7 @@ export default function TableroCarteraAnalytics() {
               {formatCOP(corteSeleccionado.anticiposPorCruzar)}
             </div>
             <div className="text-[11px] mt-1" style={{ color: "#B45309" }}>
-              Auxiliar abierto (3 cuentas)
+              Anticipos y giros aplicados
             </div>
           </div>
 
@@ -969,14 +1241,14 @@ export default function TableroCarteraAnalytics() {
           </div>
         </div>
 
-        {/* GRÁFICA SUPERIOR DE LA PIZARRA (COMPARATIVO POR CORTE) */}
+        {/* GRÁFICA COMPARATIVA POR CORTE */}
         <div
           className="rounded-xl p-5 border"
           style={{ backgroundColor: "#F8FAFC", borderColor: "#E2ECF8" }}
         >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
             <h4 className="text-sm font-extrabold" style={{ color: "#0E245E" }}>
-              Gráfica Comparativa por Corte ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP"})
+              Evolución Comparativa por Corte ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP"})
             </h4>
             <div className="flex flex-wrap items-center gap-4 text-xs font-semibold" style={{ color: "#334155" }}>
               <span className="flex items-center gap-1.5">
@@ -1085,7 +1357,7 @@ export default function TableroCarteraAnalytics() {
           </div>
         </div>
 
-        {/* TABLA INFERIOR DE LA PIZARRA A ANCHO COMPLETO (SIN CORTARSE A LA DERECHA) */}
+        {/* TABLA RESUMEN DE CORTES A ANCHO COMPLETO */}
         <div className="overflow-x-auto border rounded-xl" style={{ borderColor: "#E2ECF8" }}>
           <table className="w-full text-xs sm:text-sm border-collapse">
             <thead>
@@ -1093,7 +1365,7 @@ export default function TableroCarteraAnalytics() {
                 <th className="text-left p-3.5 font-bold">
                   Concepto ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP"})
                 </th>
-                <th className="text-center p-3.5 font-bold">Regla Pizarra</th>
+                <th className="text-center p-3.5 font-bold">Clasificación</th>
                 {listaCortesActiva.map((c) => (
                   <th key={c.fechaCorte} className="text-right p-3.5 font-bold">
                     Corte {c.fechaCorte}
@@ -1135,7 +1407,7 @@ export default function TableroCarteraAnalytics() {
                   Cartera Total
                 </td>
                 <td className="p-3.5 text-center font-bold" style={{ color: "#1E40AF" }}>
-                  (=) Suma Corriente + Vencida (↓)
+                  (=) Suma Corriente + Vencida
                 </td>
                 {listaCortesActiva.map((c) => (
                   <td key={c.fechaCorte} className="p-3.5 text-right font-mono font-extrabold" style={{ color: "#1E40AF" }}>
@@ -1177,7 +1449,7 @@ export default function TableroCarteraAnalytics() {
                   Anticipos / Giros por cruzar
                 </td>
                 <td className="p-3.5 text-center text-xs font-semibold" style={{ color: "#B45309" }}>
-                  (−) Cuentas 1301250602 · 2501010602 · 2501010607
+                  (−) Auxiliar abierto de giros
                 </td>
                 {listaCortesActiva.map((c) => (
                   <td key={c.fechaCorte} className="p-3.5 text-right font-mono font-bold" style={{ color: "#92400E" }}>
@@ -1205,7 +1477,7 @@ export default function TableroCarteraAnalytics() {
       </div>
 
       {/* ===================================================================== */}
-      {/* BLOQUE 2: MESA DE TRABAJO OPERATIVA (REEMPLAZO DEL ARCHIVO EXCEL)     */}
+      {/* BLOQUE 2: GESTIÓN DE GLOSAS, DEVOLUCIONES Y PENDIENTES (2021 - 2026)  */}
       {/* ===================================================================== */}
       <div
         className="rounded-2xl p-6 shadow-xs border space-y-5"
@@ -1217,14 +1489,24 @@ export default function TableroCarteraAnalytics() {
         >
           <div>
             <h3 className="text-lg font-extrabold" style={{ color: "#0E245E" }}>
-              2. Mesa de Trabajo de Glosas, Facturas Anuladas y Pendientes (2021 – 2026)
+              Gestión de Glosas, Facturas Anuladas y Pendientes (2021 – 2026)
             </h3>
             <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
-              Edita cualquier factura, registra reemplazos o notas crédito y exporta a Excel cuando lo requieras.
+              Filtra directamente en cada columna del encabezado o usa los selectores generales.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {hayFiltrosActivos && (
+              <button
+                type="button"
+                onClick={limpiarTodosLosFiltros}
+                className="px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm border transition cursor-pointer"
+                style={{ backgroundColor: "#FFF1F2", color: "#BE123C", borderColor: "#FECDD3" }}
+              >
+                ✕ Limpiar Filtros
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setMostrarModalNuevo(true)}
@@ -1244,7 +1526,7 @@ export default function TableroCarteraAnalytics() {
           </div>
         </div>
 
-        {/* BARRA DE FILTROS */}
+        {/* BARRA DE FILTROS GENERALES */}
         <div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 rounded-xl border"
           style={{ backgroundColor: "#F8FAFC", borderColor: "#E2ECF8" }}
@@ -1317,161 +1599,340 @@ export default function TableroCarteraAnalytics() {
 
           <div className="sm:col-span-2">
             <label className="block text-xs font-bold mb-1" style={{ color: "#334155" }}>
-              Buscar Factura (FCOE...), Reemplazo, Nota Crédito o Motivo
+              Búsqueda General Rápida
             </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={busqueda}
-                onChange={(e) => {
-                  setBusqueda(e.target.value);
-                  setPaginaActual(1);
-                }}
-                placeholder="Ej. FCOE73554, MUTUAL SER, NC..."
-                className="w-full rounded-lg border bg-white px-3 py-2 text-xs sm:text-sm"
-                style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-              />
-              {(filtroAnio !== "TODOS" ||
-                filtroEmpresa !== "TODAS" ||
-                filtroResponsable !== "TODAS" ||
-                busqueda !== "") && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFiltroAnio("TODOS");
-                    setFiltroEmpresa("TODAS");
-                    setFiltroResponsable("TODAS");
-                    setFiltroSubtablaGlosa("TODAS");
-                    setBusqueda("");
-                    setPaginaActual(1);
-                  }}
-                  className="px-3 py-2 rounded-lg text-xs font-bold shrink-0 cursor-pointer border"
-                  style={{ backgroundColor: "#FFFFFF", color: "#0E245E", borderColor: "#CBD5E1" }}
-                >
-                  Limpiar
-                </button>
-              )}
-            </div>
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => {
+                setBusqueda(e.target.value);
+                setPaginaActual(1);
+              }}
+              placeholder="Ej. FCOE73294, MUTUAL SER, FCOE80388, ERIKA ALZATE..."
+              className="w-full rounded-lg border bg-white px-3 py-2 text-xs sm:text-sm"
+              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+            />
           </div>
         </div>
 
-        {/* PESTAÑAS CON CONTRASTE HEXADECIMAL EXPLÍCITO */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            {
-              id: "anuladas" as const,
-              titulo: `1. Anuladas / Reemplazadas (${anuladasFiltradas.length})`,
-              valor: formatCOP(kpisOperativos.totalAnuladasVal),
-              sub: `Reemplazadas: ${kpisOperativos.reemplazadasOk} · En gestión: ${kpisOperativos.pendientesReemplazo}`,
-            },
-            {
-              id: "legalizadas" as const,
-              titulo: `2. Glosas Legalizadas (${legalizadasFiltradas.length})`,
-              valor: formatCOP(kpisOperativos.totalLegalizadasVal),
-              sub: "Conciliadas / legalizadas",
-            },
-            {
-              id: "glosas" as const,
-              titulo: `3. Glosas y Notas Crédito (${glosasFiltradas.length})`,
-              valor: formatCOP(kpisOperativos.totalGlosadoVal),
-              sub: "Respondidas, Notas Crédito y en gestión",
-            },
-            {
-              id: "pendientes" as const,
-              titulo: `4. Servicios Pendientes (${pendientesFiltradas.length})`,
-              valor: formatCOP(kpisOperativos.totalPendientesVal),
-              sub: "Admisiones pendientes por facturar",
-            },
-          ].map((t) => {
-            const activo = tabActiva === t.id;
-            return (
-              <div
-                key={t.id}
-                onClick={() => {
-                  setTabActiva(t.id);
-                  setPaginaActual(1);
-                }}
-                className="rounded-xl p-4 border cursor-pointer transition"
-                style={{
-                  backgroundColor: activo ? "#0E245E" : "#F8FAFC",
-                  color: activo ? "#FFFFFF" : "#0E245E",
-                  borderColor: activo ? "#0E245E" : "#CBD5E1",
-                }}
-              >
-                <div
-                  className="text-xs font-bold uppercase"
-                  style={{ color: activo ? "#93C5FD" : "#1D58D8" }}
-                >
-                  {t.titulo}
-                </div>
-                <div className="text-lg font-extrabold font-mono mt-1">{t.valor}</div>
-                <div
-                  className="text-[11px] mt-1"
-                  style={{ color: activo ? "#E2E8F0" : "#64748B" }}
-                >
-                  {t.sub}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* SUBFILTRO PESTAÑA 3 */}
-        {tabActiva === "glosas" && (
+        {/* PESTAÑAS DE LAS 4 HOJAS OPERATIVAS */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div
-            className="flex flex-wrap items-center gap-2 p-3 rounded-xl border"
-            style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }}
+            className="inline-flex flex-wrap rounded-xl p-1 border gap-1"
+            style={{ backgroundColor: "#F1F5F9", borderColor: "#CBD5E1" }}
           >
-            <span className="text-xs font-bold mr-2" style={{ color: "#0E245E" }}>
-              Ver subtabla:
-            </span>
             {[
-              { id: "TODAS", label: "Todas" },
-              { id: "RESPONDIDA_NO_ACEPTADA", label: "Respondidas / No Aceptadas" },
-              { id: "ACEPTADA_NOTA_CREDITO", label: "Aceptadas con Nota Crédito" },
-              { id: "EN_GESTION", label: "En Gestión / Autorizaciones" },
-            ].map((st) => {
-              const activo = filtroSubtablaGlosa === st.id;
+              {
+                id: "anuladas" as const,
+                label: `Facturas Anuladas / Reemplazos (${anuladasFiltradas.length})`,
+              },
+              {
+                id: "legalizadas" as const,
+                label: `Glosas Legalizadas (${legalizadasFiltradas.length})`,
+              },
+              {
+                id: "glosas" as const,
+                label: `Glosas y Notas Crédito (${glosasFiltradas.length})`,
+              },
+              {
+                id: "pendientes" as const,
+                label: `Servicios Pendientes Facturar (${pendientesFiltradas.length})`,
+              },
+            ].map((t) => {
+              const activo = tabActiva === t.id;
               return (
                 <button
                   type="button"
-                  key={st.id}
+                  key={t.id}
                   onClick={() => {
-                    setFiltroSubtablaGlosa(st.id);
+                    setTabActiva(t.id);
                     setPaginaActual(1);
                   }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border"
+                  className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition cursor-pointer"
                   style={{
-                    backgroundColor: activo ? "#1D58D8" : "#FFFFFF",
+                    backgroundColor: activo ? "#1D58D8" : "transparent",
                     color: activo ? "#FFFFFF" : "#0E245E",
-                    borderColor: activo ? "#1D58D8" : "#CBD5E1",
                   }}
                 >
-                  {st.label}
+                  {t.label}
                 </button>
               );
             })}
           </div>
-        )}
 
-        {/* TABLA OPERATIVA CORREGIDA (SIN PARÉNTESIS VACÍOS, SIN TEXTOS CORTADOS, ACCIÓN SIEMPRE VISIBLE) */}
+          {tabActiva === "glosas" && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: "TODAS", label: "Todas" },
+                { id: "RESPONDIDA_NO_ACEPTADA", label: "Respondidas (No Aceptadas)" },
+                { id: "ACEPTADA_NOTA_CREDITO", label: "Aceptadas (Nota Crédito)" },
+                { id: "EN_GESTION", label: "En Gestión" },
+              ].map((st) => {
+                const activo = filtroSubtablaGlosa === st.id;
+                return (
+                  <button
+                    type="button"
+                    key={st.id}
+                    onClick={() => {
+                      setFiltroSubtablaGlosa(st.id);
+                      setPaginaActual(1);
+                    }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer"
+                    style={{
+                      backgroundColor: activo ? "#0E245E" : "#FFFFFF",
+                      color: activo ? "#FFFFFF" : "#334155",
+                      borderColor: "#CBD5E1",
+                    }}
+                  >
+                    {st.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* TABLA OPERATIVA CON AUTOFILTROS POR COLUMNA Y ORDENAMIENTO */}
         <div className="overflow-x-auto border rounded-xl" style={{ borderColor: "#E2ECF8" }}>
           {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
             <table className="w-full text-xs border-collapse">
               <thead>
+                {/* FILA 1: TÍTULOS + ORDENAMIENTO */}
                 <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                  <th className="p-3 text-left font-bold">Año</th>
-                  <th className="p-3 text-left font-bold">Empresa</th>
-                  <th className="p-3 text-left font-bold">No. Factura</th>
-                  <th className="p-3 text-left font-bold">Fecha Rad.</th>
-                  <th className="p-3 text-right font-bold">Valor Facturado</th>
-                  <th className="p-3 text-right font-bold">Valor Glosa / Dev.</th>
-                  <th className="p-3 text-left font-bold">Tipo</th>
-                  <th className="p-3 text-left font-bold min-w-[240px]">Motivo de Anulación / Devolución</th>
-                  <th className="p-3 text-left font-bold"># Factura Reemplaza</th>
-                  <th className="p-3 text-left font-bold">RIPS</th>
-                  <th className="p-3 text-left font-bold">Responsable</th>
-                  <th className="p-3 text-center font-bold">Acción</th>
+                  <th
+                    onClick={() => alternarOrden("anio")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Año <span className="opacity-80 ml-1">{iconoOrden("anio")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("empresa")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Empresa <span className="opacity-80 ml-1">{iconoOrden("empresa")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("factura")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    No. Factura <span className="opacity-80 ml-1">{iconoOrden("factura")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("fechaRadicacion")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Fecha Rad. <span className="opacity-80 ml-1">{iconoOrden("fechaRadicacion")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("valorRadicado")}
+                    className="p-3 text-right font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Valor Facturado <span className="opacity-80 ml-1">{iconoOrden("valorRadicado")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("valorGlosaDevolucion")}
+                    className="p-3 text-right font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Valor Glosa / Dev. <span className="opacity-80 ml-1">{iconoOrden("valorGlosaDevolucion")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("tipo")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Tipo <span className="opacity-80 ml-1">{iconoOrden("tipo")}</span>
+                  </th>
+                  <th className="p-3 text-left font-bold min-w-[230px]">
+                    Motivo de Anulación / Devolución
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("facturaReemplaza")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    # Factura Reemplaza <span className="opacity-80 ml-1">{iconoOrden("facturaReemplaza")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("rips")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    RIPS <span className="opacity-80 ml-1">{iconoOrden("rips")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("responsable")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Responsable <span className="opacity-80 ml-1">{iconoOrden("responsable")}</span>
+                  </th>
+                  <th className="p-3 text-center font-bold whitespace-nowrap">Acción</th>
+                </tr>
+
+                {/* FILA 2: AUTOFILTROS POR COLUMNA (ESTILO EXCEL) */}
+                <tr style={{ backgroundColor: "#EEF4FB", borderBottom: "2px solid #CBD5E1" }}>
+                  <th className="p-2">
+                    <select
+                      value={filtroAnio}
+                      onChange={(e) => {
+                        setFiltroAnio(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODOS">Todos</option>
+                      {carteraInitialData.aniosDisponibles.map((a) => (
+                        <option key={a} value={a}>
+                          {a}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={filtroEmpresa}
+                      onChange={(e) => {
+                        setFiltroEmpresa(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full min-w-[115px] rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODAS">Todas</option>
+                      {carteraInitialData.empresasDisponibles.map((emp) => (
+                        <option key={emp} value={emp}>
+                          {emp}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colFactura}
+                      onChange={(e) => {
+                        setColFactura(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Filtrar FCOE..."
+                      className="w-full min-w-[95px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colFecha}
+                      onChange={(e) => {
+                        setColFecha(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="AAAA-MM-DD"
+                      className="w-full min-w-[85px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => alternarOrden("valorRadicado")}
+                      className="px-2 py-1 rounded border bg-white text-[10px] font-bold cursor-pointer"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      Ordenar {iconoOrden("valorRadicado")}
+                    </button>
+                  </th>
+                  <th className="p-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => alternarOrden("valorGlosaDevolucion")}
+                      className="px-2 py-1 rounded border bg-white text-[10px] font-bold cursor-pointer"
+                      style={{ borderColor: "#CBD5E1", color: "#BE123C" }}
+                    >
+                      Ordenar {iconoOrden("valorGlosaDevolucion")}
+                    </button>
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={colTipo}
+                      onChange={(e) => {
+                        setColTipo(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODOS">Todos</option>
+                      <option value="GLOSA">GLOSA</option>
+                      <option value="DEVOL">DEVOLUCIÓN</option>
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colMotivo}
+                      onChange={(e) => {
+                        setColMotivo(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Filtrar motivo o revisión..."
+                      className="w-full rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colReemplazo}
+                      onChange={(e) => {
+                        setColReemplazo(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="FCOE o PENDIENTE"
+                      className="w-full min-w-[105px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colRips}
+                      onChange={(e) => {
+                        setColRips(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="RIPS..."
+                      className="w-full min-w-[70px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={filtroResponsable}
+                      onChange={(e) => {
+                        setFiltroResponsable(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full min-w-[110px] rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODAS">Todas</option>
+                      {carteraInitialData.responsablesDisponibles.map((resp) => (
+                        <option key={resp} value={resp}>
+                          {resp}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2 text-center">
+                    {hayFiltrosActivos && (
+                      <button
+                        type="button"
+                        onClick={limpiarTodosLosFiltros}
+                        className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                        style={{ backgroundColor: "#FFE4E6", color: "#BE123C" }}
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
@@ -1548,17 +2009,215 @@ export default function TableroCarteraAnalytics() {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                  <th className="p-3 text-left font-bold">Estado</th>
-                  <th className="p-3 text-left font-bold">Año</th>
-                  <th className="p-3 text-left font-bold">Empresa</th>
-                  <th className="p-3 text-left font-bold">No. Factura</th>
-                  <th className="p-3 text-right font-bold">Valor Factura</th>
-                  <th className="p-3 text-right font-bold">Valor Glosado</th>
+                  <th
+                    onClick={() => alternarOrden("subtabla")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Estado <span className="opacity-80 ml-1">{iconoOrden("subtabla")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("anio")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Año <span className="opacity-80 ml-1">{iconoOrden("anio")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("empresa")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Empresa <span className="opacity-80 ml-1">{iconoOrden("empresa")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("factura")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    No. Factura <span className="opacity-80 ml-1">{iconoOrden("factura")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("valorFactura")}
+                    className="p-3 text-right font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Valor Factura <span className="opacity-80 ml-1">{iconoOrden("valorFactura")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("valorGlosado")}
+                    className="p-3 text-right font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Valor Glosado <span className="opacity-80 ml-1">{iconoOrden("valorGlosado")}</span>
+                  </th>
                   <th className="p-3 text-left font-bold min-w-[220px]">Motivo de Glosa</th>
                   <th className="p-3 text-left font-bold min-w-[200px]">Respuesta / Observación</th>
-                  <th className="p-3 text-left font-bold">Facturador</th>
-                  <th className="p-3 text-left font-bold">Nota Crédito</th>
-                  <th className="p-3 text-center font-bold">Acción</th>
+                  <th
+                    onClick={() => alternarOrden("facturador")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Facturador <span className="opacity-80 ml-1">{iconoOrden("facturador")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("notaCredito")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Nota Crédito <span className="opacity-80 ml-1">{iconoOrden("notaCredito")}</span>
+                  </th>
+                  <th className="p-3 text-center font-bold whitespace-nowrap">Acción</th>
+                </tr>
+
+                {/* FILA 2: AUTOFILTROS POR COLUMNA */}
+                <tr style={{ backgroundColor: "#EEF4FB", borderBottom: "2px solid #CBD5E1" }}>
+                  <th className="p-2">
+                    <select
+                      value={filtroSubtablaGlosa}
+                      onChange={(e) => {
+                        setFiltroSubtablaGlosa(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODAS">Todos</option>
+                      <option value="RESPONDIDA_NO_ACEPTADA">Respondida</option>
+                      <option value="ACEPTADA_NOTA_CREDITO">Aceptada (NC)</option>
+                      <option value="EN_GESTION">En Gestión</option>
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={filtroAnio}
+                      onChange={(e) => {
+                        setFiltroAnio(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODOS">Todos</option>
+                      {carteraInitialData.aniosDisponibles.map((a) => (
+                        <option key={a} value={a}>
+                          {a}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={filtroEmpresa}
+                      onChange={(e) => {
+                        setFiltroEmpresa(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full min-w-[115px] rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODAS">Todas</option>
+                      {carteraInitialData.empresasDisponibles.map((emp) => (
+                        <option key={emp} value={emp}>
+                          {emp}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colFactura}
+                      onChange={(e) => {
+                        setColFactura(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Filtrar FCOE..."
+                      className="w-full min-w-[95px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => alternarOrden("valorFactura")}
+                      className="px-2 py-1 rounded border bg-white text-[10px] font-bold cursor-pointer"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      Ordenar {iconoOrden("valorFactura")}
+                    </button>
+                  </th>
+                  <th className="p-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => alternarOrden("valorGlosado")}
+                      className="px-2 py-1 rounded border bg-white text-[10px] font-bold cursor-pointer"
+                      style={{ borderColor: "#CBD5E1", color: "#BE123C" }}
+                    >
+                      Ordenar {iconoOrden("valorGlosado")}
+                    </button>
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colMotivo}
+                      onChange={(e) => {
+                        setColMotivo(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Filtrar motivo..."
+                      className="w-full rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colRespuesta}
+                      onChange={(e) => {
+                        setColRespuesta(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Filtrar respuesta..."
+                      className="w-full rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={filtroResponsable}
+                      onChange={(e) => {
+                        setFiltroResponsable(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full min-w-[110px] rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODAS">Todas</option>
+                      {carteraInitialData.responsablesDisponibles.map((resp) => (
+                        <option key={resp} value={resp}>
+                          {resp}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colNotaCredito}
+                      onChange={(e) => {
+                        setColNotaCredito(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Nota crédito..."
+                      className="w-full min-w-[85px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2 text-center">
+                    {hayFiltrosActivos && (
+                      <button
+                        type="button"
+                        onClick={limpiarTodosLosFiltros}
+                        className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                        style={{ backgroundColor: "#FFE4E6", color: "#BE123C" }}
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
@@ -1636,17 +2295,213 @@ export default function TableroCarteraAnalytics() {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                  <th className="p-3 text-left font-bold">Estado</th>
-                  <th className="p-3 text-left font-bold">Empresa</th>
-                  <th className="p-3 text-left font-bold">Contrato</th>
-                  <th className="p-3 text-left font-bold">CUPS</th>
+                  <th
+                    onClick={() => alternarOrden("estado")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Estado <span className="opacity-80 ml-1">{iconoOrden("estado")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("empresa")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Empresa <span className="opacity-80 ml-1">{iconoOrden("empresa")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("contrato")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Contrato <span className="opacity-80 ml-1">{iconoOrden("contrato")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("cups")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    CUPS <span className="opacity-80 ml-1">{iconoOrden("cups")}</span>
+                  </th>
                   <th className="p-3 text-left font-bold min-w-[220px]">Descripción Servicio</th>
-                  <th className="p-3 text-left font-bold">Fecha</th>
-                  <th className="p-3 text-left font-bold">Médico</th>
-                  <th className="p-3 text-right font-bold">Valor Servicio</th>
-                  <th className="p-3 text-left font-bold">Responsable</th>
+                  <th
+                    onClick={() => alternarOrden("fechaServicio")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Fecha <span className="opacity-80 ml-1">{iconoOrden("fechaServicio")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("medico")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Médico <span className="opacity-80 ml-1">{iconoOrden("medico")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("valorServicio")}
+                    className="p-3 text-right font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Valor Servicio <span className="opacity-80 ml-1">{iconoOrden("valorServicio")}</span>
+                  </th>
+                  <th
+                    onClick={() => alternarOrden("responsable")}
+                    className="p-3 text-left font-bold whitespace-nowrap cursor-pointer select-none"
+                  >
+                    Responsable <span className="opacity-80 ml-1">{iconoOrden("responsable")}</span>
+                  </th>
                   <th className="p-3 text-left font-bold min-w-[180px]">Observaciones</th>
-                  <th className="p-3 text-center font-bold">Acción</th>
+                  <th className="p-3 text-center font-bold whitespace-nowrap">Acción</th>
+                </tr>
+
+                {/* FILA 2: AUTOFILTROS POR COLUMNA */}
+                <tr style={{ backgroundColor: "#EEF4FB", borderBottom: "2px solid #CBD5E1" }}>
+                  <th className="p-2">
+                    <select
+                      value={colEstadoPendiente}
+                      onChange={(e) => {
+                        setColEstadoPendiente(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODOS">Todos</option>
+                      <option value="PENDIENTE">PENDIENTE</option>
+                      <option value="FACTURADO">FACTURADO</option>
+                      <option value="EN REVISION">EN REVISIÓN</option>
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={filtroEmpresa}
+                      onChange={(e) => {
+                        setFiltroEmpresa(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full min-w-[115px] rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODAS">Todas</option>
+                      {carteraInitialData.empresasDisponibles.map((emp) => (
+                        <option key={emp} value={emp}>
+                          {emp}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colContrato}
+                      onChange={(e) => {
+                        setColContrato(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Filtrar contrato..."
+                      className="w-full min-w-[100px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colCups}
+                      onChange={(e) => {
+                        setColCups(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="CUPS..."
+                      className="w-full min-w-[75px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colMotivo}
+                      onChange={(e) => {
+                        setColMotivo(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Filtrar servicio..."
+                      className="w-full rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colFecha}
+                      onChange={(e) => {
+                        setColFecha(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="AAAA-MM-DD"
+                      className="w-full min-w-[85px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colMedico}
+                      onChange={(e) => {
+                        setColMedico(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Médico..."
+                      className="w-full min-w-[95px] rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => alternarOrden("valorServicio")}
+                      className="px-2 py-1 rounded border bg-white text-[10px] font-bold cursor-pointer"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      Ordenar {iconoOrden("valorServicio")}
+                    </button>
+                  </th>
+                  <th className="p-2">
+                    <select
+                      value={filtroResponsable}
+                      onChange={(e) => {
+                        setFiltroResponsable(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      className="w-full min-w-[110px] rounded border bg-white px-1.5 py-1 text-[11px] font-semibold"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    >
+                      <option value="TODAS">Todas</option>
+                      {carteraInitialData.responsablesDisponibles.map((resp) => (
+                        <option key={resp} value={resp}>
+                          {resp}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <input
+                      type="text"
+                      value={colRespuesta}
+                      onChange={(e) => {
+                        setColRespuesta(e.target.value);
+                        setPaginaActual(1);
+                      }}
+                      placeholder="Observaciones..."
+                      className="w-full rounded border bg-white px-2 py-1 text-[11px] font-normal"
+                      style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                    />
+                  </th>
+                  <th className="p-2 text-center">
+                    {hayFiltrosActivos && (
+                      <button
+                        type="button"
+                        onClick={limpiarTodosLosFiltros}
+                        className="px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                        style={{ backgroundColor: "#FFE4E6", color: "#BE123C" }}
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
@@ -2076,7 +2931,7 @@ export default function TableroCarteraAnalytics() {
         </div>
       )}
 
-      {/* MODAL REGISTRAR CORTE SISMA BACK */}
+      {/* MODAL REGISTRAR CORTE */}
       {mostrarModalCorte && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div
@@ -2084,7 +2939,7 @@ export default function TableroCarteraAnalytics() {
             style={{ backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#0E245E" }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#E2ECF8" }}>
-              <h4 className="text-base font-extrabold">+ Registrar Corte de Cartera SISMA Back</h4>
+              <h4 className="text-base font-extrabold">+ Registrar Corte de Cartera</h4>
               <button
                 type="button"
                 onClick={() => setMostrarModalCorte(false)}
@@ -2185,78 +3040,6 @@ export default function TableroCarteraAnalytics() {
                 style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
               >
                 Guardar Corte
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL ESPECIFICACIÓN ENDPOINTS PARA FABER */}
-      {mostrarModalFaber && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <div
-            className="rounded-2xl max-w-3xl w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#0E245E" }}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#E2ECF8" }}>
-              <div>
-                <span className="text-xs font-bold uppercase" style={{ color: "#1D58D8" }}>
-                  Conexión Automática SISMA Back
-                </span>
-                <h4 className="text-base font-extrabold">
-                  Especificación de Endpoints para Faber (api.centrooftalmologicoebenezer.com)
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMostrarModalFaber(false)}
-                className="font-bold text-base cursor-pointer"
-                style={{ color: "#64748B" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {carteraInitialData.sismaBack.especificacionFaber.map((ep) => (
-                <div
-                  key={ep.endpoint}
-                  className="p-4 rounded-xl border text-xs space-y-2"
-                  style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }}
-                >
-                  <div className="font-mono font-bold text-sm" style={{ color: "#1D58D8" }}>
-                    {ep.endpoint}
-                  </div>
-                  <div>
-                    <span style={{ color: "#64748B" }}>Origen en SISMA Back: </span>
-                    <strong>{ep.moduloOrigen}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "#64748B" }}>Parámetros: </span>
-                    <code className="font-mono">{ep.parametros}</code>
-                  </div>
-                  <div>
-                    <span className="block mb-1" style={{ color: "#64748B" }}>
-                      Campos JSON de retorno:
-                    </span>
-                    <ul className="list-disc list-inside font-mono space-y-1" style={{ color: "#047857" }}>
-                      {ep.camposRetorno.map((c) => (
-                        <li key={c}>{c}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end pt-3 border-t" style={{ borderColor: "#E2ECF8" }}>
-              <button
-                type="button"
-                onClick={() => setMostrarModalFaber(false)}
-                className="px-5 py-2 rounded-xl font-bold text-xs sm:text-sm cursor-pointer"
-                style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}
-              >
-                Cerrar
               </button>
             </div>
           </div>
