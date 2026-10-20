@@ -9,7 +9,7 @@ import {
   Users,
   ChevronRight,
   ChevronDown,
-  Ban,
+  Ban, Briefcase, User, Headphones,
   CheckCircle2,
   Activity,
   Calendar,
@@ -53,7 +53,7 @@ const STEP_META: Record<
   step1: { id: 'step1', label: '1. Digiturno → Admisiones', metaMin: 15.0 },
   step2: { id: 'step2', label: '2. Proceso en Admisiones', metaMin: 5.0 },
   step3: { id: 'step3', label: '3. Preconsulta y Estudios', metaMin: 20.0 },
-  step4: { id: 'step4', label: '4. Consulta Oftalmólogo', metaMin: 35.0 },
+  step4: { id: 'step4', label: 'Consulta Oftalmólogo', metaMin: 35.0 },
   step5: { id: 'step5', label: '5. Orientación: HC, Órdenes y Cita', metaMin: 15.0 },
 };
 
@@ -555,19 +555,19 @@ export default function DigiturnoContactPage() {
         {/* Fila 2: Barra de filtros limpia dentro de la tarjeta */}
         <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-100">
 
-          {/* Botón Excluir Mutual (estilo Frecuencias) en Contact Center */}
+          {/* Botón Vista Comercial (PyP y Particular) en azul institucional */}
           {activeTab === 'contact' && (
             <button
               type="button"
               onClick={() => setExcludeMutual((v) => !v)}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-xl text-[11px] font-semibold border transition-all flex items-center gap-1.5 ${
                 excludeMutual
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                  : 'bg-rose-50/70 text-rose-700 border-rose-200 hover:bg-rose-100/70'
+                  ? 'bg-[#2B579A] text-white border-[#2B579A] shadow-xs'
+                  : 'bg-[#EEF4FF] text-[#1E3A8A] border-[#BFDBFE] hover:bg-[#DBEAFE]'
               }`}
             >
-              <Ban className="w-3 h-3" />
-              {excludeMutual ? 'Mutual Excluido' : 'Excluir Mutual'}
+              <Briefcase className="w-3.5 h-3.5" />
+              {excludeMutual ? 'Vista Comercial Activa (Solo PyP y Particular)' : 'Vista Comercial: PyP y Particular'}
             </button>
           )}
 
@@ -650,7 +650,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-indigo-500 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  1. LLAMADAS RECIBIDAS
+                  LLAMADAS RECIBIDAS
                 </span>
                 <PhoneIncoming className="w-3.5 h-3.5 text-indigo-500" />
               </div>
@@ -658,7 +658,7 @@ export default function DigiturnoContactPage() {
                 {fmtNum(contactComputed.totalRecibidas)}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Prom: {fmtNum(Math.max(1, contactComputed.totalRecibidas / 48))} llamadas/día · Sin Mutual:{' '}
+                Prom: {fmtNum(Math.max(1, contactComputed.totalRecibidas / 48))} llamadas/día · Comercial (PyP/Part):{' '}
                 <span className="font-semibold text-slate-700">
                   {fmtNum(contactComputed.allWithoutMutualRec)}
                 </span>
@@ -668,7 +668,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-emerald-500 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  2. LLAMADAS CONTESTADAS
+                  LLAMADAS CONTESTADAS
                 </span>
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
               </div>
@@ -676,7 +676,7 @@ export default function DigiturnoContactPage() {
                 {fmtNum(contactComputed.totalContestadas)}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                {fmtDec(contactComputed.efectividadGlobal)}% efectividad · Sin Mutual:{' '}
+                {fmtDec(contactComputed.efectividadGlobal)}% efectividad · Comercial (PyP/Part):{' '}
                 <span className="font-semibold text-emerald-700">
                   {fmtDec(contactComputed.sinMutualEfect)}%
                 </span>
@@ -686,7 +686,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-rose-400 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  3. LLAMADAS PERDIDAS
+                  LLAMADAS PERDIDAS
                 </span>
                 <PhoneOff className="w-3.5 h-3.5 text-rose-400" />
               </div>
@@ -702,7 +702,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-amber-400 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  4. NIVEL DE SERVICIO (SLA)
+                  NIVEL DE SERVICIO (SLA)
                 </span>
                 <Clock className="w-3.5 h-3.5 text-amber-500" />
               </div>
@@ -710,7 +710,7 @@ export default function DigiturnoContactPage() {
                 {fmtDec(contactComputed.weightedSla)}%
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Espera prom: {fmtDec(contactComputed.weightedEspera)} min · Sin Mutual:{' '}
+                Espera prom: {fmtDec(contactComputed.weightedEspera)} min · Comercial (PyP/Part):{' '}
                 <span className="font-semibold text-slate-700">0,5 min</span>
               </div>
             </div>
@@ -824,100 +824,182 @@ export default function DigiturnoContactPage() {
                 <tbody className="divide-y divide-slate-100 text-[11px]">
                   {contactComputed.linesList.map((line) => {
                     const isOpen = !!expandedLines[line.id];
-                    const colors = badgeColor(line.efectividad);
-                    const lineShare =
-                      contactComputed.totalContestadas > 0
-                        ? line.contestadas / contactComputed.totalContestadas
-                        : 1;
+                    const isComercial =
+                      line.name.toLowerCase().includes('pyp') ||
+                      line.name.toLowerCase().includes('prepagada') ||
+                      line.name.toLowerCase().includes('refractiva');
+
+                    // Distribuir exactamente las llamadas de la línea entre las agentes según su peso real en PBX
+                    // para que la fila de título TOTALICE al 100% la suma de las agentes debajo
+                    const totalAgWeightTimb = Math.max(
+                      1,
+                      contactComputed.agentsList.reduce((acc, a) => acc + a.timbradas, 0)
+                    );
+                    const totalAgWeightCont = Math.max(
+                      1,
+                      contactComputed.agentsList.reduce((acc, a) => acc + a.contestadas, 0)
+                    );
+
+                    const rawAgents = contactComputed.agentsList.map((ag) => {
+                      const rec = Math.max(
+                        1,
+                        Math.round((ag.timbradas / totalAgWeightTimb) * line.recibidas)
+                      );
+                      const cont = Math.min(
+                        rec,
+                        Math.max(
+                          0,
+                          Math.round((ag.contestadas / totalAgWeightCont) * line.contestadas)
+                        )
+                      );
+                      return { ...ag, rec, cont, perd: Math.max(0, rec - cont) };
+                    });
+
+                    // Ajuste de redondeo en la primera agente para que la suma de agentes cuadre exacto con el total de la línea
+                    if (rawAgents.length > 0) {
+                      const sumRec = rawAgents.reduce((s, a) => s + a.rec, 0);
+                      const sumCont = rawAgents.reduce((s, a) => s + a.cont, 0);
+                      rawAgents[0].rec = Math.max(1, rawAgents[0].rec + (line.recibidas - sumRec));
+                      rawAgents[0].cont = Math.min(
+                        rawAgents[0].rec,
+                        Math.max(0, rawAgents[0].cont + (line.contestadas - sumCont))
+                      );
+                      rawAgents[0].perd = Math.max(0, rawAgents[0].rec - rawAgents[0].cont);
+                    }
+
+                    const lineRecibidas = rawAgents.reduce((s, a) => s + a.rec, 0);
+                    const lineContestadas = rawAgents.reduce((s, a) => s + a.cont, 0);
+                    const linePerdidas = rawAgents.reduce((s, a) => s + a.perd, 0);
+                    const lineEfectividad =
+                      lineRecibidas > 0 ? (lineContestadas / lineRecibidas) * 100 : 0;
+                    const colors = badgeColor(lineEfectividad);
 
                     return (
                       <React.Fragment key={line.id}>
+                        {/* FILA DE TÍTULO Y TOTALIZADOR DE LA LÍNEA */}
                         <tr
                           onClick={() => toggleLine(line.id)}
-                          className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                          className={`cursor-pointer transition-colors border-l-4 ${
+                            isComercial
+                              ? 'bg-[#ECFDF5]/85 hover:bg-[#D1FAE5]/70 border-l-[#2E9E6B]'
+                              : 'bg-[#EEF4FF]/90 hover:bg-[#DBEAFE]/75 border-l-[#2B579A]'
+                          }`}
                         >
-                          <td className="py-2 px-4 font-semibold text-slate-800 flex items-center gap-1.5">
-                            {isOpen ? (
-                              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            ) : (
-                              <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            )}
-                            <span>{line.name}</span>
+                          <td className="py-2.5 px-4 font-bold text-[#0F172A] flex items-center gap-2">
+                            <span
+                              className={`w-5 h-5 rounded-md bg-white border flex items-center justify-center shadow-2xs shrink-0 ${
+                                isComercial
+                                  ? 'border-emerald-200 text-[#2E9E6B]'
+                                  : 'border-blue-200 text-[#2B579A]'
+                              }`}
+                            >
+                              {isOpen ? (
+                                <ChevronDown className="w-3.5 h-3.5 stroke-[2.4]" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5 stroke-[2.4]" />
+                              )}
+                            </span>
+                            <span className="text-[12px] tracking-tight">{line.name}</span>
+                            <span
+                              className={`ml-1 px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase tracking-wider border ${
+                                isComercial
+                                  ? 'bg-emerald-100/80 text-emerald-800 border-emerald-300/70'
+                                  : 'bg-[#2B579A]/10 text-[#1E3A8A] border-[#2B579A]/20'
+                              }`}
+                            >
+                              {isComercial
+                                ? `Comercial · Total (${rawAgents.length} agentes)`
+                                : `Total Línea · ${rawAgents.length} agentes`}
+                            </span>
                           </td>
-                          <td className="py-2 px-3 text-right font-semibold text-slate-800">
-                            {fmtNum(line.recibidas)}
+                          <td className="py-2.5 px-3 text-right font-bold text-[11.5px] text-[#0F172A]">
+                            {fmtNum(lineRecibidas)}
                           </td>
-                          <td className="py-2 px-3 text-right font-semibold text-slate-800">
-                            {fmtNum(line.contestadas)}
+                          <td className="py-2.5 px-3 text-right font-bold text-[11.5px] text-[#0F172A]">
+                            {fmtNum(lineContestadas)}
                           </td>
-                          <td className="py-2 px-3 text-right font-semibold text-slate-800">
-                            {fmtNum(line.perdidas)}
+                          <td className="py-2.5 px-3 text-right font-bold text-[11.5px] text-[#0F172A]">
+                            {fmtNum(linePerdidas)}
                           </td>
-                          <td className="py-2 px-3 text-right text-slate-600">
+                          <td className="py-2.5 px-3 text-right font-bold text-[11.5px] text-slate-800">
                             {fmtDec(line.esperaMin)} min
                           </td>
-                          <td className="py-2 px-4">
+                          <td className="py-2.5 px-4">
                             <div className="flex items-center justify-end gap-2.5">
-                              <div className="w-28 bg-slate-100 h-1 rounded-full overflow-hidden">
+                              <div className="w-28 bg-white/90 border border-slate-200/70 h-1.5 rounded-full overflow-hidden">
                                 <div
-                                  className={`${colors.bar} h-1 rounded-full`}
+                                  className={`${colors.bar} h-1.5 rounded-full`}
                                   style={{
-                                    width: `${Math.min(100, Math.max(4, line.efectividad))}%`,
+                                    width: `${Math.min(100, Math.max(4, lineEfectividad))}%`,
                                   }}
                                 />
                               </div>
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors.pill} min-w-[46px] text-center`}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${colors.pill} min-w-[48px] text-center shadow-2xs`}
                               >
-                                {fmtDec(line.efectividad)}%
+                                {fmtDec(lineEfectividad)}%
                               </span>
                             </div>
                           </td>
                         </tr>
 
+                        {/* FILAS DE AGENTES CON AVATAR EJECUTIVO DE USUARIO */}
                         {isOpen &&
-                          contactComputed.agentsList.map((ag) => {
-                            const agColors = badgeColor(ag.efectividad);
-                            const scaleFactor =
-                              contactComputed.linesList.length === 1 ? 1 : lineShare;
-                            const agTimb = Math.max(1, Math.round(ag.timbradas * scaleFactor));
-                            const agCont = Math.max(1, Math.round(ag.contestadas * scaleFactor));
-                            const agPerd = Math.max(0, agTimb - agCont);
+                          rawAgents.map((ag) => {
+                            const agEfec = ag.rec > 0 ? (ag.cont / ag.rec) * 100 : ag.efectividad;
+                            const agColors = badgeColor(agEfec);
+                            const statusDot =
+                              agEfec >= 85
+                                ? 'bg-emerald-500'
+                                : agEfec >= 70
+                                ? 'bg-amber-400'
+                                : 'bg-rose-500';
 
                             return (
                               <tr
                                 key={`${line.id}-${ag.id}`}
-                                className="bg-white hover:bg-slate-50/40 text-slate-600"
+                                className="bg-white hover:bg-slate-50/70 text-slate-600 transition-colors"
                               >
-                                <td className="py-1.5 pl-9 pr-4 text-[11px] font-medium text-slate-700">
-                                  • {ag.name}
+                                <td className="py-2 pl-9 pr-4 text-[11px] font-medium text-slate-700">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="relative w-6 h-6 rounded-full bg-gradient-to-br from-[#EEF4FF] to-[#E0E7FF] border border-[#C7D2FE] flex items-center justify-center text-[#2B579A] shadow-2xs shrink-0">
+                                      <User className="w-3.5 h-3.5 stroke-[2.2]" />
+                                      <span
+                                        className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-1 ring-white ${statusDot}`}
+                                      />
+                                    </div>
+                                    <span className="font-semibold text-slate-800">{ag.name}</span>
+                                    <span className="text-[9.5px] text-slate-400 font-normal hidden sm:inline">
+                                      · Agente PBX
+                                    </span>
+                                  </div>
                                 </td>
-                                <td className="py-1.5 px-3 text-right text-slate-600">
-                                  {fmtNum(agTimb)}
+                                <td className="py-2 px-3 text-right font-medium text-slate-700">
+                                  {fmtNum(ag.rec)}
                                 </td>
-                                <td className="py-1.5 px-3 text-right text-slate-600">
-                                  {fmtNum(agCont)}
+                                <td className="py-2 px-3 text-right font-medium text-slate-700">
+                                  {fmtNum(ag.cont)}
                                 </td>
-                                <td className="py-1.5 px-3 text-right text-slate-600">
-                                  {fmtNum(agPerd)}
+                                <td className="py-2 px-3 text-right font-medium text-slate-700">
+                                  {fmtNum(ag.perd)}
                                 </td>
-                                <td className="py-1.5 px-3 text-right text-slate-500">
+                                <td className="py-2 px-3 text-right text-slate-500">
                                   {fmtDec(ag.duracionMin)} min
                                 </td>
-                                <td className="py-1.5 px-4">
+                                <td className="py-2 px-4">
                                   <div className="flex items-center justify-end gap-2.5">
                                     <div className="w-28 bg-slate-100 h-1 rounded-full overflow-hidden">
                                       <div
                                         className={`${agColors.bar} h-1 rounded-full`}
                                         style={{
-                                          width: `${Math.min(100, Math.max(4, ag.efectividad))}%`,
+                                          width: `${Math.min(100, Math.max(4, agEfec))}%`,
                                         }}
                                       />
                                     </div>
                                     <span
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${agColors.pill} min-w-[46px] text-center`}
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${agColors.pill} min-w-[48px] text-center`}
                                     >
-                                      {fmtDec(ag.efectividad)}%
+                                      {fmtDec(agEfec)}%
                                     </span>
                                   </div>
                                 </td>
@@ -928,28 +1010,30 @@ export default function DigiturnoContactPage() {
                     );
                   })}
 
-                  {/* FOOTER TOTAL */}
-                  <tr className="bg-slate-50/90 font-bold text-slate-900 border-t border-slate-200">
-                    <td className="py-2.5 px-4">TOTAL CONTACT CENTER PBX</td>
-                    <td className="py-2.5 px-3 text-right">
+                  {/* FOOTER TOTAL CONSOLIDADO */}
+                  <tr className="bg-[#1E293B] font-bold text-white border-t-2 border-[#0F172A]">
+                    <td className="py-2.5 px-4 text-[11.5px] tracking-wide uppercase">
+                      TOTAL GENERAL CONSOLIDADO ({contactComputed.linesList.length} LÍNEAS)
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-[11.5px]">
                       {fmtNum(contactComputed.totalRecibidas)}
                     </td>
-                    <td className="py-2.5 px-3 text-right">
+                    <td className="py-2.5 px-3 text-right text-[11.5px]">
                       {fmtNum(contactComputed.totalContestadas)}
                     </td>
-                    <td className="py-2.5 px-3 text-right">
+                    <td className="py-2.5 px-3 text-right text-[11.5px]">
                       {fmtNum(contactComputed.totalPerdidas)}
                     </td>
-                    <td className="py-2.5 px-3 text-right">
+                    <td className="py-2.5 px-3 text-right text-[11.5px]">
                       {fmtDec(contactComputed.weightedEspera)} min
                     </td>
                     <td className="py-2.5 px-4">
                       <div className="flex items-center justify-end gap-2.5">
-                        <div className="w-28 bg-slate-200 h-1 rounded-full overflow-hidden">
+                        <div className="w-28 bg-slate-700 h-1.5 rounded-full overflow-hidden">
                           <div
                             className={`${
                               badgeColor(contactComputed.efectividadGlobal).bar
-                            } h-1 rounded-full`}
+                            } h-1.5 rounded-full`}
                             style={{
                               width: `${Math.min(
                                 100,
@@ -959,9 +1043,9 @@ export default function DigiturnoContactPage() {
                           />
                         </div>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                             badgeColor(contactComputed.efectividadGlobal).pill
-                          } min-w-[46px] text-center`}
+                          } min-w-[48px] text-center`}
                         >
                           {fmtDec(contactComputed.efectividadGlobal)}%
                         </span>
@@ -983,7 +1067,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-indigo-500 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  1. TURNOS ATENDIDOS
+                  TURNOS ATENDIDOS
                 </span>
                 <Users className="w-3.5 h-3.5 text-indigo-500" />
               </div>
@@ -999,7 +1083,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-amber-400 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  2. TIEMPO ESPERA EN SALA
+                  TIEMPO ESPERA EN SALA
                 </span>
                 <Clock className="w-3.5 h-3.5 text-amber-500" />
               </div>
@@ -1020,7 +1104,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-emerald-500 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  3. TIEMPO EN ATENCIÓN
+                  TIEMPO EN ATENCIÓN
                 </span>
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
               </div>
@@ -1041,7 +1125,7 @@ export default function DigiturnoContactPage() {
             <div className="bg-white rounded-2xl border border-slate-200/80 border-l-4 border-l-rose-400 px-4 py-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  4. CICLO TOTAL (5 PASOS)
+                  CICLO TOTAL (5 PASOS)
                 </span>
                 <Activity className="w-3.5 h-3.5 text-rose-400" />
               </div>
@@ -1165,15 +1249,20 @@ export default function DigiturnoContactPage() {
                       <React.Fragment key={row.id}>
                         <tr
                           onClick={() => toggleStep(row.id)}
-                          className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                          className="bg-[#EEF4FF]/90 hover:bg-[#DBEAFE]/75 border-l-4 border-l-[#2B579A] cursor-pointer transition-colors"
                         >
-                          <td className="py-2 px-4 font-semibold text-slate-800 flex items-center gap-1.5">
-                            {isOpen ? (
-                              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            ) : (
-                              <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            )}
-                            <span>{row.label}</span>
+                          <td className="py-2.5 px-4 font-bold text-[#0F172A] flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-md bg-white border border-blue-200 text-[#2B579A] flex items-center justify-center shadow-2xs shrink-0">
+                              {isOpen ? (
+                                <ChevronDown className="w-3.5 h-3.5 stroke-[2.4]" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5 stroke-[2.4]" />
+                              )}
+                            </span>
+                            <span className="text-[12px] tracking-tight">{row.label}</span>
+                            <span className="ml-1 px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase tracking-wider bg-[#2B579A]/10 text-[#1E3A8A] border border-[#2B579A]/20">
+                              Total Etapa · 2 Sedes
+                            </span>
                           </td>
                           <td className="py-2 px-3 text-right font-semibold text-slate-800">
                             {fmtNum(row.turnos)}
@@ -1209,8 +1298,13 @@ export default function DigiturnoContactPage() {
                         {isOpen && (
                           <>
                             <tr className="bg-white hover:bg-slate-50/40 text-slate-600">
-                              <td className="py-1.5 pl-9 pr-4 text-[11px] font-medium text-slate-700">
-                                • Sede 1
+                              <td className="py-2 pl-9 pr-4 text-[11px] font-medium text-slate-700">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#EEF4FF] to-[#E0E7FF] border border-[#C7D2FE] flex items-center justify-center text-[#2B579A] shadow-2xs shrink-0">
+                                    <Building2 className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-semibold text-slate-800">Sede 1 · Principal</span>
+                                </div>
                               </td>
                               <td className="py-1.5 px-3 text-right">
                                 {fmtNum(row.sede1.turnos)}
@@ -1246,8 +1340,13 @@ export default function DigiturnoContactPage() {
                               </td>
                             </tr>
                             <tr className="bg-white hover:bg-slate-50/40 text-slate-600">
-                              <td className="py-1.5 pl-9 pr-4 text-[11px] font-medium text-slate-700">
-                                • Sede 2
+                              <td className="py-2 pl-9 pr-4 text-[11px] font-medium text-slate-700">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ECFDF5] to-[#D1FAE5] border border-emerald-200 flex items-center justify-center text-[#2E9E6B] shadow-2xs shrink-0">
+                                    <Building2 className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-semibold text-slate-800">Sede 2 · Consultorios</span>
+                                </div>
                               </td>
                               <td className="py-1.5 px-3 text-right">
                                 {fmtNum(row.sede2.turnos)}
@@ -1289,8 +1388,8 @@ export default function DigiturnoContactPage() {
                   })}
 
                   {/* FOOTER TOTAL */}
-                  <tr className="bg-slate-50/90 font-bold text-slate-900 border-t border-slate-200">
-                    <td className="py-2.5 px-4">TOTAL CICLO DEL PACIENTE</td>
+                  <tr className="bg-[#1E293B] font-bold text-white border-t-2 border-[#0F172A]">
+                    <td className="py-2.5 px-4 text-[11.5px] tracking-wide uppercase">TOTAL GENERAL CICLO DEL PACIENTE</td>
                     <td className="py-2.5 px-3 text-right">
                       {fmtNum(digiturnoComputed.totalTurnos)}
                     </td>

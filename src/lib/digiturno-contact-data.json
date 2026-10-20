@@ -1354,7 +1354,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1004,
           "contestadas": 550,
@@ -1364,7 +1364,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 237,
           "contestadas": 161,
@@ -1374,7 +1374,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 182,
           "contestadas": 170,
@@ -1384,7 +1384,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -1451,7 +1451,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 963,
           "contestadas": 527,
@@ -1461,7 +1461,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 227,
           "contestadas": 154,
@@ -1471,7 +1471,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 174,
           "contestadas": 163,
@@ -1481,7 +1481,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 10,
           "contestadas": 9,
@@ -1548,7 +1548,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1035,
           "contestadas": 566,
@@ -1558,7 +1558,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 244,
           "contestadas": 166,
@@ -1568,7 +1568,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 187,
           "contestadas": 175,
@@ -1578,7 +1578,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -1645,7 +1645,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1014,
           "contestadas": 555,
@@ -1655,7 +1655,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 239,
           "contestadas": 162,
@@ -1665,7 +1665,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 184,
           "contestadas": 171,
@@ -1675,7 +1675,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -1742,7 +1742,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1055,
           "contestadas": 578,
@@ -1752,7 +1752,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 249,
           "contestadas": 169,
@@ -1762,7 +1762,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 191,
           "contestadas": 178,
@@ -1772,7 +1772,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -1839,7 +1839,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1035,
           "contestadas": 566,
@@ -1849,7 +1849,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 244,
           "contestadas": 166,
@@ -1859,7 +1859,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 187,
           "contestadas": 175,
@@ -1869,7 +1869,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -1936,7 +1936,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1076,
           "contestadas": 589,
@@ -1946,7 +1946,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 254,
           "contestadas": 172,
@@ -1956,7 +1956,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 195,
           "contestadas": 182,
@@ -1966,7 +1966,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -2033,7 +2033,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1055,
           "contestadas": 578,
@@ -2043,7 +2043,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 249,
           "contestadas": 169,
@@ -2053,7 +2053,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 191,
           "contestadas": 178,
@@ -2063,7 +2063,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -2130,7 +2130,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1045,
           "contestadas": 572,
@@ -2140,7 +2140,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 247,
           "contestadas": 167,
@@ -2150,7 +2150,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 189,
           "contestadas": 177,
@@ -2160,7 +2160,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -2227,7 +2227,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 963,
           "contestadas": 527,
@@ -2237,7 +2237,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 227,
           "contestadas": 154,
@@ -2247,7 +2247,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 174,
           "contestadas": 163,
@@ -2257,7 +2257,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 10,
           "contestadas": 9,
@@ -2324,7 +2324,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1079,
           "contestadas": 591,
@@ -2334,7 +2334,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 255,
           "contestadas": 173,
@@ -2344,7 +2344,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 196,
           "contestadas": 182,
@@ -2354,7 +2354,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -2421,7 +2421,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1035,
           "contestadas": 567,
@@ -2431,7 +2431,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 244,
           "contestadas": 166,
@@ -2441,7 +2441,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 188,
           "contestadas": 175,
@@ -2451,7 +2451,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
@@ -2518,7 +2518,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1113,
           "contestadas": 609,
@@ -2528,7 +2528,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 263,
           "contestadas": 178,
@@ -2538,7 +2538,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 202,
           "contestadas": 188,
@@ -2548,7 +2548,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -2615,7 +2615,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1090,
           "contestadas": 597,
@@ -2625,7 +2625,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 257,
           "contestadas": 174,
@@ -2635,7 +2635,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 198,
           "contestadas": 184,
@@ -2645,7 +2645,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -2712,7 +2712,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1135,
           "contestadas": 621,
@@ -2722,7 +2722,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 268,
           "contestadas": 181,
@@ -2732,7 +2732,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 206,
           "contestadas": 192,
@@ -2742,7 +2742,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -2809,7 +2809,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1113,
           "contestadas": 609,
@@ -2819,7 +2819,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 263,
           "contestadas": 178,
@@ -2829,7 +2829,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 202,
           "contestadas": 188,
@@ -2839,7 +2839,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -2906,7 +2906,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1157,
           "contestadas": 633,
@@ -2916,7 +2916,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 273,
           "contestadas": 185,
@@ -2926,7 +2926,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 210,
           "contestadas": 195,
@@ -2936,7 +2936,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -3003,7 +3003,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1135,
           "contestadas": 621,
@@ -3013,7 +3013,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 268,
           "contestadas": 181,
@@ -3023,7 +3023,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 206,
           "contestadas": 192,
@@ -3033,7 +3033,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -3100,7 +3100,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1124,
           "contestadas": 615,
@@ -3110,7 +3110,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 265,
           "contestadas": 180,
@@ -3120,7 +3120,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 204,
           "contestadas": 190,
@@ -3130,7 +3130,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 12,
           "contestadas": 10,
@@ -3197,7 +3197,7 @@
       "lines": [
         {
           "id": "506012",
-          "name": "1. Mutual Subsidiado (506012)",
+          "name": "Mutual Subsidiado",
           "isMutual": true,
           "recibidas": 1035,
           "contestadas": 567,
@@ -3207,7 +3207,7 @@
         },
         {
           "id": "506013",
-          "name": "2. Mutual Contributivo (506013)",
+          "name": "Mutual Contributivo",
           "isMutual": true,
           "recibidas": 244,
           "contestadas": 166,
@@ -3217,7 +3217,7 @@
         },
         {
           "id": "506014",
-          "name": "3. Prepagadas y Particular · PyP (506014)",
+          "name": "Prepagadas y Particular · PyP",
           "isMutual": false,
           "recibidas": 188,
           "contestadas": 175,
@@ -3227,7 +3227,7 @@
         },
         {
           "id": "506015",
-          "name": "4. Cirugía Refractiva (506015)",
+          "name": "Cirugía Refractiva",
           "isMutual": false,
           "recibidas": 11,
           "contestadas": 9,
