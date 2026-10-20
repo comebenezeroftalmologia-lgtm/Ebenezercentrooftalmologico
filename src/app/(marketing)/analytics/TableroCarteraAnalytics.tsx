@@ -147,7 +147,8 @@ export default function TableroCarteraAnalytics() {
 
   // Persiana states for the main cards/boxes
   const [persianaResumenAbierta, setPersianaResumenAbierta] = useState<boolean>(true);
-  const [persianaCortesAbierta, setPersianaCortesAbierta] = useState<boolean>(true);
+  const [persianaCortesAbierta, setPersianaCortesAbierta] = useState<boolean>(false);
+  const [cortinaTablaAbierta, setCortinaTablaAbierta] = useState<boolean>(true);
   const [persianaMesaAbierta, setPersianaMesaAbierta] = useState<boolean>(true);
 
   // 6 Top Bar Filters
@@ -2024,9 +2025,22 @@ export default function TableroCarteraAnalytics() {
                   );
                 })}
               </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCortinaTablaAbierta((prev) => !prev)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1.5"
+                  style={{ backgroundColor: "#EFF6FF", color: "#1D58D8", borderColor: "#BFDBFE" }}
+                >
+                  <span>{cortinaTablaAbierta ? "▴" : "▾"}</span>
+                  <span>{cortinaTablaAbierta ? "Replegar cortina de tabla" : "Desplegar cortina de tabla"}</span>
+                </button>
+              </div>
             </div>
 
-            {/* TABLA SIN TRUNCATE EN RIPS / RESPONSABLE / MOTIVO Y CON AUTO-FIT NATURAL */}
+            {/* TABLA CON REPLIEGUE TIPO CORTINA Y FILAS EN 1 SOLA LÍNEA LIMPIA */}
+            {cortinaTablaAbierta && (
             <div className="border rounded-xl overflow-x-auto" style={{ borderColor: "#E2ECF8" }}>
               {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
                 <table
@@ -2095,12 +2109,14 @@ export default function TableroCarteraAnalytics() {
                             </td>
                             <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
                               <div className="flex items-start justify-between gap-2">
-                                <span>{textoMotivoBase}</span>
+                                <span className={abierta ? "whitespace-normal" : "line-clamp-1"}>
+                                  {textoMotivoBase}
+                                </span>
                                 <span
-                                  className="text-[10px] font-bold shrink-0 mt-0.5"
-                                  style={{ color: "#1D58D8" }}
+                                  className="text-[10px] font-bold shrink-0 mt-0.5 px-1.5 py-0.5 rounded"
+                                  style={{ backgroundColor: abierta ? "#DBEAFE" : "#F1F5F9", color: "#1D58D8" }}
                                 >
-                                  {abierta ? "▴" : "▾"}
+                                  {abierta ? "▴ Replegar" : "▾ Ver"}
                                 </span>
                               </div>
                             </td>
@@ -2244,17 +2260,21 @@ export default function TableroCarteraAnalytics() {
                             </td>
                             <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
                               <div className="flex items-start justify-between gap-2">
-                                <span>{r.motivoGlosa || "-"}</span>
+                                <span className={abierta ? "whitespace-normal" : "line-clamp-1"}>
+                                  {r.motivoGlosa || "-"}
+                                </span>
                                 <span
-                                  className="text-[10px] font-bold shrink-0 mt-0.5"
-                                  style={{ color: "#1D58D8" }}
+                                  className="text-[10px] font-bold shrink-0 mt-0.5 px-1.5 py-0.5 rounded"
+                                  style={{ backgroundColor: abierta ? "#DBEAFE" : "#F1F5F9", color: "#1D58D8" }}
                                 >
-                                  {abierta ? "▴" : "▾"}
+                                  {abierta ? "▴ Replegar" : "▾ Ver"}
                                 </span>
                               </div>
                             </td>
                             <td className="px-2 py-2 leading-snug" style={{ color: "#334155" }}>
-                              {r.observacionInterna || "-"}
+                              <span className={abierta ? "whitespace-normal" : "line-clamp-1"}>
+                                {r.observacionInterna || "-"}
+                              </span>
                             </td>
                             <td className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: "#0E245E" }}>
                               {nombreFac}
@@ -2434,6 +2454,8 @@ export default function TableroCarteraAnalytics() {
                 </table>
               )}
             </div>
+
+            )}
 
             {/* PAGINACIÓN */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-xs" style={{ color: "#475569" }}>
