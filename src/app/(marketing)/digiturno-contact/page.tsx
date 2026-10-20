@@ -91,10 +91,36 @@ export default function DigiturnoContactPage() {
     step1: true,
   });
 
-  // Contact Center specific filters & expanded rows
-  const [segmentFilter, setSegmentFilter] = useState<'todas' | 'mutual' | 'comercial'>('todas');
-  const excludeMutual = segmentFilter === 'comercial';
-  const [selectedLine, setSelectedLine] = useState<string>('Todas');
+  // Contact Center specific filters & expanded rows (Multiselección de líneas)
+  const ALL_LINES_OPTIONS = [
+    { id: '506012', label: 'Mutual Subsidiado', isMutual: true },
+    { id: '506013', label: 'Mutual Contributivo', isMutual: true },
+    { id: '506014', label: 'Prepagadas y Particular · PyP', isMutual: false },
+    { id: '506015', label: 'Cirugía Refractiva · Particular', isMutual: false },
+  ];
+  const [selectedLines, setSelectedLines] = useState<string[]>(['506012', '506013', '506014', '506015']);
+  const [lineMenuOpen, setLineMenuOpen] = useState<boolean>(false);
+
+  const isAllSelected = selectedLines.length === 4;
+  const isOnlyMutual =
+    selectedLines.length === 2 &&
+    selectedLines.includes('506012') &&
+    selectedLines.includes('506013');
+  const isOnlyComercial =
+    selectedLines.length === 2 &&
+    selectedLines.includes('506014') &&
+    selectedLines.includes('506015');
+  const excludeMutual = isOnlyComercial;
+
+  const toggleSelectLineOption = (id: string) => {
+    setSelectedLines((prev) => {
+      if (prev.includes(id)) {
+        const next = prev.filter((x) => x !== id);
+        return next.length === 0 ? ['506012', '506013', '506014', '506015'] : next;
+      }
+      return [...prev, id];
+    });
+  };
   const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({
     '506012': true,
     '506014': true,
@@ -310,9 +336,7 @@ export default function DigiturnoContactPage() {
 
     const monthlyChart = chartRecords.map((m) => {
       const validLines = m.lines.filter((l) => {
-        if (segmentFilter === 'comercial' && l.isMutual) return false;
-        if (segmentFilter === 'mutual' && !l.isMutual) return false;
-        if (selectedLine !== 'Todas' && l.id !== selectedLine) return false;
+        if (!selectedLines.includes(l.id)) return false;
         return true;
       });
       const rec = validLines.reduce((acc, x) => acc + x.recibidas, 0);
@@ -369,9 +393,7 @@ export default function DigiturnoContactPage() {
           allWithoutMutualRec += l.recibidas;
           allWithoutMutualCon += l.contestadas;
         }
-        if (segmentFilter === 'comercial' && l.isMutual) return;
-        if (segmentFilter === 'mutual' && !l.isMutual) return;
-        if (selectedLine !== 'Todas' && l.id !== selectedLine) return;
+        if (!selectedLines.includes(l.id)) return;
 
         if (!lineMap[l.id]) {
           lineMap[l.id] = {
@@ -517,7 +539,7 @@ export default function DigiturnoContactPage() {
       allWithoutMutualRec,
       sinMutualEfect,
     };
-  }, [selectedYear, selectedMonth, segmentFilter, selectedLine]);
+  }, [selectedYear, selectedMonth, selectedLines]);
 
   const badgeColor = (pct: number) => {
     if (pct >= 85) {
@@ -598,14 +620,14 @@ export default function DigiturnoContactPage() {
         {/* Fila 2: Barra de filtros limpia dentro de la tarjeta */}
         <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-100">
 
-          {/* Selector Rápido de 3 Vistas: Todas | Solo Mutual Ser | PyP y Particular */}
+          {/* Selector Rápido de 3 Vistas sincronizado con la multiselección */}
           {activeTab === 'contact' && (
             <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
               <button
                 type="button"
-                onClick={() => setSegmentFilter('todas')}
+                onClick={() => setSelectedLines(['506012', '506013', '506014', '506015'])}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-                  segmentFilter === 'todas'
+                  isAllSelected
                     ? 'bg-[#2B579A] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -614,9 +636,9 @@ export default function DigiturnoContactPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setSegmentFilter('mutual')}
+                onClick={() => setSelectedLines(['506012', '506013'])}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-                  segmentFilter === 'mutual'
+                  isOnlyMutual
                     ? 'bg-[#2B579A] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -625,9 +647,9 @@ export default function DigiturnoContactPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setSegmentFilter('comercial')}
+                onClick={() => setSelectedLines(['506014', '506015'])}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                  segmentFilter === 'comercial'
+                  isOnlyComercial
                     ? 'bg-[#2E9E6B] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -638,7 +660,7 @@ export default function DigiturnoContactPage() {
             </div>
           )}
 
-          {/* Filtro Sede o Línea */}
+          {/* Filtro Sede o Desplegable Multiselección de Líneas */}
           {activeTab === 'digiturno' ? (
             <div className="relative flex items-center">
               <Building2 className="w-3 h-3 text-slate-400 absolute left-2.5 pointer-events-none" />
@@ -654,24 +676,67 @@ export default function DigiturnoContactPage() {
               </select>
             </div>
           ) : (
-            <div className="relative flex items-center">
-              <Filter className="w-3 h-3 text-slate-400 absolute left-2.5 pointer-events-none" />
-              <select
-                value={selectedLine}
-                onChange={(e) => setSelectedLine(e.target.value)}
-                aria-label="Filtrar por Línea"
-                className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 focus:outline-none focus:border-indigo-400"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setLineMenuOpen((o) => !o)}
+                className="pl-2.5 pr-3 py-1 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-700 flex items-center gap-2 focus:outline-none focus:border-indigo-400 transition-colors"
               >
-                <option value="Todas">Línea: Todas</option>
-                {!excludeMutual && (
-                  <>
-                    <option value="506012">506012 · Mutual Subsidiado</option>
-                    <option value="506013">506013 · Mutual Contributivo</option>
-                  </>
-                )}
-                <option value="506014">506014 · Prepagadas y Particular (PyP)</option>
-                <option value="506015">506015 · Cirugía Refractiva</option>
-              </select>
+                <Filter className="w-3 h-3 text-[#2B579A]" />
+                <span>
+                  {selectedLines.length === 4
+                    ? 'Líneas: Todas (4)'
+                    : selectedLines.length === 1
+                    ? `Línea: ${
+                        ALL_LINES_OPTIONS.find((o) => o.id === selectedLines[0])?.label ?? '1 seleccionada'
+                      }`
+                    : `Líneas: ${selectedLines.length} seleccionadas`}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {lineMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setLineMenuOpen(false)}
+                  />
+                  <div className="absolute left-0 mt-1.5 w-64 bg-white rounded-xl border border-slate-200 shadow-lg z-30 p-2 space-y-1">
+                    <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <span>Seleccionar una o varias</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLines(['506012', '506013', '506014', '506015'])}
+                        className="text-[#2B579A] hover:underline lowercase font-semibold"
+                      >
+                        marcar todas
+                      </button>
+                    </div>
+                    {ALL_LINES_OPTIONS.map((opt) => {
+                      const checked = selectedLines.includes(opt.id);
+                      return (
+                        <label
+                          key={opt.id}
+                          onClick={() => toggleSelectLineOption(opt.id)}
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg cursor-pointer text-[11.5px] transition-colors select-none ${
+                            checked
+                              ? 'bg-[#EEF4FF]/90 text-[#0F172A] font-semibold'
+                              : 'text-slate-600 hover:bg-slate-50 font-medium'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {}}
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-[#2B579A] focus:ring-[#2B579A] cursor-pointer"
+                          />
+                          <span className="truncate">{opt.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
