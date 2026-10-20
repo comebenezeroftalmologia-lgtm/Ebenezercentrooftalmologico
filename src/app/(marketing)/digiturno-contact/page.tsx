@@ -496,31 +496,31 @@ export default function DigiturnoContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] px-4 py-4 md:px-6 md:py-5 text-slate-800">
-      {/* CABECERA COMPACTA Y ESTILIZADA */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs px-5 py-3.5 mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 shrink-0">
-            <Activity className="w-4 h-4" />
+    <div className="text-slate-800">
+      {/* CABECERA COMPACTA Y ESTILIZADA EN 2 FILAS SIN DESBORDE */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs px-5 py-3.5 mb-4 flex flex-col gap-3">
+        {/* Fila 1: Título amplio en una sola línea + Switcher de Pestañas */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 shrink-0">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-[15px] font-bold text-slate-900 tracking-tight leading-snug truncate">
+                Tiempos de Digiturno y Gestión Contact Center
+              </h1>
+              <p className="text-[11px] text-slate-500 font-medium truncate">
+                Control operativo de tiempos de atención en sedes y nivel de servicio telefónico
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-[15px] font-bold text-slate-900 tracking-tight leading-snug">
-              Tiempos de Digiturno y Gestión Contact Center
-            </h1>
-            <p className="text-[10px] text-slate-400 font-medium">
-              Sincronización automática SGT Digiturno (192.168.200.11) &amp; Central Sonata PBX (pbx.itmsas.com)
-            </p>
-          </div>
-        </div>
 
-        {/* CONTROLES Y FILTROS COMPACTOS (11px) */}
-        <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 shrink-0">
           {/* Switcher Pestañas */}
-          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
+          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 self-start sm:self-center shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab('digiturno')}
-              className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'digiturno'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -536,7 +536,7 @@ export default function DigiturnoContactPage() {
             <button
               type="button"
               onClick={() => setActiveTab('contact')}
-              className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'contact'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -550,6 +550,10 @@ export default function DigiturnoContactPage() {
               Contact Center (PBX)
             </button>
           </div>
+        </div>
+
+        {/* Fila 2: Barra de filtros limpia dentro de la tarjeta */}
+        <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-100">
 
           {/* Botón Excluir Mutual (estilo Frecuencias) en Contact Center */}
           {activeTab === 'contact' && (
@@ -598,7 +602,7 @@ export default function DigiturnoContactPage() {
                     <option value="506013">506013 · Mutual Contributivo</option>
                   </>
                 )}
-                <option value="506014">506014 · Promoción y Prevención (PyP)</option>
+                <option value="506014">506014 · Prepagadas y Particular (PyP)</option>
                 <option value="506015">506015 · Cirugía Refractiva</option>
               </select>
             </div>
