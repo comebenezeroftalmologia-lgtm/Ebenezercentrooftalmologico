@@ -1,901 +1,2091 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import rawCarteraData from "@/lib/cartera-data.json";
+import React, { useState, useMemo, useEffect } from "react";
+import carteraInitialData from "@/lib/cartera-data.json";
 
-type MutualMode = "ALL" | "NO_MUTUAL" | "ONLY_MUTUAL";
-type CorteKey = "2026-09-30" | "2026-09-23" | "2026-09-09";
-type ModuleKey = "pendientes" | "glosas" | "vencimiento" | "giros";
-type PendSubtab = "anuladas" | "admisiones";
-type GlosaSubtab = "consolidado" | "defensa" | "sisma" | "mutual";
-
-interface FacturaAnulada {
-  id?: string;
-  no_factura?: string;
-  factura?: string;
-  fecha_elab?: string;
-  fecha_factura?: string;
-  empresa?: string;
-  valor?: number;
-  valor_glosa?: number;
-  causal?: string;
-  motivo?: string;
-  responsable?: string;
-  factura_reemplaza?: string;
-  factura_actual?: string;
-  estado?: string;
-  es_pendiente_radicar?: boolean;
-  is_mutual?: boolean;
-}
-
-interface AdmisionPendiente {
-  id?: string;
-  estudio?: string;
-  ingreso?: string;
-  fecha_ingreso?: string;
-  fecha?: string;
-  empresa?: string;
-  contrato?: string;
-  paciente?: string;
-  procedimiento?: string;
-  servicio?: string;
-  facturador?: string;
-  responsable?: string;
-  observacion?: string;
-  estado?: string;
-  is_mutual?: boolean;
-}
-
-interface GlosaRecord {
-  id?: string;
-  factura?: string;
-  no_factura?: string;
-  empresa?: string;
-  eps?: string;
-  valor_factura?: number;
-  valor?: number;
-  valor_glosa?: number;
-  valor_aceptado?: number;
-  nota_credito_alfanet?: string;
-  nota_credito?: string;
-  observacion?: string;
-  concepto?: string;
-  autorizacion?: string;
-  estado?: string;
-  aplicada_sisma?: string;
-  is_mutual?: boolean;
-}
-
-interface CarteraDataset {
-  facturas_anuladas: FacturaAnulada[];
-  admisiones_pendientes: AdmisionPendiente[];
-  glosas_consolidado: GlosaRecord[];
-  glosas_defensa: GlosaRecord[];
-  glosas_pendientes_sisma: GlosaRecord[];
-  glosas_mutual: GlosaRecord[];
-}
-
-const INITIAL_DATA = rawCarteraData as unknown as CarteraDataset;
-
-const CORTES_SUMMARY: Record<MutualMode, {
-  title: string;
-  "2026-09-09": { corriente: number; vencida: number; total: number; anticipos: number; real: number };
-  "2026-09-23": { corriente: number; vencida: number; total: number; anticipos: number; real: number };
-  "2026-09-30": { corriente: number; vencida: number; total: number; anticipos: number; real: number };
-}> = {
-  ALL: {
-    title: "TODAS LAS EMPRESAS (Incluyendo Mutual Ser)",
-    "2026-09-09": { corriente: 3008819655, vencida: 1126877351, total: 4135697006, anticipos: 1216144405, real: 2919552601 },
-    "2026-09-23": { corriente: 2777030392, vencida: 1117777685, total: 3894808077, anticipos: 1599425440, real: 3413352337 },
-    "2026-09-30": { corriente: 2852888197, vencida: 1207909707, total: 4060797904, anticipos: 1670178968, real: 3598528643 }
-  },
-  NO_MUTUAL: {
-    title: "PYP — EXCLUYENDO A MUTUAL SER",
-    "2026-09-09": { corriente: 1388005477, vencida: 318075869, total: 1706081346, anticipos: 168077781, real: 1538003565 },
-    "2026-09-23": { corriente: 1121433172, vencida: 257692616, total: 1379125788, anticipos: 171176165, real: 1207949623 },
-    "2026-09-30": { corriente: 1217276982, vencida: 225848632, total: 1443125614, anticipos: 167129693, real: 1275995921 }
-  },
-  ONLY_MUTUAL: {
-    title: "SOLO MUTUAL SER EPS",
-    "2026-09-09": { corriente: 1620814178, vencida: 808801482, total: 2429615660, anticipos: 1048066624, real: 1381549036 },
-    "2026-09-23": { corriente: 1655597220, vencida: 860085069, total: 2515682289, anticipos: 1428249275, real: 2205402714 },
-    "2026-09-30": { corriente: 1635611215, vencida: 982061075, total: 2617672290, anticipos: 1503049275, real: 2322532722 }
-  }
+type CorteSismaBack = {
+  fechaCorte: string;
+  modalidad: string;
+  carteraCorriente: number;
+  carteraVencida: number;
+  carteraTotal: number;
+  facturasPendientesRadicar: number;
+  glosasPendientesGestionar: number;
+  anticiposPorCruzar: number;
+  totalCarteraReal: number;
 };
 
-const EDADES_ENTIDAD = [
-  { entidad: "MUTUAL SER EPS", d0_30: 985410200, d31_60: 650201015, d61_90: 412500300, d91_180: 318420500, d181_360: 164890275, d360: 86250000, isMutual: true },
-  { entidad: "NUEVA EPS S.A.", d0_30: 312400100, d31_60: 192180400, d61_90: 54200100, d91_180: 31400200, d181_360: 14120000, d360: 5200000, isMutual: false },
-  { entidad: "COOSALUD EPS S.A.", d0_30: 218450200, d31_60: 134200300, d61_90: 38100400, d91_180: 21900100, d181_360: 8400000, d360: 3100000, isMutual: false },
-  { entidad: "SALUD TOTAL EPS-S S.A.", d0_30: 164200100, d31_60: 98900200, d61_90: 26500100, d91_180: 14300000, d181_360: 4800000, d360: 1900000, isMutual: false },
-  { entidad: "FOMAG / FIDUPREVISORA", d0_30: 92300000, d31_60: 44120000, d61_90: 14200000, d91_180: 6800000, d181_360: 2100000, d360: 0, isMutual: false },
-  { entidad: "CAJACOPI / OTRAS EPS PYP", d0_30: 35526182, d31_60: 24999500, d61_90: 11928132, d91_180: 5999700, d181_360: 2000000, d360: 0, isMutual: false }
-];
+type AnuladaRow = {
+  id: string;
+  numero: number;
+  empresa: string;
+  empresaOriginal: string;
+  fechaFactura: string;
+  periodo: string;
+  anio: string;
+  factura: string;
+  fechaRadicacion: string;
+  valorRadicado: number;
+  copagos: number;
+  tipo: string;
+  motivo: string;
+  facturaReemplaza: string;
+  fechaAnulacion: string;
+  fechaRadicacionReemplazo: string;
+  rips: string;
+  revisionFinanciera: string;
+  preagrupado: string;
+  responsable: string;
+  estadoGestion: string;
+};
 
-const GIROS_SISMA = [
-  { codigo: "1301250602", nombre: "GIROS POR APLICAR A CARTERA NO IDENTIFIC", estado: "AUXILIAR ABIERTO", total: 248650120, pyp: 62140120, mutual: 186510000 },
-  { codigo: "2501010602", nombre: "GIROS PARA ABONO DE CARTERA PENDIENTE", estado: "AUXILIAR ABIERTO", total: 894318448, pyp: 68420173, mutual: 825898275 },
-  { codigo: "2501010607", nombre: "GIROS DE CARTERA PENDIENTE POR APLICAR", estado: "AUXILIAR ABIERTO", total: 527210400, pyp: 36569400, mutual: 490641000 }
-];
+type GlosaRow = {
+  id: string;
+  subtabla: string;
+  empresa: string;
+  empresaOriginal: string;
+  fechaFactura: string;
+  periodo: string;
+  anio: string;
+  factura: string;
+  fechaRadicacion: string;
+  valorRadicado: number;
+  valorFactura: number;
+  valorGlosado: number;
+  motivoGlosa: string;
+  facturador: string;
+  responsableAceptacion: string;
+  observacionInterna: string;
+  notaCredito: string;
+};
 
-function fmt(n: number): string {
-  return "$" + Math.round(Number(n) || 0).toLocaleString("es-CO");
-}
+type PendienteRow = {
+  id: string;
+  empresa: string;
+  empresaOriginal: string;
+  contrato: string;
+  unidadFuncional: string;
+  cups: string;
+  descripcion: string;
+  fechaServicio: string;
+  anio: string;
+  medico: string;
+  valorServicio: number;
+  responsable: string;
+  observaciones: string;
+  estado: string;
+};
 
-function fmtMillions(n: number): string {
-  const m = (Number(n) || 0) / 1000000;
-  return "$" + m.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "M";
-}
+const formatCOP = (val: number) => {
+  if (!val || isNaN(val)) return "$-";
+  return "$" + Math.round(val).toLocaleString("es-CO");
+};
+
+const STORAGE_KEY = "ebenezer_sisma_back_mesa_v2";
 
 export default function TableroCarteraAnalytics() {
-  const [mode, setMode] = useState<MutualMode>("ALL");
-  const [corte, setCorte] = useState<CorteKey>("2026-09-30");
-  const [activeModule, setActiveModule] = useState<ModuleKey>("pendientes");
-  const [pendSubtab, setPendSubtab] = useState<PendSubtab>("anuladas");
-  const [glosaSubtab, setGlosaSubtab] = useState<GlosaSubtab>("consolidado");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [respFilter, setRespFilter] = useState<string>("ALL");
-  const [apiStatus, setApiStatus] = useState<string>("SISMA API: Conectado");
+  // Data state initialized with 100% real extracted data
+  const [cortesTodas, setCortesTodas] = useState<CorteSismaBack[]>(
+    carteraInitialData.sismaBack.cortes.TODAS
+  );
+  const [cortesPyp, setCortesPyp] = useState<CorteSismaBack[]>(
+    carteraInitialData.sismaBack.cortes.PYP
+  );
+  const [anuladas, setAnuladas] = useState<AnuladaRow[]>(
+    carteraInitialData.anuladas as AnuladaRow[]
+  );
+  const [legalizadas, setLegalizadas] = useState<AnuladaRow[]>(
+    carteraInitialData.legalizadas as AnuladaRow[]
+  );
+  const [glosas, setGlosas] = useState<GlosaRow[]>(
+    carteraInitialData.glosas as GlosaRow[]
+  );
+  const [pendientes, setPendientes] = useState<PendienteRow[]>(
+    carteraInitialData.pendientes as PendienteRow[]
+  );
 
+  // Connection state for Faber's SISMA Back endpoints
+  const [apiConectada, setApiConectada] = useState<boolean>(false);
+  const [mensajeApi, setMensajeApi] = useState<string>(
+    "Listo para conectar endpoints SISMA Back con Faber en api.centrooftalmologicoebenezer.com"
+  );
+
+  // Filters for SISMA Back Presentation
+  const [modalidadSisma, setModalidadSisma] = useState<"TODAS" | "PYP">("TODAS");
+  const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(2); // Default 30/09/2026
+
+  // Filters for Operational Workbench (Reemplazo del Excel)
+  const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
+  const [filtroAnio, setFiltroAnio] = useState<string>("TODOS");
+  const [filtroEmpresa, setFiltroEmpresa] = useState<string>("TODAS");
+  const [filtroResponsable, setFiltroResponsable] = useState<string>("TODAS");
+  const [filtroSubtablaGlosa, setFiltroSubtablaGlosa] = useState<string>("TODAS");
+  const [busqueda, setBusqueda] = useState<string>("");
+  const [paginaActual, setPaginaActual] = useState<number>(1);
+  const filasPorPagina = 25;
+
+  // Modals state
+  const [mostrarModalFaber, setMostrarModalFaber] = useState<boolean>(false);
+  const [mostrarModalCorte, setMostrarModalCorte] = useState<boolean>(false);
+  const [mostrarModalNuevo, setMostrarModalNuevo] = useState<boolean>(false);
+  const [filaEditando, setFilaEditando] = useState<Record<string, string | number> | null>(null);
+  const [notificacion, setNotificacion] = useState<string>("");
+
+  // Form for adding a new SISMA Back cut
+  const [nuevoCorteForm, setNuevoCorteForm] = useState({
+    modalidad: "TODAS" as "TODAS" | "PYP",
+    fechaCorte: "16/10/2026",
+    carteraCorriente: "",
+    carteraVencida: "",
+    facturasPendientesRadicar: "0",
+    glosasPendientesGestionar: "0",
+    anticiposPorCruzar: "",
+  });
+
+  // Form for adding a new operational record
+  const [nuevoRegistroForm, setNuevoRegistroForm] = useState({
+    empresa: "MUTUAL SER",
+    anio: "2026",
+    periodo: "OCTUBRE",
+    factura: "FCOE",
+    fechaFactura: "2026-10-19",
+    fechaRadicacion: "2026-10-19",
+    valorRadicado: "",
+    valorGlosado: "",
+    tipo: "DEVOLUCION",
+    motivo: "",
+    facturaReemplaza: "",
+    rips: "SI",
+    revisionFinanciera: "EN GESTION",
+    responsable: "MARIA ALEJANDRA",
+    notaCredito: "",
+    contrato: "",
+    cups: "",
+    medico: "",
+  });
+
+  // Load saved edits from localStorage and check API status on mount
   useEffect(() => {
-    let active = true;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.anuladas)) setAnuladas(parsed.anuladas);
+        if (Array.isArray(parsed.legalizadas)) setLegalizadas(parsed.legalizadas);
+        if (Array.isArray(parsed.glosas)) setGlosas(parsed.glosas);
+        if (Array.isArray(parsed.pendientes)) setPendientes(parsed.pendientes);
+        if (Array.isArray(parsed.cortesTodas)) setCortesTodas(parsed.cortesTodas);
+        if (Array.isArray(parsed.cortesPyp)) setCortesPyp(parsed.cortesPyp);
+      }
+    } catch {
+      // Ignore storage parse error
+    }
+
     fetch("/api/cartera")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((payload) => {
-        if (active && payload && payload.ok) {
-          setApiStatus("SISMA BackOffice: En línea");
+      .then((r) => r.json())
+      .then((res) => {
+        if (res && typeof res.conexionSismaBackActiva === "boolean") {
+          setApiConectada(res.conexionSismaBackActiva);
+          if (res.mensajeConexion) setMensajeApi(res.mensajeConexion);
         }
       })
       .catch(() => {});
-    return () => {
-      active = false;
-    };
   }, []);
 
-  const ds = CORTES_SUMMARY[mode];
-  const cur = ds[corte];
-  const pctCorr = ((cur.corriente / cur.total) * 100).toFixed(1);
-  const pctVenc = ((cur.vencida / cur.total) * 100).toFixed(1);
-
-  const pendVal = mode === "NO_MUTUAL" ? 167264467 : mode === "ONLY_MUTUAL" ? 3479042 : 170743509;
-  const glosaVal = mode === "NO_MUTUAL" ? 63843314 : mode === "ONLY_MUTUAL" ? 51456692 : 115300006;
-  const giroVal = cur.anticipos;
-
-  const isRowAllowed = (empName?: string, isMutFlag?: boolean): boolean => {
-    const emp = String(empName || "").toUpperCase();
-    const isMut = Boolean(isMutFlag) || emp.includes("MUTUAL");
-    if (mode === "NO_MUTUAL" && isMut) return false;
-    if (mode === "ONLY_MUTUAL" && !isMut) return false;
-    return true;
+  const persistAll = (
+    nextAnuladas = anuladas,
+    nextLegalizadas = legalizadas,
+    nextGlosas = glosas,
+    nextPendientes = pendientes,
+    nextTodas = cortesTodas,
+    nextPyp = cortesPyp
+  ) => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          anuladas: nextAnuladas,
+          legalizadas: nextLegalizadas,
+          glosas: nextGlosas,
+          pendientes: nextPendientes,
+          cortesTodas: nextTodas,
+          cortesPyp: nextPyp,
+        })
+      );
+    } catch {
+      // Storage quota fallback
+    }
   };
 
-  const listAnuladas = (INITIAL_DATA.facturas_anuladas || []).filter((r) => {
-    if (!isRowAllowed(r.empresa, r.is_mutual)) return false;
-    if (respFilter !== "ALL" && !String(r.responsable || "").toUpperCase().includes(respFilter)) return false;
-    if (!searchQuery) return true;
-    return JSON.stringify(r).toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const mostrarAviso = (msg: string) => {
+    setNotificacion(msg);
+    setTimeout(() => setNotificacion(""), 4000);
+  };
 
-  const listAdm = (INITIAL_DATA.admisiones_pendientes || []).filter((r) => {
-    if (!isRowAllowed(r.empresa || r.contrato, r.is_mutual)) return false;
-    if (respFilter !== "ALL" && !String(r.facturador || r.responsable || "").toUpperCase().includes(respFilter)) return false;
-    if (!searchQuery) return true;
-    return JSON.stringify(r).toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  // Active SISMA Back cuts list
+  const listaCortesActiva = modalidadSisma === "TODAS" ? cortesTodas : cortesPyp;
+  const corteSeleccionado =
+    listaCortesActiva[indiceCorteActivo] ||
+    listaCortesActiva[listaCortesActiva.length - 1];
 
-  const glosaSource: GlosaRecord[] =
-    glosaSubtab === "consolidado"
-      ? INITIAL_DATA.glosas_consolidado || []
-      : glosaSubtab === "defensa"
-      ? INITIAL_DATA.glosas_defensa || []
-      : glosaSubtab === "sisma"
-      ? INITIAL_DATA.glosas_pendientes_sisma || []
-      : INITIAL_DATA.glosas_mutual || [];
+  // Dynamic filtering for the 4 operational tables
+  const anuladasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toUpperCase();
+    return anuladas.filter((r) => {
+      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
+      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
+      if (q) {
+        const hay = `${r.factura} ${r.facturaReemplaza} ${r.motivo} ${r.empresa} ${r.responsable} ${r.revisionFinanciera}`.toUpperCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [anuladas, filtroAnio, filtroEmpresa, filtroResponsable, busqueda]);
 
-  const listGlosas = glosaSource.filter((r) => {
-    if (!isRowAllowed(r.empresa || r.eps || (glosaSubtab === "mutual" ? "MUTUAL SER EPS" : ""), r.is_mutual)) return false;
-    if (!searchQuery) return true;
-    return JSON.stringify(r).toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const legalizadasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toUpperCase();
+    return legalizadas.filter((r) => {
+      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
+      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
+      if (q) {
+        const hay = `${r.factura} ${r.facturaReemplaza} ${r.motivo} ${r.empresa} ${r.responsable}`.toUpperCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [legalizadas, filtroAnio, filtroEmpresa, filtroResponsable, busqueda]);
 
-  const listEdades = EDADES_ENTIDAD.filter((r) => isRowAllowed(r.entidad, r.isMutual));
+  const glosasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toUpperCase();
+    return glosas.filter((r) => {
+      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
+      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (filtroResponsable !== "TODAS" && r.facturador !== filtroResponsable) return false;
+      if (filtroSubtablaGlosa !== "TODAS" && r.subtabla !== filtroSubtablaGlosa) return false;
+      if (q) {
+        const hay = `${r.factura} ${r.motivoGlosa} ${r.notaCredito} ${r.observacionInterna} ${r.empresa} ${r.facturador}`.toUpperCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [glosas, filtroAnio, filtroEmpresa, filtroResponsable, filtroSubtablaGlosa, busqueda]);
 
-  const maxVal = mode === "NO_MUTUAL" ? 1800000000 : 3400000000;
-  const chartH = 205;
-  const baseY = 230;
-  const dates: { key: CorteKey; label: string; gx: number }[] = [
-    { key: "2026-09-09", label: "09 Sep", gx: 210 },
-    { key: "2026-09-23", label: "23 Sep", gx: 540 },
-    { key: "2026-09-30", label: "30 Sep", gx: 870 }
-  ];
+  const pendientesFiltradas = useMemo(() => {
+    const q = busqueda.trim().toUpperCase();
+    return pendientes.filter((r) => {
+      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
+      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
+      if (q) {
+        const hay = `${r.empresa} ${r.contrato} ${r.cups} ${r.descripcion} ${r.medico} ${r.observaciones} ${r.responsable}`.toUpperCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [pendientes, filtroAnio, filtroEmpresa, filtroResponsable, busqueda]);
 
-  const linePts = dates
-    .map((d) => {
-      const item = ds[d.key];
-      const yReal = baseY - Math.max(12, Math.round((item.real / (maxVal * 1.15)) * chartH));
-      return `${d.gx + 95},${yReal}`;
-    })
-    .join(" ");
+  // Real-time KPIs over filtered operational data
+  const kpisOperativos = useMemo(() => {
+    const totalAnuladasVal = anuladasFiltradas.reduce((acc, r) => acc + (r.valorRadicado || 0), 0);
+    const reemplazadasOk = anuladasFiltradas.filter(
+      (r) => r.facturaReemplaza && r.facturaReemplaza.toUpperCase().includes("FCOE")
+    ).length;
+    const totalLegalizadasVal = legalizadasFiltradas.reduce((acc, r) => acc + (r.valorRadicado || 0), 0);
+    const totalGlosadoVal = glosasFiltradas.reduce((acc, r) => acc + (r.valorGlosado || r.valorRadicado || 0), 0);
+    const totalPendientesVal = pendientesFiltradas.reduce((acc, r) => acc + (r.valorServicio || 0), 0);
 
-  const dAll = CORTES_SUMMARY.ALL[corte];
-  const dPyp = CORTES_SUMMARY.NO_MUTUAL[corte];
+    return {
+      totalAnuladasVal,
+      reemplazadasOk,
+      pendientesReemplazo: anuladasFiltradas.length - reemplazadasOk,
+      totalLegalizadasVal,
+      totalGlosadoVal,
+      totalPendientesVal,
+    };
+  }, [anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas]);
+
+  // Summary by Real Company for current filter
+  const resumenEmpresasFiltrado = useMemo(() => {
+    const map: Record<
+      string,
+      { empresa: string; registros: number; valorAnuladas: number; valorGlosas: number; valorPendientes: number }
+    > = {};
+
+    const ensure = (emp: string) => {
+      if (!map[emp]) {
+        map[emp] = { empresa: emp, registros: 0, valorAnuladas: 0, valorGlosas: 0, valorPendientes: 0 };
+      }
+    };
+
+    anuladasFiltradas.forEach((r) => {
+      ensure(r.empresa);
+      map[r.empresa].registros += 1;
+      map[r.empresa].valorAnuladas += r.valorRadicado || 0;
+    });
+    legalizadasFiltradas.forEach((r) => {
+      ensure(r.empresa);
+      map[r.empresa].registros += 1;
+      map[r.empresa].valorAnuladas += r.valorRadicado || 0;
+    });
+    glosasFiltradas.forEach((r) => {
+      ensure(r.empresa);
+      map[r.empresa].registros += 1;
+      map[r.empresa].valorGlosas += r.valorGlosado || r.valorRadicado || 0;
+    });
+    pendientesFiltradas.forEach((r) => {
+      ensure(r.empresa);
+      map[r.empresa].registros += 1;
+      map[r.empresa].valorPendientes += r.valorServicio || 0;
+    });
+
+    return Object.values(map).sort(
+      (a, b) =>
+        b.valorAnuladas + b.valorGlosas + b.valorPendientes - (a.valorAnuladas + a.valorGlosas + a.valorPendientes)
+    );
+  }, [anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas]);
+
+  // Summary by Real Facturadora / Responsable
+  const resumenResponsables = useMemo(() => {
+    const map: Record<string, { responsable: string; casos: number; valorTotal: number }> = {};
+    const add = (resp: string, val: number) => {
+      const key = resp || "SIN ASIGNAR";
+      if (!map[key]) map[key] = { responsable: key, casos: 0, valorTotal: 0 };
+      map[key].casos += 1;
+      map[key].valorTotal += val || 0;
+    };
+    anuladasFiltradas.forEach((r) => add(r.responsable, r.valorRadicado));
+    legalizadasFiltradas.forEach((r) => add(r.responsable, r.valorRadicado));
+    glosasFiltradas.forEach((r) => add(r.facturador, r.valorGlosado || r.valorRadicado));
+    pendientesFiltradas.forEach((r) => add(r.responsable, r.valorServicio));
+    return Object.values(map).sort((a, b) => b.valorTotal - a.valorTotal);
+  }, [anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas]);
+
+  // Save edited row
+  const guardarEdicionFila = async () => {
+    if (!filaEditando) return;
+    const id = String(filaEditando.id);
+
+    if (tabActiva === "anuladas") {
+      const next = anuladas.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as AnuladaRow) : r));
+      setAnuladas(next);
+      persistAll(next, legalizadas, glosas, pendientes);
+    } else if (tabActiva === "legalizadas") {
+      const next = legalizadas.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as AnuladaRow) : r));
+      setLegalizadas(next);
+      persistAll(anuladas, next, glosas, pendientes);
+    } else if (tabActiva === "glosas") {
+      const next = glosas.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as GlosaRow) : r));
+      setGlosas(next);
+      persistAll(anuladas, legalizadas, next, pendientes);
+    } else if (tabActiva === "pendientes") {
+      const next = pendientes.map((r) => (r.id === id ? ({ ...r, ...filaEditando } as PendienteRow) : r));
+      setPendientes(next);
+      persistAll(anuladas, legalizadas, glosas, next);
+    }
+
+    try {
+      await fetch("/api/cartera", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_row", seccion: tabActiva, item: filaEditando }),
+      });
+    } catch {
+      // Saved locally
+    }
+
+    setFilaEditando(null);
+    mostrarAviso("Registro actualizado y guardado correctamente en el sistema.");
+  };
+
+  // Create new operational row
+  const crearNuevoRegistro = async () => {
+    const id = `NEW-${Date.now()}`;
+    const valRad = Number(String(nuevoRegistroForm.valorRadicado).replace(/\D/g, "")) || 0;
+    const valGlo = Number(String(nuevoRegistroForm.valorGlosado).replace(/\D/g, "")) || 0;
+
+    if (tabActiva === "anuladas" || tabActiva === "legalizadas") {
+      const nuevo: AnuladaRow = {
+        id,
+        numero: (tabActiva === "anuladas" ? anuladas.length : legalizadas.length) + 1,
+        empresa: nuevoRegistroForm.empresa,
+        empresaOriginal: nuevoRegistroForm.empresa,
+        fechaFactura: nuevoRegistroForm.fechaFactura,
+        periodo: nuevoRegistroForm.periodo,
+        anio: nuevoRegistroForm.anio,
+        factura: nuevoRegistroForm.factura,
+        fechaRadicacion: nuevoRegistroForm.fechaRadicacion,
+        valorRadicado: valRad,
+        copagos: 0,
+        tipo: nuevoRegistroForm.tipo,
+        motivo: nuevoRegistroForm.motivo,
+        facturaReemplaza: nuevoRegistroForm.facturaReemplaza,
+        fechaAnulacion: nuevoRegistroForm.fechaFactura,
+        fechaRadicacionReemplazo: nuevoRegistroForm.fechaRadicacion,
+        rips: nuevoRegistroForm.rips,
+        revisionFinanciera: nuevoRegistroForm.revisionFinanciera,
+        preagrupado: "",
+        responsable: nuevoRegistroForm.responsable,
+        estadoGestion: tabActiva === "legalizadas" ? "LEGALIZADA" : (nuevoRegistroForm.facturaReemplaza ? "REEMPLAZADA" : "PENDIENTE REEMPLAZO"),
+      };
+      if (tabActiva === "anuladas") {
+        const next = [nuevo, ...anuladas];
+        setAnuladas(next);
+        persistAll(next, legalizadas, glosas, pendientes);
+      } else {
+        const next = [nuevo, ...legalizadas];
+        setLegalizadas(next);
+        persistAll(anuladas, next, glosas, pendientes);
+      }
+      await fetch("/api/cartera", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_row", seccion: tabActiva, item: nuevo }),
+      }).catch(() => {});
+    } else if (tabActiva === "glosas") {
+      const nuevo: GlosaRow = {
+        id,
+        subtabla: nuevoRegistroForm.notaCredito ? "ACEPTADA_NOTA_CREDITO" : "RESPONDIDA_NO_ACEPTADA",
+        empresa: nuevoRegistroForm.empresa,
+        empresaOriginal: nuevoRegistroForm.empresa,
+        fechaFactura: nuevoRegistroForm.fechaFactura,
+        periodo: nuevoRegistroForm.periodo,
+        anio: nuevoRegistroForm.anio,
+        factura: nuevoRegistroForm.factura,
+        fechaRadicacion: nuevoRegistroForm.fechaRadicacion,
+        valorRadicado: valRad,
+        valorFactura: valRad,
+        valorGlosado: valGlo || valRad,
+        motivoGlosa: nuevoRegistroForm.motivo,
+        facturador: nuevoRegistroForm.responsable,
+        responsableAceptacion: nuevoRegistroForm.responsable,
+        observacionInterna: nuevoRegistroForm.revisionFinanciera,
+        notaCredito: nuevoRegistroForm.notaCredito,
+      };
+      const next = [nuevo, ...glosas];
+      setGlosas(next);
+      persistAll(anuladas, legalizadas, next, pendientes);
+      await fetch("/api/cartera", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_row", seccion: "glosas", item: nuevo }),
+      }).catch(() => {});
+    } else {
+      const nuevo: PendienteRow = {
+        id,
+        empresa: nuevoRegistroForm.empresa,
+        empresaOriginal: nuevoRegistroForm.empresa,
+        contrato: nuevoRegistroForm.contrato || "GENERAL",
+        unidadFuncional: "CONSULTA EXTERNA / CIRUGIA",
+        cups: nuevoRegistroForm.cups || "890274",
+        descripcion: nuevoRegistroForm.motivo || "SERVICIO OFTALMOLOGICO",
+        fechaServicio: nuevoRegistroForm.fechaFactura,
+        anio: nuevoRegistroForm.anio,
+        medico: nuevoRegistroForm.medico || "ESPECIALISTA EBENEZER",
+        valorServicio: valRad,
+        responsable: nuevoRegistroForm.responsable,
+        observaciones: nuevoRegistroForm.revisionFinanciera,
+        estado: "PENDIENTE",
+      };
+      const next = [nuevo, ...pendientes];
+      setPendientes(next);
+      persistAll(anuladas, legalizadas, glosas, next);
+      await fetch("/api/cartera", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_row", seccion: "pendientes", item: nuevo }),
+      }).catch(() => {});
+    }
+
+    setMostrarModalNuevo(false);
+    mostrarAviso("Nuevo registro creado en la Mesa de Trabajo.");
+  };
+
+  // Add new SISMA Back Cut
+  const guardarNuevoCorteSismaBack = async () => {
+    const corr = Number(String(nuevoCorteForm.carteraCorriente).replace(/\D/g, "")) || 0;
+    const venc = Number(String(nuevoCorteForm.carteraVencida).replace(/\D/g, "")) || 0;
+    const pendRad = Number(String(nuevoCorteForm.facturasPendientesRadicar).replace(/\D/g, "")) || 0;
+    const gloPend = Number(String(nuevoCorteForm.glosasPendientesGestionar).replace(/\D/g, "")) || 0;
+    const ant = Number(String(nuevoCorteForm.anticiposPorCruzar).replace(/\D/g, "")) || 0;
+    const total = corr + venc;
+    const real = Math.max(0, total - ant);
+
+    const nuevoCorte: CorteSismaBack = {
+      fechaCorte: nuevoCorteForm.fechaCorte,
+      modalidad: nuevoCorteForm.modalidad === "TODAS" ? "Todas las Empresas" : "PYP",
+      carteraCorriente: corr,
+      carteraVencida: venc,
+      carteraTotal: total,
+      facturasPendientesRadicar: pendRad,
+      glosasPendientesGestionar: gloPend,
+      anticiposPorCruzar: ant,
+      totalCarteraReal: real,
+    };
+
+    if (nuevoCorteForm.modalidad === "TODAS") {
+      const next = [...cortesTodas, nuevoCorte];
+      setCortesTodas(next);
+      setModalidadSisma("TODAS");
+      setIndiceCorteActivo(next.length - 1);
+      persistAll(anuladas, legalizadas, glosas, pendientes, next, cortesPyp);
+    } else {
+      const next = [...cortesPyp, nuevoCorte];
+      setCortesPyp(next);
+      setModalidadSisma("PYP");
+      setIndiceCorteActivo(next.length - 1);
+      persistAll(anuladas, legalizadas, glosas, pendientes, cortesTodas, next);
+    }
+
+    await fetch("/api/cartera", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "add_corte_sisma_back",
+        corteModalidad: nuevoCorteForm.modalidad,
+        nuevoCorte,
+      }),
+    }).catch(() => {});
+
+    setMostrarModalCorte(false);
+    mostrarAviso(`Corte SISMA Back (${nuevoCorte.fechaCorte}) agregado exitosamente.`);
+  };
+
+  // Export active filtered table to CSV (compatible with Excel)
+  const exportarVistaExcelCSV = () => {
+    let rows: Record<string, string | number>[] = [];
+    if (tabActiva === "anuladas") rows = anuladasFiltradas;
+    else if (tabActiva === "legalizadas") rows = legalizadasFiltradas;
+    else if (tabActiva === "glosas") rows = glosasFiltradas;
+    else rows = pendientesFiltradas;
+
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csvLines = [
+      headers.join(";"),
+      ...rows.map((r) =>
+        headers
+          .map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`)
+          .join(";")
+      ),
+    ];
+    const blob = new Blob(["\uFEFF" + csvLines.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `SISMA_Back_${tabActiva}_${filtroAnio}_${filtroEmpresa}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const listaActivaPaginada = useMemo(() => {
+    const source =
+      tabActiva === "anuladas"
+        ? anuladasFiltradas
+        : tabActiva === "legalizadas"
+        ? legalizadasFiltradas
+        : tabActiva === "glosas"
+        ? glosasFiltradas
+        : pendientesFiltradas;
+    const start = (paginaActual - 1) * filasPorPagina;
+    return {
+      total: source.length,
+      totalPaginas: Math.max(1, Math.ceil(source.length / filasPorPagina)),
+      items: source.slice(start, start + filasPorPagina),
+    };
+  }, [tabActiva, anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas, paginaActual]);
+
+  const maxValorGrafica = useMemo(() => {
+    return Math.max(...listaCortesActiva.map((c) => c.carteraTotal), 1);
+  }, [listaCortesActiva]);
 
   return (
-    <section
-      id="tablero-cartera"
-      className="mt-6 rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)] space-y-6"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#EEF2F8] pb-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="rounded-[6px] bg-[#E6F0FD] px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-[#1D58D8]">
-              03 · FINANCIERO &amp; SISMA
-            </span>
-            <h2 className="text-[18px] font-bold tracking-[-0.015em] text-[#0E245E]">
-              Tablero de Cartera, Radicación, Glosas y Giros SISMA
+    <div className="space-y-8 text-slate-900">
+      {/* NOTIFICACIÓN FLOTANTE */}
+      {notificacion && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-5 py-3 rounded-xl shadow-2xl font-medium flex items-center gap-3 border border-emerald-500">
+          <span>✓</span>
+          <span>{notificacion}</span>
+        </div>
+      )}
+
+      {/* CABECERA EXCLUSIVA SISMA BACK */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-blue-800/40">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                Exclusivo SISMA Back (Contabilidad y Cartera)
+              </span>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                  apiConectada
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
+                    : "bg-amber-500/20 text-amber-200 border-amber-400/40"
+                }`}
+              >
+                {apiConectada ? "● API SISMA Back Conectada" : "◐ API Lista para Conectar con Faber"}
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              Tablero de Cartera SISMA Back & Mesa Operativa de Glosas (2021 – 2026)
             </h2>
+            <p className="text-sm text-slate-300 mt-1">
+              Origen: <code className="text-blue-300">ebenezerback.sismacorporation.com/BackOficce</code> →{" "}
+              <strong>Análisis de vencimiento</strong> + <strong>Libro de anexos de balance (Auxiliar abierto)</strong>{" "}
+              y Sistema Interactivo que reemplaza el archivo Excel de Cartera/Glosas.
+            </p>
           </div>
-          <p className="mt-1 text-[12.5px] text-[#64748B]">
-            Control financiero de cartera corriente (&lt; 60 días), vencida (&ge; 60 días), facturación pendiente por radicar y conciliación Alfanet.
-          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setMostrarModalCorte(true)}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow-lg transition cursor-pointer"
+            >
+              + Nuevo Corte SISMA Back
+            </button>
+            <button
+              onClick={() => setMostrarModalFaber(true)}
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg transition cursor-pointer"
+            >
+              ⚡ Especificación API para Faber
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E6EEF8] bg-[#FBFDFF] px-3 py-1 text-[11.5px] font-semibold text-[#0E245E]">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            {apiStatus}
-          </span>
-
-          <select
-            value={corte}
-            onChange={(e) => setCorte(e.target.value as CorteKey)}
-            className="rounded-[10px] border border-[#E6EEF8] bg-[#FBFDFF] px-3 py-1.5 text-[12px] font-bold text-[#0E245E] outline-none focus:border-[#1D58D8]"
-          >
-            <option value="2026-09-30">Corte: 30 Sep 2026</option>
-            <option value="2026-09-23">Corte: 23 Sep 2026</option>
-            <option value="2026-09-09">Corte: 09 Sep 2026</option>
-          </select>
-
-          <div className="flex items-center gap-1.5 rounded-full border border-[#E6EEF8] bg-[#FBFDFF] p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setMode(mode === "ALL" ? "NO_MUTUAL" : "ALL")}
-              className={`relative h-6 w-11 rounded-full transition-colors ${
-                mode === "NO_MUTUAL" ? "bg-[#D97706]" : "bg-[#059669]"
-              }`}
-              title="Alternar Incluir / Excluir Mutual Ser"
+        {/* Cuentas Contables Oficiales de Giros en SISMA Back */}
+        <div className="mt-5 pt-4 border-t border-slate-700/70 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          {carteraInitialData.sismaBack.cuentasGiros.map((cta) => (
+            <div
+              key={cta.codigo}
+              className="bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2.5 flex items-center justify-between"
             >
-              <span
-                className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${
-                  mode === "NO_MUTUAL" ? "left-1" : "left-6"
-                }`}
-              />
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("ALL")}
-              className={`rounded-full px-3 py-1 text-[12px] font-bold transition ${
-                mode === "ALL" ? "bg-[#0E245E] text-white" : "text-[#64748B] hover:text-[#0E245E]"
-              }`}
-            >
-              Incluir Mutual Ser
-            </button>
-            <span className="text-[#CBD5E1]">|</span>
-            <button
-              type="button"
-              onClick={() => setMode("NO_MUTUAL")}
-              className={`rounded-full px-3 py-1 text-[12px] font-bold transition ${
-                mode === "NO_MUTUAL" ? "bg-[#0E245E] text-white" : "text-[#64748B] hover:text-[#0E245E]"
-              }`}
-            >
-              Excluir Mutual Ser (PYP)
-            </button>
-            <span className="text-[#CBD5E1]">|</span>
-            <button
-              type="button"
-              onClick={() => setMode("ONLY_MUTUAL")}
-              className={`rounded-full px-3 py-1 text-[12px] font-bold transition ${
-                mode === "ONLY_MUTUAL" ? "bg-[#0E245E] text-white" : "text-[#64748B] hover:text-[#0E245E]"
-              }`}
-            >
-              Solo Mutual
-            </button>
-          </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">
+                  SISMA Back → Auxiliar abierto (Filtro: giro)
+                </span>
+                <span className="font-semibold text-white">{cta.nombre}</span>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg bg-blue-900/70 text-blue-200 font-mono font-bold text-xs border border-blue-700">
+                {cta.codigo}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="rounded-[14px] border border-[#E6EEF8] bg-[#FBFDFF] p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      {/* ===================================================================== */}
+      {/* BLOQUE 1: PIZARRA + PRESENTACIÓN DE CARTERA SISMA BACK               */}
+      {/* ===================================================================== */}
+      <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <h3 className="text-[13.5px] font-bold uppercase tracking-wide text-[#0E245E]">
-              GRÁFICA DE EVOLUCIÓN Y COMPOSICIÓN DE CARTERA — {ds.title}
+            <h3 className="text-xl font-bold text-slate-900">
+              1. Presentación de Cartera SISMA Back (Análisis de Vencimiento + Auxiliar Abierto de Giros)
             </h3>
-            <div className="mt-1.5 flex flex-wrap items-center gap-4 text-[12px] font-semibold text-[#475569]">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#0E245E]" />
-                Cartera Corriente ({fmtMillions(cur.corriente)})
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#D97706]" />
-                Cartera Vencida ({fmtMillions(cur.vencida)})
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#059669]" />
-                Anticipos por Cruzar ({fmtMillions(cur.anticipos)})
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#2563EB]" />
-                Línea Cartera Real ({fmtMillions(cur.real)})
-              </span>
+            <p className="text-sm text-slate-600">
+              Estructura exacta del esquema de pizarra y cortes oficiales de{" "}
+              <strong>Presentación de cartera</strong>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+              <button
+                onClick={() => {
+                  setModalidadSisma("TODAS");
+                  setIndiceCorteActivo(cortesTodas.length - 1);
+                }}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer ${
+                  modalidadSisma === "TODAS"
+                    ? "bg-blue-700 text-white shadow"
+                    : "text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Todas las Empresas
+              </button>
+              <button
+                onClick={() => {
+                  setModalidadSisma("PYP");
+                  setIndiceCorteActivo(cortesPyp.length - 1);
+                }}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer ${
+                  modalidadSisma === "PYP"
+                    ? "bg-amber-600 text-white shadow"
+                    : "text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Modalidad PYP
+              </button>
+            </div>
+
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+              {listaCortesActiva.map((c, idx) => (
+                <button
+                  key={c.fechaCorte}
+                  onClick={() => setIndiceCorteActivo(idx)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    indiceCorteActivo === idx
+                      ? "bg-slate-900 text-white shadow"
+                      : "text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Corte {c.fechaCorte}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto">
-          <svg viewBox="0 0 1160 265" className="h-auto max-h-[275px] w-full">
-            <line x1="70" y1="35" x2="1120" y2="35" stroke="#E2E8F0" strokeDasharray="4 4" />
-            <line x1="70" y1="100" x2="1120" y2="100" stroke="#E2E8F0" strokeDasharray="4 4" />
-            <line x1="70" y1="165" x2="1120" y2="165" stroke="#E2E8F0" strokeDasharray="4 4" />
-            <line x1="70" y1="230" x2="1120" y2="230" stroke="#CBD5E1" strokeWidth="1.5" />
+        {/* PARTE SUPERIOR DE LA PIZARRA: GRÁFICA EVOLUTIVA DE LOS CORTES SISMA BACK */}
+        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-700">
+                Gráfica Superior (Esquema Pizarra)
+              </span>
+              <h4 className="text-base font-bold text-slate-900">
+                Evolución por Corte ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "PYP"}) — Corriente vs. Vencida vs. Cartera Real
+              </h4>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-blue-600 inline-block" /> Cartera Corriente (&lt; 60 días)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-rose-600 inline-block" /> Cartera Vencida (&gt;= 60 días)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-amber-500 inline-block" /> Anticipos / Giros por Cruzar
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-emerald-600 inline-block" /> Total Cartera Real
+              </span>
+            </div>
+          </div>
 
-            <text x="60" y="39" textAnchor="end" fontSize="11" fontWeight="600" fill="#64748B">{fmtMillions(maxVal)}</text>
-            <text x="60" y="104" textAnchor="end" fontSize="11" fontWeight="600" fill="#64748B">{fmtMillions(maxVal * 0.66)}</text>
-            <text x="60" y="169" textAnchor="end" fontSize="11" fontWeight="600" fill="#64748B">{fmtMillions(maxVal * 0.33)}</text>
-            <text x="60" y="234" textAnchor="end" fontSize="11" fontWeight="600" fill="#64748B">$0M</text>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {listaCortesActiva.map((corte, idx) => {
+              const pctCorriente = Math.round((corte.carteraCorriente / maxValorGrafica) * 100);
+              const pctVencida = Math.round((corte.carteraVencida / maxValorGrafica) * 100);
+              const pctAnticipos = Math.round((corte.anticiposPorCruzar / maxValorGrafica) * 100);
+              const pctReal = Math.round((corte.totalCarteraReal / maxValorGrafica) * 100);
+              const isSelected = idx === indiceCorteActivo;
 
-            {dates.map((d) => {
-              const item = ds[d.key];
-              const hCorr = Math.max(8, Math.round((item.corriente / maxVal) * chartH));
-              const hVenc = Math.max(8, Math.round((item.vencida / maxVal) * chartH));
-              const hAnt = Math.max(8, Math.round((item.anticipos / maxVal) * chartH));
               return (
-                <g key={d.key}>
-                  <rect x={d.gx} y={baseY - hCorr} width="56" height={hCorr} rx="4" fill="#0E245E" />
-                  <text x={d.gx + 28} y={baseY - hCorr - 7} textAnchor="middle" fontSize="11" fontWeight="700" fill="#0E245E">
-                    {fmtMillions(item.corriente)}
-                  </text>
+                <div
+                  key={corte.fechaCorte}
+                  onClick={() => setIndiceCorteActivo(idx)}
+                  className={`rounded-xl p-4 border transition cursor-pointer ${
+                    isSelected
+                      ? "bg-white border-blue-600 ring-2 ring-blue-500/20 shadow-md"
+                      : "bg-white/70 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-extrabold text-sm text-slate-900">
+                      Corte: {corte.fechaCorte}
+                    </span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                      {corte.modalidad}
+                    </span>
+                  </div>
 
-                  <rect x={d.gx + 68} y={baseY - hVenc} width="56" height={hVenc} rx="4" fill="#D97706" />
-                  <text x={d.gx + 96} y={baseY - hVenc - 7} textAnchor="middle" fontSize="11" fontWeight="700" fill="#B45309">
-                    {fmtMillions(item.vencida)}
-                  </text>
+                  <div className="space-y-2.5 text-xs">
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-slate-600 font-medium">Cartera Corriente (&lt; 60 d)</span>
+                        <span className="font-bold text-blue-700">{formatCOP(corte.carteraCorriente)}</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-600 rounded-full" style={{ width: `${pctCorriente}%` }} />
+                      </div>
+                    </div>
 
-                  <rect x={d.gx + 136} y={baseY - hAnt} width="56" height={hAnt} rx="4" fill="#059669" />
-                  <text x={d.gx + 164} y={baseY - hAnt - 7} textAnchor="middle" fontSize="11" fontWeight="700" fill="#047857">
-                    {fmtMillions(item.anticipos)}
-                  </text>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-slate-600 font-medium">Cartera Vencida (&gt;= 60 d)</span>
+                        <span className="font-bold text-rose-700">{formatCOP(corte.carteraVencida)}</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-rose-600 rounded-full" style={{ width: `${pctVencida}%` }} />
+                      </div>
+                    </div>
 
-                  <text x={d.gx + 96} y={baseY + 22} textAnchor="middle" fontSize="13" fontWeight="700" fill="#0E245E">
-                    {d.label}
-                  </text>
-                </g>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-slate-600 font-medium">(-) Giros / Anticipos por cruzar</span>
+                        <span className="font-bold text-amber-700">{formatCOP(corte.anticiposPorCruzar)}</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${pctAnticipos}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-slate-900 font-bold">Total Cartera Real</span>
+                        <span className="font-extrabold text-emerald-700">{formatCOP(corte.totalCarteraReal)}</span>
+                      </div>
+                      <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${pctReal}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               );
             })}
-
-            <polyline fill="none" stroke="#2563EB" strokeWidth="3" points={linePts} />
-            {dates.map((d) => {
-              const item = ds[d.key];
-              const yReal = baseY - Math.max(12, Math.round((item.real / (maxVal * 1.15)) * chartH));
-              return <circle key={d.key + "-pt"} cx={d.gx + 95} cy={yReal} r="5.5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />;
-            })}
-          </svg>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 items-center gap-3 lg:grid-cols-11">
-        <div className="lg:col-span-3 rounded-[14px] bg-gradient-to-br from-[#1D58D8] to-[#0E245E] p-5 text-center text-white shadow-[0_6px_18px_rgba(14,36,94,0.12)]">
-          <div className="text-[13px] font-bold uppercase tracking-wider">CARTERA CORRIENTE</div>
-          <div className="mt-0.5 text-[11.5px] opacity-90">(Radicada &lt; 60 días)</div>
-          <div className="mt-2 text-2xl font-extrabold xl:text-[26px]">{fmt(cur.corriente)}</div>
-          <div className="mt-2 border-t border-white/20 pt-2 text-[11.5px] opacity-90">{pctCorr}% de la Cartera Total</div>
-        </div>
-
-        <div className="lg:col-span-1 text-center text-3xl font-extrabold text-[#0E245E]">+</div>
-
-        <div className="lg:col-span-3 rounded-[14px] bg-gradient-to-br from-[#D97706] to-[#B45309] p-5 text-center text-white shadow-[0_6px_18px_rgba(217,119,6,0.15)]">
-          <div className="text-[13px] font-bold uppercase tracking-wider">CARTERA VENCIDA</div>
-          <div className="mt-0.5 text-[11.5px] opacity-90">(Radicada &ge; 60 días)</div>
-          <div className="mt-2 text-2xl font-extrabold xl:text-[26px]">{fmt(cur.vencida)}</div>
-          <div className="mt-2 border-t border-white/20 pt-2 text-[11.5px] opacity-90">{pctVenc}% de la Cartera Total</div>
-        </div>
-
-        <div className="lg:col-span-1 text-center text-3xl font-extrabold text-[#0E245E]">=</div>
-
-        <div className="lg:col-span-3 rounded-[14px] bg-gradient-to-br from-[#059669] to-[#047857] p-5 text-center text-white shadow-[0_6px_18px_rgba(5,150,105,0.15)]">
-          <div className="text-[13px] font-bold uppercase tracking-wider">CARTERA TOTAL</div>
-          <div className="mt-0.5 text-[11.5px] opacity-90">
-            ({mode === "NO_MUTUAL" ? "Excluyendo Mutual Ser - PYP" : mode === "ONLY_MUTUAL" ? "Solo Mutual Ser" : "Todas las Empresas"})
-          </div>
-          <div className="mt-2 text-2xl font-extrabold xl:text-[26px]">{fmt(cur.total)}</div>
-          <div className="mt-2 border-t border-white/20 pt-2 text-[11.5px] opacity-95">
-            Total Cartera Real (neto giros): <strong>{fmt(cur.real)}</strong>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <button
-          type="button"
-          onClick={() => { setActiveModule("pendientes"); setSearchQuery(""); }}
-          className={`group flex flex-col justify-between rounded-[14px] border border-[#E6EEF8] border-l-[3.5px] border-l-[#2563EB] p-5 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-[#BFD4F4] hover:bg-white hover:shadow-[0_6px_18px_rgba(14,36,94,0.06)] ${
-            activeModule === "pendientes" ? "bg-white ring-2 ring-[#2563EB]/20 shadow-[0_6px_18px_rgba(14,36,94,0.06)]" : "bg-[#FBFDFF]"
-          }`}
-        >
-          <div>
-            <span className="rounded-[6px] bg-[#E6F0FD] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-[#1D58D8]">
-              01 · RADICACIÓN
-            </span>
-            <p className="mt-2 text-[14.5px] font-bold text-[#0E245E] group-hover:text-[#1D58D8]">
-              Facturas Pendientes por Radicar
-            </p>
-            <p className="mt-1 text-[20px] font-extrabold text-[#1D58D8]">
-              {fmtMillions(pendVal)}
-            </p>
-          </div>
-          <p className="mt-2 text-[12px] text-[#64748B]">
-            {fmt(pendVal)} · 614 registros
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => { setActiveModule("glosas"); setSearchQuery(""); }}
-          className={`group flex flex-col justify-between rounded-[14px] border border-[#E6EEF8] border-l-[3.5px] border-l-[#D97706] p-5 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-[#BFD4F4] hover:bg-white hover:shadow-[0_6px_18px_rgba(14,36,94,0.06)] ${
-            activeModule === "glosas" ? "bg-white ring-2 ring-[#D97706]/20 shadow-[0_6px_18px_rgba(14,36,94,0.06)]" : "bg-[#FBFDFF]"
-          }`}
-        >
-          <div>
-            <span className="rounded-[6px] bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-[#B45309]">
-              02 · AUDITORÍA &amp; ALFANET
-            </span>
-            <p className="mt-2 text-[14.5px] font-bold text-[#0E245E] group-hover:text-[#B45309]">
-              Cuadro de Glosas
-            </p>
-            <p className="mt-1 text-[20px] font-extrabold text-[#D97706]">
-              {fmtMillions(glosaVal)}
-            </p>
-          </div>
-          <p className="mt-2 text-[12px] text-[#64748B]">
-            {fmt(glosaVal)} · 4 tableros
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => { setActiveModule("vencimiento"); setSearchQuery(""); }}
-          className={`group flex flex-col justify-between rounded-[14px] border border-[#E6EEF8] border-l-[3.5px] border-l-[#059669] p-5 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-[#BFD4F4] hover:bg-white hover:shadow-[0_6px_18px_rgba(14,36,94,0.06)] ${
-            activeModule === "vencimiento" ? "bg-white ring-2 ring-[#059669]/20 shadow-[0_6px_18px_rgba(14,36,94,0.06)]" : "bg-[#FBFDFF]"
-          }`}
-        >
-          <div>
-            <span className="rounded-[6px] bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-[#047857]">
-              03 · EDADES DE CARTERA
-            </span>
-            <p className="mt-2 text-[14.5px] font-bold text-[#0E245E] group-hover:text-[#047857]">
-              Informe de Vencimiento de Cartera
-            </p>
-            <p className="mt-1 text-[20px] font-extrabold text-[#059669]">
-              &lt; 60d vs &ge; 60d
-            </p>
-          </div>
-          <p className="mt-2 text-[12px] text-[#64748B]">
-            Edades por EPS y Matriz de Cortes
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => { setActiveModule("giros"); setSearchQuery(""); }}
-          className={`group flex flex-col justify-between rounded-[14px] border border-[#E6EEF8] border-l-[3.5px] border-l-[#1D58D8] p-5 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-[#BFD4F4] hover:bg-white hover:shadow-[0_6px_18px_rgba(14,36,94,0.06)] ${
-            activeModule === "giros" ? "bg-white ring-2 ring-[#1D58D8]/20 shadow-[0_6px_18px_rgba(14,36,94,0.06)]" : "bg-[#FBFDFF]"
-          }`}
-        >
-          <div>
-            <span className="rounded-[6px] bg-[#E6F0FD] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-[#1D58D8]">
-              04 · CONTABILIDAD SISMA
-            </span>
-            <p className="mt-2 text-[14.5px] font-bold text-[#0E245E] group-hover:text-[#1D58D8]">
-              Giros Pendientes por Aplicar
-            </p>
-            <p className="mt-1 text-[20px] font-extrabold text-[#0E245E]">
-              {fmtMillions(giroVal)}
-            </p>
-          </div>
-          <p className="mt-2 text-[12px] text-[#64748B]">
-            {fmt(giroVal)} · 3 auxiliares SISMA
-          </p>
-        </button>
-      </div>
-
-      <div className="rounded-[14px] border border-[#E6EEF8] bg-[#FBFDFF] p-5">
-        {activeModule === "pendientes" && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF2F8] pb-3.5">
+        {/* PARTE INFERIOR DE LA PIZARRA: ESQUEMA EXACTO + TABLA COMPARATIVA DE CORTES */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Esquema Pizarra del Corte Activo */}
+          <div className="lg:col-span-5 bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-lg">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div>
-                <h4 className="text-[15px] font-bold text-[#0E245E]">
-                  Facturas Pendientes por Radicar / Refacturar e Ingresos sin Facturar
+                <span className="text-xs uppercase tracking-wider text-blue-400 font-bold block">
+                  Fórmula Exacta Pizarra SISMA Back
+                </span>
+                <h4 className="text-lg font-extrabold">
+                  Corte Seleccionado: {corteSeleccionado.fechaCorte} ({corteSeleccionado.modalidad})
                 </h4>
-                <p className="text-[12px] text-[#64748B]">
-                  Mostrando {listAnuladas.length} facturas devueltas/anuladas y {listAdm.length} admisiones pendientes según filtro Mutual Ser
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPendSubtab("anuladas")}
-                  className={`rounded-[8px] border px-3 py-1.5 text-[12px] font-bold transition ${
-                    pendSubtab === "anuladas"
-                      ? "border-[#0E245E] bg-[#0E245E] text-white"
-                      : "border-[#E6EEF8] bg-white text-[#0E245E] hover:border-[#BFD4F4]"
-                  }`}
-                >
-                  Facturas Anuladas / Refacturación ({listAnuladas.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPendSubtab("admisiones")}
-                  className={`rounded-[8px] border px-3 py-1.5 text-[12px] font-bold transition ${
-                    pendSubtab === "admisiones"
-                      ? "border-[#0E245E] bg-[#0E245E] text-white"
-                      : "border-[#E6EEF8] bg-white text-[#0E245E] hover:border-[#BFD4F4]"
-                  }`}
-                >
-                  Admisiones sin Facturar ({listAdm.length})
-                </button>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between bg-slate-800/90 px-4 py-3 rounded-xl border border-slate-700">
+                <div>
+                  <span className="font-bold text-blue-300 block">Cartera Corriente</span>
+                  <span className="text-xs text-slate-400">Radicada &lt; 60 días (Análisis de vencimiento)</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-emerald-400 mr-2">[ + ]</span>
+                  <span className="font-mono font-bold text-base">{formatCOP(corteSeleccionado.carteraCorriente)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-slate-800/90 px-4 py-3 rounded-xl border border-slate-700">
+                <div>
+                  <span className="font-bold text-rose-300 block">Cartera Vencida</span>
+                  <span className="text-xs text-slate-400">Radicada &gt;= 60 días (Análisis de vencimiento)</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-emerald-400 mr-2">[ + ]</span>
+                  <span className="font-mono font-bold text-base">{formatCOP(corteSeleccionado.carteraVencida)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-blue-950/90 px-4 py-3 rounded-xl border border-blue-700">
+                <div>
+                  <span className="font-extrabold text-white block">Total Cartera Radicada (↓)</span>
+                  <span className="text-xs text-blue-300">Corriente + Vencida</span>
+                </div>
+                <span className="font-mono font-extrabold text-lg text-blue-200">
+                  {formatCOP(corteSeleccionado.carteraTotal)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between bg-slate-800/60 px-4 py-2.5 rounded-xl border border-slate-800 text-xs">
+                <span className="text-slate-300">Facturas pendientes por radicar</span>
+                <span className="font-mono font-semibold text-slate-200">
+                  {formatCOP(corteSeleccionado.facturasPendientesRadicar)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between bg-amber-950/60 px-4 py-3 rounded-xl border border-amber-700/60">
+                <div>
+                  <span className="font-bold text-amber-300 block">(-) Anticipos / Giros por cruzar</span>
+                  <span className="text-[11px] text-amber-200/80">
+                    Auxiliar abierto: 1301250602, 2501010602, 2501010607
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-base text-amber-300">
+                  {formatCOP(corteSeleccionado.anticiposPorCruzar)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between bg-emerald-950 px-4 py-3.5 rounded-xl border-2 border-emerald-500">
+                <div>
+                  <span className="font-extrabold text-emerald-300 text-base block">
+                    TOTAL CARTERA REAL
+                  </span>
+                  <span className="text-xs text-emerald-200/80">Saldo real neto por cobrar</span>
+                </div>
+                <span className="font-mono font-extrabold text-xl text-emerald-300">
+                  {formatCOP(corteSeleccionado.totalCarteraReal)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla Oficial Presentación de Cartera (Todas las Empresas + PYP) */}
+          <div className="lg:col-span-7 overflow-x-auto border border-slate-200 rounded-2xl">
+            <table className="w-full text-xs md:text-sm border-collapse">
+              <thead>
+                <tr className="bg-slate-900 text-white">
+                  <th className="text-left p-3 font-bold">Concepto SISMA Back</th>
+                  {cortesTodas.map((c) => (
+                    <th key={`th-t-${c.fechaCorte}`} className="text-right p-3 font-bold bg-blue-900/60">
+                      Todas ({c.fechaCorte})
+                    </th>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <th key={`th-p-${c.fechaCorte}`} className="text-right p-3 font-bold bg-amber-700/80">
+                      PYP ({c.fechaCorte})
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-semibold text-slate-800">
+                    Cartera corriente (Radicada &lt; 60 días)
+                  </td>
+                  {cortesTodas.map((c) => (
+                    <td key={`cc-t-${c.fechaCorte}`} className="p-3 text-right font-mono">
+                      {formatCOP(c.carteraCorriente)}
+                    </td>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <td key={`cc-p-${c.fechaCorte}`} className="p-3 text-right font-mono bg-amber-50/40">
+                      {formatCOP(c.carteraCorriente)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-semibold text-slate-800">
+                    Cartera vencida (&gt; 60 días)
+                  </td>
+                  {cortesTodas.map((c) => (
+                    <td key={`cv-t-${c.fechaCorte}`} className="p-3 text-right font-mono text-rose-700 font-semibold">
+                      {formatCOP(c.carteraVencida)}
+                    </td>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <td key={`cv-p-${c.fechaCorte}`} className="p-3 text-right font-mono text-rose-700 font-semibold bg-amber-50/40">
+                      {formatCOP(c.carteraVencida)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="bg-blue-50/70 font-bold">
+                  <td className="p-3 text-slate-900">Cartera Total</td>
+                  {cortesTodas.map((c) => (
+                    <td key={`ct-t-${c.fechaCorte}`} className="p-3 text-right font-mono text-blue-900">
+                      {formatCOP(c.carteraTotal)}
+                    </td>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <td key={`ct-p-${c.fechaCorte}`} className="p-3 text-right font-mono text-amber-900 bg-amber-100/50">
+                      {formatCOP(c.carteraTotal)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 text-slate-700">Facturas pendiente por radicar</td>
+                  {cortesTodas.map((c) => (
+                    <td key={`fp-t-${c.fechaCorte}`} className="p-3 text-right font-mono">
+                      {formatCOP(c.facturasPendientesRadicar)}
+                    </td>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <td key={`fp-p-${c.fechaCorte}`} className="p-3 text-right font-mono bg-amber-50/40">
+                      {formatCOP(c.facturasPendientesRadicar)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 text-slate-700">Glosa pendientes por gestionar</td>
+                  {cortesTodas.map((c) => (
+                    <td key={`gp-t-${c.fechaCorte}`} className="p-3 text-right font-mono">
+                      {formatCOP(c.glosasPendientesGestionar)}
+                    </td>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <td key={`gp-p-${c.fechaCorte}`} className="p-3 text-right font-mono bg-amber-50/40">
+                      {formatCOP(c.glosasPendientesGestionar)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="bg-amber-50/60">
+                  <td className="p-3 font-semibold text-amber-900">
+                    Anticipos por cruzar (Cuentas 1301250602 / 2501010602 / 2501010607)
+                  </td>
+                  {cortesTodas.map((c) => (
+                    <td key={`ac-t-${c.fechaCorte}`} className="p-3 text-right font-mono font-semibold text-amber-800">
+                      {formatCOP(c.anticiposPorCruzar)}
+                    </td>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <td key={`ac-p-${c.fechaCorte}`} className="p-3 text-right font-mono font-semibold text-amber-800 bg-amber-100/40">
+                      {formatCOP(c.anticiposPorCruzar)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="bg-emerald-900 text-white font-extrabold">
+                  <td className="p-3.5">Total cartera real</td>
+                  {cortesTodas.map((c) => (
+                    <td key={`tr-t-${c.fechaCorte}`} className="p-3.5 text-right font-mono text-emerald-200">
+                      {formatCOP(c.totalCarteraReal)}
+                    </td>
+                  ))}
+                  {cortesPyp.map((c) => (
+                    <td key={`tr-p-${c.fechaCorte}`} className="p-3.5 text-right font-mono text-amber-200 bg-emerald-950">
+                      {formatCOP(c.totalCarteraReal)}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* BLOQUE 2: MESA DE TRABAJO OPERATIVA (REEMPLAZO DEL ARCHIVO EXCEL)     */}
+      {/* ===================================================================== */}
+      <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              Sistema Operativo Interactivo (Reemplaza el Excel de Glosas y Anulaciones)
+            </span>
+            <h3 className="text-xl font-bold text-slate-900 mt-2">
+              2. Mesa de Trabajo de Facturación, Glosas, Notas Crédito y Pendientes (2021 – 2026)
+            </h3>
+            <p className="text-sm text-slate-600">
+              Filtra por año, empresa o responsable, edita cualquier factura en línea y crea nuevos registros sin usar hojas de cálculo externas.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setMostrarModalNuevo(true)}
+              className="px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-600 text-white font-bold text-sm shadow transition cursor-pointer"
+            >
+              + Nuevo Registro en esta Pestaña
+            </button>
+            <button
+              onClick={exportarVistaExcelCSV}
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm shadow transition cursor-pointer"
+            >
+              ↓ Exportar Vista a Excel (CSV)
+            </button>
+          </div>
+        </div>
+
+        {/* FILTROS MULTIAÑO Y MULTIEMPRESA (SOLO EMPRESAS Y FACTURADORAS REALES) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Año (2021 – 2026)</label>
+            <select
+              value={filtroAnio}
+              onChange={(e) => {
+                setFiltroAnio(e.target.value);
+                setPaginaActual(1);
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800"
+            >
+              <option value="TODOS">Todos los años (2021 - 2026)</option>
+              {carteraInitialData.aniosDisponibles.map((a) => (
+                <option key={a} value={a}>
+                  Año {a}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Empresa / Aseguradora Real</label>
+            <select
+              value={filtroEmpresa}
+              onChange={(e) => {
+                setFiltroEmpresa(e.target.value);
+                setPaginaActual(1);
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800"
+            >
+              <option value="TODAS">Todas las Empresas ({carteraInitialData.empresasDisponibles.length})</option>
+              {carteraInitialData.empresasDisponibles.map((emp) => (
+                <option key={emp} value={emp}>
+                  {emp}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Responsable / Facturadora</label>
+            <select
+              value={filtroResponsable}
+              onChange={(e) => {
+                setFiltroResponsable(e.target.value);
+                setPaginaActual(1);
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800"
+            >
+              <option value="TODAS">Todas las Responsables</option>
+              {carteraInitialData.responsablesDisponibles.map((resp) => (
+                <option key={resp} value={resp}>
+                  {resp}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Buscar por # Factura (FCOE...), Reemplazo, Nota Crédito, CUPS o Motivo
+            </label>
+            <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Buscar por factura, EPS, causal, paciente o responsable..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-72 rounded-[10px] border border-[#E6EEF8] bg-white px-3 py-1.5 text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setPaginaActual(1);
+                }}
+                placeholder="Ej. FCOE74852, MUTUAL SER, NC, 890274..."
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
               />
-              <select
-                value={respFilter}
-                onChange={(e) => setRespFilter(e.target.value)}
-                className="rounded-[10px] border border-[#E6EEF8] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#0E245E] outline-none focus:border-[#1D58D8]"
-              >
-                <option value="ALL">Todos los Responsables</option>
-                <option value="MARIA ALEJANDRA">MARIA ALEJANDRA</option>
-                <option value="MARIA PAOLA">MARIA PAOLA</option>
-                <option value="MAYERLIS">MAYERLIS</option>
-                <option value="KELLYS">KELLYS</option>
-                <option value="KEYLA">KEYLA</option>
-                <option value="MARYURIS">MARYURIS</option>
-                <option value="VALENTINA">VALENTINA</option>
-              </select>
-            </div>
-
-            <div className="max-h-[420px] overflow-x-auto overflow-y-auto rounded-[10px] border border-[#E6EEF8] bg-white">
-              {pendSubtab === "anuladas" ? (
-                <table className="w-full border-collapse text-[12px]">
-                  <thead>
-                    <tr className="border-b border-[#E6EEF8] bg-[#F8FAFC] text-left text-[#0E245E]">
-                      <th className="p-2.5 font-bold">Factura</th>
-                      <th className="p-2.5 font-bold">Fecha</th>
-                      <th className="p-2.5 font-bold">EPS / Aseguradora</th>
-                      <th className="p-2.5 text-right font-bold">Valor</th>
-                      <th className="p-2.5 font-bold">Causal de Anulación / Devolución</th>
-                      <th className="p-2.5 font-bold">Responsable</th>
-                      <th className="p-2.5 font-bold">Factura Reemplaza / Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {listAnuladas.slice(0, 180).map((r, idx) => {
-                      const fac = r.no_factura || r.factura || "-";
-                      const fec = r.fecha_elab || r.fecha_factura || "-";
-                      const est = r.estado || r.factura_actual || (r.es_pendiente_radicar ? "PENDIENTE RADICAR" : "GESTIONADA");
-                      const isPend = String(est).toUpperCase().includes("PENDIENTE") || Boolean(r.es_pendiente_radicar);
-                      return (
-                        <tr key={fac + "-" + idx} className="border-b border-[#EEF2F8] hover:bg-[#FBFDFF]">
-                          <td className="p-2.5 font-bold text-[#1D58D8]">{fac}</td>
-                          <td className="p-2.5 text-[#475569]">{fec}</td>
-                          <td className="p-2.5 font-medium text-[#0E245E]">{r.empresa}</td>
-                          <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(r.valor || r.valor_glosa || 0)}</td>
-                          <td className="p-2.5 text-[#475569]">{r.causal || r.motivo}</td>
-                          <td className="p-2.5 font-semibold text-[#0E245E]">{r.responsable}</td>
-                          <td className="p-2.5">
-                            <span className={`rounded-[6px] px-2 py-0.5 text-[11px] font-bold ${
-                              isPend ? "bg-amber-500/15 text-[#B45309]" : "bg-emerald-500/15 text-[#047857]"
-                            }`}>
-                              {r.factura_reemplaza && r.factura_reemplaza !== "NO APLICA" ? `${r.factura_reemplaza} · ${est}` : est}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="w-full border-collapse text-[12px]">
-                  <thead>
-                    <tr className="border-b border-[#E6EEF8] bg-[#F8FAFC] text-left text-[#0E245E]">
-                      <th className="p-2.5 font-bold">Estudio / Ingreso</th>
-                      <th className="p-2.5 font-bold">Fecha Ingreso</th>
-                      <th className="p-2.5 font-bold">EPS / Contrato</th>
-                      <th className="p-2.5 font-bold">Paciente</th>
-                      <th className="p-2.5 font-bold">Procedimiento / Servicio</th>
-                      <th className="p-2.5 font-bold">Facturador</th>
-                      <th className="p-2.5 font-bold">Estado / Observación</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {listAdm.map((r, idx) => (
-                      <tr key={(r.estudio || r.ingreso || "a") + "-" + idx} className="border-b border-[#EEF2F8] hover:bg-[#FBFDFF]">
-                        <td className="p-2.5 font-bold text-[#1D58D8]">{r.estudio || r.ingreso || r.id}</td>
-                        <td className="p-2.5 text-[#475569]">{r.fecha_ingreso || r.fecha}</td>
-                        <td className="p-2.5 font-medium text-[#0E245E]">{r.empresa || r.contrato}</td>
-                        <td className="p-2.5 text-[#0E245E]">{r.paciente}</td>
-                        <td className="p-2.5 text-[#475569]">{r.procedimiento || r.servicio}</td>
-                        <td className="p-2.5 font-semibold text-[#0E245E]">{r.facturador || r.responsable}</td>
-                        <td className="p-2.5">
-                          <span className="rounded-[6px] bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-[#B45309]">
-                            {r.observacion || r.estado || "PENDIENTE FACTURAR"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {(filtroAnio !== "TODOS" ||
+                filtroEmpresa !== "TODAS" ||
+                filtroResponsable !== "TODAS" ||
+                busqueda !== "") && (
+                <button
+                  onClick={() => {
+                    setFiltroAnio("TODOS");
+                    setFiltroEmpresa("TODAS");
+                    setFiltroResponsable("TODAS");
+                    setFiltroSubtablaGlosa("TODAS");
+                    setBusqueda("");
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-bold text-slate-700 shrink-0 cursor-pointer"
+                >
+                  Limpiar
+                </button>
               )}
             </div>
           </div>
-        )}
+        </div>
 
-        {activeModule === "glosas" && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF2F8] pb-3.5">
-              <div>
-                <h4 className="text-[15px] font-bold text-[#0E245E]">
-                  Cuadro General de Glosas, Conciliaciones Alfanet y Notas Crédito SISMA
-                </h4>
-                <p className="text-[12px] text-[#64748B]">
-                  Mostrando {listGlosas.length} registros según el filtro Mutual Ser seleccionado
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setGlosaSubtab("consolidado")}
-                  className={`rounded-[8px] border px-3 py-1.5 text-[12px] font-bold transition ${
-                    glosaSubtab === "consolidado"
-                      ? "border-[#0E245E] bg-[#0E245E] text-white"
-                      : "border-[#E6EEF8] bg-white text-[#0E245E] hover:border-[#BFD4F4]"
-                  }`}
-                >
-                  Consolidado Alfanet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGlosaSubtab("defensa")}
-                  className={`rounded-[8px] border px-3 py-1.5 text-[12px] font-bold transition ${
-                    glosaSubtab === "defensa"
-                      ? "border-[#0E245E] bg-[#0E245E] text-white"
-                      : "border-[#E6EEF8] bg-white text-[#0E245E] hover:border-[#BFD4F4]"
-                  }`}
-                >
-                  Defendidas / No Aceptadas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGlosaSubtab("sisma")}
-                  className={`rounded-[8px] border px-3 py-1.5 text-[12px] font-bold transition ${
-                    glosaSubtab === "sisma"
-                      ? "border-[#0E245E] bg-[#0E245E] text-white"
-                      : "border-[#E6EEF8] bg-white text-[#0E245E] hover:border-[#BFD4F4]"
-                  }`}
-                >
-                  Aceptadas / Pendientes SISMA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGlosaSubtab("mutual")}
-                  className={`rounded-[8px] border px-3 py-1.5 text-[12px] font-bold transition ${
-                    glosaSubtab === "mutual"
-                      ? "border-[#0E245E] bg-[#0E245E] text-white"
-                      : "border-[#E6EEF8] bg-white text-[#0E245E] hover:border-[#BFD4F4]"
-                  }`}
-                >
-                  Respuestas Mutual Ser
-                </button>
-              </div>
-            </div>
+        {/* KPIS OPERATIVOS EN VIVO SEGÚN FILTRO */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="rounded-xl p-4 bg-blue-50/70 border border-blue-200">
+            <span className="text-xs font-bold uppercase text-blue-800">
+              1. Anuladas / Reemplazadas ({anuladasFiltradas.length})
+            </span>
+            <p className="text-xl font-extrabold text-slate-900 mt-1">
+              {formatCOP(kpisOperativos.totalAnuladasVal)}
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Reemplazadas: <strong>{kpisOperativos.reemplazadasOk}</strong> | En gestión:{" "}
+              <strong>{kpisOperativos.pendientesReemplazo}</strong>
+            </p>
+          </div>
 
-            <div className="max-h-[420px] overflow-x-auto overflow-y-auto rounded-[10px] border border-[#E6EEF8] bg-white">
-              <table className="w-full border-collapse text-[12px]">
-                <thead>
-                  <tr className="border-b border-[#E6EEF8] bg-[#F8FAFC] text-left text-[#0E245E]">
-                    <th className="p-2.5 font-bold">Factura</th>
-                    <th className="p-2.5 font-bold">EPS / Aseguradora</th>
-                    <th className="p-2.5 text-right font-bold">Valor Factura</th>
-                    <th className="p-2.5 text-right font-bold">Valor Glosa</th>
-                    <th className="p-2.5 text-right font-bold">Valor Aceptado</th>
-                    <th className="p-2.5 font-bold">Nota Crédito Alfanet / Observación</th>
-                    <th className="p-2.5 font-bold">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {listGlosas.map((r, idx) => (
-                    <tr key={(r.factura || r.no_factura || "g") + "-" + idx} className="border-b border-[#EEF2F8] hover:bg-[#FBFDFF]">
-                      <td className="p-2.5 font-bold text-[#D97706]">{r.factura || r.no_factura}</td>
-                      <td className="p-2.5 font-medium text-[#0E245E]">{r.empresa || r.eps || "MUTUAL SER EPS"}</td>
-                      <td className="p-2.5 text-right text-[#475569]">{fmt(r.valor_factura || r.valor || 0)}</td>
-                      <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(r.valor_glosa || r.valor_aceptado || 0)}</td>
-                      <td className="p-2.5 text-right text-[#475569]">{fmt(r.valor_aceptado || 0)}</td>
-                      <td className="p-2.5 text-[#475569]">{r.nota_credito_alfanet || r.nota_credito || r.observacion || r.concepto || r.autorizacion || "-"}</td>
-                      <td className="p-2.5">
-                        <span className="rounded-[6px] bg-[#E6F0FD] px-2 py-0.5 text-[11px] font-bold text-[#1D58D8]">
-                          {r.estado || r.aplicada_sisma || "EN GESTIÓN"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="rounded-xl p-4 bg-emerald-50/70 border border-emerald-200">
+            <span className="text-xs font-bold uppercase text-emerald-800">
+              2. Glosas Legalizadas ({legalizadasFiltradas.length})
+            </span>
+            <p className="text-xl font-extrabold text-slate-900 mt-1">
+              {formatCOP(kpisOperativos.totalLegalizadasVal)}
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Facturas conciliadas / subsanadas con RIPS
+            </p>
+          </div>
+
+          <div className="rounded-xl p-4 bg-amber-50/70 border border-amber-200">
+            <span className="text-xs font-bold uppercase text-amber-800">
+              3. Glosas Respondidas y NC ({glosasFiltradas.length})
+            </span>
+            <p className="text-xl font-extrabold text-slate-900 mt-1">
+              {formatCOP(kpisOperativos.totalGlosadoVal)}
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Respondidas, aceptadas con Nota Crédito y en gestión
+            </p>
+          </div>
+
+          <div className="rounded-xl p-4 bg-purple-50/70 border border-purple-200">
+            <span className="text-xs font-bold uppercase text-purple-800">
+              4. Servicios Pendientes Facturar ({pendientesFiltradas.length})
+            </span>
+            <p className="text-xl font-extrabold text-slate-900 mt-1">
+              {formatCOP(kpisOperativos.totalPendientesVal)}
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Admisiones y procedimientos en revisión por facturadora
+            </p>
+          </div>
+        </div>
+
+        {/* RESUMEN RÁPIDO POR EMPRESA REAL Y POR RESPONSABLE REAL */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-8 bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
+              Consolidado por Empresa Real de Ebenezer (Clic para filtrar)
+            </h4>
+            <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+              {resumenEmpresasFiltrado.map((e) => (
+                <button
+                  key={e.empresa}
+                  onClick={() => {
+                    setFiltroEmpresa(filtroEmpresa === e.empresa ? "TODAS" : e.empresa);
+                    setPaginaActual(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-2 ${
+                    filtroEmpresa === e.empresa
+                      ? "bg-blue-700 text-white border-blue-700 shadow"
+                      : "bg-white text-slate-800 border-slate-200 hover:bg-blue-50"
+                  }`}
+                >
+                  <span>{e.empresa}</span>
+                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px]">
+                    {e.registros}
+                  </span>
+                </button>
+              ))}
             </div>
+          </div>
+
+          <div className="lg:col-span-4 bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
+              Carga por Responsable / Facturadora Real
+            </h4>
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 text-xs">
+              {resumenResponsables.map((r) => (
+                <div
+                  key={r.responsable}
+                  onClick={() => {
+                    setFiltroResponsable(filtroResponsable === r.responsable ? "TODAS" : r.responsable);
+                    setPaginaActual(1);
+                  }}
+                  className={`flex items-center justify-between px-3 py-1.5 rounded-lg border cursor-pointer ${
+                    filtroResponsable === r.responsable
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-800 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <span className="font-bold">{r.responsable}</span>
+                  <span className="font-mono">
+                    {r.casos} reg. ({formatCOP(r.valorTotal)})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* PESTAÑAS DE LAS 4 TABLAS DEL EXCEL */}
+        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+          <button
+            onClick={() => {
+              setTabActiva("anuladas");
+              setPaginaActual(1);
+            }}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer ${
+              tabActiva === "anuladas"
+                ? "bg-blue-700 text-white shadow"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            1. Facturas Anuladas / Reemplazadas ({anuladasFiltradas.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setTabActiva("legalizadas");
+              setPaginaActual(1);
+            }}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer ${
+              tabActiva === "legalizadas"
+                ? "bg-emerald-700 text-white shadow"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            2. Glosas Legalizadas ({legalizadasFiltradas.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setTabActiva("glosas");
+              setPaginaActual(1);
+            }}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer ${
+              tabActiva === "glosas"
+                ? "bg-amber-600 text-white shadow"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            3. Glosas Respondidas y Notas Crédito ({glosasFiltradas.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setTabActiva("pendientes");
+              setPaginaActual(1);
+            }}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer ${
+              tabActiva === "pendientes"
+                ? "bg-purple-700 text-white shadow"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            4. Servicios Pendientes por Facturar ({pendientesFiltradas.length})
+          </button>
+        </div>
+
+        {/* SUBFILTRO PARA LA PESTAÑA 3 (GLOSAS RESPONDIDAS VS NOTAS CRÉDITO) */}
+        {tabActiva === "glosas" && (
+          <div className="flex flex-wrap items-center gap-2 bg-amber-50/70 p-3 rounded-xl border border-amber-200">
+            <span className="text-xs font-bold text-amber-900 mr-2">Subtabla de Glosas:</span>
+            {[
+              { id: "TODAS", label: "Todas" },
+              { id: "RESPONDIDA_NO_ACEPTADA", label: "Glosas Respondidas / No Aceptadas" },
+              { id: "ACEPTADA_NOTA_CREDITO", label: "Glosas Aceptadas con Nota Crédito" },
+              { id: "EN_GESTION", label: "En Gestión / Autorizaciones" },
+            ].map((st) => (
+              <button
+                key={st.id}
+                onClick={() => {
+                  setFiltroSubtablaGlosa(st.id);
+                  setPaginaActual(1);
+                }}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  filtroSubtablaGlosa === st.id
+                    ? "bg-amber-700 text-white"
+                    : "bg-white text-amber-900 border border-amber-300 hover:bg-amber-100"
+                }`}
+              >
+                {st.label}
+              </button>
+            ))}
           </div>
         )}
 
-        {activeModule === "vencimiento" && (
-          <div className="space-y-5">
-            <div>
-              <h4 className="text-[15px] font-bold text-[#0E245E]">
-                Informe de Vencimiento de la Cartera por Edades y Matriz Comparativa ({corte})
-              </h4>
-              <p className="text-[12px] text-[#64748B]">
-                Separación exacta: Cartera Corriente (&lt; 60 días) vs Cartera Vencida (&ge; 60 días)
-              </p>
-            </div>
+        {/* TABLA OPERATIVA EDITABLE */}
+        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-900 text-white">
+                  <th className="p-2.5 text-left">Año / Período</th>
+                  <th className="p-2.5 text-left">Empresa</th>
+                  <th className="p-2.5 text-left">No. Factura</th>
+                  <th className="p-2.5 text-left">Fecha Rad.</th>
+                  <th className="p-2.5 text-right">Valor Radicado</th>
+                  <th className="p-2.5 text-left">Tipo</th>
+                  <th className="p-2.5 text-left">Motivo de Anulación / Devolución</th>
+                  <th className="p-2.5 text-left"># Factura Reemplaza</th>
+                  <th className="p-2.5 text-left">RIPS</th>
+                  <th className="p-2.5 text-left">Revisión Financiera</th>
+                  <th className="p-2.5 text-left">Responsable</th>
+                  <th className="p-2.5 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {(listaActivaPaginada.items as AnuladaRow[]).map((r) => (
+                  <tr key={r.id} className="hover:bg-blue-50/40">
+                    <td className="p-2.5 font-semibold whitespace-nowrap">
+                      {r.anio} <span className="text-slate-500 font-normal">({r.periodo})</span>
+                    </td>
+                    <td className="p-2.5 font-bold text-slate-900">{r.empresa}</td>
+                    <td className="p-2.5 font-mono font-bold text-blue-700 whitespace-nowrap">{r.factura}</td>
+                    <td className="p-2.5 whitespace-nowrap">{r.fechaRadicacion || r.fechaFactura}</td>
+                    <td className="p-2.5 text-right font-mono font-semibold">{formatCOP(r.valorRadicado)}</td>
+                    <td className="p-2.5">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-semibold">
+                        {r.tipo}
+                      </span>
+                    </td>
+                    <td className="p-2.5 max-w-xs truncate" title={r.motivo}>
+                      {r.motivo}
+                    </td>
+                    <td className="p-2.5 font-mono font-bold text-emerald-700 whitespace-nowrap">
+                      {r.facturaReemplaza || "PENDIENTE"}
+                    </td>
+                    <td className="p-2.5">{r.rips}</td>
+                    <td className="p-2.5 max-w-[180px] truncate" title={r.revisionFinanciera}>
+                      {r.revisionFinanciera}
+                    </td>
+                    <td className="p-2.5 font-semibold whitespace-nowrap">{r.responsable}</td>
+                    <td className="p-2.5 text-center">
+                      <button
+                        onClick={() => setFilaEditando({ ...r })}
+                        className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs cursor-pointer"
+                      >
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-            <div className="overflow-x-auto rounded-[10px] border border-[#E6EEF8] bg-white">
-              <table className="w-full border-collapse text-[12px]">
-                <thead>
-                  <tr className="border-b border-[#E6EEF8] bg-[#F8FAFC] text-left text-[#0E245E]">
-                    <th className="p-2.5 font-bold">EPS / Aseguradora</th>
-                    <th className="p-2.5 text-right font-bold">0 - 30 días</th>
-                    <th className="p-2.5 text-right font-bold">31 - 60 días</th>
-                    <th className="p-2.5 text-right font-extrabold text-[#1D58D8]">Subtotal Corriente (&lt;60d)</th>
-                    <th className="p-2.5 text-right font-bold">61 - 90 días</th>
-                    <th className="p-2.5 text-right font-bold">91 - 180 días</th>
-                    <th className="p-2.5 text-right font-bold">&gt; 180 días</th>
-                    <th className="p-2.5 text-right font-extrabold text-[#D97706]">Subtotal Vencida (&ge;60d)</th>
-                    <th className="p-2.5 text-right font-extrabold text-[#059669]">Cartera Total</th>
+          {tabActiva === "glosas" && (
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-900 text-white">
+                  <th className="p-2.5 text-left">Clasificación</th>
+                  <th className="p-2.5 text-left">Año</th>
+                  <th className="p-2.5 text-left">Empresa</th>
+                  <th className="p-2.5 text-left">No. Factura</th>
+                  <th className="p-2.5 text-right">Valor Factura</th>
+                  <th className="p-2.5 text-right">Valor Glosado</th>
+                  <th className="p-2.5 text-left">Motivo de Glosa</th>
+                  <th className="p-2.5 text-left">Facturador</th>
+                  <th className="p-2.5 text-left">Observación / Aceptación</th>
+                  <th className="p-2.5 text-left">Nota Crédito</th>
+                  <th className="p-2.5 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {(listaActivaPaginada.items as GlosaRow[]).map((r) => (
+                  <tr key={r.id} className="hover:bg-amber-50/40">
+                    <td className="p-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                          r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                            ? "bg-rose-100 text-rose-800"
+                            : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                          ? "Aceptada (NC)"
+                          : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
+                          ? "Respondida"
+                          : "En Gestión"}
+                      </span>
+                    </td>
+                    <td className="p-2.5 font-semibold">{r.anio}</td>
+                    <td className="p-2.5 font-bold text-slate-900">{r.empresa}</td>
+                    <td className="p-2.5 font-mono font-bold text-blue-700">{r.factura}</td>
+                    <td className="p-2.5 text-right font-mono">{formatCOP(r.valorFactura || r.valorRadicado)}</td>
+                    <td className="p-2.5 text-right font-mono font-bold text-rose-700">
+                      {formatCOP(r.valorGlosado)}
+                    </td>
+                    <td className="p-2.5 max-w-xs truncate" title={r.motivoGlosa}>
+                      {r.motivoGlosa}
+                    </td>
+                    <td className="p-2.5 font-semibold">{r.facturador}</td>
+                    <td className="p-2.5 max-w-xs truncate" title={r.observacionInterna}>
+                      {r.observacionInterna}
+                    </td>
+                    <td className="p-2.5 font-mono font-bold text-purple-800">{r.notaCredito || "-"}</td>
+                    <td className="p-2.5 text-center">
+                      <button
+                        onClick={() => setFilaEditando({ ...r })}
+                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs cursor-pointer"
+                      >
+                        Editar
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {listEdades.map((r) => {
-                    const corr = r.d0_30 + r.d31_60;
-                    const venc = r.d61_90 + r.d91_180 + r.d181_360 + r.d360;
-                    return (
-                      <tr key={r.entidad} className="border-b border-[#EEF2F8] hover:bg-[#FBFDFF]">
-                        <td className="p-2.5 font-bold text-[#0E245E]">{r.entidad}</td>
-                        <td className="p-2.5 text-right text-[#475569]">{fmt(r.d0_30)}</td>
-                        <td className="p-2.5 text-right text-[#475569]">{fmt(r.d31_60)}</td>
-                        <td className="p-2.5 text-right font-bold text-[#1D58D8]">{fmt(corr)}</td>
-                        <td className="p-2.5 text-right text-[#475569]">{fmt(r.d61_90)}</td>
-                        <td className="p-2.5 text-right text-[#475569]">{fmt(r.d91_180)}</td>
-                        <td className="p-2.5 text-right text-[#475569]">{fmt(r.d181_360 + r.d360)}</td>
-                        <td className="p-2.5 text-right font-bold text-[#D97706]">{fmt(venc)}</td>
-                        <td className="p-2.5 text-right font-extrabold text-[#059669]">{fmt(corr + venc)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-            <div className="overflow-x-auto rounded-[10px] border border-[#E6EEF8] bg-white">
-              <table className="w-full border-collapse text-[12px]">
-                <thead>
-                  <tr className="border-b border-[#E6EEF8] bg-[#F8FAFC] text-left text-[#0E245E]">
-                    <th className="p-2.5 font-bold">Concepto (Presentación Oficial de Cartera)</th>
-                    <th className="p-2.5 text-right font-bold">Todas las Empresas (Con Mutual Ser)</th>
-                    <th className="p-2.5 text-right font-bold">PYP (Excluyendo Mutual Ser)</th>
-                    <th className="p-2.5 text-right font-bold">Diferencia (Solo Mutual Ser)</th>
+          {tabActiva === "pendientes" && (
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-900 text-white">
+                  <th className="p-2.5 text-left">Estado</th>
+                  <th className="p-2.5 text-left">Empresa</th>
+                  <th className="p-2.5 text-left">Contrato</th>
+                  <th className="p-2.5 text-left">CUPS</th>
+                  <th className="p-2.5 text-left">Descripción Procedimiento / Consulta</th>
+                  <th className="p-2.5 text-left">Fecha Servicio</th>
+                  <th className="p-2.5 text-left">Médico</th>
+                  <th className="p-2.5 text-right">Valor Servicio</th>
+                  <th className="p-2.5 text-left">Responsable</th>
+                  <th className="p-2.5 text-left">Observaciones</th>
+                  <th className="p-2.5 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {(listaActivaPaginada.items as PendienteRow[]).map((r) => (
+                  <tr key={r.id} className="hover:bg-purple-50/40">
+                    <td className="p-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                          r.estado === "FACTURADO"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {r.estado}
+                      </span>
+                    </td>
+                    <td className="p-2.5 font-bold text-slate-900">{r.empresa}</td>
+                    <td className="p-2.5 max-w-[180px] truncate" title={r.contrato}>
+                      {r.contrato}
+                    </td>
+                    <td className="p-2.5 font-mono font-bold text-purple-800">{r.cups}</td>
+                    <td className="p-2.5 max-w-xs truncate" title={r.descripcion}>
+                      {r.descripcion}
+                    </td>
+                    <td className="p-2.5 whitespace-nowrap">{r.fechaServicio}</td>
+                    <td className="p-2.5 whitespace-nowrap">{r.medico}</td>
+                    <td className="p-2.5 text-right font-mono font-bold">{formatCOP(r.valorServicio)}</td>
+                    <td className="p-2.5 font-semibold">{r.responsable}</td>
+                    <td className="p-2.5 max-w-xs truncate" title={r.observaciones}>
+                      {r.observaciones}
+                    </td>
+                    <td className="p-2.5 text-center">
+                      <button
+                        onClick={() => setFilaEditando({ ...r })}
+                        className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs cursor-pointer"
+                      >
+                        Gestionar
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-[#EEF2F8]">
-                    <td className="p-2.5 font-medium text-[#0E245E]">Cartera corriente (Radicada &lt; 60 días)</td>
-                    <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(dAll.corriente)}</td>
-                    <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(dPyp.corriente)}</td>
-                    <td className="p-2.5 text-right text-[#475569]">{fmt(dAll.corriente - dPyp.corriente)}</td>
-                  </tr>
-                  <tr className="border-b border-[#EEF2F8]">
-                    <td className="p-2.5 font-medium text-[#0E245E]">Cartera vencida (Radicada &ge; 60 días)</td>
-                    <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(dAll.vencida)}</td>
-                    <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(dPyp.vencida)}</td>
-                    <td className="p-2.5 text-right text-[#475569]">{fmt(dAll.vencida - dPyp.vencida)}</td>
-                  </tr>
-                  <tr className="border-b border-[#EEF2F8] bg-emerald-500/10 font-extrabold">
-                    <td className="p-2.5 text-[#0E245E]">Cartera total</td>
-                    <td className="p-2.5 text-right text-[#059669]">{fmt(dAll.total)}</td>
-                    <td className="p-2.5 text-right text-[#059669]">{fmt(dPyp.total)}</td>
-                    <td className="p-2.5 text-right text-[#059669]">{fmt(dAll.total - dPyp.total)}</td>
-                  </tr>
-                  <tr className="border-b border-[#EEF2F8]">
-                    <td className="p-2.5 font-medium text-[#0E245E]">Facturas pendientes por radicar</td>
-                    <td className="p-2.5 text-right font-bold text-[#1D58D8]">{fmt(170743509)}</td>
-                    <td className="p-2.5 text-right font-bold text-[#1D58D8]">{fmt(167264467)}</td>
-                    <td className="p-2.5 text-right text-[#475569]">{fmt(3479042)}</td>
-                  </tr>
-                  <tr className="border-b border-[#EEF2F8]">
-                    <td className="p-2.5 font-medium text-[#0E245E]">Glosas pendientes por gestionar</td>
-                    <td className="p-2.5 text-right font-bold text-[#D97706]">{fmt(115300006)}</td>
-                    <td className="p-2.5 text-right font-bold text-[#D97706]">{fmt(63843314)}</td>
-                    <td className="p-2.5 text-right text-[#475569]">{fmt(51456692)}</td>
-                  </tr>
-                  <tr className="border-b border-[#EEF2F8]">
-                    <td className="p-2.5 font-medium text-[#0E245E]">Anticipos por cruzar (Giros pendientes por aplicar)</td>
-                    <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(dAll.anticipos)}</td>
-                    <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(dPyp.anticipos)}</td>
-                    <td className="p-2.5 text-right text-[#475569]">{fmt(dAll.anticipos - dPyp.anticipos)}</td>
-                  </tr>
-                  <tr className="bg-[#E6F0FD]/60 font-extrabold">
-                    <td className="p-2.5 text-[#0E245E]">Total cartera real</td>
-                    <td className="p-2.5 text-right text-[#1D58D8]">{fmt(dAll.real)}</td>
-                    <td className="p-2.5 text-right text-[#1D58D8]">{fmt(dPyp.real)}</td>
-                    <td className="p-2.5 text-right text-[#1D58D8]">{fmt(dAll.real - dPyp.real)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* PAGINACIÓN */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-xs text-slate-600">
+          <span>
+            Mostrando <strong>{listaActivaPaginada.items.length}</strong> de{" "}
+            <strong>{listaActivaPaginada.total}</strong> registros reales
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={paginaActual <= 1}
+              onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 font-semibold cursor-pointer"
+            >
+              Anterior
+            </button>
+            <span className="font-bold text-slate-800">
+              Página {paginaActual} de {listaActivaPaginada.totalPaginas}
+            </span>
+            <button
+              disabled={paginaActual >= listaActivaPaginada.totalPaginas}
+              onClick={() => setPaginaActual((p) => Math.min(listaActivaPaginada.totalPaginas, p + 1))}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 font-semibold cursor-pointer"
+            >
+              Siguiente
+            </button>
           </div>
-        )}
-
-        {activeModule === "giros" && (
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-[15px] font-bold text-[#0E245E]">
-                Giros Pendientes por Aplicar — Auxiliares Abiertos en SISMA Contabilidad (BackOffice)
-              </h4>
-              <p className="text-[12px] text-[#64748B]">
-                Cuentas contables de anticipos y giros pendientes parametrizadas en SISMA
-              </p>
-            </div>
-
-            <div className="overflow-x-auto rounded-[10px] border border-[#E6EEF8] bg-white">
-              <table className="w-full border-collapse text-[12px]">
-                <thead>
-                  <tr className="border-b border-[#E6EEF8] bg-[#F8FAFC] text-left text-[#0E245E]">
-                    <th className="p-2.5 font-bold">Código Cuenta SISMA</th>
-                    <th className="p-2.5 font-bold">Nombre del Auxiliar Contable</th>
-                    <th className="p-2.5 font-bold">Estado en SISMA</th>
-                    <th className="p-2.5 text-right font-bold">Todas las Empresas</th>
-                    <th className="p-2.5 text-right font-bold">PYP (Sin Mutual Ser)</th>
-                    <th className="p-2.5 text-right font-bold">Solo Mutual Ser</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {GIROS_SISMA.map((g) => (
-                    <tr key={g.codigo} className="border-b border-[#EEF2F8] hover:bg-[#FBFDFF]">
-                      <td className="p-2.5 font-mono font-bold text-[#1D58D8]">{g.codigo}</td>
-                      <td className="p-2.5 font-bold text-[#0E245E]">{g.nombre}</td>
-                      <td className="p-2.5">
-                        <span className="rounded-[6px] bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-[#047857]">
-                          ● {g.estado}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(g.total)}</td>
-                      <td className="p-2.5 text-right font-bold text-[#0E245E]">{fmt(g.pyp)}</td>
-                      <td className="p-2.5 text-right text-[#475569]">{fmt(g.mutual)}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-[#E6F0FD]/60 font-extrabold">
-                    <td className="p-2.5 text-[#0E245E]" colSpan={3}>TOTAL GIROS / ANTICIPOS PENDIENTES POR APLICAR (Corte 30/09/2026)</td>
-                    <td className="p-2.5 text-right text-[#1D58D8]">{fmt(1670178968)}</td>
-                    <td className="p-2.5 text-right text-[#1D58D8]">{fmt(167129693)}</td>
-                    <td className="p-2.5 text-right text-[#1D58D8]">{fmt(1503049275)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
-    </section>
+
+      {/* ===================================================================== */}
+      {/* MODAL: EDITAR REGISTRO DE LA MESA DE TRABAJO                          */}
+      {/* ===================================================================== */}
+      {filaEditando && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h4 className="text-lg font-extrabold text-slate-900">
+                Editar Registro — {String(filaEditando.factura || filaEditando.cups || filaEditando.id)}
+              </h4>
+              <button
+                onClick={() => setFilaEditando(null)}
+                className="text-slate-500 hover:text-slate-800 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Empresa</label>
+                <input
+                  type="text"
+                  value={String(filaEditando.empresa || "")}
+                  onChange={(e) => setFilaEditando({ ...filaEditando, empresa: e.target.value.toUpperCase() })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </div>
+
+              {"factura" in filaEditando && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">No. Factura</label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.factura || "")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, factura: e.target.value.toUpperCase() })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                  />
+                </div>
+              )}
+
+              {"facturaReemplaza" in filaEditando && (
+                <div>
+                  <label className="block text-xs font-bold text-emerald-700 mb-1">
+                    # Factura que Reemplaza (FCOE...)
+                  </label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.facturaReemplaza || "")}
+                    onChange={(e) =>
+                      setFilaEditando({ ...filaEditando, facturaReemplaza: e.target.value.toUpperCase() })
+                    }
+                    className="w-full rounded-lg border border-emerald-400 px-3 py-2 font-mono font-bold"
+                  />
+                </div>
+              )}
+
+              {"rips" in filaEditando && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">RIPS</label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.rips || "")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, rips: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                </div>
+              )}
+
+              {"revisionFinanciera" in filaEditando && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Revisión del Área Financiera / Estado
+                  </label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.revisionFinanciera || "")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, revisionFinanciera: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                </div>
+              )}
+
+              {"motivo" in filaEditando && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Motivo de Anulación / Devolución</label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.motivo || "")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, motivo: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                </div>
+              )}
+
+              {"notaCredito" in filaEditando && (
+                <div>
+                  <label className="block text-xs font-bold text-purple-800 mb-1">Nota Crédito</label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.notaCredito || "")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, notaCredito: e.target.value })}
+                    className="w-full rounded-lg border border-purple-300 px-3 py-2 font-mono"
+                  />
+                </div>
+              )}
+
+              {"observacionInterna" in filaEditando && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Observación Interna</label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.observacionInterna || "")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, observacionInterna: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                </div>
+              )}
+
+              {"estado" in filaEditando && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Estado Servicio</label>
+                  <select
+                    value={String(filaEditando.estado || "PENDIENTE")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, estado: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 font-bold"
+                  >
+                    <option value="PENDIENTE">PENDIENTE</option>
+                    <option value="FACTURADO">FACTURADO</option>
+                    <option value="EN REVISION">EN REVISION</option>
+                  </select>
+                </div>
+              )}
+
+              {"observaciones" in filaEditando && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Observaciones Facturación</label>
+                  <input
+                    type="text"
+                    value={String(filaEditando.observaciones || "")}
+                    onChange={(e) => setFilaEditando({ ...filaEditando, observaciones: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Responsable / Facturadora</label>
+                <select
+                  value={String(filaEditando.responsable || filaEditando.facturador || "MARIA ALEJANDRA")}
+                  onChange={(e) =>
+                    setFilaEditando({
+                      ...filaEditando,
+                      responsable: e.target.value,
+                      facturador: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-semibold"
+                >
+                  {carteraInitialData.responsablesDisponibles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setFilaEditando(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarEdicionFila}
+                className="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-600 text-white font-bold text-sm shadow cursor-pointer"
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: NUEVO REGISTRO OPERATIVO                                       */}
+      {/* ===================================================================== */}
+      {mostrarModalNuevo && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h4 className="text-lg font-extrabold text-slate-900">
+                + Crear Nuevo Registro ({tabActiva.toUpperCase()})
+              </h4>
+              <button
+                onClick={() => setMostrarModalNuevo(false)}
+                className="text-slate-500 hover:text-slate-800 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Empresa Real</label>
+                <select
+                  value={nuevoRegistroForm.empresa}
+                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, empresa: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-semibold"
+                >
+                  {carteraInitialData.empresasDisponibles.map((emp) => (
+                    <option key={emp} value={emp}>
+                      {emp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Año</label>
+                <select
+                  value={nuevoRegistroForm.anio}
+                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, anio: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-semibold"
+                >
+                  {carteraInitialData.aniosDisponibles.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">No. Factura (FCOE...)</label>
+                <input
+                  type="text"
+                  value={nuevoRegistroForm.factura}
+                  onChange={(e) =>
+                    setNuevoRegistroForm({ ...nuevoRegistroForm, factura: e.target.value.toUpperCase() })
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Valor ($ COP)</label>
+                <input
+                  type="number"
+                  value={nuevoRegistroForm.valorRadicado}
+                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, valorRadicado: e.target.value })}
+                  placeholder="Ej. 1450000"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1"># Factura Reemplaza / Nota Crédito</label>
+                <input
+                  type="text"
+                  value={nuevoRegistroForm.facturaReemplaza}
+                  onChange={(e) =>
+                    setNuevoRegistroForm({
+                      ...nuevoRegistroForm,
+                      facturaReemplaza: e.target.value.toUpperCase(),
+                      notaCredito: e.target.value.toUpperCase(),
+                    })
+                  }
+                  placeholder="Ej. FCOE75900 o NC1204"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Responsable / Facturadora</label>
+                <select
+                  value={nuevoRegistroForm.responsable}
+                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, responsable: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-semibold"
+                >
+                  {carteraInitialData.responsablesDisponibles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Motivo / Descripción / Observación
+                </label>
+                <input
+                  type="text"
+                  value={nuevoRegistroForm.motivo}
+                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, motivo: e.target.value })}
+                  placeholder="Detalle del motivo de glosa, devolución o servicio pendiente..."
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setMostrarModalNuevo(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={crearNuevoRegistro}
+                className="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-600 text-white font-bold text-sm shadow cursor-pointer"
+              >
+                Guardar Nuevo Registro
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: AGREGAR NUEVO CORTE DE SISMA BACK                              */}
+      {/* ===================================================================== */}
+      {mostrarModalCorte && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h4 className="text-lg font-extrabold text-slate-900">
+                + Registrar Corte Oficial de SISMA Back
+              </h4>
+              <button
+                onClick={() => setMostrarModalCorte(false)}
+                className="text-slate-500 hover:text-slate-800 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Modalidad</label>
+                <select
+                  value={nuevoCorteForm.modalidad}
+                  onChange={(e) =>
+                    setNuevoCorteForm({ ...nuevoCorteForm, modalidad: e.target.value as "TODAS" | "PYP" })
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-bold"
+                >
+                  <option value="TODAS">Todas las Empresas</option>
+                  <option value="PYP">Modalidad PYP</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de Corte (DD/MM/AAAA)</label>
+                <input
+                  type="text"
+                  value={nuevoCorteForm.fechaCorte}
+                  onChange={(e) => setNuevoCorteForm({ ...nuevoCorteForm, fechaCorte: e.target.value })}
+                  placeholder="Ej. 16/10/2026"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-blue-800 mb-1">
+                  Cartera Corriente (&lt; 60 días)
+                </label>
+                <input
+                  type="number"
+                  value={nuevoCorteForm.carteraCorriente}
+                  onChange={(e) => setNuevoCorteForm({ ...nuevoCorteForm, carteraCorriente: e.target.value })}
+                  placeholder="Análisis de vencimiento"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-rose-800 mb-1">
+                  Cartera Vencida (&gt;= 60 días)
+                </label>
+                <input
+                  type="number"
+                  value={nuevoCorteForm.carteraVencida}
+                  onChange={(e) => setNuevoCorteForm({ ...nuevoCorteForm, carteraVencida: e.target.value })}
+                  placeholder="Análisis de vencimiento"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-amber-800 mb-1">
+                  Anticipos / Giros por Cruzar
+                </label>
+                <input
+                  type="number"
+                  value={nuevoCorteForm.anticiposPorCruzar}
+                  onChange={(e) => setNuevoCorteForm({ ...nuevoCorteForm, anticiposPorCruzar: e.target.value })}
+                  placeholder="Auxiliar abierto (1301250602...)"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Facturas Pendientes por Radicar
+                </label>
+                <input
+                  type="number"
+                  value={nuevoCorteForm.facturasPendientesRadicar}
+                  onChange={(e) =>
+                    setNuevoCorteForm({ ...nuevoCorteForm, facturasPendientesRadicar: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+              <button
+                onClick={() => setMostrarModalCorte(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarNuevoCorteSismaBack}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow cursor-pointer"
+              >
+                Guardar Corte SISMA Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: ESPECIFICACIÓN TÉCNICA DE ENDPOINTS SISMA BACK PARA FABER      */}
+      {/* ===================================================================== */}
+      {mostrarModalFaber && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <span className="text-xs font-bold uppercase text-blue-700">
+                  Integración Directa con api.centrooftalmologicoebenezer.com/node/swagger#/Informes
+                </span>
+                <h4 className="text-lg font-extrabold text-slate-900">
+                  Especificación de los 2 Endpoints de SISMA Back para Faber
+                </h4>
+              </div>
+              <button
+                onClick={() => setMostrarModalFaber(false)}
+                className="text-slate-500 hover:text-slate-800 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Este tablero ya tiene programada la conexión automática en{" "}
+              <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono">/api/cartera</code> usando la misma llave{" "}
+              <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono">X-API-Key</code>. Apenas Faber publique estos 2 endpoints en el servidor Node/Swagger apuntando a la base de datos de <strong>SISMA Back (Contabilidad)</strong>, los cortes se actualizarán solos en tiempo real:
+            </p>
+
+            <div className="space-y-4">
+              {carteraInitialData.sismaBack.especificacionFaber.map((ep) => (
+                <div key={ep.endpoint} className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs space-y-2">
+                  <div className="font-mono font-bold text-blue-300 text-sm">{ep.endpoint}</div>
+                  <div>
+                    <span className="text-slate-400">Módulo en SISMA Back: </span>
+                    <strong className="text-white">{ep.moduloOrigen}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Parámetros Query: </span>
+                    <code className="text-amber-300">{ep.parametros}</code>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block mb-1">Campos requeridos en el JSON de respuesta:</span>
+                    <ul className="list-disc list-inside text-emerald-300 font-mono space-y-1">
+                      {ep.camposRetorno.map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-200">
+              <button
+                onClick={() => setMostrarModalFaber(false)}
+                className="px-5 py-2 rounded-xl bg-slate-900 text-white font-bold text-sm cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
