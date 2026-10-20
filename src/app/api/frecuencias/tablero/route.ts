@@ -329,15 +329,24 @@ async function obtenerHtmlTablero(): Promise<{ html: string; origen: Origen } | 
   const token = process.env.TABLERO_EBENEZER_PAT;
 
   // 1. La copia viva del repositorio del motor. Es la que debe ganar siempre.
+  //
+  //    Se pide por api.github.com y NO por raw.githubusercontent.com. La
+  //    diferencia no es de estilo: raw.githubusercontent IGNORA la cabecera
+  //    Authorization. En un repositorio privado eso no da un error de
+  //    permiso —que se vería— sino un 404 silencioso, igual que si el
+  //    archivo no existiera. Por eso esta descarga venía fallando sin que
+  //    nadie pudiera distinguirlo de "no está". La API sí respeta el token,
+  //    y con Accept: raw devuelve el archivo tal cual.
   if (token) {
     for (const ruta of [ARCHIVO, "publicar/index.html"]) {
       try {
         const res = await fetch(
-          `https://raw.githubusercontent.com/${REPO}/main/${ruta}`,
+          `https://api.github.com/repos/${REPO}/contents/${ruta}?ref=main`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
               Accept: "application/vnd.github.raw",
+              "X-GitHub-Api-Version": "2022-11-28",
               "User-Agent": "ebenezer-plataforma",
             },
             cache: "no-store",
