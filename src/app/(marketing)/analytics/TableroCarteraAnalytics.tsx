@@ -148,8 +148,45 @@ export default function TableroCarteraAnalytics() {
   // Persiana states for the main cards/boxes
   const [persianaResumenAbierta, setPersianaResumenAbierta] = useState<boolean>(true);
   const [persianaCortesAbierta, setPersianaCortesAbierta] = useState<boolean>(false);
+  const [persianaEdadesVivaAbierta, setPersianaEdadesVivaAbierta] = useState<boolean>(false);
   const [cortinaTablaAbierta, setCortinaTablaAbierta] = useState<boolean>(true);
   const [persianaMesaAbierta, setPersianaMesaAbierta] = useState<boolean>(true);
+
+  // Live SISMA API state (Faber endpoints: cartera-edades & auxiliar-abierto)
+  const [fechaCorteVivo, setFechaCorteVivo] = useState<string>("2026-10-20");
+  const [cargandoSismaVivo, setCargandoSismaVivo] = useState<boolean>(false);
+  const [datosSismaVivo, setDatosSismaVivo] = useState<{
+    corteISO: string;
+    fechaCorte: string;
+    filasFacturas: number;
+    edades: {
+      porVencer: number;
+      d30: number;
+      d60: number;
+      d90: number;
+      d120: number;
+      d180: number;
+      d360: number;
+      mas360: number;
+      saldoTotal: number;
+    };
+    cuentasGirosDetalle: {
+      codigo: string;
+      nombre: string;
+      saldo: number;
+      saldoAbsoluto: number;
+      documentos: number;
+    }[];
+    topEmpresas: {
+      nit: string;
+      razonSocial: string;
+      facturasCount: number;
+      corriente: number;
+      vencida: number;
+      pendienteRadicar: number;
+      total: number;
+    }[];
+  } | null>(null);
 
   // 6 Top Bar Filters
   const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
@@ -289,6 +326,51 @@ export default function TableroCarteraAnalytics() {
     setNotificacion(msg);
     setTimeout(() => setNotificacion(""), 4000);
   };
+
+  const sincronizarConSismaVivo = async (fechaISO?: string, silencioso?: boolean) => {
+    const corteConsulta = fechaISO || fechaCorteVivo || "2026-10-20";
+    setCargandoSismaVivo(true);
+    try {
+      const res = await fetch(`/api/cartera/sisma?corte=${encodeURIComponent(corteConsulta)}`, {
+        cache: "no-store",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        if (!silencioso) {
+          mostrarMensaje(`No se pudo sincronizar con SISMA: ${json.error || res.statusText}`);
+        }
+        return;
+      }
+      setDatosSismaVivo(json);
+      if (json.resumenCorte) {
+        setCortesTodas((prev) => {
+          const sinVivoPrevio = prev.filter(
+            (c) => !c.fechaCorte.includes("SISMA Vivo") && c.fechaCorte !== json.fechaCorte
+          );
+          const nuevaLista = [...sinVivoPrevio, json.resumenCorte];
+          setIndiceCorteActivo(nuevaLista.length - 1);
+          return nuevaLista;
+        });
+        setModalidadSisma("TODAS");
+      }
+      if (!silencioso) {
+        mostrarMensaje(
+          `✓ Sincronizado en vivo con SISMA (Corte ${json.fechaCorte} · ${json.filasFacturas.toLocaleString("es-CO")} facturas)`
+        );
+      }
+    } catch {
+      if (!silencioso) {
+        mostrarMensaje("Error de red al conectar con el API de SISMA Contabilidad.");
+      }
+    } finally {
+      setCargandoSismaVivo(false);
+    }
+  };
+
+  useEffect(() => {
+    sincronizarConSismaVivo("2026-10-20", true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const limpiarTodosLosFiltros = () => {
     setFiltroAnio("TODOS");
@@ -1287,6 +1369,32 @@ export default function TableroCarteraAnalytics() {
           </button>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <div
+              className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 border"
+              style={{ backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" }}
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
+              <span className="text-[11px] font-extrabold" style={{ color: "#065F46" }}>
+                Corte SISMA:
+              </span>
+              <input
+                type="date"
+                value={fechaCorteVivo}
+                onChange={(e) => setFechaCorteVivo(e.target.value)}
+                className="rounded-lg border bg-white px-2 py-0.5 text-xs font-bold"
+                style={{ borderColor: "#6EE7B7", color: "#065F46" }}
+              />
+              <button
+                type="button"
+                disabled={cargandoSismaVivo}
+                onClick={() => sincronizarConSismaVivo(fechaCorteVivo, false)}
+                className="px-2.5 py-1 rounded-lg text-xs font-extrabold transition cursor-pointer disabled:opacity-60"
+                style={{ backgroundColor: "#059669", color: "#FFFFFF" }}
+              >
+                {cargandoSismaVivo ? "Consultando..." : "🔄 Sincronizar API"}
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => setMostrarPanelCarga(!mostrarPanelCarga)}
@@ -1538,6 +1646,141 @@ export default function TableroCarteraAnalytics() {
                 </div>
               </div>
             </div>
+
+            {/* CORTINA DESPLEGABLE: DESGLOSE EN VIVO POR EDADES Y ENTIDADES (API SISMA CONTABILIDAD) */}
+            {datosSismaVivo && (
+              <div
+                className="rounded-xl p-4 border space-y-4"
+                style={{ backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setPersianaEdadesVivaAbierta((prev) => !prev)}
+                  className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-6 h-6 rounded flex items-center justify-center font-bold text-xs"
+                      style={{ backgroundColor: "#FFFFFF", color: "#047857", border: "1px solid #86EFAC" }}
+                    >
+                      {persianaEdadesVivaAbierta ? "▴" : "▾"}
+                    </span>
+                    <h4 className="text-sm font-extrabold" style={{ color: "#065F46" }}>
+                      {persianaEdadesVivaAbierta
+                        ? "▴ Replegar Cortina: Cartera por Edades y Auxiliar Abierto en Vivo (API SISMA)"
+                        : `▾ Desplegar Cortina: Cartera por Edades (${datosSismaVivo.filasFacturas.toLocaleString("es-CO")} facturas) y Giros en Vivo — Corte ${datosSismaVivo.fechaCorte}`}
+                    </h4>
+                  </div>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "#DCFCE7", color: "#065F46" }}>
+                    Conectado a Contabilidad SISMA
+                  </span>
+                </button>
+
+                {persianaEdadesVivaAbierta && (
+                  <div className="space-y-4 pt-1">
+                    {/* 8 TRAMOS DE EDAD DE CARTERA EN VIVO */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+                      {[
+                        { label: "Por Vencer", val: datosSismaVivo.edades.porVencer, cor: true },
+                        { label: "1 a 30 Días", val: datosSismaVivo.edades.d30, cor: true },
+                        { label: "31 a 60 Días", val: datosSismaVivo.edades.d60, cor: true },
+                        { label: "61 a 90 Días", val: datosSismaVivo.edades.d90, cor: false },
+                        { label: "91 a 120 Días", val: datosSismaVivo.edades.d120, cor: false },
+                        { label: "121 a 180 Días", val: datosSismaVivo.edades.d180, cor: false },
+                        { label: "181 a 360 Días", val: datosSismaVivo.edades.d360, cor: false },
+                        { label: "Más de 360 Días", val: datosSismaVivo.edades.mas360, cor: false },
+                      ].map((tramo) => (
+                        <div
+                          key={tramo.label}
+                          className="rounded-xl p-3 border bg-white"
+                          style={{ borderColor: tramo.cor ? "#BFDBFE" : "#FECDD3" }}
+                        >
+                          <div
+                            className="text-[10px] font-extrabold uppercase"
+                            style={{ color: tramo.cor ? "#1D58D8" : "#BE123C" }}
+                          >
+                            {tramo.label}
+                          </div>
+                          <div className="text-xs sm:text-sm font-mono font-extrabold mt-1" style={{ color: "#0E245E" }}>
+                            {formatCOP(tramo.val)}
+                          </div>
+                          <div className="text-[10px] mt-0.5" style={{ color: "#64748B" }}>
+                            {tramo.cor ? "Corriente (<=60d)" : "Vencida (>60d)"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* CUENTAS DE AUXILIAR ABIERTO DE GIROS EN VIVO */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {datosSismaVivo.cuentasGirosDetalle.map((cg) => (
+                        <div
+                          key={cg.codigo}
+                          className="rounded-xl p-3.5 border bg-white flex items-center justify-between gap-2"
+                          style={{ borderColor: "#FDE68A" }}
+                        >
+                          <div>
+                            <div className="text-xs font-extrabold font-mono" style={{ color: "#B45309" }}>
+                              Cuenta {cg.codigo} ({cg.documentos} docs)
+                            </div>
+                            <div className="text-[11px] font-medium" style={{ color: "#475569" }}>
+                              {cg.nombre}
+                            </div>
+                          </div>
+                          <div className="text-sm font-mono font-extrabold whitespace-nowrap" style={{ color: "#92400E" }}>
+                            {formatCOP(cg.saldoAbsoluto)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* TOP ENTIDADES EN CARTERA POR EDADES EN VIVO */}
+                    <div className="overflow-x-auto border rounded-xl bg-white" style={{ borderColor: "#E2ECF8" }}>
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                            <th className="text-left p-2.5 font-bold">NIT</th>
+                            <th className="text-left p-2.5 font-bold">Entidad / Pagador (SISMA en Vivo)</th>
+                            <th className="text-right p-2.5 font-bold">Facturas</th>
+                            <th className="text-right p-2.5 font-bold">Pend. Radicar (130125)</th>
+                            <th className="text-right p-2.5 font-bold">Corriente (&lt;= 60d)</th>
+                            <th className="text-right p-2.5 font-bold">Vencida (&gt; 60d)</th>
+                            <th className="text-right p-2.5 font-bold">Saldo Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
+                          {datosSismaVivo.topEmpresas.map((emp) => (
+                            <tr key={emp.nit + emp.razonSocial} className="hover:bg-slate-50">
+                              <td className="p-2.5 font-mono" style={{ color: "#475569" }}>
+                                {emp.nit}
+                              </td>
+                              <td className="p-2.5 font-bold" style={{ color: "#0E245E" }}>
+                                {emp.razonSocial}
+                              </td>
+                              <td className="p-2.5 text-right font-mono" style={{ color: "#334155" }}>
+                                {emp.facturasCount.toLocaleString("es-CO")}
+                              </td>
+                              <td className="p-2.5 text-right font-mono" style={{ color: "#B45309" }}>
+                                {formatCOP(emp.pendienteRadicar)}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-semibold" style={{ color: "#1D58D8" }}>
+                                {formatCOP(emp.corriente)}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-semibold" style={{ color: "#BE123C" }}>
+                                {formatCOP(emp.vencida)}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-extrabold" style={{ color: "#0E245E" }}>
+                                {formatCOP(emp.total)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* GRÁFICA Y TABLA COMPARATIVA DE CORTES CON PERSIANA */}
             <div
@@ -2010,7 +2253,12 @@ export default function TableroCarteraAnalytics() {
                       type="button"
                       key={t.id}
                       onClick={() => {
-                        setTabActiva(t.id);
+                        if (tabActiva === t.id) {
+                          setCortinaTablaAbierta((prev) => !prev);
+                        } else {
+                          setTabActiva(t.id);
+                          setCortinaTablaAbierta(true);
+                        }
                         setColMenuAbierto(null);
                         setPaginaActual(1);
                       }}
@@ -2109,14 +2357,18 @@ export default function TableroCarteraAnalytics() {
                             </td>
                             <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
                               <div className="flex items-start justify-between gap-2">
-                                <span className={abierta ? "whitespace-normal" : "line-clamp-1"}>
-                                  {textoMotivoBase}
+                                <span>
+                                  {abierta
+                                    ? textoMotivoBase
+                                    : textoMotivoBase.length > 28
+                                    ? `${textoMotivoBase.slice(0, 28)}…`
+                                    : textoMotivoBase}
                                 </span>
                                 <span
-                                  className="text-[10px] font-bold shrink-0 mt-0.5 px-1.5 py-0.5 rounded"
-                                  style={{ backgroundColor: abierta ? "#DBEAFE" : "#F1F5F9", color: "#1D58D8" }}
+                                  className="text-[10px] font-bold shrink-0 px-2 py-0.5 rounded"
+                                  style={{ backgroundColor: abierta ? "#DBEAFE" : "#EFF6FF", color: "#1D58D8" }}
                                 >
-                                  {abierta ? "▴ Replegar" : "▾ Ver"}
+                                  {abierta ? "▴ Replegar" : "▾ Desplegar"}
                                 </span>
                               </div>
                             </td>
