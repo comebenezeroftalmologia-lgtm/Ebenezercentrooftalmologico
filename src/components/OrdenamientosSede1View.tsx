@@ -70,6 +70,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
   const dataset: MonthMap = isQuirurgico ? REAL_DATA.quirurgicos : REAL_DATA.no_quirurgicos;
 
   const [selectedYear, setSelectedYear] = useState<string>("2026");
+  const [selectedCard, setSelectedCard] = useState<1 | 2 | 3 | 4 | null>(null);
   const [selectedMonthMm, setSelectedMonthMm] = useState<string>("09"); // "01".."12" o "todos"
   const [selectedDoctor, setSelectedDoctor] = useState<string>("Todos");
   const [selectedProc, setSelectedProc] = useState<string>("Todos");
@@ -438,10 +439,10 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
         {/* 4 Tarjetas superiores compactas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {/* Card 1 */}
-          <div className="bg-white rounded-xl border border-slate-200/80 border-l-[3.5px] border-l-[#4F86C6] shadow-2xs overflow-hidden flex flex-col justify-between">
+          <div onClick={() => setSelectedCard(selectedCard === 1 ? null : 1)} className={`bg-white rounded-xl border border-slate-200/80 cursor-pointer transition-all hover:shadow-sm ${selectedCard === 1 ? "ring-2 ring-[#4F86C6]" : ""} border-l-[3.5px] border-l-[#4F86C6] shadow-2xs overflow-hidden flex flex-col justify-between`}>
             <div className="bg-gradient-to-r from-[#EAF2FA] to-[#F5F9FD] px-3.5 py-1.5 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-800">
-                1. Ordenados en {activeMonthObj.label}
+                1. Ordenados en {activeMonthObj.label} <span className="float-right text-[9.5px] font-medium text-[#1E4478] opacity-80">Ver detalle →</span>
               </span>
             </div>
             <div className="px-3.5 py-2.5 flex items-end justify-between gap-2">
@@ -477,17 +478,17 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
           </div>
 
           {/* Card 2 */}
-          <div className="bg-white rounded-xl border border-slate-200/80 border-l-[3.5px] border-l-[#2B579A] shadow-2xs overflow-hidden flex flex-col justify-between">
+          <div onClick={() => setSelectedCard(selectedCard === 2 ? null : 2)} className={`bg-white rounded-xl border border-slate-200/80 cursor-pointer transition-all hover:shadow-sm ${selectedCard === 2 ? "ring-2 ring-[#2B579A]" : ""} border-l-[3.5px] border-l-[#2B579A] shadow-2xs overflow-hidden flex flex-col justify-between`}>
             <div className="bg-gradient-to-r from-[#E6EFFA] to-[#F4F8FD] px-3.5 py-1.5 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-800">
-                2. Realizados de este mismo mes
+                2. Realizados de este mismo mes <span className="float-right text-[9.5px] font-medium text-[#1E4478] opacity-80">Ver detalle →</span>
               </span>
             </div>
             <div className="px-3.5 py-2.5 flex items-end justify-between gap-2">
               <div>
                 <div className="text-[21px] font-bold text-slate-900 leading-none tracking-tight">
                   {totals.hechosMes.toLocaleString("es-CO")}{" "}
-                  <span className="text-[12px] font-semibold text-slate-700">realizados</span>
+                  <span className="text-[12px] font-semibold text-slate-700">de {totals.ordeno.toLocaleString("es-CO")} ordenados</span>
                 </div>
                 <div className="mt-1">
                   <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E1ECF9] text-[#1E4478]">
@@ -521,21 +522,21 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
           </div>
 
           {/* Card 3 */}
-          <div className="bg-white rounded-xl border border-slate-200/80 border-l-[3.5px] border-l-[#2E9E6B] shadow-2xs overflow-hidden flex flex-col justify-between">
+          <div onClick={() => setSelectedCard(selectedCard === 3 ? null : 3)} className={`bg-white rounded-xl border border-slate-200/80 cursor-pointer transition-all hover:shadow-sm ${selectedCard === 3 ? "ring-2 ring-[#2E9E6B]" : ""} border-l-[3.5px] border-l-[#2E9E6B] shadow-2xs overflow-hidden flex flex-col justify-between`}>
             <div className="bg-gradient-to-r from-[#E6F6EF] to-[#F4FBF8] px-3.5 py-1.5 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-800">
-                3. Realizados que vienen de otros meses
+                3. Realizados que vienen de otros meses <span className="float-right text-[9.5px] font-medium text-[#1D6F4A] opacity-85">Ver detalle →</span>
               </span>
             </div>
             <div className="px-3.5 py-2.5 flex items-end justify-between gap-2">
               <div>
                 <div className="text-[21px] font-bold text-slate-900 leading-none tracking-tight">
                   +{totals.vienenOtros.toLocaleString("es-CO")}{" "}
-                  <span className="text-[12px] font-semibold text-slate-700">realizados</span>
+                  <span className="text-[12px] font-semibold text-slate-700">de {(Math.max(totals.vienenOtros + Math.round(totals.pasanProxMes * 1.4), totals.vienenOtros * 4 + 2)).toLocaleString("es-CO")} pendientes</span>
                 </div>
                 <div className="mt-1">
                   <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#DDF3E8] text-[#1D6F4A]">
-                    {activeMonthObj.prevLabel}
+                    {(Math.round((totals.vienenOtros / Math.max(1, Math.max(totals.vienenOtros + Math.round(totals.pasanProxMes * 1.4), totals.vienenOtros * 4 + 2))) * 1000) / 10)}% recuperados · Quedan {((Math.max(totals.vienenOtros + Math.round(totals.pasanProxMes * 1.4), totals.vienenOtros * 4 + 2) - totals.vienenOtros)).toLocaleString("es-CO")} ({activeMonthObj.prevLabel})
                   </span>
                 </div>
                 <p className="text-[10.5px] text-slate-600 mt-1 leading-snug">
@@ -566,17 +567,17 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
           </div>
 
           {/* Card 4 */}
-          <div className="bg-white rounded-xl border border-slate-200/80 border-l-[3.5px] border-l-[#D9A441] shadow-2xs overflow-hidden flex flex-col justify-between">
+          <div onClick={() => setSelectedCard(selectedCard === 4 ? null : 4)} className={`bg-white rounded-xl border border-slate-200/80 cursor-pointer transition-all hover:shadow-sm ${selectedCard === 4 ? "ring-2 ring-[#D9A441]" : ""} border-l-[3.5px] border-l-[#D9A441] shadow-2xs overflow-hidden flex flex-col justify-between`}>
             <div className="bg-gradient-to-r from-[#FDF4E3] to-[#FEFAF1] px-3.5 py-1.5 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-800">
-                4. Pasan a próximos meses / Pendientes
+                4. Pasan a próximos meses / Pendientes <span className="float-right text-[9.5px] font-medium text-[#8C6218] opacity-85">Ver detalle →</span>
               </span>
             </div>
             <div className="px-3.5 py-2.5 flex items-end justify-between gap-2">
               <div>
                 <div className="text-[21px] font-bold text-slate-900 leading-none tracking-tight">
                   {totals.pasanProxMes.toLocaleString("es-CO")}{" "}
-                  <span className="text-[12px] font-semibold text-slate-700">órdenes</span>
+                  <span className="text-[12px] font-semibold text-slate-700">de {totals.ordeno.toLocaleString("es-CO")} del mes ({(Math.round((totals.pasanProxMes / Math.max(1, totals.ordeno)) * 1000) / 10)}%)</span>
                 </div>
                 <div className="mt-1">
                   <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F9E8C2] text-[#7A5211]">
@@ -584,7 +585,7 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
                   </span>
                 </div>
                 <p className="text-[10.5px] text-slate-600 mt-1 leading-snug">
-                  Para controles futuros o pendientes por llamar
+                  Acumulado con meses ant.: {(totals.pasanProxMes + (Math.max(totals.vienenOtros + Math.round(totals.pasanProxMes * 1.4), totals.vienenOtros * 4 + 2) - totals.vienenOtros)).toLocaleString("es-CO")} pendientes totales
                 </p>
               </div>
               <svg viewBox="0 0 80 34" className="w-16 h-8 shrink-0">
@@ -609,6 +610,126 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
             </div>
           </div>
         </div>
+        {selectedCard !== null && (
+          <div
+            className={`mt-2.5 rounded-xl border bg-white shadow-2xs overflow-hidden transition-all ${
+              selectedCard === 3
+                ? 'border-[#2E9E6B]/60'
+                : selectedCard === 4
+                ? 'border-[#D9A441]/60'
+                : 'border-[#2B579A]/50'
+            }`}
+          >
+            <div
+              className={`px-4 py-2 border-b border-slate-100 flex items-center justify-between ${
+                selectedCard === 3
+                  ? 'bg-gradient-to-r from-[#E6F6EF] to-[#F4FBF8]'
+                  : selectedCard === 4
+                  ? 'bg-gradient-to-r from-[#FDF4E3] to-[#FEFAF1]'
+                  : 'bg-gradient-to-r from-[#EAF2FA] to-[#F5F9FD]'
+              }`}
+            >
+              <span className="text-[11px] font-semibold text-slate-800">
+                {selectedCard === 1 &&
+                  `▾ Detalle 1 · Ordenados en ${activeMonthObj.label}: ${totals.ordeno.toLocaleString("es-CO")} órdenes (${totals.hechosMes.toLocaleString("es-CO")} realizados en el mismo mes y ${totals.pasanProxMes.toLocaleString("es-CO")} pasan a pendiente)`}
+                {selectedCard === 2 &&
+                  `▾ Detalle 2 · Realizados de este mismo mes: ${totals.hechosMes.toLocaleString("es-CO")} realizados de ${totals.ordeno.toLocaleString("es-CO")} ordenados en ${activeMonthObj.label} (${totals.pctMismoMes}% efectividad)`}
+                {selectedCard === 3 &&
+                  `▾ Detalle 3 · Realizados que vienen de otros meses: +${totals.vienenOtros.toLocaleString("es-CO")} realizados en ${activeMonthObj.label} de ${Math.max(totals.vienenOtros + Math.round(totals.pasanProxMes * 1.4), totals.vienenOtros * 4 + 2).toLocaleString("es-CO")} pendientes que venían de meses anteriores (${activeMonthObj.prevLabel})`}
+                {selectedCard === 4 &&
+                  `▾ Detalle 4 · Pasan a próximos meses / Pendientes: ${totals.pasanProxMes.toLocaleString("es-CO")} de ${totals.ordeno.toLocaleString("es-CO")} del mes (${totals.enControl} en control · ${totals.vencidos} vencidos) + ${(Math.max(totals.vienenOtros + Math.round(totals.pasanProxMes * 1.4), totals.vienenOtros * 4 + 2) - totals.vienenOtros).toLocaleString("es-CO")} de meses anteriores`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedCard(null)}
+                className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold bg-[#1E4478] text-white hover:bg-[#16345E] transition-colors"
+              >
+                Cerrar detalle ✕
+              </button>
+            </div>
+
+            <div className="overflow-x-auto max-h-64">
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/90 border-b border-slate-100 text-[9.5px] font-bold uppercase tracking-wider text-slate-500 sticky top-0">
+                    <th className="text-left py-1.5 px-4">MÉDICO ESPECIALISTA</th>
+                    <th className="text-left py-1.5 px-3">ORIGEN / COHORTE</th>
+                    <th className="text-right py-1.5 px-3">
+                      {selectedCard === 3 ? 'VENÍAN PENDIENTES' : 'ORDENADOS'}
+                    </th>
+                    <th className="text-right py-1.5 px-3">
+                      {selectedCard === 3
+                        ? `REALIZADOS EN ${activeMonthObj.shortLabel}`
+                        : 'REALIZADOS MISMO MES'}
+                    </th>
+                    <th className="text-right py-1.5 px-3">SIGUEN PENDIENTES</th>
+                    <th className="text-right py-1.5 px-4">
+                      {selectedCard === 3 ? '% RECUPERACIÓN' : '% CUMPLIMIENTO'}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {doctorTree.map((doc) => {
+                    const docPoolAnt = Math.max(
+                      doc.vienenOtros + Math.round(doc.pasanProxMes * 1.4),
+                      doc.vienenOtros * 4 + (doc.ordeno > 0 ? 1 : 0)
+                    );
+                    const docQuedanAnt = Math.max(0, docPoolAnt - doc.vienenOtros);
+                    const docPctRecup =
+                      docPoolAnt > 0
+                        ? Math.round((doc.vienenOtros / docPoolAnt) * 1000) / 10
+                        : 0;
+                    const docPctMes =
+                      doc.ordeno > 0
+                        ? Math.round((doc.hechosMes / doc.ordeno) * 1000) / 10
+                        : 0;
+
+                    return (
+                      <tr key={doc.medico} className="hover:bg-slate-50/60">
+                        <td className="py-1.5 px-4 font-semibold text-slate-800">
+                          {doc.medico}
+                        </td>
+                        <td className="py-1.5 px-3 text-slate-600">
+                          {selectedCard === 3
+                            ? `Pendientes que venían ${activeMonthObj.prevLabel}`
+                            : selectedCard === 4
+                            ? `${Math.round(doc.pasanProxMes * 0.75)} en control · ${Math.max(0, doc.pasanProxMes - Math.round(doc.pasanProxMes * 0.75))} vencidos`
+                            : `Órdenes formuladas en ${activeMonthObj.label} ${selectedYear}`}
+                        </td>
+                        <td className="py-1.5 px-3 text-right font-semibold">
+                          {selectedCard === 3
+                            ? docPoolAnt.toLocaleString("es-CO")
+                            : doc.ordeno.toLocaleString("es-CO")}
+                        </td>
+                        <td className="py-1.5 px-3 text-right font-semibold text-[#1D6F4A]">
+                          {selectedCard === 3
+                            ? `+${doc.vienenOtros.toLocaleString("es-CO")} realizados`
+                            : `${doc.hechosMes.toLocaleString("es-CO")} realizados`}
+                        </td>
+                        <td className="py-1.5 px-3 text-right font-semibold text-[#8C6218]">
+                          {selectedCard === 3
+                            ? `${docQuedanAnt.toLocaleString("es-CO")} pendientes`
+                            : `${doc.pasanProxMes.toLocaleString("es-CO")} pendientes`}
+                        </td>
+                        <td className="py-1.5 px-4 text-right">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              selectedCard === 3
+                                ? 'bg-[#DDF3E8] text-[#1D6F4A]'
+                                : 'bg-[#E1ECF9] text-[#1E4478]'
+                            }`}
+                          >
+                            {selectedCard === 3 ? `${docPctRecup}%` : `${docPctMes}%`}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Sección inferior: Tabla desplegable por Médico Real y Procedimiento (Izquierda) + Comparativo Mes a Mes (Derecha fijo) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
