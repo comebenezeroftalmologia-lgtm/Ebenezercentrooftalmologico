@@ -514,7 +514,7 @@ export default function DigiturnoContactPage() {
         </div>
 
         {/* CONTROLES Y FILTROS COMPACTOS (11px) */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 shrink-0">
           {/* Switcher Pestañas */}
           <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
             <button
