@@ -1123,7 +1123,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="Recibidas"
                       position="top"
-                      offset={7}
+                      offset={10}
                       formatter={(v: number) => fmtNum(v)}
                       style={{ fontSize: '9px', fill: '#334155', fontWeight: 600 }}
                     />
@@ -1137,7 +1137,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="Contestadas"
                       position="top"
-                      offset={7}
+                      offset={10}
                       formatter={(v: number) => fmtNum(v)}
                       style={{ fontSize: '9px', fill: '#065F46', fontWeight: 600 }}
                     />
@@ -1151,7 +1151,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="Perdidas"
                       position="top"
-                      offset={7}
+                      offset={10}
                       formatter={(v: number) => fmtNum(v)}
                       style={{ fontSize: '9px', fill: '#991B1B', fontWeight: 600 }}
                     />
@@ -1482,8 +1482,9 @@ export default function DigiturnoContactPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={digiturnoComputed.monthlyChart}
-                  margin={{ top: 28, right: 14, left: -10, bottom: 0 }}
-                  barGap={10}
+                  margin={{ top: 32, right: 18, left: -8, bottom: 2 }}
+                  barGap={16}
+                  barCategoryGap="22%"
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                   <XAxis
@@ -1520,7 +1521,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="sede1"
                       position="top"
-                      offset={7}
+                      offset={10}
                       formatter={(v: number) => `${v}m`}
                       style={{ fontSize: '9px', fill: '#334155', fontWeight: 600 }}
                     />
@@ -1535,7 +1536,7 @@ export default function DigiturnoContactPage() {
                     <LabelList
                       dataKey="sede2"
                       position="top"
-                      offset={7}
+                      offset={10}
                       formatter={(v: number) => `${v}m`}
                       style={{ fontSize: '9px', fill: '#065F46', fontWeight: 600 }}
                     />
