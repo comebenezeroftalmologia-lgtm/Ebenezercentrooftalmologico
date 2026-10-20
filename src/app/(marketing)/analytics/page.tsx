@@ -368,7 +368,7 @@ export default async function AnalyticsOverview() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {bloque.items.map((m) => (
                 <Link
-                  key={m.slug}
+                  key={m.href}
                   href={m.href}
                   className="group flex flex-col justify-between rounded-[14px] border border-[#E6EEF8] border-l-[3.5px] border-l-[#2563EB] bg-[#FBFDFF] p-5 transition-all duration-150 hover:-translate-y-0.5 hover:border-[#BFD4F4] hover:border-l-[#1D4ED8] hover:bg-white hover:shadow-[0_6px_18px_rgba(14,36,94,0.06)]"
                 >
@@ -388,7 +388,7 @@ export default async function AnalyticsOverview() {
                       />
                     </div>
                     <p className="text-[12.5px] leading-relaxed text-[#64748B]">
-                      {SUBTITULOS[m.slug]}
+                      {m.href === "/cartera" ? "Cartera corriente (< 60 días), vencida (>= 60 días), facturación pendiente por radicar, glosas Alfanet y giros SISMA." : m.href === "/digiturno-contact" ? "Tiempos de atención en Digiturno (Sede 1 y 2) y Contact Center PBX." : SUBTITULOS[m.slug]}
                     </p>
                   </div>
                 </Link>
@@ -397,7 +397,6 @@ export default async function AnalyticsOverview() {
           </section>
         ))}
       </div>
-    
       <TableroCarteraAnalytics />
     </div>
   );

@@ -247,9 +247,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
     return m.label.toLowerCase().includes(q) || corto.includes(q) || sub.includes(q);
   });
 
-  const operacion = OPERACION_ORDER.map((slug) => filtrados.find((m) => m.slug === slug)).filter(
-    (m): m is NonNullable<typeof m> => Boolean(m)
-  );
+  const operacion = filtrados.filter((m) => OPERACION_SLUGS.has(m.slug));
   const comercial = filtrados.filter((m) => !OPERACION_SLUGS.has(m.slug));
   const pill = (activo: boolean) =>
     `group flex items-center gap-2.5 rounded-[10px] px-3 py-2 transition ${
@@ -325,11 +323,11 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                   <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Accesos Directos</div>
                   <div className="flex flex-col gap-1">
                     {operacion.map((item) => (
-                      <Link key={item.slug} href={item.href} className={pill(false)}>
+                      <Link key={item.href} href={item.href} className={pill(false)}>
                         <IconoModulo slug={item.slug} className={iconCls(false)} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] leading-tight">{NOMBRE_CORTO[item.slug] ?? item.label}</p>
-                          <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">{SUBTITULO_MODULO[item.slug]}</p>
+                          <p className="truncate text-[13px] leading-tight">{item.href === "/cartera" || item.href === "/digiturno-contact" ? item.label : (NOMBRE_CORTO[item.slug] ?? item.label)}</p>
+                          <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">{item.href === "/cartera" ? "Cartera, glosas y giros SISMA" : item.href === "/digiturno-contact" ? "Tiempos de espera y PBX" : SUBTITULO_MODULO[item.slug]}</p>
                         </div>
                       </Link>
                     ))}
@@ -404,11 +402,11 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                     {operacion.map((item) => {
                       const activo = pathname === item.href;
                       return (
-                        <Link key={item.slug} href={item.href} className={pill(activo)}>
+                        <Link key={item.href} href={item.href} className={pill(activo)}>
                           <IconoModulo slug={item.slug} className={iconCls(activo)} />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13px] leading-tight">{NOMBRE_CORTO[item.slug] ?? item.label}</p>
-                            {SUBTITULO_MODULO[item.slug] && <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">{SUBTITULO_MODULO[item.slug]}</p>}
+                            <p className="truncate text-[13px] leading-tight">{item.href === "/cartera" || item.href === "/digiturno-contact" ? item.label : (NOMBRE_CORTO[item.slug] ?? item.label)}</p>
+                            {SUBTITULO_MODULO[item.slug] && <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">{item.href === "/cartera" ? "Cartera, glosas y giros SISMA" : item.href === "/digiturno-contact" ? "Tiempos de espera y PBX" : SUBTITULO_MODULO[item.slug]}</p>}
                           </div>
                         </Link>
                       );
@@ -423,11 +421,11 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                     {comercial.map((item) => {
                       const activo = pathname === item.href;
                       return (
-                        <Link key={item.slug} href={item.href} className={pill(activo)}>
+                        <Link key={item.href} href={item.href} className={pill(activo)}>
                           <IconoModulo slug={item.slug} className={iconCls(activo)} />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13px] leading-tight">{NOMBRE_CORTO[item.slug] ?? item.label}</p>
-                            {SUBTITULO_MODULO[item.slug] && <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">{SUBTITULO_MODULO[item.slug]}</p>}
+                            <p className="truncate text-[13px] leading-tight">{item.href === "/cartera" || item.href === "/digiturno-contact" ? item.label : (NOMBRE_CORTO[item.slug] ?? item.label)}</p>
+                            {SUBTITULO_MODULO[item.slug] && <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">{item.href === "/cartera" ? "Cartera, glosas y giros SISMA" : item.href === "/digiturno-contact" ? "Tiempos de espera y PBX" : SUBTITULO_MODULO[item.slug]}</p>}
                           </div>
                         </Link>
                       );
