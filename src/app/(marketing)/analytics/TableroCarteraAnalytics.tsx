@@ -81,7 +81,7 @@ type ColDef = {
   key: string;
   label: string;
   align?: "left" | "right" | "center";
-  width: string;
+  expand?: boolean;
 };
 
 const formatCOP = (val: number | undefined) => {
@@ -91,11 +91,24 @@ const formatCOP = (val: number | undefined) => {
 
 const normalizarEtiquetaTipo = (tipoRaw: string | undefined): string => {
   const t = String(tipoRaw || "").toUpperCase().trim();
-  if (t.includes("DEVOL")) return "DEVOLUCIÓN";
+  if (t.includes("DEVOL")) return "DEVOL.";
   return "GLOSA";
 };
 
-const STORAGE_KEY = "ebenezer_sisma_back_mesa_v3";
+const normalizarResponsableReal = (respRaw: string | undefined, empresaRaw: string | undefined): string => {
+  const r = String(respRaw || "").toUpperCase().trim();
+  if (r && r !== "SIN ASIGNAR" && r !== "POR ASIGNAR" && r !== "-") {
+    return r;
+  }
+  const emp = String(empresaRaw || "").toUpperCase();
+  if (emp.includes("SURA")) return "MARIA ALEJANDRA";
+  if (emp.includes("MUTUAL")) return "ERIKA ALZATE";
+  if (emp.includes("COLSANITAS") || emp.includes("SANITAS")) return "MARIA PAOLA";
+  if (emp.includes("MEDPLUS") || emp.includes("ALLIANZ")) return "MARIA JOSE";
+  return "YULEIBIS";
+};
+
+const STORAGE_KEY = "ebenezer_sisma_back_mesa_v4";
 
 export default function TableroCarteraAnalytics() {
   const [cortesTodas, setCortesTodas] = useState<CorteSismaBack[]>(
@@ -104,21 +117,38 @@ export default function TableroCarteraAnalytics() {
   const [cortesPyp, setCortesPyp] = useState<CorteSismaBack[]>(
     carteraInitialData.sismaBack.cortes.PYP
   );
-  const [anuladas, setAnuladas] = useState<AnuladaRow[]>(
-    carteraInitialData.anuladas as AnuladaRow[]
+  const [anuladas, setAnuladas] = useState<AnuladaRow[]>(() =>
+    (carteraInitialData.anuladas as AnuladaRow[]).map((r) => ({
+      ...r,
+      responsable: normalizarResponsableReal(r.responsable, r.empresa),
+    }))
   );
-  const [legalizadas, setLegalizadas] = useState<AnuladaRow[]>(
-    carteraInitialData.legalizadas as AnuladaRow[]
+  const [legalizadas, setLegalizadas] = useState<AnuladaRow[]>(() =>
+    (carteraInitialData.legalizadas as AnuladaRow[]).map((r) => ({
+      ...r,
+      responsable: normalizarResponsableReal(r.responsable, r.empresa),
+    }))
   );
-  const [glosas, setGlosas] = useState<GlosaRow[]>(
-    carteraInitialData.glosas as GlosaRow[]
+  const [glosas, setGlosas] = useState<GlosaRow[]>(() =>
+    (carteraInitialData.glosas as GlosaRow[]).map((r) => ({
+      ...r,
+      facturador: normalizarResponsableReal(r.facturador, r.empresa),
+    }))
   );
-  const [pendientes, setPendientes] = useState<PendienteRow[]>(
-    carteraInitialData.pendientes as PendienteRow[]
+  const [pendientes, setPendientes] = useState<PendienteRow[]>(() =>
+    (carteraInitialData.pendientes as PendienteRow[]).map((r) => ({
+      ...r,
+      responsable: normalizarResponsableReal(r.responsable, r.empresa),
+    }))
   );
 
   const [modalidadSisma, setModalidadSisma] = useState<"TODAS" | "PYP">("TODAS");
   const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(2);
+
+  // Persiana states for the main cards/boxes
+  const [persianaResumenAbierta, setPersianaResumenAbierta] = useState<boolean>(true);
+  const [persianaCortesAbierta, setPersianaCortesAbierta] = useState<boolean>(true);
+  const [persianaMesaAbierta, setPersianaMesaAbierta] = useState<boolean>(true);
 
   // 6 Top Bar Filters
   const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
@@ -132,7 +162,6 @@ export default function TableroCarteraAnalytics() {
   // Excel-style floating column filter popover state
   const [colMenuAbierto, setColMenuAbierto] = useState<string | null>(null);
   const [busquedaMenuCol, setBusquedaMenuCol] = useState<string>("");
-  // Map of column key -> excluded values (empty array or undefined means all selected)
   const [valoresExcluidosPorCol, setValoresExcluidosPorCol] = useState<Record<string, string[]>>({});
   const [busquedaTextoPorCol, setBusquedaTextoPorCol] = useState<Record<string, string>>({});
 
@@ -190,10 +219,38 @@ export default function TableroCarteraAnalytics() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.anuladas)) setAnuladas(parsed.anuladas);
-        if (Array.isArray(parsed.legalizadas)) setLegalizadas(parsed.legalizadas);
-        if (Array.isArray(parsed.glosas)) setGlosas(parsed.glosas);
-        if (Array.isArray(parsed.pendientes)) setPendientes(parsed.pendientes);
+        if (Array.isArray(parsed.anuladas)) {
+          setAnuladas(
+            parsed.anuladas.map((r: AnuladaRow) => ({
+              ...r,
+              responsable: normalizarResponsableReal(r.responsable, r.empresa),
+            }))
+          );
+        }
+        if (Array.isArray(parsed.legalizadas)) {
+          setLegalizadas(
+            parsed.legalizadas.map((r: AnuladaRow) => ({
+              ...r,
+              responsable: normalizarResponsableReal(r.responsable, r.empresa),
+            }))
+          );
+        }
+        if (Array.isArray(parsed.glosas)) {
+          setGlosas(
+            parsed.glosas.map((r: GlosaRow) => ({
+              ...r,
+              facturador: normalizarResponsableReal(r.facturador, r.empresa),
+            }))
+          );
+        }
+        if (Array.isArray(parsed.pendientes)) {
+          setPendientes(
+            parsed.pendientes.map((r: PendienteRow) => ({
+              ...r,
+              responsable: normalizarResponsableReal(r.responsable, r.empresa),
+            }))
+          );
+        }
         if (Array.isArray(parsed.cortesTodas)) setCortesTodas(parsed.cortesTodas);
         if (Array.isArray(parsed.cortesPyp)) setCortesPyp(parsed.cortesPyp);
       }
@@ -267,13 +324,22 @@ export default function TableroCarteraAnalytics() {
     if (colKey === "tipo") {
       return normalizarEtiquetaTipo(String(row.tipo || ""));
     }
+    if (colKey === "responsable" || colKey === "facturador") {
+      return normalizarResponsableReal(String(row[colKey] || ""), String(row.empresa || ""));
+    }
     if (colKey === "fechaRadicacion") {
       return String(row.fechaRadicacion || row.fechaFactura || "-");
     }
     if (colKey === "facturaReemplaza") {
       return String(row.facturaReemplaza || "PENDIENTE");
     }
-    if (colKey === "valorRadicado" || colKey === "valorGlosaDevolucion" || colKey === "valorFactura" || colKey === "valorGlosado" || colKey === "valorServicio") {
+    if (
+      colKey === "valorRadicado" ||
+      colKey === "valorGlosaDevolucion" ||
+      colKey === "valorFactura" ||
+      colKey === "valorGlosado" ||
+      colKey === "valorServicio"
+    ) {
       return formatCOP(Number(row[colKey] || 0));
     }
     if (colKey === "subtabla") {
@@ -331,9 +397,10 @@ export default function TableroCarteraAnalytics() {
         if (filtroEstado === "REEMPLAZADA" && !tieneReemplazo) return false;
         if (filtroEstado === "PENDIENTE" && tieneReemplazo) return false;
       }
-      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
+      const respReal = normalizarResponsableReal(r.responsable, r.empresa);
+      if (filtroResponsable !== "TODAS" && respReal !== filtroResponsable) return false;
       if (q) {
-        const texto = `${r.factura} ${r.empresa} ${r.motivo} ${r.facturaReemplaza} ${r.responsable} ${r.revisionFinanciera} ${r.rips}`.toLowerCase();
+        const texto = `${r.factura} ${r.empresa} ${r.motivo} ${r.facturaReemplaza} ${respReal} ${r.revisionFinanciera} ${r.rips}`.toLowerCase();
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -378,13 +445,14 @@ export default function TableroCarteraAnalytics() {
     const base = glosas.filter((r) => {
       if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
       if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && r.facturador !== filtroResponsable) return false;
+      const facReal = normalizarResponsableReal(r.facturador, r.empresa);
+      if (filtroResponsable !== "TODAS" && facReal !== filtroResponsable) return false;
       if (filtroEstado !== "TODOS") {
         if (filtroEstado === "REEMPLAZADA" && r.subtabla !== "RESPONDIDA_NO_ACEPTADA") return false;
         if (filtroEstado === "PENDIENTE" && r.subtabla === "RESPONDIDA_NO_ACEPTADA") return false;
       }
       if (q) {
-        const texto = `${r.factura} ${r.empresa} ${r.motivoGlosa} ${r.observacionInterna} ${r.notaCredito} ${r.facturador}`.toLowerCase();
+        const texto = `${r.factura} ${r.empresa} ${r.motivoGlosa} ${r.observacionInterna} ${r.notaCredito} ${facReal}`.toLowerCase();
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -407,13 +475,14 @@ export default function TableroCarteraAnalytics() {
     const base = pendientes.filter((r) => {
       if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
       if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && r.responsable !== filtroResponsable) return false;
+      const respReal = normalizarResponsableReal(r.responsable, r.empresa);
+      if (filtroResponsable !== "TODAS" && respReal !== filtroResponsable) return false;
       if (filtroEstado !== "TODOS") {
         if (filtroEstado === "REEMPLAZADA" && r.estado !== "FACTURADO") return false;
         if (filtroEstado === "PENDIENTE" && r.estado === "FACTURADO") return false;
       }
       if (q) {
-        const texto = `${r.cups} ${r.descripcion} ${r.empresa} ${r.medico} ${r.observaciones} ${r.responsable}`.toLowerCase();
+        const texto = `${r.cups} ${r.descripcion} ${r.empresa} ${r.medico} ${r.observaciones} ${respReal}`.toLowerCase();
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -510,8 +579,11 @@ export default function TableroCarteraAnalytics() {
     return (
       <th
         key={col.key}
-        style={{ width: col.width }}
-        className={`relative px-2.5 py-2.5 font-bold select-none whitespace-nowrap ${
+        style={{
+          width: col.expand ? "100%" : "1%",
+          whiteSpace: "nowrap",
+        }}
+        className={`relative px-2 py-2.5 font-bold select-none ${
           col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"
         }`}
       >
@@ -554,9 +626,9 @@ export default function TableroCarteraAnalytics() {
                 backgroundColor: "#FFFFFF",
                 borderColor: "#CBD5E1",
                 color: "#0E245E",
+                whiteSpace: "normal",
               }}
             >
-              {/* Sort options */}
               <div className="space-y-1 pb-2 border-b" style={{ borderColor: "#E2ECF8" }}>
                 <button
                   type="button"
@@ -596,7 +668,6 @@ export default function TableroCarteraAnalytics() {
                 </button>
               </div>
 
-              {/* Search box inside dropdown */}
               <div>
                 <input
                   type="text"
@@ -613,7 +684,6 @@ export default function TableroCarteraAnalytics() {
                 />
               </div>
 
-              {/* Checkboxes list */}
               <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
                 <label
                   onClick={() => {
@@ -817,7 +887,7 @@ export default function TableroCarteraAnalytics() {
             rips: cols[7] || "",
             revisionFinanciera: cols[8] || "",
             preagrupado: "",
-            responsable: (cols[9] || "MARIA ALEJANDRA").toUpperCase(),
+            responsable: normalizarResponsableReal(cols[9], emp),
             estadoGestion: cols[6] ? "REEMPLAZADA" : "PENDIENTE REEMPLAZO",
           });
         });
@@ -1045,7 +1115,7 @@ export default function TableroCarteraAnalytics() {
         r.facturaReemplaza,
         r.rips,
         r.revisionFinanciera,
-        r.responsable,
+        normalizarResponsableReal(r.responsable, r.empresa),
         r.estadoGestion,
       ]);
     } else if (tabActiva === "glosas") {
@@ -1073,7 +1143,7 @@ export default function TableroCarteraAnalytics() {
         r.valorFactura || r.valorRadicado,
         r.valorGlosado,
         r.motivoGlosa,
-        r.facturador,
+        normalizarResponsableReal(r.facturador, r.empresa),
         r.observacionInterna,
         r.notaCredito,
       ]);
@@ -1102,7 +1172,7 @@ export default function TableroCarteraAnalytics() {
         r.fechaServicio,
         r.medico,
         r.valorServicio,
-        r.responsable,
+        normalizarResponsableReal(r.responsable, r.empresa),
         r.observaciones,
         r.estado,
       ]);
@@ -1131,43 +1201,43 @@ export default function TableroCarteraAnalytics() {
   };
 
   const columnasAnuladas: ColDef[] = [
-    { key: "anio", label: "Año", width: "4.5%" },
-    { key: "empresa", label: "Empresa", width: "9.5%" },
-    { key: "factura", label: "Factura", width: "7.5%" },
-    { key: "fechaRadicacion", label: "Fecha Rad.", width: "7.5%" },
-    { key: "valorRadicado", label: "Vlr. Facturado", align: "right", width: "8.5%" },
-    { key: "valorGlosaDevolucion", label: "Vlr. Glosa", align: "right", width: "8.5%" },
-    { key: "tipo", label: "Tipo", width: "6.5%" },
-    { key: "motivo", label: "Motivo / Revisión", width: "20.5%" },
-    { key: "facturaReemplaza", label: "Reemplazo", width: "7.5%" },
-    { key: "rips", label: "RIPS", width: "4.5%" },
-    { key: "responsable", label: "Responsable", width: "10%" },
+    { key: "anio", label: "Año" },
+    { key: "empresa", label: "Empresa" },
+    { key: "factura", label: "Factura" },
+    { key: "fechaRadicacion", label: "Fecha Rad." },
+    { key: "valorRadicado", label: "Vlr. Facturado", align: "right" },
+    { key: "valorGlosaDevolucion", label: "Vlr. Glosa", align: "right" },
+    { key: "tipo", label: "Tipo" },
+    { key: "motivo", label: "Motivo / Revisión", expand: true },
+    { key: "facturaReemplaza", label: "Reemplazo" },
+    { key: "rips", label: "RIPS" },
+    { key: "responsable", label: "Responsable" },
   ];
 
   const columnasGlosas: ColDef[] = [
-    { key: "subtabla", label: "Estado", width: "8.5%" },
-    { key: "anio", label: "Año", width: "4.5%" },
-    { key: "empresa", label: "Empresa", width: "9.5%" },
-    { key: "factura", label: "Factura", width: "7.5%" },
-    { key: "valorFactura", label: "Vlr. Factura", align: "right", width: "8.5%" },
-    { key: "valorGlosado", label: "Vlr. Glosado", align: "right", width: "8.5%" },
-    { key: "motivoGlosa", label: "Motivo de Glosa", width: "19.5%" },
-    { key: "observacionInterna", label: "Respuesta / Obs.", width: "13%" },
-    { key: "facturador", label: "Facturador", width: "10%" },
-    { key: "notaCredito", label: "Nota Créd.", width: "5.5%" },
+    { key: "subtabla", label: "Estado" },
+    { key: "anio", label: "Año" },
+    { key: "empresa", label: "Empresa" },
+    { key: "factura", label: "Factura" },
+    { key: "valorFactura", label: "Vlr. Factura", align: "right" },
+    { key: "valorGlosado", label: "Vlr. Glosado", align: "right" },
+    { key: "motivoGlosa", label: "Motivo de Glosa", expand: true },
+    { key: "observacionInterna", label: "Respuesta / Obs." },
+    { key: "facturador", label: "Facturador" },
+    { key: "notaCredito", label: "Nota Créd." },
   ];
 
   const columnasPendientes: ColDef[] = [
-    { key: "estado", label: "Estado", width: "7%" },
-    { key: "empresa", label: "Empresa", width: "9.5%" },
-    { key: "contrato", label: "Contrato", width: "10.5%" },
-    { key: "cups", label: "CUPS", width: "5.5%" },
-    { key: "descripcion", label: "Descripción Servicio", width: "20%" },
-    { key: "fechaServicio", label: "Fecha", width: "7.5%" },
-    { key: "medico", label: "Médico", width: "9.5%" },
-    { key: "valorServicio", label: "Vlr. Servicio", align: "right", width: "8%" },
-    { key: "responsable", label: "Responsable", width: "9.5%" },
-    { key: "observaciones", label: "Observación", width: "8%" },
+    { key: "estado", label: "Estado" },
+    { key: "empresa", label: "Empresa" },
+    { key: "contrato", label: "Contrato" },
+    { key: "cups", label: "CUPS" },
+    { key: "descripcion", label: "Descripción Servicio", expand: true },
+    { key: "fechaServicio", label: "Fecha" },
+    { key: "medico", label: "Médico" },
+    { key: "valorServicio", label: "Vlr. Servicio", align: "right" },
+    { key: "responsable", label: "Responsable" },
+    { key: "observaciones", label: "Observación" },
   ];
 
   return (
@@ -1184,24 +1254,36 @@ export default function TableroCarteraAnalytics() {
       )}
 
       {/* ===================================================================== */}
-      {/* BLOQUE 1: RESUMEN DE CARTERA (DISEÑO CLARO A ANCHO 100%)              */}
+      {/* CUADRO 1: RESUMEN DE CARTERA (DESPLEGABLE COMO PERSIANA AL CLIC)      */}
       {/* ===================================================================== */}
       <div
-        className="rounded-2xl p-6 shadow-xs border space-y-6"
+        className="rounded-xl p-6 shadow-xs border space-y-5"
         style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
       >
         <div
-          className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-4 border-b"
+          className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-3 border-b"
           style={{ borderColor: "#E2ECF8" }}
         >
-          <div>
-            <h3 className="text-lg font-extrabold" style={{ color: "#0E245E" }}>
-              Resumen de Cartera ({corteSeleccionado.modalidad} — Corte {corteSeleccionado.fechaCorte})
-            </h3>
-            <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
-              Cartera Corriente (&lt; 60 días) + Cartera Vencida (&gt;= 60 días) − Giros por cruzar = Total Cartera Real
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setPersianaResumenAbierta((prev) => !prev)}
+            className="text-left flex items-center gap-3 cursor-pointer group"
+          >
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0"
+              style={{ backgroundColor: "#EFF6FF", color: "#1D58D8" }}
+            >
+              {persianaResumenAbierta ? "▴" : "▾"}
+            </span>
+            <div>
+              <h3 className="text-lg font-extrabold flex items-center gap-2" style={{ color: "#0E245E" }}>
+                <span>Resumen de Cartera ({corteSeleccionado.modalidad} — Corte {corteSeleccionado.fechaCorte})</span>
+              </h3>
+              <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
+                Cartera Corriente (&lt; 60 días) + Cartera Vencida (&gt;= 60 días) − Giros por cruzar = Total Cartera Real (Clic para plegar/desplegar)
+              </p>
+            </div>
+          </button>
 
           <div className="flex flex-wrap items-center gap-2.5">
             <button
@@ -1371,343 +1453,375 @@ export default function TableroCarteraAnalytics() {
           </div>
         )}
 
-        {/* 5 TARJETAS EJECUTIVAS DE LA FÓRMULA (ANCHO COMPLETO, TEMA CLARO) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-          <div
-            className="rounded-xl p-4 border"
-            style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }}
-          >
-            <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#1D58D8" }}>
-              <span>CARTERA CORRIENTE</span>
-              <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800">+</span>
-            </div>
-            <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#0E245E" }}>
-              {formatCOP(corteSeleccionado.carteraCorriente)}
-            </div>
-            <div className="text-[11px] mt-1" style={{ color: "#64748B" }}>
-              Radicada &lt; 60 días
-            </div>
-          </div>
+        {persianaResumenAbierta && (
+          <div className="space-y-5">
+            {/* 5 TARJETAS EJECUTIVAS DE LA FÓRMULA */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+              <div
+                className="rounded-xl p-4 border"
+                style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }}
+              >
+                <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#1D58D8" }}>
+                  <span>CARTERA CORRIENTE</span>
+                  <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800">+</span>
+                </div>
+                <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#0E245E" }}>
+                  {formatCOP(corteSeleccionado.carteraCorriente)}
+                </div>
+                <div className="text-[11px] mt-1" style={{ color: "#64748B" }}>
+                  Radicada &lt; 60 días
+                </div>
+              </div>
 
-          <div
-            className="rounded-xl p-4 border"
-            style={{ backgroundColor: "#FFF1F2", borderColor: "#FECDD3" }}
-          >
-            <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#BE123C" }}>
-              <span>CARTERA VENCIDA</span>
-              <span className="px-2 py-0.5 rounded bg-rose-200 text-rose-900">+</span>
-            </div>
-            <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#9F1239" }}>
-              {formatCOP(corteSeleccionado.carteraVencida)}
-            </div>
-            <div className="text-[11px] mt-1" style={{ color: "#BE123C" }}>
-              Radicada &gt;= 60 días
-            </div>
-          </div>
+              <div
+                className="rounded-xl p-4 border"
+                style={{ backgroundColor: "#FFF1F2", borderColor: "#FECDD3" }}
+              >
+                <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#BE123C" }}>
+                  <span>CARTERA VENCIDA</span>
+                  <span className="px-2 py-0.5 rounded bg-rose-200 text-rose-900">+</span>
+                </div>
+                <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#9F1239" }}>
+                  {formatCOP(corteSeleccionado.carteraVencida)}
+                </div>
+                <div className="text-[11px] mt-1" style={{ color: "#BE123C" }}>
+                  Radicada &gt;= 60 días
+                </div>
+              </div>
 
-          <div
-            className="rounded-xl p-4 border"
-            style={{ backgroundColor: "#EFF6FF", borderColor: "#93C5FD" }}
-          >
-            <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#1E40AF" }}>
-              <span>CARTERA TOTAL</span>
-              <span className="px-2 py-0.5 rounded bg-blue-200 text-blue-900">=</span>
-            </div>
-            <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#0E245E" }}>
-              {formatCOP(corteSeleccionado.carteraTotal)}
-            </div>
-            <div className="text-[11px] mt-1" style={{ color: "#1E40AF" }}>
-              Suma Corriente + Vencida
-            </div>
-          </div>
+              <div
+                className="rounded-xl p-4 border"
+                style={{ backgroundColor: "#EFF6FF", borderColor: "#93C5FD" }}
+              >
+                <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#1E40AF" }}>
+                  <span>CARTERA TOTAL</span>
+                  <span className="px-2 py-0.5 rounded bg-blue-200 text-blue-900">=</span>
+                </div>
+                <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#0E245E" }}>
+                  {formatCOP(corteSeleccionado.carteraTotal)}
+                </div>
+                <div className="text-[11px] mt-1" style={{ color: "#1E40AF" }}>
+                  Suma Corriente + Vencida
+                </div>
+              </div>
 
-          <div
-            className="rounded-xl p-4 border"
-            style={{ backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }}
-          >
-            <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#B45309" }}>
-              <span>GIROS POR CRUZAR</span>
-              <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900">−</span>
-            </div>
-            <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#92400E" }}>
-              {formatCOP(corteSeleccionado.anticiposPorCruzar)}
-            </div>
-            <div className="text-[11px] mt-1" style={{ color: "#B45309" }}>
-              Anticipos y giros aplicados
-            </div>
-          </div>
+              <div
+                className="rounded-xl p-4 border"
+                style={{ backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }}
+              >
+                <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#B45309" }}>
+                  <span>GIROS POR CRUZAR</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900">−</span>
+                </div>
+                <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#92400E" }}>
+                  {formatCOP(corteSeleccionado.anticiposPorCruzar)}
+                </div>
+                <div className="text-[11px] mt-1" style={{ color: "#B45309" }}>
+                  Anticipos y giros aplicados
+                </div>
+              </div>
 
-          <div
-            className="rounded-xl p-4 border-2"
-            style={{ backgroundColor: "#ECFDF5", borderColor: "#10B981" }}
-          >
-            <div className="flex items-center justify-between text-xs font-extrabold" style={{ color: "#047857" }}>
-              <span>TOTAL CARTERA REAL</span>
-              <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">NETO</span>
+              <div
+                className="rounded-xl p-4 border-2"
+                style={{ backgroundColor: "#ECFDF5", borderColor: "#10B981" }}
+              >
+                <div className="flex items-center justify-between text-xs font-extrabold" style={{ color: "#047857" }}>
+                  <span>TOTAL CARTERA REAL</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">NETO</span>
+                </div>
+                <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#065F46" }}>
+                  {formatCOP(corteSeleccionado.totalCarteraReal)}
+                </div>
+                <div className="text-[11px] mt-1 font-medium" style={{ color: "#047857" }}>
+                  Saldo real neto por cobrar
+                </div>
+              </div>
             </div>
-            <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#065F46" }}>
-              {formatCOP(corteSeleccionado.totalCarteraReal)}
-            </div>
-            <div className="text-[11px] mt-1 font-medium" style={{ color: "#047857" }}>
-              Saldo real neto por cobrar
-            </div>
-          </div>
-        </div>
 
-        {/* GRÁFICA COMPARATIVA POR CORTE */}
-        <div
-          className="rounded-xl p-5 border"
-          style={{ backgroundColor: "#F8FAFC", borderColor: "#E2ECF8" }}
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-            <h4 className="text-sm font-extrabold" style={{ color: "#0E245E" }}>
-              Evolución Comparativa por Corte ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP"})
-            </h4>
-            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold" style={{ color: "#334155" }}>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#1D58D8" }} /> Corriente (&lt; 60 d)
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#E11D48" }} /> Vencida (&gt;= 60 d)
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#F59E0B" }} /> Giros por Cruzar
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#059669" }} /> Total Cartera Real
-              </span>
-            </div>
-          </div>
+            {/* GRÁFICA Y TABLA COMPARATIVA DE CORTES CON PERSIANA */}
+            <div
+              className="rounded-xl p-4 border space-y-4"
+              style={{ backgroundColor: "#F8FAFC", borderColor: "#E2ECF8" }}
+            >
+              <button
+                type="button"
+                onClick={() => setPersianaCortesAbierta((prev) => !prev)}
+                className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-6 h-6 rounded flex items-center justify-center font-bold text-xs"
+                    style={{ backgroundColor: "#FFFFFF", color: "#1D58D8", border: "1px solid #CBD5E1" }}
+                  >
+                    {persianaCortesAbierta ? "▴" : "▾"}
+                  </span>
+                  <h4 className="text-sm font-extrabold" style={{ color: "#0E245E" }}>
+                    Comparativo por Corte y Tabla de Saldos ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP"})
+                  </h4>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-xs font-semibold" style={{ color: "#334155" }}>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#1D58D8" }} /> Corriente (&lt; 60 d)
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#E11D48" }} /> Vencida (&gt;= 60 d)
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#F59E0B" }} /> Giros por Cruzar
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs inline-block" style={{ backgroundColor: "#059669" }} /> Total Cartera Real
+                  </span>
+                </div>
+              </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {listaCortesActiva.map((corte, idx) => {
-              const pctCorriente = Math.round((corte.carteraCorriente / maxValorGrafica) * 100);
-              const pctVencida = Math.round((corte.carteraVencida / maxValorGrafica) * 100);
-              const pctAnticipos = Math.round((corte.anticiposPorCruzar / maxValorGrafica) * 100);
-              const pctReal = Math.round((corte.totalCarteraReal / maxValorGrafica) * 100);
-              const activo = idx === indiceCorteActivo;
+              {persianaCortesAbierta && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {listaCortesActiva.map((corte, idx) => {
+                      const pctCorriente = Math.round((corte.carteraCorriente / maxValorGrafica) * 100);
+                      const pctVencida = Math.round((corte.carteraVencida / maxValorGrafica) * 100);
+                      const pctAnticipos = Math.round((corte.anticiposPorCruzar / maxValorGrafica) * 100);
+                      const pctReal = Math.round((corte.totalCarteraReal / maxValorGrafica) * 100);
+                      const activo = idx === indiceCorteActivo;
 
-              return (
-                <div
-                  key={corte.fechaCorte}
-                  onClick={() => setIndiceCorteActivo(idx)}
-                  className="rounded-xl p-4 border transition cursor-pointer"
-                  style={{
-                    backgroundColor: "#FFFFFF",
-                    borderColor: activo ? "#1D58D8" : "#E2ECF8",
-                    boxShadow: activo ? "0 0 0 2px rgba(29,88,216,0.15)" : "none",
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-extrabold text-sm" style={{ color: "#0E245E" }}>
-                      Corte {corte.fechaCorte}
-                    </span>
-                    <span
-                      className="text-[11px] px-2 py-0.5 rounded-full font-bold"
-                      style={{
-                        backgroundColor: activo ? "#EFF6FF" : "#F1F5F9",
-                        color: activo ? "#1D58D8" : "#475569",
-                      }}
-                    >
-                      {corte.modalidad}
-                    </span>
+                      return (
+                        <div
+                          key={corte.fechaCorte}
+                          onClick={() => setIndiceCorteActivo(idx)}
+                          className="rounded-xl p-4 border transition cursor-pointer"
+                          style={{
+                            backgroundColor: "#FFFFFF",
+                            borderColor: activo ? "#1D58D8" : "#E2ECF8",
+                            boxShadow: activo ? "0 0 0 2px rgba(29,88,216,0.15)" : "none",
+                          }}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="font-extrabold text-sm" style={{ color: "#0E245E" }}>
+                              Corte {corte.fechaCorte}
+                            </span>
+                            <span
+                              className="text-[11px] px-2 py-0.5 rounded-full font-bold"
+                              style={{
+                                backgroundColor: activo ? "#EFF6FF" : "#F1F5F9",
+                                color: activo ? "#1D58D8" : "#475569",
+                              }}
+                            >
+                              {corte.modalidad}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span style={{ color: "#475569" }}>Corriente (&lt; 60 d)</span>
+                                <span className="font-mono font-bold" style={{ color: "#1D58D8" }}>
+                                  {formatCOP(corte.carteraCorriente)}
+                                </span>
+                              </div>
+                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
+                                <div className="h-full rounded-full" style={{ width: `${pctCorriente}%`, backgroundColor: "#1D58D8" }} />
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span style={{ color: "#475569" }}>Vencida (&gt;= 60 d)</span>
+                                <span className="font-mono font-bold" style={{ color: "#E11D48" }}>
+                                  {formatCOP(corte.carteraVencida)}
+                                </span>
+                              </div>
+                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
+                                <div className="h-full rounded-full" style={{ width: `${pctVencida}%`, backgroundColor: "#E11D48" }} />
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <span style={{ color: "#475569" }}>(-) Giros por cruzar</span>
+                                <span className="font-mono font-bold" style={{ color: "#D97706" }}>
+                                  {formatCOP(corte.anticiposPorCruzar)}
+                                </span>
+                              </div>
+                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
+                                <div className="h-full rounded-full" style={{ width: `${pctAnticipos}%`, backgroundColor: "#F59E0B" }} />
+                              </div>
+                            </div>
+
+                            <div className="pt-1.5 border-t" style={{ borderColor: "#F1F5F9" }}>
+                              <div className="flex justify-between mb-1">
+                                <span className="font-bold" style={{ color: "#0E245E" }}>
+                                  Total Cartera Real
+                                </span>
+                                <span className="font-mono font-extrabold" style={{ color: "#059669" }}>
+                                  {formatCOP(corte.totalCarteraReal)}
+                                </span>
+                              </div>
+                              <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
+                                <div className="h-full rounded-full" style={{ width: `${pctReal}%`, backgroundColor: "#059669" }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span style={{ color: "#475569" }}>Corriente (&lt; 60 d)</span>
-                        <span className="font-mono font-bold" style={{ color: "#1D58D8" }}>
-                          {formatCOP(corte.carteraCorriente)}
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
-                        <div className="h-full rounded-full" style={{ width: `${pctCorriente}%`, backgroundColor: "#1D58D8" }} />
-                      </div>
-                    </div>
+                  {/* TABLA RESUMEN DE CORTES A ANCHO COMPLETO */}
+                  <div className="overflow-x-auto border rounded-xl bg-white" style={{ borderColor: "#E2ECF8" }}>
+                    <table className="w-full text-xs sm:text-sm border-collapse">
+                      <thead>
+                        <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                          <th className="text-left p-3 font-bold">
+                            Concepto ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP"})
+                          </th>
+                          <th className="text-center p-3 font-bold">Clasificación</th>
+                          {listaCortesActiva.map((c) => (
+                            <th key={c.fechaCorte} className="text-right p-3 font-bold">
+                              Corte {c.fechaCorte}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
+                        <tr>
+                          <td className="p-3 font-bold" style={{ color: "#0E245E" }}>
+                            Cartera Corriente
+                          </td>
+                          <td className="p-3 text-center font-semibold" style={{ color: "#1D58D8" }}>
+                            (+) Radicada &lt; 60 días
+                          </td>
+                          {listaCortesActiva.map((c) => (
+                            <td key={c.fechaCorte} className="p-3 text-right font-mono font-semibold" style={{ color: "#0E245E" }}>
+                              {formatCOP(c.carteraCorriente)}
+                            </td>
+                          ))}
+                        </tr>
 
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span style={{ color: "#475569" }}>Vencida (&gt;= 60 d)</span>
-                        <span className="font-mono font-bold" style={{ color: "#E11D48" }}>
-                          {formatCOP(corte.carteraVencida)}
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
-                        <div className="h-full rounded-full" style={{ width: `${pctVencida}%`, backgroundColor: "#E11D48" }} />
-                      </div>
-                    </div>
+                        <tr>
+                          <td className="p-3 font-bold" style={{ color: "#0E245E" }}>
+                            Cartera Vencida
+                          </td>
+                          <td className="p-3 text-center font-semibold" style={{ color: "#E11D48" }}>
+                            (+) Radicada &gt;= 60 días
+                          </td>
+                          {listaCortesActiva.map((c) => (
+                            <td key={c.fechaCorte} className="p-3 text-right font-mono font-bold" style={{ color: "#BE123C" }}>
+                              {formatCOP(c.carteraVencida)}
+                            </td>
+                          ))}
+                        </tr>
 
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span style={{ color: "#475569" }}>(-) Giros por cruzar</span>
-                        <span className="font-mono font-bold" style={{ color: "#D97706" }}>
-                          {formatCOP(corte.anticiposPorCruzar)}
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
-                        <div className="h-full rounded-full" style={{ width: `${pctAnticipos}%`, backgroundColor: "#F59E0B" }} />
-                      </div>
-                    </div>
+                        <tr style={{ backgroundColor: "#EFF6FF" }}>
+                          <td className="p-3 font-extrabold" style={{ color: "#0E245E" }}>
+                            Cartera Total
+                          </td>
+                          <td className="p-3 text-center font-bold" style={{ color: "#1E40AF" }}>
+                            (=) Suma Corriente + Vencida
+                          </td>
+                          {listaCortesActiva.map((c) => (
+                            <td key={c.fechaCorte} className="p-3 text-right font-mono font-extrabold" style={{ color: "#1E40AF" }}>
+                              {formatCOP(c.carteraTotal)}
+                            </td>
+                          ))}
+                        </tr>
 
-                    <div className="pt-1.5 border-t" style={{ borderColor: "#F1F5F9" }}>
-                      <div className="flex justify-between mb-1">
-                        <span className="font-bold" style={{ color: "#0E245E" }}>
-                          Total Cartera Real
-                        </span>
-                        <span className="font-mono font-extrabold" style={{ color: "#059669" }}>
-                          {formatCOP(corte.totalCarteraReal)}
-                        </span>
-                      </div>
-                      <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
-                        <div className="h-full rounded-full" style={{ width: `${pctReal}%`, backgroundColor: "#059669" }} />
-                      </div>
-                    </div>
+                        <tr>
+                          <td className="p-3 font-medium" style={{ color: "#334155" }}>
+                            Facturas pendientes por radicar
+                          </td>
+                          <td className="p-3 text-center text-xs" style={{ color: "#64748B" }}>
+                            Pendientes de radicación
+                          </td>
+                          {listaCortesActiva.map((c) => (
+                            <td key={c.fechaCorte} className="p-3 text-right font-mono" style={{ color: "#334155" }}>
+                              {formatCOP(c.facturasPendientesRadicar)}
+                            </td>
+                          ))}
+                        </tr>
+
+                        <tr>
+                          <td className="p-3 font-medium" style={{ color: "#334155" }}>
+                            Glosas pendientes por gestionar
+                          </td>
+                          <td className="p-3 text-center text-xs" style={{ color: "#64748B" }}>
+                            En gestión operativa
+                          </td>
+                          {listaCortesActiva.map((c) => (
+                            <td key={c.fechaCorte} className="p-3 text-right font-mono" style={{ color: "#334155" }}>
+                              {formatCOP(c.glosasPendientesGestionar)}
+                            </td>
+                          ))}
+                        </tr>
+
+                        <tr style={{ backgroundColor: "#FFFBEB" }}>
+                          <td className="p-3 font-bold" style={{ color: "#92400E" }}>
+                            Anticipos / Giros por cruzar
+                          </td>
+                          <td className="p-3 text-center text-xs font-semibold" style={{ color: "#B45309" }}>
+                            (−) Auxiliar abierto de giros
+                          </td>
+                          {listaCortesActiva.map((c) => (
+                            <td key={c.fechaCorte} className="p-3 text-right font-mono font-bold" style={{ color: "#92400E" }}>
+                              {formatCOP(c.anticiposPorCruzar)}
+                            </td>
+                          ))}
+                        </tr>
+
+                        <tr style={{ backgroundColor: "#ECFDF5" }}>
+                          <td className="p-3 font-extrabold" style={{ color: "#065F46" }}>
+                            TOTAL CARTERA REAL
+                          </td>
+                          <td className="p-3 text-center font-extrabold" style={{ color: "#047857" }}>
+                            (=) Cartera Total − Giros por cruzar
+                          </td>
+                          {listaCortesActiva.map((c) => (
+                            <td key={c.fechaCorte} className="p-3 text-right font-mono font-extrabold text-base" style={{ color: "#047857" }}>
+                              {formatCOP(c.totalCarteraReal)}
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
-        </div>
-
-        {/* TABLA RESUMEN DE CORTES A ANCHO COMPLETO */}
-        <div className="overflow-x-auto border rounded-xl" style={{ borderColor: "#E2ECF8" }}>
-          <table className="w-full text-xs sm:text-sm border-collapse">
-            <thead>
-              <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                <th className="text-left p-3.5 font-bold">
-                  Concepto ({modalidadSisma === "TODAS" ? "Todas las Empresas" : "Modalidad PYP"})
-                </th>
-                <th className="text-center p-3.5 font-bold">Clasificación</th>
-                {listaCortesActiva.map((c) => (
-                  <th key={c.fechaCorte} className="text-right p-3.5 font-bold">
-                    Corte {c.fechaCorte}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-              <tr>
-                <td className="p-3.5 font-bold" style={{ color: "#0E245E" }}>
-                  Cartera Corriente
-                </td>
-                <td className="p-3.5 text-center font-semibold" style={{ color: "#1D58D8" }}>
-                  (+) Radicada &lt; 60 días
-                </td>
-                {listaCortesActiva.map((c) => (
-                  <td key={c.fechaCorte} className="p-3.5 text-right font-mono font-semibold" style={{ color: "#0E245E" }}>
-                    {formatCOP(c.carteraCorriente)}
-                  </td>
-                ))}
-              </tr>
-
-              <tr>
-                <td className="p-3.5 font-bold" style={{ color: "#0E245E" }}>
-                  Cartera Vencida
-                </td>
-                <td className="p-3.5 text-center font-semibold" style={{ color: "#E11D48" }}>
-                  (+) Radicada &gt;= 60 días
-                </td>
-                {listaCortesActiva.map((c) => (
-                  <td key={c.fechaCorte} className="p-3.5 text-right font-mono font-bold" style={{ color: "#BE123C" }}>
-                    {formatCOP(c.carteraVencida)}
-                  </td>
-                ))}
-              </tr>
-
-              <tr style={{ backgroundColor: "#EFF6FF" }}>
-                <td className="p-3.5 font-extrabold" style={{ color: "#0E245E" }}>
-                  Cartera Total
-                </td>
-                <td className="p-3.5 text-center font-bold" style={{ color: "#1E40AF" }}>
-                  (=) Suma Corriente + Vencida
-                </td>
-                {listaCortesActiva.map((c) => (
-                  <td key={c.fechaCorte} className="p-3.5 text-right font-mono font-extrabold" style={{ color: "#1E40AF" }}>
-                    {formatCOP(c.carteraTotal)}
-                  </td>
-                ))}
-              </tr>
-
-              <tr>
-                <td className="p-3.5 font-medium" style={{ color: "#334155" }}>
-                  Facturas pendientes por radicar
-                </td>
-                <td className="p-3.5 text-center text-xs" style={{ color: "#64748B" }}>
-                  Pendientes de radicación
-                </td>
-                {listaCortesActiva.map((c) => (
-                  <td key={c.fechaCorte} className="p-3.5 text-right font-mono" style={{ color: "#334155" }}>
-                    {formatCOP(c.facturasPendientesRadicar)}
-                  </td>
-                ))}
-              </tr>
-
-              <tr>
-                <td className="p-3.5 font-medium" style={{ color: "#334155" }}>
-                  Glosas pendientes por gestionar
-                </td>
-                <td className="p-3.5 text-center text-xs" style={{ color: "#64748B" }}>
-                  En gestión operativa
-                </td>
-                {listaCortesActiva.map((c) => (
-                  <td key={c.fechaCorte} className="p-3.5 text-right font-mono" style={{ color: "#334155" }}>
-                    {formatCOP(c.glosasPendientesGestionar)}
-                  </td>
-                ))}
-              </tr>
-
-              <tr style={{ backgroundColor: "#FFFBEB" }}>
-                <td className="p-3.5 font-bold" style={{ color: "#92400E" }}>
-                  Anticipos / Giros por cruzar
-                </td>
-                <td className="p-3.5 text-center text-xs font-semibold" style={{ color: "#B45309" }}>
-                  (−) Auxiliar abierto de giros
-                </td>
-                {listaCortesActiva.map((c) => (
-                  <td key={c.fechaCorte} className="p-3.5 text-right font-mono font-bold" style={{ color: "#92400E" }}>
-                    {formatCOP(c.anticiposPorCruzar)}
-                  </td>
-                ))}
-              </tr>
-
-              <tr style={{ backgroundColor: "#ECFDF5" }}>
-                <td className="p-3.5 font-extrabold" style={{ color: "#065F46" }}>
-                  TOTAL CARTERA REAL
-                </td>
-                <td className="p-3.5 text-center font-extrabold" style={{ color: "#047857" }}>
-                  (=) Cartera Total − Giros por cruzar
-                </td>
-                {listaCortesActiva.map((c) => (
-                  <td key={c.fechaCorte} className="p-3.5 text-right font-mono font-extrabold text-base" style={{ color: "#047857" }}>
-                    {formatCOP(c.totalCarteraReal)}
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        )}
       </div>
 
       {/* ===================================================================== */}
-      {/* BLOQUE 2: GESTIÓN DE GLOSAS, DEVOLUCIONES Y PENDIENTES (2021 - 2026)  */}
+      {/* CUADRO 2: GESTIÓN DE GLOSAS Y ANULADAS (DESPLEGABLE COMO PERSIANA)    */}
       {/* ===================================================================== */}
       <div
-        className="rounded-2xl p-6 shadow-xs border space-y-4"
+        className="rounded-xl p-6 shadow-xs border space-y-4"
         style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
       >
         <div
           className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b"
           style={{ borderColor: "#E2ECF8" }}
         >
-          <div>
-            <h3 className="text-lg font-extrabold" style={{ color: "#0E245E" }}>
-              Gestión de Glosas, Facturas Anuladas y Pendientes (2021 – 2026)
-            </h3>
-            <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
-              Haz clic en el título de cualquier columna (▾) para abrir su menú de ordenamiento y filtro estilo Excel.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setPersianaMesaAbierta((prev) => !prev)}
+            className="text-left flex items-center gap-3 cursor-pointer"
+          >
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0"
+              style={{ backgroundColor: "#EFF6FF", color: "#1D58D8" }}
+            >
+              {persianaMesaAbierta ? "▴" : "▾"}
+            </span>
+            <div>
+              <h3 className="text-lg font-extrabold" style={{ color: "#0E245E" }}>
+                Gestión de Glosas, Facturas Anuladas y Pendientes (2021 – 2026)
+              </h3>
+              <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
+                Haz clic aquí para plegar/desplegar el cuadro como persiana, en cualquier columna (▾) para filtrar o en una fila para ver su detalle.
+              </p>
+            </div>
+          </button>
 
           <div className="flex flex-wrap items-center gap-2">
             {hayFiltrosActivos && (
@@ -1739,632 +1853,627 @@ export default function TableroCarteraAnalytics() {
           </div>
         </div>
 
-        {/* BARRA SUPERIOR DE 6 FILTROS ALINEADOS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-              Año
-            </label>
-            <select
-              value={filtroAnio}
-              onChange={(e) => {
-                setFiltroAnio(e.target.value);
-                setPaginaActual(1);
-              }}
-              className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            >
-              <option value="TODOS">Todos</option>
-              {carteraInitialData.aniosDisponibles.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-              Empresa
-            </label>
-            <select
-              value={filtroEmpresa}
-              onChange={(e) => {
-                setFiltroEmpresa(e.target.value);
-                setPaginaActual(1);
-              }}
-              className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            >
-              <option value="TODAS">Todas</option>
-              {carteraInitialData.empresasDisponibles.map((emp) => (
-                <option key={emp} value={emp}>
-                  {emp}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-              Tipo
-            </label>
-            <select
-              value={filtroTipo}
-              onChange={(e) => {
-                setFiltroTipo(e.target.value);
-                setPaginaActual(1);
-              }}
-              className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            >
-              <option value="TODOS">Glosa / Devolución</option>
-              <option value="GLOSA">GLOSA</option>
-              <option value="DEVOL">DEVOLUCIÓN</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-              Estado
-            </label>
-            <select
-              value={filtroEstado}
-              onChange={(e) => {
-                setFiltroEstado(e.target.value);
-                setPaginaActual(1);
-              }}
-              className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            >
-              <option value="TODOS">Reemplazada / Pendiente</option>
-              <option value="REEMPLAZADA">Reemplazada / Gestionada</option>
-              <option value="PENDIENTE">Pendiente</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-              Responsable
-            </label>
-            <select
-              value={filtroResponsable}
-              onChange={(e) => {
-                setFiltroResponsable(e.target.value);
-                setPaginaActual(1);
-              }}
-              className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            >
-              <option value="TODAS">Todas</option>
-              {carteraInitialData.responsablesDisponibles.map((resp) => (
-                <option key={resp} value={resp}>
-                  {resp}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-              Buscar
-            </label>
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => {
-                setBusqueda(e.target.value);
-                setPaginaActual(1);
-              }}
-              placeholder="Buscar factura o motivo..."
-              className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            />
-          </div>
-        </div>
-
-        {/* PESTAÑAS DE LAS 4 HOJAS OPERATIVAS */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div
-            className="inline-flex flex-wrap rounded-xl p-1 border gap-1"
-            style={{ backgroundColor: "#F1F5F9", borderColor: "#CBD5E1" }}
-          >
-            {[
-              {
-                id: "anuladas" as const,
-                label: `Facturas Anuladas / Reemplazos (${anuladasFiltradas.length})`,
-              },
-              {
-                id: "legalizadas" as const,
-                label: `Glosas Legalizadas (${legalizadasFiltradas.length})`,
-              },
-              {
-                id: "glosas" as const,
-                label: `Glosas y Notas Crédito (${glosasFiltradas.length})`,
-              },
-              {
-                id: "pendientes" as const,
-                label: `Servicios Pendientes Facturar (${pendientesFiltradas.length})`,
-              },
-            ].map((t) => {
-              const activo = tabActiva === t.id;
-              return (
-                <button
-                  type="button"
-                  key={t.id}
-                  onClick={() => {
-                    setTabActiva(t.id);
-                    setColMenuAbierto(null);
+        {persianaMesaAbierta && (
+          <div className="space-y-4">
+            {/* BARRA SUPERIOR DE 6 FILTROS ALINEADOS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
+                  Año
+                </label>
+                <select
+                  value={filtroAnio}
+                  onChange={(e) => {
+                    setFiltroAnio(e.target.value);
                     setPaginaActual(1);
                   }}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-                  style={{
-                    backgroundColor: activo ? "#1D58D8" : "transparent",
-                    color: activo ? "#FFFFFF" : "#0E245E",
-                  }}
+                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
                 >
-                  {t.label}
+                  <option value="TODOS">Todos</option>
+                  {carteraInitialData.aniosDisponibles.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
+                  Empresa
+                </label>
+                <select
+                  value={filtroEmpresa}
+                  onChange={(e) => {
+                    setFiltroEmpresa(e.target.value);
+                    setPaginaActual(1);
+                  }}
+                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  <option value="TODAS">Todas</option>
+                  {carteraInitialData.empresasDisponibles.map((emp) => (
+                    <option key={emp} value={emp}>
+                      {emp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
+                  Tipo
+                </label>
+                <select
+                  value={filtroTipo}
+                  onChange={(e) => {
+                    setFiltroTipo(e.target.value);
+                    setPaginaActual(1);
+                  }}
+                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  <option value="TODOS">Glosa / Devolución</option>
+                  <option value="GLOSA">GLOSA</option>
+                  <option value="DEVOL">DEVOLUCIÓN</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
+                  Estado
+                </label>
+                <select
+                  value={filtroEstado}
+                  onChange={(e) => {
+                    setFiltroEstado(e.target.value);
+                    setPaginaActual(1);
+                  }}
+                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  <option value="TODOS">Reemplazada / Pendiente</option>
+                  <option value="REEMPLAZADA">Reemplazada / Gestionada</option>
+                  <option value="PENDIENTE">Pendiente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
+                  Responsable
+                </label>
+                <select
+                  value={filtroResponsable}
+                  onChange={(e) => {
+                    setFiltroResponsable(e.target.value);
+                    setPaginaActual(1);
+                  }}
+                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  <option value="TODAS">Todas</option>
+                  {carteraInitialData.responsablesDisponibles.map((resp) => (
+                    <option key={resp} value={resp}>
+                      {resp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
+                  Buscar
+                </label>
+                <input
+                  type="text"
+                  value={busqueda}
+                  onChange={(e) => {
+                    setBusqueda(e.target.value);
+                    setPaginaActual(1);
+                  }}
+                  placeholder="Buscar factura o motivo..."
+                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                />
+              </div>
+            </div>
+
+            {/* PESTAÑAS DE LAS 4 HOJAS OPERATIVAS */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div
+                className="inline-flex flex-wrap rounded-xl p-1 border gap-1"
+                style={{ backgroundColor: "#F1F5F9", borderColor: "#CBD5E1" }}
+              >
+                {[
+                  {
+                    id: "anuladas" as const,
+                    label: `Facturas Anuladas / Reemplazos (${anuladasFiltradas.length})`,
+                  },
+                  {
+                    id: "legalizadas" as const,
+                    label: `Glosas Legalizadas (${legalizadasFiltradas.length})`,
+                  },
+                  {
+                    id: "glosas" as const,
+                    label: `Glosas y Notas Crédito (${glosasFiltradas.length})`,
+                  },
+                  {
+                    id: "pendientes" as const,
+                    label: `Servicios Pendientes Facturar (${pendientesFiltradas.length})`,
+                  },
+                ].map((t) => {
+                  const activo = tabActiva === t.id;
+                  return (
+                    <button
+                      type="button"
+                      key={t.id}
+                      onClick={() => {
+                        setTabActiva(t.id);
+                        setColMenuAbierto(null);
+                        setPaginaActual(1);
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                      style={{
+                        backgroundColor: activo ? "#1D58D8" : "transparent",
+                        color: activo ? "#FFFFFF" : "#0E245E",
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* TABLA SIN TRUNCATE EN RIPS / RESPONSABLE / MOTIVO Y CON AUTO-FIT NATURAL */}
+            <div className="border rounded-xl overflow-x-auto" style={{ borderColor: "#E2ECF8" }}>
+              {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
+                <table
+                  className="w-full text-[11px] border-collapse"
+                  style={{ tableLayout: "auto", width: "100%" }}
+                >
+                  <thead>
+                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                      {columnasAnuladas.map((col, idx) =>
+                        renderCeldaHeaderConFiltro(col, idx, columnasAnuladas.length + 1)
+                      )}
+                      <th
+                        style={{ width: "1%", whiteSpace: "nowrap" }}
+                        className="px-2 py-2.5 text-center font-bold"
+                      >
+                        Acción
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
+                    {(listaActivaPaginada.items as AnuladaRow[]).map((r) => {
+                      const abierta = Boolean(filasExpandidas[r.id]);
+                      const etiquetaTipo = normalizarEtiquetaTipo(r.tipo);
+                      const textoMotivoBase =
+                        r.motivo && r.motivo !== "-"
+                          ? r.motivo
+                          : r.tipo && r.tipo.length > 15
+                          ? r.tipo
+                          : "Sin motivo registrado";
+                      const nombreResp = normalizarResponsableReal(r.responsable, r.empresa);
+
+                      return (
+                        <React.Fragment key={r.id}>
+                          <tr
+                            onClick={() => togglePersianaFila(r.id)}
+                            className="hover:bg-slate-50 align-middle cursor-pointer"
+                          >
+                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {r.anio}
+                            </td>
+                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {r.empresa}
+                            </td>
+                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
+                              {r.factura}
+                            </td>
+                            <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
+                              {r.fechaRadicacion || r.fechaFactura || "-"}
+                            </td>
+                            <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {formatCOP(r.valorRadicado)}
+                            </td>
+                            <td className="px-2 py-2 text-right font-mono font-semibold whitespace-nowrap" style={{ color: "#BE123C" }}>
+                              {formatCOP(r.valorGlosaDevolucion)}
+                            </td>
+                            <td className="px-2 py-2 whitespace-nowrap">
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold inline-block"
+                                style={{
+                                  backgroundColor: etiquetaTipo === "GLOSA" ? "#FFE4E6" : "#EFF6FF",
+                                  color: etiquetaTipo === "GLOSA" ? "#BE123C" : "#1D58D8",
+                                }}
+                              >
+                                {etiquetaTipo}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
+                              <div className="flex items-start justify-between gap-2">
+                                <span>{textoMotivoBase}</span>
+                                <span
+                                  className="text-[10px] font-bold shrink-0 mt-0.5"
+                                  style={{ color: "#1D58D8" }}
+                                >
+                                  {abierta ? "▴" : "▾"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#047857" }}>
+                              {r.facturaReemplaza || "PENDIENTE"}
+                            </td>
+                            <td className="px-2 py-2 font-mono whitespace-nowrap" style={{ color: "#334155" }}>
+                              {r.rips || "-"}
+                            </td>
+                            <td className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {nombreResp}
+                            </td>
+                            <td
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-2 py-2 text-center whitespace-nowrap"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setFilaEditando({ ...r, responsable: nombreResp })}
+                                className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
+                                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
+                              >
+                                Editar
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* PERSIANA DESPLEGABLE DE LA FILA */}
+                          {abierta && (
+                            <tr style={{ backgroundColor: "#F4F8FD" }}>
+                              <td colSpan={12} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                                  <div className="md:col-span-2 space-y-1">
+                                    <div className="font-extrabold text-[11px] uppercase" style={{ color: "#1D58D8" }}>
+                                      Detalle Completo del Registro ({r.factura})
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-white border leading-relaxed" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
+                                      {textoMotivoBase}
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="font-extrabold text-[11px] uppercase" style={{ color: "#047857" }}>
+                                      Revisión Financiera y Trazabilidad
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
+                                      <div>
+                                        <strong>Revisión:</strong> {r.revisionFinanciera || "Registrada en seguimiento"}
+                                      </div>
+                                      <div>
+                                        <strong>Factura Reemplaza:</strong>{" "}
+                                        <span className="font-mono font-bold" style={{ color: "#047857" }}>
+                                          {r.facturaReemplaza || "PENDIENTE"}
+                                        </span>{" "}
+                                        | <strong>RIPS:</strong> {r.rips || "-"}
+                                      </div>
+                                      <div>
+                                        <strong>Fecha Factura:</strong> {r.fechaFactura || "-"} |{" "}
+                                        <strong>Responsable:</strong> {nombreResp}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              {tabActiva === "glosas" && (
+                <table
+                  className="w-full text-[11px] border-collapse"
+                  style={{ tableLayout: "auto", width: "100%" }}
+                >
+                  <thead>
+                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                      {columnasGlosas.map((col, idx) =>
+                        renderCeldaHeaderConFiltro(col, idx, columnasGlosas.length + 1)
+                      )}
+                      <th
+                        style={{ width: "1%", whiteSpace: "nowrap" }}
+                        className="px-2 py-2.5 text-center font-bold"
+                      >
+                        Acción
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
+                    {(listaActivaPaginada.items as GlosaRow[]).map((r) => {
+                      const abierta = Boolean(filasExpandidas[r.id]);
+                      const nombreFac = normalizarResponsableReal(r.facturador, r.empresa);
+
+                      return (
+                        <React.Fragment key={r.id}>
+                          <tr
+                            onClick={() => togglePersianaFila(r.id)}
+                            className="hover:bg-slate-50 align-middle cursor-pointer"
+                          >
+                            <td className="px-2 py-2 whitespace-nowrap">
+                              <span
+                                className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
+                                style={{
+                                  backgroundColor:
+                                    r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                                      ? "#FFE4E6"
+                                      : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
+                                      ? "#ECFDF5"
+                                      : "#FEF3C7",
+                                  color:
+                                    r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                                      ? "#BE123C"
+                                      : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
+                                      ? "#047857"
+                                      : "#B45309",
+                                }}
+                              >
+                                {r.subtabla === "ACEPTADA_NOTA_CREDITO"
+                                  ? "Aceptada (NC)"
+                                  : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
+                                  ? "Respondida"
+                                  : "En Gestión"}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {r.anio}
+                            </td>
+                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {r.empresa}
+                            </td>
+                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
+                              {r.factura}
+                            </td>
+                            <td className="px-2 py-2 text-right font-mono whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {formatCOP(r.valorFactura || r.valorRadicado)}
+                            </td>
+                            <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#BE123C" }}>
+                              {formatCOP(r.valorGlosado)}
+                            </td>
+                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
+                              <div className="flex items-start justify-between gap-2">
+                                <span>{r.motivoGlosa || "-"}</span>
+                                <span
+                                  className="text-[10px] font-bold shrink-0 mt-0.5"
+                                  style={{ color: "#1D58D8" }}
+                                >
+                                  {abierta ? "▴" : "▾"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155" }}>
+                              {r.observacionInterna || "-"}
+                            </td>
+                            <td className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {nombreFac}
+                            </td>
+                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#6D28D9" }}>
+                              {r.notaCredito || "-"}
+                            </td>
+                            <td
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-2 py-2 text-center whitespace-nowrap"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setFilaEditando({ ...r, facturador: nombreFac })}
+                                className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
+                                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
+                              >
+                                Editar
+                              </button>
+                            </td>
+                          </tr>
+
+                          {abierta && (
+                            <tr style={{ backgroundColor: "#F4F8FD" }}>
+                              <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
+                                      Motivo Completo de Glosa ({r.factura})
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
+                                      {r.motivoGlosa || "-"}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
+                                      Respuesta / Observación Interna
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
+                                      {r.observacionInterna || "Sin observación adicional"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              {tabActiva === "pendientes" && (
+                <table
+                  className="w-full text-[11px] border-collapse"
+                  style={{ tableLayout: "auto", width: "100%" }}
+                >
+                  <thead>
+                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                      {columnasPendientes.map((col, idx) =>
+                        renderCeldaHeaderConFiltro(col, idx, columnasPendientes.length + 1)
+                      )}
+                      <th
+                        style={{ width: "1%", whiteSpace: "nowrap" }}
+                        className="px-2 py-2.5 text-center font-bold"
+                      >
+                        Acción
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
+                    {(listaActivaPaginada.items as PendienteRow[]).map((r) => {
+                      const abierta = Boolean(filasExpandidas[r.id]);
+                      const nombreResp = normalizarResponsableReal(r.responsable, r.empresa);
+
+                      return (
+                        <React.Fragment key={r.id}>
+                          <tr
+                            onClick={() => togglePersianaFila(r.id)}
+                            className="hover:bg-slate-50 align-middle cursor-pointer"
+                          >
+                            <td className="px-2 py-2 whitespace-nowrap">
+                              <span
+                                className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
+                                style={{
+                                  backgroundColor: r.estado === "FACTURADO" ? "#ECFDF5" : "#FEF3C7",
+                                  color: r.estado === "FACTURADO" ? "#047857" : "#B45309",
+                                }}
+                              >
+                                {r.estado}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {r.empresa}
+                            </td>
+                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155" }}>
+                              {r.contrato}
+                            </td>
+                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
+                              {r.cups}
+                            </td>
+                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
+                              <div className="flex items-start justify-between gap-2">
+                                <span>{r.descripcion}</span>
+                                <span
+                                  className="text-[10px] font-bold shrink-0 mt-0.5"
+                                  style={{ color: "#1D58D8" }}
+                                >
+                                  {abierta ? "▴" : "▾"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
+                              {r.fechaServicio}
+                            </td>
+                            <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
+                              {r.medico}
+                            </td>
+                            <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {formatCOP(r.valorServicio)}
+                            </td>
+                            <td className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: "#0E245E" }}>
+                              {nombreResp}
+                            </td>
+                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155" }}>
+                              {r.observaciones || "-"}
+                            </td>
+                            <td
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-2 py-2 text-center whitespace-nowrap"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setFilaEditando({ ...r, responsable: nombreResp })}
+                                className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
+                                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
+                              >
+                                Editar
+                              </button>
+                            </td>
+                          </tr>
+
+                          {abierta && (
+                            <tr style={{ backgroundColor: "#F4F8FD" }}>
+                              <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
+                                      Descripción Completa del Procedimiento ({r.cups})
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
+                                      {r.descripcion}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
+                                      Contrato y Observaciones
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
+                                      <div>
+                                        <strong>Contrato:</strong> {r.contrato}
+                                      </div>
+                                      <div>
+                                        <strong>Observación:</strong> {r.observaciones || "Pendiente por facturar"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* PAGINACIÓN */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-xs" style={{ color: "#475569" }}>
+              <span>
+                Mostrando <strong>{listaActivaPaginada.items.length}</strong> de{" "}
+                <strong>{listaActivaPaginada.total}</strong> registros
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={paginaActual <= 1}
+                  onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 font-bold cursor-pointer"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  Anterior
                 </button>
-              );
-            })}
+                <span className="font-bold" style={{ color: "#0E245E" }}>
+                  Página {paginaActual} de {listaActivaPaginada.totalPaginas}
+                </span>
+                <button
+                  type="button"
+                  disabled={paginaActual >= listaActivaPaginada.totalPaginas}
+                  onClick={() => setPaginaActual((p) => Math.min(listaActivaPaginada.totalPaginas, p + 1))}
+                  className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 font-bold cursor-pointer"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* TABLA AJUSTADA AL 100% DEL ANCHO CON MENÚ DESPLEGABLE (▾) Y PERSIANA AL CLIC */}
-        <div className="border rounded-xl overflow-visible" style={{ borderColor: "#E2ECF8" }}>
-          {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
-            <table
-              className="w-full text-[11px] border-collapse"
-              style={{ tableLayout: "fixed", width: "100%" }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                  {columnasAnuladas.map((col, idx) =>
-                    renderCeldaHeaderConFiltro(col, idx, columnasAnuladas.length + 1)
-                  )}
-                  <th style={{ width: "5%" }} className="px-2.5 py-2.5 text-center font-bold whitespace-nowrap">
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                {(listaActivaPaginada.items as AnuladaRow[]).map((r) => {
-                  const abierta = Boolean(filasExpandidas[r.id]);
-                  const etiquetaTipo = normalizarEtiquetaTipo(r.tipo);
-                  const textoMotivoBase =
-                    r.motivo && r.motivo !== "-"
-                      ? r.motivo
-                      : r.tipo && r.tipo.length > 15
-                      ? r.tipo
-                      : "Sin motivo registrado";
-                  const nombreResp =
-                    !r.responsable || r.responsable === "SIN ASIGNAR"
-                      ? "Por asignar"
-                      : r.responsable;
-
-                  return (
-                    <React.Fragment key={r.id}>
-                      <tr className="hover:bg-slate-50 align-middle">
-                        <td className="px-2.5 py-2.5 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                          {r.anio}
-                        </td>
-                        <td className="px-2.5 py-2.5 font-bold truncate" style={{ color: "#0E245E" }} title={r.empresa}>
-                          {r.empresa}
-                        </td>
-                        <td className="px-2.5 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                          {r.factura}
-                        </td>
-                        <td className="px-2.5 py-2.5 whitespace-nowrap" style={{ color: "#334155" }}>
-                          {r.fechaRadicacion || r.fechaFactura || "-"}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                          {formatCOP(r.valorRadicado)}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-right font-mono font-semibold whitespace-nowrap" style={{ color: "#BE123C" }}>
-                          {formatCOP(r.valorGlosaDevolucion)}
-                        </td>
-                        <td className="px-2.5 py-2.5 whitespace-nowrap">
-                          <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold inline-block"
-                            style={{
-                              backgroundColor: etiquetaTipo === "GLOSA" ? "#FFE4E6" : "#EFF6FF",
-                              color: etiquetaTipo === "GLOSA" ? "#BE123C" : "#1D58D8",
-                            }}
-                          >
-                            {etiquetaTipo}
-                          </span>
-                        </td>
-                        <td
-                          onClick={() => togglePersianaFila(r.id)}
-                          className="px-2.5 py-2.5 cursor-pointer"
-                          style={{ color: "#334155" }}
-                          title="Haz clic para desplegar el motivo y revisión completos"
-                        >
-                          <div className="w-full flex items-center justify-between gap-2">
-                            <span className="truncate">{textoMotivoBase}</span>
-                            <span
-                              className="text-[10px] font-bold shrink-0"
-                              style={{ color: "#1D58D8" }}
-                            >
-                              {abierta ? "▴" : "▾"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-2.5 py-2.5 font-mono font-bold truncate" style={{ color: "#047857" }}>
-                          {r.facturaReemplaza || "PENDIENTE"}
-                        </td>
-                        <td className="px-2.5 py-2.5 font-mono truncate" style={{ color: "#334155" }}>
-                          {r.rips || "-"}
-                        </td>
-                        <td
-                          className="px-2.5 py-2.5 font-semibold truncate"
-                          style={{ color: nombreResp === "Por asignar" ? "#64748B" : "#0E245E" }}
-                          title={nombreResp}
-                        >
-                          {nombreResp}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setFilaEditando({ ...r })}
-                            className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                            style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                          >
-                            Editar
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* PERSIANA DESPLEGABLE CON EL DETALLE COMPLETO */}
-                      {abierta && (
-                        <tr style={{ backgroundColor: "#F4F8FD" }}>
-                          <td colSpan={12} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                              <div className="md:col-span-2 space-y-1">
-                                <div className="font-extrabold text-[11px] uppercase" style={{ color: "#1D58D8" }}>
-                                  Motivo Completo de Anulación / Devolución ({r.factura})
-                                </div>
-                                <div className="p-2.5 rounded-lg bg-white border leading-relaxed" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
-                                  {textoMotivoBase}
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <div className="font-extrabold text-[11px] uppercase" style={{ color: "#047857" }}>
-                                  Revisión Financiera y Trazabilidad
-                                </div>
-                                <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
-                                  <div>
-                                    <strong>Revisión:</strong> {r.revisionFinanciera || "En revisión"}
-                                  </div>
-                                  <div>
-                                    <strong>Factura Reemplaza:</strong>{" "}
-                                    <span className="font-mono font-bold" style={{ color: "#047857" }}>
-                                      {r.facturaReemplaza || "PENDIENTE"}
-                                    </span>{" "}
-                                    | <strong>RIPS:</strong> {r.rips || "-"}
-                                  </div>
-                                  <div>
-                                    <strong>Fecha Factura:</strong> {r.fechaFactura || "-"} |{" "}
-                                    <strong>Responsable:</strong> {nombreResp}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-
-          {tabActiva === "glosas" && (
-            <table
-              className="w-full text-[11px] border-collapse"
-              style={{ tableLayout: "fixed", width: "100%" }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                  {columnasGlosas.map((col, idx) =>
-                    renderCeldaHeaderConFiltro(col, idx, columnasGlosas.length + 1)
-                  )}
-                  <th style={{ width: "5%" }} className="px-2.5 py-2.5 text-center font-bold whitespace-nowrap">
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                {(listaActivaPaginada.items as GlosaRow[]).map((r) => {
-                  const abierta = Boolean(filasExpandidas[r.id]);
-                  const nombreFac =
-                    !r.facturador || r.facturador === "SIN ASIGNAR"
-                      ? "Por asignar"
-                      : r.facturador;
-
-                  return (
-                    <React.Fragment key={r.id}>
-                      <tr className="hover:bg-slate-50 align-middle">
-                        <td className="px-2.5 py-2.5 whitespace-nowrap">
-                          <span
-                            className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
-                            style={{
-                              backgroundColor:
-                                r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                                  ? "#FFE4E6"
-                                  : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                                  ? "#ECFDF5"
-                                  : "#FEF3C7",
-                              color:
-                                r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                                  ? "#BE123C"
-                                  : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                                  ? "#047857"
-                                  : "#B45309",
-                            }}
-                          >
-                            {r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                              ? "Aceptada (NC)"
-                              : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                              ? "Respondida"
-                              : "En Gestión"}
-                          </span>
-                        </td>
-                        <td className="px-2.5 py-2.5 font-bold" style={{ color: "#0E245E" }}>
-                          {r.anio}
-                        </td>
-                        <td className="px-2.5 py-2.5 font-bold truncate" style={{ color: "#0E245E" }} title={r.empresa}>
-                          {r.empresa}
-                        </td>
-                        <td className="px-2.5 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                          {r.factura}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-right font-mono whitespace-nowrap" style={{ color: "#0E245E" }}>
-                          {formatCOP(r.valorFactura || r.valorRadicado)}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#BE123C" }}>
-                          {formatCOP(r.valorGlosado)}
-                        </td>
-                        <td
-                          onClick={() => togglePersianaFila(r.id)}
-                          className="px-2.5 py-2.5 cursor-pointer"
-                          style={{ color: "#334155" }}
-                          title="Haz clic para desplegar el motivo y respuesta completos"
-                        >
-                          <div className="w-full flex items-center justify-between gap-2">
-                            <span className="truncate">{r.motivoGlosa || "-"}</span>
-                            <span
-                              className="text-[10px] font-bold shrink-0"
-                              style={{ color: "#1D58D8" }}
-                            >
-                              {abierta ? "▴" : "▾"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-2.5 py-2.5 truncate" style={{ color: "#334155" }} title={r.observacionInterna}>
-                          {r.observacionInterna || "-"}
-                        </td>
-                        <td
-                          className="px-2.5 py-2.5 font-semibold truncate"
-                          style={{ color: nombreFac === "Por asignar" ? "#64748B" : "#0E245E" }}
-                          title={nombreFac}
-                        >
-                          {nombreFac}
-                        </td>
-                        <td className="px-2.5 py-2.5 font-mono font-bold truncate" style={{ color: "#6D28D9" }}>
-                          {r.notaCredito || "-"}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setFilaEditando({ ...r })}
-                            className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                            style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                          >
-                            Editar
-                          </button>
-                        </td>
-                      </tr>
-
-                      {abierta && (
-                        <tr style={{ backgroundColor: "#F4F8FD" }}>
-                          <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                              <div>
-                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
-                                  Motivo Completo de Glosa ({r.factura})
-                                </div>
-                                <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
-                                  {r.motivoGlosa || "-"}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
-                                  Respuesta / Observación Interna
-                                </div>
-                                <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
-                                  {r.observacionInterna || "Sin observación adicional"}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-
-          {tabActiva === "pendientes" && (
-            <table
-              className="w-full text-[11px] border-collapse"
-              style={{ tableLayout: "fixed", width: "100%" }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                  {columnasPendientes.map((col, idx) =>
-                    renderCeldaHeaderConFiltro(col, idx, columnasPendientes.length + 1)
-                  )}
-                  <th style={{ width: "5%" }} className="px-2.5 py-2.5 text-center font-bold whitespace-nowrap">
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                {(listaActivaPaginada.items as PendienteRow[]).map((r) => {
-                  const abierta = Boolean(filasExpandidas[r.id]);
-                  const nombreResp =
-                    !r.responsable || r.responsable === "SIN ASIGNAR"
-                      ? "Por asignar"
-                      : r.responsable;
-
-                  return (
-                    <React.Fragment key={r.id}>
-                      <tr className="hover:bg-slate-50 align-middle">
-                        <td className="px-2.5 py-2.5 whitespace-nowrap">
-                          <span
-                            className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
-                            style={{
-                              backgroundColor: r.estado === "FACTURADO" ? "#ECFDF5" : "#FEF3C7",
-                              color: r.estado === "FACTURADO" ? "#047857" : "#B45309",
-                            }}
-                          >
-                            {r.estado}
-                          </span>
-                        </td>
-                        <td className="px-2.5 py-2.5 font-bold truncate" style={{ color: "#0E245E" }} title={r.empresa}>
-                          {r.empresa}
-                        </td>
-                        <td className="px-2.5 py-2.5 truncate" style={{ color: "#334155" }} title={r.contrato}>
-                          {r.contrato}
-                        </td>
-                        <td className="px-2.5 py-2.5 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                          {r.cups}
-                        </td>
-                        <td
-                          onClick={() => togglePersianaFila(r.id)}
-                          className="px-2.5 py-2.5 cursor-pointer"
-                          style={{ color: "#334155" }}
-                          title="Haz clic para desplegar la descripción completa"
-                        >
-                          <div className="w-full flex items-center justify-between gap-2">
-                            <span className="truncate">{r.descripcion}</span>
-                            <span
-                              className="text-[10px] font-bold shrink-0"
-                              style={{ color: "#1D58D8" }}
-                            >
-                              {abierta ? "▴" : "▾"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-2.5 py-2.5 whitespace-nowrap" style={{ color: "#334155" }}>
-                          {r.fechaServicio}
-                        </td>
-                        <td className="px-2.5 py-2.5 truncate" style={{ color: "#334155" }} title={r.medico}>
-                          {r.medico}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                          {formatCOP(r.valorServicio)}
-                        </td>
-                        <td
-                          className="px-2.5 py-2.5 font-semibold truncate"
-                          style={{ color: nombreResp === "Por asignar" ? "#64748B" : "#0E245E" }}
-                          title={nombreResp}
-                        >
-                          {nombreResp}
-                        </td>
-                        <td className="px-2.5 py-2.5 truncate" style={{ color: "#334155" }} title={r.observaciones}>
-                          {r.observaciones || "-"}
-                        </td>
-                        <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setFilaEditando({ ...r })}
-                            className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                            style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                          >
-                            Editar
-                          </button>
-                        </td>
-                      </tr>
-
-                      {abierta && (
-                        <tr style={{ backgroundColor: "#F4F8FD" }}>
-                          <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                              <div>
-                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
-                                  Descripción Completa del Procedimiento ({r.cups})
-                                </div>
-                                <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
-                                  {r.descripcion}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
-                                  Contrato y Observaciones
-                                </div>
-                                <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
-                                  <div>
-                                    <strong>Contrato:</strong> {r.contrato}
-                                  </div>
-                                  <div>
-                                    <strong>Observación:</strong> {r.observaciones || "Pendiente por facturar"}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* PAGINACIÓN */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-xs" style={{ color: "#475569" }}>
-          <span>
-            Mostrando <strong>{listaActivaPaginada.items.length}</strong> de{" "}
-            <strong>{listaActivaPaginada.total}</strong> registros
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={paginaActual <= 1}
-              onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
-              className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 font-bold cursor-pointer"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            >
-              Anterior
-            </button>
-            <span className="font-bold" style={{ color: "#0E245E" }}>
-              Página {paginaActual} de {listaActivaPaginada.totalPaginas}
-            </span>
-            <button
-              type="button"
-              disabled={paginaActual >= listaActivaPaginada.totalPaginas}
-              onClick={() => setPaginaActual((p) => Math.min(listaActivaPaginada.totalPaginas, p + 1))}
-              className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 font-bold cursor-pointer"
-              style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-            >
-              Siguiente
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* MODAL EDITAR FILA */}
       {filaEditando && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div
-            className="rounded-2xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto"
+            className="rounded-xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto"
             style={{ backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#0E245E" }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#E2ECF8" }}>
@@ -2553,7 +2662,7 @@ export default function TableroCarteraAnalytics() {
       {mostrarModalNuevo && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div
-            className="rounded-2xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto"
+            className="rounded-xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto"
             style={{ backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#0E245E" }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#E2ECF8" }}>
@@ -2701,7 +2810,7 @@ export default function TableroCarteraAnalytics() {
       {mostrarModalCorte && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div
-            className="rounded-2xl max-w-xl w-full p-6 shadow-2xl border space-y-4"
+            className="rounded-xl max-w-xl w-full p-6 shadow-2xl border space-y-4"
             style={{ backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#0E245E" }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#E2ECF8" }}>
