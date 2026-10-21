@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import carteraInitialData from "@/lib/cartera-data.json";
+import { FechaDelDato } from "@/components/FechaDelDato";
 
 type CorteSismaBack = {
   fechaCorte: string;
@@ -1458,6 +1459,25 @@ export default function TableroCarteraAnalytics() {
               <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
                 Cartera Corriente (&lt; 60 días) + Cartera Vencida (&gt;= 60 días) − Giros por cruzar = Total Cartera Real (Clic para plegar/desplegar)
               </p>
+              {/* Esta pantalla consulta SISMA en vivo, pero si la consulta
+                  falla el aviso dura 4 segundos y despues la pantalla se
+                  queda mostrando la instantanea guardada como si fuera el
+                  corte de hoy. Esto lo dice de forma permanente. */}
+              <div className="mt-1.5">
+                {datosSismaVivo ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-[11.5px] font-semibold text-[#047857]">
+                    En vivo desde SISMA · corte {datosSismaVivo.fechaCorte}
+                  </span>
+                ) : (
+                  <FechaDelDato
+                    fecha={carteraInitialData.ultimaActualizacion}
+                    queEs="Sin conexión a SISMA · datos guardados"
+                    avisaA={1}
+                    alarmaA={3}
+                    comoSeActualiza="pulse el botón de sincronizar"
+                  />
+                )}
+              </div>
             </div>
           </button>
 
