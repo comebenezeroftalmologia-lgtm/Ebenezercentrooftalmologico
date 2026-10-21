@@ -103,7 +103,9 @@ export async function invitarUsuarioAction(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const nombreCompleto = String(formData.get("nombreCompleto") ?? "").trim();
   const isAdmin = formData.get("isAdmin") === "on";
-  const modulos = formData.getAll("modulos").map(String) as Modulo[];
+  // Set: en MODULOS hay slugs repetidos (p. ej. "Cartera y Radicación" comparte
+  // "frecuencias"), y un duplicado viola unique (user_id, modulo).
+  const modulos = Array.from(new Set(formData.getAll("modulos").map(String))) as Modulo[];
 
   if (!EMAIL_PATTERN.test(email)) return { error: "Correo invÃ¡lido." };
   if (!nombreCompleto) return { error: "Falta el nombre completo." };
@@ -156,10 +158,11 @@ export async function actualizarAccesoUsuarioAction(
   const { error: deleteError } = await admin.from("modulo_accesos").delete().eq("user_id", userId);
   if (deleteError) throw new Error(deleteError.message);
 
-  if (modulos.length > 0) {
+  const modulosUnicos = Array.from(new Set(modulos));
+  if (modulosUnicos.length > 0) {
     const { error: insertError } = await admin
       .from("modulo_accesos")
-      .insert(modulos.map((modulo) => ({ user_id: userId, modulo })));
+      .insert(modulosUnicos.map((modulo) => ({ user_id: userId, modulo })));
     if (insertError) throw new Error(insertError.message);
   }
 
