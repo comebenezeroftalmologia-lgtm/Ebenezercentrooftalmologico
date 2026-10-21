@@ -1,1015 +1,10 @@
 {
-  "updatedAt": "2026-10-21 09:25:29",
+  "updatedAt": "2026-10-21 11:43:32",
   "sources": {
     "digiturno": "http://192.168.200.11:6663/SGTWidgetGestureApi",
     "contactCenter": "https://pbx.itmsas.com/sonata/service/v1/api"
   },
   "digiturnoMonthly": [
-    {
-      "year": 2025,
-      "monthNum": 1,
-      "month": "Enero",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 543,
-            "espera": 11.2,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 909,
-            "espera": 20.4,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 543,
-            "espera": 0.0,
-            "atencion": 1.7
-          },
-          "sede2": {
-            "turnos": 909,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 264,
-            "espera": 18.4,
-            "atencion": 10.1
-          },
-          "sede2": {
-            "turnos": 724,
-            "espera": 26.0,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 104,
-            "espera": 37.4,
-            "atencion": 15.0
-          },
-          "sede2": {
-            "turnos": 223,
-            "espera": 43.7,
-            "atencion": 6.3
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 83,
-            "espera": 15.7,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 287,
-            "espera": 16.4,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 2,
-      "month": "Febrero",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 532,
-            "espera": 11.0,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 890,
-            "espera": 20.0,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 532,
-            "espera": 0.0,
-            "atencion": 1.7
-          },
-          "sede2": {
-            "turnos": 890,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 258,
-            "espera": 18.0,
-            "atencion": 9.9
-          },
-          "sede2": {
-            "turnos": 709,
-            "espera": 25.5,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 102,
-            "espera": 36.6,
-            "atencion": 14.7
-          },
-          "sede2": {
-            "turnos": 218,
-            "espera": 42.8,
-            "atencion": 6.2
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 82,
-            "espera": 15.4,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 281,
-            "espera": 16.1,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 3,
-      "month": "Marzo",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 560,
-            "espera": 11.6,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 937,
-            "espera": 21.1,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 560,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 937,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 272,
-            "espera": 19.0,
-            "atencion": 10.4
-          },
-          "sede2": {
-            "turnos": 746,
-            "espera": 26.8,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 108,
-            "espera": 38.6,
-            "atencion": 15.5
-          },
-          "sede2": {
-            "turnos": 230,
-            "espera": 45.0,
-            "atencion": 6.5
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 86,
-            "espera": 16.2,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 296,
-            "espera": 16.9,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 4,
-      "month": "Abril",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 549,
-            "espera": 11.3,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 918,
-            "espera": 20.6,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 549,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 918,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 267,
-            "espera": 18.6,
-            "atencion": 10.2
-          },
-          "sede2": {
-            "turnos": 731,
-            "espera": 26.3,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 105,
-            "espera": 37.8,
-            "atencion": 15.2
-          },
-          "sede2": {
-            "turnos": 225,
-            "espera": 44.1,
-            "atencion": 6.4
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 84,
-            "espera": 15.8,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 290,
-            "espera": 16.6,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 5,
-      "month": "Mayo",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 571,
-            "espera": 11.8,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 956,
-            "espera": 21.5,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 571,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 956,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 278,
-            "espera": 19.4,
-            "atencion": 10.7
-          },
-          "sede2": {
-            "turnos": 761,
-            "espera": 27.3,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 110,
-            "espera": 39.3,
-            "atencion": 15.8
-          },
-          "sede2": {
-            "turnos": 235,
-            "espera": 46.0,
-            "atencion": 6.6
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 88,
-            "espera": 16.5,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 302,
-            "espera": 17.3,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 6,
-      "month": "Junio",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 577,
-            "espera": 11.9,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 966,
-            "espera": 21.7,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 577,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 966,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 281,
-            "espera": 19.6,
-            "atencion": 10.8
-          },
-          "sede2": {
-            "turnos": 769,
-            "espera": 27.6,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 111,
-            "espera": 39.7,
-            "atencion": 16.0
-          },
-          "sede2": {
-            "turnos": 237,
-            "espera": 46.4,
-            "atencion": 6.7
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 89,
-            "espera": 16.7,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 305,
-            "espera": 17.4,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 7,
-      "month": "Julio",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 543,
-            "espera": 11.2,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 909,
-            "espera": 20.4,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 543,
-            "espera": 0.0,
-            "atencion": 1.7
-          },
-          "sede2": {
-            "turnos": 909,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 264,
-            "espera": 18.4,
-            "atencion": 10.1
-          },
-          "sede2": {
-            "turnos": 724,
-            "espera": 26.0,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 104,
-            "espera": 37.4,
-            "atencion": 15.0
-          },
-          "sede2": {
-            "turnos": 223,
-            "espera": 43.7,
-            "atencion": 6.3
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 83,
-            "espera": 15.7,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 287,
-            "espera": 16.4,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 8,
-      "month": "Agosto",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 554,
-            "espera": 11.5,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 928,
-            "espera": 20.9,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 554,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 928,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 269,
-            "espera": 18.8,
-            "atencion": 10.3
-          },
-          "sede2": {
-            "turnos": 739,
-            "espera": 26.5,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 107,
-            "espera": 38.2,
-            "atencion": 15.4
-          },
-          "sede2": {
-            "turnos": 228,
-            "espera": 44.6,
-            "atencion": 6.4
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 85,
-            "espera": 16.0,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 293,
-            "espera": 16.8,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 9,
-      "month": "Septiembre",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 571,
-            "espera": 11.8,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 956,
-            "espera": 21.5,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 571,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 956,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 278,
-            "espera": 19.4,
-            "atencion": 10.7
-          },
-          "sede2": {
-            "turnos": 761,
-            "espera": 27.3,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 110,
-            "espera": 39.3,
-            "atencion": 15.8
-          },
-          "sede2": {
-            "turnos": 235,
-            "espera": 46.0,
-            "atencion": 6.6
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 88,
-            "espera": 16.5,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 302,
-            "espera": 17.3,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2025,
-      "monthNum": 10,
-      "month": "Octubre",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 566,
-            "espera": 11.7,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 947,
-            "espera": 21.3,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 566,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 947,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 275,
-            "espera": 19.2,
-            "atencion": 10.5
-          },
-          "sede2": {
-            "turnos": 754,
-            "espera": 27.1,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 109,
-            "espera": 38.9,
-            "atencion": 15.7
-          },
-          "sede2": {
-            "turnos": 232,
-            "espera": 45.5,
-            "atencion": 6.6
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 87,
-            "espera": 16.3,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 299,
-            "espera": 17.1,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 1,
-      "month": "Enero",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 572,
-            "espera": 11.8,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 957,
-            "espera": 21.5,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 572,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 957,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 278,
-            "espera": 19.4,
-            "atencion": 10.7
-          },
-          "sede2": {
-            "turnos": 762,
-            "espera": 27.4,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 110,
-            "espera": 39.4,
-            "atencion": 15.8
-          },
-          "sede2": {
-            "turnos": 235,
-            "espera": 46.0,
-            "atencion": 6.6
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 88,
-            "espera": 16.5,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 302,
-            "espera": 17.3,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 2,
-      "month": "Febrero",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 560,
-            "espera": 11.6,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 937,
-            "espera": 21.1,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 560,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 937,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 272,
-            "espera": 19.0,
-            "atencion": 10.4
-          },
-          "sede2": {
-            "turnos": 746,
-            "espera": 26.8,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 108,
-            "espera": 38.5,
-            "atencion": 15.5
-          },
-          "sede2": {
-            "turnos": 230,
-            "espera": 45.0,
-            "atencion": 6.5
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 86,
-            "espera": 16.2,
-            "atencion": 1.1
-          },
-          "sede2": {
-            "turnos": 296,
-            "espera": 16.9,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 3,
-      "month": "Marzo",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 590,
-            "espera": 12.2,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 987,
-            "espera": 22.2,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 590,
-            "espera": 0.0,
-            "atencion": 1.9
-          },
-          "sede2": {
-            "turnos": 987,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 287,
-            "espera": 20.0,
-            "atencion": 11.0
-          },
-          "sede2": {
-            "turnos": 786,
-            "espera": 28.2,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 113,
-            "espera": 40.6,
-            "atencion": 16.3
-          },
-          "sede2": {
-            "turnos": 242,
-            "espera": 47.4,
-            "atencion": 6.8
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 91,
-            "espera": 17.0,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 311,
-            "espera": 17.8,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 4,
-      "month": "Abril",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 578,
-            "espera": 11.9,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 967,
-            "espera": 21.7,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 578,
-            "espera": 0.0,
-            "atencion": 1.8
-          },
-          "sede2": {
-            "turnos": 967,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 281,
-            "espera": 19.6,
-            "atencion": 10.8
-          },
-          "sede2": {
-            "turnos": 770,
-            "espera": 27.6,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 111,
-            "espera": 39.8,
-            "atencion": 16.0
-          },
-          "sede2": {
-            "turnos": 237,
-            "espera": 46.5,
-            "atencion": 6.7
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 89,
-            "espera": 16.7,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 305,
-            "espera": 17.5,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 5,
-      "month": "Mayo",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 601,
-            "espera": 12.4,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 1006,
-            "espera": 22.6,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 601,
-            "espera": 0.0,
-            "atencion": 1.9
-          },
-          "sede2": {
-            "turnos": 1006,
-            "espera": 0.0,
-            "atencion": 0.2
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 292,
-            "espera": 20.4,
-            "atencion": 11.2
-          },
-          "sede2": {
-            "turnos": 801,
-            "espera": 28.8,
-            "atencion": 0.4
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 116,
-            "espera": 41.4,
-            "atencion": 16.7
-          },
-          "sede2": {
-            "turnos": 247,
-            "espera": 48.4,
-            "atencion": 7.0
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 92,
-            "espera": 17.4,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 318,
-            "espera": 18.2,
-            "atencion": 0.3
-          }
-        }
-      }
-    },
     {
       "year": 2026,
       "monthNum": 6,
@@ -1018,12 +13,12 @@
         "step1": {
           "sede1": {
             "turnos": 3234,
-            "espera": 0.1,
+            "espera": 6.0,
             "atencion": 0.0
           },
           "sede2": {
             "turnos": 6988,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 0.0
           }
         },
@@ -1042,24 +37,24 @@
         "step3": {
           "sede1": {
             "turnos": 1230,
-            "espera": 0.4,
+            "espera": 24.0,
             "atencion": 1.0
           },
           "sede2": {
             "turnos": 3712,
-            "espera": 0.6,
+            "espera": 36.0,
             "atencion": 0.5
           }
         },
         "step4": {
           "sede1": {
             "turnos": 525,
-            "espera": 0.6,
+            "espera": 36.0,
             "atencion": 5.0
           },
           "sede2": {
             "turnos": 1440,
-            "espera": 0.9,
+            "espera": 54.0,
             "atencion": 5.0
           }
         },
@@ -1085,12 +80,12 @@
         "step1": {
           "sede1": {
             "turnos": 3612,
-            "espera": 0.1,
+            "espera": 6.0,
             "atencion": 0.0
           },
           "sede2": {
             "turnos": 5460,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 0.0
           }
         },
@@ -1109,24 +104,24 @@
         "step3": {
           "sede1": {
             "turnos": 1709,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 1.0
           },
           "sede2": {
             "turnos": 4124,
-            "espera": 0.6,
+            "espera": 36.0,
             "atencion": 0.5
           }
         },
         "step4": {
           "sede1": {
             "turnos": 575,
-            "espera": 0.6,
+            "espera": 36.0,
             "atencion": 5.0
           },
           "sede2": {
             "turnos": 1633,
-            "espera": 0.9,
+            "espera": 54.0,
             "atencion": 5.0
           }
         },
@@ -1138,7 +133,7 @@
           },
           "sede2": {
             "turnos": 1965,
-            "espera": 0.2,
+            "espera": 12.0,
             "atencion": 0.5
           }
         }
@@ -1152,12 +147,12 @@
         "step1": {
           "sede1": {
             "turnos": 3750,
-            "espera": 0.1,
+            "espera": 6.0,
             "atencion": 0.0
           },
           "sede2": {
             "turnos": 6295,
-            "espera": 0.5,
+            "espera": 30.0,
             "atencion": 0.0
           }
         },
@@ -1176,24 +171,24 @@
         "step3": {
           "sede1": {
             "turnos": 1772,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 1.0
           },
           "sede2": {
             "turnos": 4489,
-            "espera": 0.4,
+            "espera": 24.0,
             "atencion": 0.5
           }
         },
         "step4": {
           "sede1": {
             "turnos": 609,
-            "espera": 0.7,
+            "espera": 42.0,
             "atencion": 5.0
           },
           "sede2": {
             "turnos": 2045,
-            "espera": 0.9,
+            "espera": 54.0,
             "atencion": 5.0
           }
         },
@@ -1205,7 +200,7 @@
           },
           "sede2": {
             "turnos": 2599,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 0.5
           }
         }
@@ -1219,12 +214,12 @@
         "step1": {
           "sede1": {
             "turnos": 3990,
-            "espera": 0.1,
+            "espera": 6.0,
             "atencion": 0.0
           },
           "sede2": {
             "turnos": 6035,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 0.0
           }
         },
@@ -1243,24 +238,24 @@
         "step3": {
           "sede1": {
             "turnos": 1818,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 1.0
           },
           "sede2": {
             "turnos": 4754,
-            "espera": 0.5,
+            "espera": 30.0,
             "atencion": 0.5
           }
         },
         "step4": {
           "sede1": {
             "turnos": 529,
-            "espera": 0.5,
+            "espera": 30.0,
             "atencion": 5.0
           },
           "sede2": {
             "turnos": 1642,
-            "espera": 0.8,
+            "espera": 48.0,
             "atencion": 5.0
           }
         },
@@ -1272,7 +267,7 @@
           },
           "sede2": {
             "turnos": 1659,
-            "espera": 0.3,
+            "espera": 18.0,
             "atencion": 0.5
           }
         }
@@ -1286,12 +281,12 @@
         "step1": {
           "sede1": {
             "turnos": 3460,
-            "espera": 0.2,
+            "espera": 12.3,
             "atencion": 0.0
           },
           "sede2": {
             "turnos": 5279,
-            "espera": 0.3,
+            "espera": 22.4,
             "atencion": 0.0
           }
         },
@@ -1299,36 +294,36 @@
           "sede1": {
             "turnos": 3460,
             "espera": 0.0,
-            "atencion": 0.5
+            "atencion": 1.9
           },
           "sede2": {
             "turnos": 5279,
             "espera": 0.0,
-            "atencion": 0.3
+            "atencion": 0.1
           }
         },
         "step3": {
           "sede1": {
             "turnos": 1419,
-            "espera": 0.3,
-            "atencion": 1.0
+            "espera": 20.2,
+            "atencion": 11.1
           },
           "sede2": {
             "turnos": 4326,
-            "espera": 0.4,
-            "atencion": 0.5
+            "espera": 28.5,
+            "atencion": 0.2
           }
         },
         "step4": {
           "sede1": {
             "turnos": 583,
-            "espera": 0.5,
-            "atencion": 5.0
+            "espera": 41.0,
+            "atencion": 16.5
           },
           "sede2": {
             "turnos": 1251,
-            "espera": 0.8,
-            "atencion": 5.0
+            "espera": 47.9,
+            "atencion": 6.9
           }
         },
         "step5": {
@@ -1339,8 +334,8 @@
           },
           "sede2": {
             "turnos": 1696,
-            "espera": 0.3,
-            "atencion": 0.5
+            "espera": 18.0,
+            "atencion": 0.1
           }
         }
       }
