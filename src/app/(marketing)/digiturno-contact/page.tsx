@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   PhoneCall,
   PhoneIncoming,
@@ -81,6 +81,23 @@ function fmtDec(n: number, decimals = 1): string {
 
 export default function DigiturnoContactPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('contact');
+  const [liveDataset, setLiveDataset] = useState<typeof rawData>(rawData);
+
+  // Sincronización automática en la nube (Vercel -> Sonata PBX directo, sin depender de ningún PC)
+  useEffect(() => {
+    let active = true;
+    fetch('/api/digiturno-contact', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d && Array.isArray(d.contactCenterMonthly)) {
+          setLiveDataset(d);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Shared multi-select filters (Años, Meses, Sedes)
   const ALL_YEARS_OPTIONS = ['2026', '2025'];
@@ -187,7 +204,7 @@ export default function DigiturnoContactPage() {
   // 1. CÁLCULOS ARITMÉTICOS DIGITURNO (SEDE 1 Y SEDE 2)
   // ============================================================================
   const digiturnoComputed = useMemo(() => {
-    const records = (rawData.digiturnoMonthly || []).filter((item) => {
+    const records = (liveDataset.digiturnoMonthly || []).filter((item) => {
       if (!selectedYears.includes(String(item.year))) {
         return false;
       }
@@ -198,7 +215,7 @@ export default function DigiturnoContactPage() {
     });
 
     // Chart data across months for the selected year
-    const chartRecords = (rawData.digiturnoMonthly || []).filter(
+    const chartRecords = (liveDataset.digiturnoMonthly || []).filter(
       (item) =>
         (selectedYear === 'Todos' ? item.year === 2026 : String(item.year) === selectedYear) &&
         selectedMonths.includes(item.month)
@@ -365,13 +382,13 @@ export default function DigiturnoContactPage() {
       atencionS2: sumAtencionS2,
       cumplGlobal,
     };
-  }, [selectedYear, selectedYears, selectedMonths, selectedSede]);
+  }, [liveDataset, selectedYear, selectedYears, selectedMonths, selectedSede]);
 
   // ============================================================================
   // 2. CÁLCULOS ARITMÉTICOS CONTACT CENTER (PBX) CON BOTÓN EXCLUIR MUTUAL
   // ============================================================================
   const contactComputed = useMemo(() => {
-    const records = (rawData.contactCenterMonthly || []).filter((item) => {
+    const records = (liveDataset.contactCenterMonthly || []).filter((item) => {
       if (!selectedYears.includes(String(item.year))) {
         return false;
       }
@@ -381,7 +398,7 @@ export default function DigiturnoContactPage() {
       return true;
     });
 
-    const chartRecords = (rawData.contactCenterMonthly || []).filter(
+    const chartRecords = (liveDataset.contactCenterMonthly || []).filter(
       (item) =>
         selectedYears.includes(String(item.year)) &&
         selectedMonths.includes(item.month)
@@ -592,7 +609,7 @@ export default function DigiturnoContactPage() {
       allWithoutMutualRec,
       sinMutualEfect,
     };
-  }, [selectedYear, selectedYears, selectedMonths, selectedLines]);
+  }, [liveDataset, selectedYear, selectedYears, selectedMonths, selectedLines]);
 
   const badgeColor = (pct: number) => {
     if (pct >= 85) {
