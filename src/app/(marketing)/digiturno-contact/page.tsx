@@ -28,6 +28,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import rawData from '@/lib/digiturno-contact-data.json';
+import { FechaDelDato } from '@/components/FechaDelDato';
 
 type ActiveTab = 'digiturno' | 'contact';
 
@@ -629,6 +630,17 @@ export default function DigiturnoContactPage() {
               <p className="text-[11px] text-slate-500 font-medium truncate">
                 Control operativo de tiempos de atención en sedes y nivel de servicio telefónico
               </p>
+              {/* Esta pantalla NO consulta el digiturno cada vez: lee un
+                  archivo que hay que regenerar. Se dice de cuando es. */}
+              <div className="mt-1.5">
+                <FechaDelDato
+                  fecha={(rawData as { updatedAt?: string }).updatedAt}
+                  queEs="Datos"
+                  avisaA={2}
+                  alarmaA={5}
+                  comoSeActualiza="hay que volver a extraer del digiturno y del PBX"
+                />
+              </div>
             </div>
           </div>
 
