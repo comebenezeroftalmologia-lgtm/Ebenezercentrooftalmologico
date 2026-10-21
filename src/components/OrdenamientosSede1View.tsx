@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import realDataJson from "@/lib/ordenamientos-sede1-real.json";
+import { CoberturaDelDato } from "@/components/FechaDelDato";
 
 export type OrdenSede1Item = {
   createdAt: string;
@@ -68,6 +69,11 @@ const YEARS = ["2026", "2025", "2024"];
 export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) {
   const isQuirurgico = (tipo ?? mode ?? "quirurgicos") === "quirurgicos";
   const dataset: MonthMap = isQuirurgico ? REAL_DATA.quirurgicos : REAL_DATA.no_quirurgicos;
+
+  // Hasta donde llegan de verdad los datos del archivo. Se saca del propio
+  // archivo, no de una constante: si manana trae un mes mas, el aviso se
+  // mueve solo.
+  const ultimoMesConDatos = Object.keys(dataset).sort().pop() ?? null;
 
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [selectedCard, setSelectedCard] = useState<1 | 2 | 3 | 4 | null>(null);
@@ -302,6 +308,15 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
             <h1 className="text-[18px] md:text-[19px] font-bold text-slate-900 tracking-tight leading-snug whitespace-nowrap">
               Ordenado vs. Realizado por Mes · Sede 1
             </h1>
+            {/* Esta vista lee un archivo, no consulta la fuente cada vez.
+                El archivo no trae fecha de extraccion, asi que se dice
+                hasta donde llegan los datos y se advierte lo que falta. */}
+            <div className="mt-1.5">
+              <CoberturaDelDato
+                hastaMes={ultimoMesConDatos}
+                comoSeActualiza="hay que regenerar ordenamientos-sede1-real.json"
+              />
+            </div>
           </div>
 
           {/* 4 Filtros verticales compactos alineados en una sola línea: Año, Mes, Médico y Procedimiento */}
