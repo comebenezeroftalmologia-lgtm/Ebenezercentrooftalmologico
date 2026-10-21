@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileText,
   Folder,
+  FolderInput,
   FolderOpen,
   List as ListIcon,
   Lock,
@@ -25,6 +26,7 @@ import {
   crearListaAction,
   eliminarElementoAction,
   eliminarEspacioAction,
+  moverElementoAction,
   renombrarAction,
 } from "@/lib/proyectos/actions";
 import { BotonPrimario, BotonSecundario, Modal, Popover, useAviso } from "@/components/proyectos/ui";
@@ -37,6 +39,13 @@ interface Creando {
   espacioId: string;
   carpetaId: string | null;
   tipo: TipoNuevo;
+}
+interface Movible {
+  tipo: "lista" | "doc";
+  id: string;
+  nombre: string;
+  espacioId: string;
+  carpetaId: string | null;
 }
 type Renombrando = { tipo: "carpeta" | "lista" | "doc" | "espacio"; id: string } | null;
 type Eliminando = { tipo: "carpeta" | "lista" | "doc" | "espacio"; id: string; nombre: string } | null;
@@ -80,6 +89,9 @@ export function ArbolEspacios({
   const [eliminando, setEliminando] = useState<Eliminando>(null);
   const [editandoEspacio, setEditandoEspacio] = useState<string | null>(null);
   const [compartiendo, setCompartiendo] = useState<string | null>(null);
+  const [moviendo, setMoviendo] = useState<Movible | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+  const arrastrando = useRef<Movible | null>(null);
   const [pendiente, start] = useTransition();
 
   useEffect(() => {
@@ -191,6 +203,53 @@ export function ArbolEspacios({
     });
   }
 
+  function mover(m: Movible, destinoCarpetaId: string | null) {
+    if (m.carpetaId === destinoCarpetaId) return;
+    setMoviendo(null);
+    start(async () => {
+      const res = await moverElementoAction(m.tipo, m.id, destinoCarpetaId);
+      if (!res.ok) return aviso(res.error);
+      abrir(destinoCarpetaId ?? m.espacioId);
+    });
+  }
+
+  // Arrastrar y soltar: una lista/documento se puede soltar sobre una carpeta
+  // o sobre el espacio (raíz) — siempre dentro del mismo espacio.
+  const arrastrable = (m: Movible) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      arrastrando.current = m;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", m.nombre);
+    },
+    onDragEnd: () => {
+      arrastrando.current = null;
+      setSobre(null);
+    },
+  });
+  const destino = (espacioId: string, carpetaId: string | null, clave: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      const a = arrastrando.current;
+      if (!a || a.espacioId !== espacioId || a.carpetaId === carpetaId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setSobre((prev) => (prev === clave ? prev : clave));
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+        setSobre((prev) => (prev === clave ? null : prev));
+      }
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      const a = arrastrando.current;
+      arrastrando.current = null;
+      setSobre(null);
+      if (!a || a.espacioId !== espacioId || a.carpetaId === carpetaId) return;
+      mover(a, carpetaId);
+    },
+  });
+
   const q = busqueda.trim().toLowerCase();
   const coincide = (n: string) => !q || n.toLowerCase().includes(q);
 
@@ -262,6 +321,8 @@ export function ArbolEspacios({
                 <Fila
                   activo={esActivoEspacio}
                   sangria={0}
+                  resaltar={sobre === espacio.id}
+                  extra={puedeEditar ? destino(espacio.id, null, espacio.id) : undefined}
                   acciones={
                     <Acciones
                       puedeEditar={puedeEditar}
@@ -310,6 +371,10 @@ export function ArbolEspacios({
                         key={c.id}
                         carpeta={c}
                         puedeEditar={puedeEditar}
+                        sobre={sobre === c.id}
+                        destino={destino(espacio.id, c.id, c.id)}
+                        arrastrable={arrastrable}
+                        onMover={setMoviendo}
                         activo={activo}
                         expandido={!!q || abiertos.has(c.id)}
                         alternar={() => alternar(c.id)}
@@ -339,6 +404,8 @@ export function ArbolEspacios({
                         onConfirmarRenombre={confirmarRenombre}
                         onCancelarRenombre={() => setRenombrando(null)}
                         onEliminar={() => setEliminando({ tipo: "lista", id: l.id, nombre: l.nombre })}
+                        onMover={() => setMoviendo({ tipo: "lista", id: l.id, nombre: l.nombre, espacioId: l.espacioId, carpetaId: l.carpetaId })}
+                        arrastre={puedeEditar ? arrastrable({ tipo: "lista", id: l.id, nombre: l.nombre, espacioId: l.espacioId, carpetaId: l.carpetaId }) : undefined}
                       />
                     ))}
                     {docs.map((d) => (
@@ -353,6 +420,8 @@ export function ArbolEspacios({
                         onConfirmarRenombre={confirmarRenombre}
                         onCancelarRenombre={() => setRenombrando(null)}
                         onEliminar={() => setEliminando({ tipo: "doc", id: d.id, nombre: d.nombre })}
+                        onMover={() => setMoviendo({ tipo: "doc", id: d.id, nombre: d.nombre, espacioId: d.espacioId, carpetaId: d.carpetaId })}
+                        arrastre={puedeEditar ? arrastrable({ tipo: "doc", id: d.id, nombre: d.nombre, espacioId: d.espacioId, carpetaId: d.carpetaId }) : undefined}
                       />
                     ))}
 
@@ -372,6 +441,44 @@ export function ArbolEspacios({
       {espacioCompartir && (
         <CompartirModal espacio={espacioCompartir} yoId={yoId} onCerrar={() => setCompartiendo(null)} />
       )}
+      {moviendo && (() => {
+        const e = arbol.find((x) => x.espacio.id === moviendo.espacioId);
+        const opciones: { id: string | null; nombre: string; icono: "espacio" | "carpeta" }[] = [
+          { id: null, nombre: `${e?.espacio.nombre ?? "Espacio"} (sin carpeta)`, icono: "espacio" },
+          ...(e?.carpetas ?? []).map((c) => ({ id: c.id as string | null, nombre: c.nombre, icono: "carpeta" as const })),
+        ];
+        return (
+          <Modal
+            titulo={`Mover ${etiquetaTipo(moviendo.tipo)}`}
+            onCerrar={() => setMoviendo(null)}
+            pie={<BotonSecundario onClick={() => setMoviendo(null)}>Cancelar</BotonSecundario>}
+          >
+            <p className="mb-3 text-sm text-ink-2">
+              Elige dónde guardar <strong>{moviendo.nombre}</strong>.
+            </p>
+            <div role="menu" className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+              {opciones.map((o) => {
+                const actual = o.id === moviendo.carpetaId;
+                return (
+                  <button
+                    key={o.id ?? "raiz"}
+                    type="button"
+                    role="menuitem"
+                    disabled={actual || pendiente}
+                    onClick={() => mover(moviendo, o.id)}
+                    className="flex w-full items-center gap-2 rounded-xs px-2.5 py-2 text-left text-[13px] text-ink-2 hover:bg-[#F3F7FD] disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
+                  >
+                    {o.icono === "espacio" ? <ListIcon className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+                    <span className="truncate">{o.nombre}</span>
+                    {actual && <span className="ml-auto text-xs text-ink-3">ubicación actual</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs text-ink-3">También puedes arrastrarlo desde el árbol hasta la carpeta o el espacio.</p>
+          </Modal>
+        );
+      })()}
       {eliminando && (
         <Modal
           titulo={`Eliminar ${etiquetaTipo(eliminando.tipo)}`}
@@ -415,16 +522,22 @@ function Fila({
   sangria,
   children,
   acciones,
+  resaltar,
+  extra,
 }: {
   activo: boolean;
   sangria: number;
   children: React.ReactNode;
   acciones?: React.ReactNode;
+  /** Se está arrastrando algo encima y se puede soltar aquí. */
+  resaltar?: boolean;
+  extra?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   return (
     <div
+      {...extra}
       className={`group relative flex h-8 items-center gap-1 rounded-sm pr-1 ${
-        activo ? "bg-blue-10" : "hover:bg-[#F3F7FD]"
+        resaltar ? "bg-blue-10 ring-1 ring-blue" : activo ? "bg-blue-10" : "hover:bg-[#F3F7FD]"
       }`}
       style={{ paddingLeft: 4 + sangria * 16 }}
     >
@@ -445,6 +558,7 @@ function Acciones({
   onNuevo,
   onRenombrar,
   onCompartir,
+  onMover,
   onEliminar,
 }: {
   puedeEditar: boolean;
@@ -453,6 +567,7 @@ function Acciones({
   onNuevo?: (t: TipoNuevo) => void;
   onRenombrar: () => void;
   onCompartir?: () => void;
+  onMover?: () => void;
   onEliminar: () => void;
 }) {
   const item = "flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-left text-[13px] text-ink-2 hover:bg-[#F3F7FD]";
@@ -513,6 +628,11 @@ function Acciones({
                 <button role="menuitem" className={item} onClick={() => { cerrar(); onRenombrar(); }}>
                   {esEspacio ? <Palette className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
                   {esEspacio ? "Editar espacio" : "Renombrar"}
+                </button>
+              )}
+              {puedeEditar && onMover && (
+                <button role="menuitem" className={item} onClick={() => { cerrar(); onMover(); }}>
+                  <FolderInput className="h-4 w-4" /> Mover a…
                 </button>
               )}
               {onCompartir && (
@@ -601,6 +721,10 @@ function FilaNueva({
 function CarpetaNodo(props: {
   carpeta: CarpetaConHijos;
   puedeEditar: boolean;
+  sobre: boolean;
+  destino: React.HTMLAttributes<HTMLDivElement>;
+  arrastrable: (m: Movible) => React.HTMLAttributes<HTMLDivElement>;
+  onMover: (m: Movible) => void;
   activo: { tipo: string; id: string } | null;
   expandido: boolean;
   alternar: () => void;
@@ -624,6 +748,8 @@ function CarpetaNodo(props: {
       <Fila
         activo={false}
         sangria={1}
+        resaltar={props.sobre}
+        extra={puedeEditar ? props.destino : undefined}
         acciones={
           <Acciones
             puedeEditar={puedeEditar}
@@ -665,6 +791,8 @@ function CarpetaNodo(props: {
               onConfirmarRenombre={props.onConfirmarRenombre}
               onCancelarRenombre={props.onCancelarRenombre}
               onEliminar={() => props.onEliminarHijo("lista", l.id, l.nombre)}
+              onMover={() => props.onMover({ tipo: "lista", id: l.id, nombre: l.nombre, espacioId: l.espacioId, carpetaId: l.carpetaId })}
+              arrastre={puedeEditar ? props.arrastrable({ tipo: "lista", id: l.id, nombre: l.nombre, espacioId: l.espacioId, carpetaId: l.carpetaId }) : undefined}
             />
           ))}
           {c.docs.map((d) => (
@@ -679,6 +807,8 @@ function CarpetaNodo(props: {
               onConfirmarRenombre={props.onConfirmarRenombre}
               onCancelarRenombre={props.onCancelarRenombre}
               onEliminar={() => props.onEliminarHijo("doc", d.id, d.nombre)}
+              onMover={() => props.onMover({ tipo: "doc", id: d.id, nombre: d.nombre, espacioId: d.espacioId, carpetaId: d.carpetaId })}
+              arrastre={puedeEditar ? props.arrastrable({ tipo: "doc", id: d.id, nombre: d.nombre, espacioId: d.espacioId, carpetaId: d.carpetaId }) : undefined}
             />
           ))}
           {c.listas.length === 0 && c.docs.length === 0 && !props.creando && (
@@ -702,6 +832,8 @@ function HojaLista({
   onConfirmarRenombre,
   onCancelarRenombre,
   onEliminar,
+  onMover,
+  arrastre,
 }: {
   lista: Lista;
   sangria: number;
@@ -712,16 +844,23 @@ function HojaLista({
   onConfirmarRenombre: (v: string) => void;
   onCancelarRenombre: () => void;
   onEliminar: () => void;
+  onMover?: () => void;
+  arrastre?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   return (
-    <Fila activo={activo} sangria={sangria} acciones={puedeEditar ? <Acciones puedeEditar onRenombrar={onRenombrar} onEliminar={onEliminar} /> : undefined}>
+    <Fila
+      activo={activo}
+      sangria={sangria}
+      extra={arrastre}
+      acciones={puedeEditar ? <Acciones puedeEditar onRenombrar={onRenombrar} onMover={onMover} onEliminar={onEliminar} /> : undefined}
+    >
       {renombrando ? (
         <span className="flex min-w-0 flex-1 items-center gap-2 pl-5">
           <ListIcon className="h-4 w-4 shrink-0 text-ink-3" />
           <InputInline inicial={lista.nombre} onOk={onConfirmarRenombre} onCancelar={onCancelarRenombre} />
         </span>
       ) : (
-        <Link href={`/proyectos/lista/${lista.id}`} className="flex min-w-0 flex-1 items-center gap-2 pl-5" aria-current={activo ? "page" : undefined}>
+        <Link href={`/proyectos/lista/${lista.id}`} draggable={false} className="flex min-w-0 flex-1 items-center gap-2 pl-5" aria-current={activo ? "page" : undefined}>
           <ListIcon className={`h-4 w-4 shrink-0 ${activo ? "text-blue" : "text-ink-3"}`} />
           <span className={`truncate text-[13px] ${activo ? "font-semibold text-ink" : "text-ink-2"}`}>{lista.nombre}</span>
           {lista.abiertas > 0 && <span className="ml-auto shrink-0 pr-1 text-[11px] text-ink-3 group-hover:hidden">{lista.abiertas}</span>}
@@ -741,6 +880,8 @@ function HojaDoc({
   onConfirmarRenombre,
   onCancelarRenombre,
   onEliminar,
+  onMover,
+  arrastre,
 }: {
   doc: DocResumen;
   sangria: number;
@@ -751,16 +892,23 @@ function HojaDoc({
   onConfirmarRenombre: (v: string) => void;
   onCancelarRenombre: () => void;
   onEliminar: () => void;
+  onMover?: () => void;
+  arrastre?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   return (
-    <Fila activo={activo} sangria={sangria} acciones={puedeEditar ? <Acciones puedeEditar onRenombrar={onRenombrar} onEliminar={onEliminar} /> : undefined}>
+    <Fila
+      activo={activo}
+      sangria={sangria}
+      extra={arrastre}
+      acciones={puedeEditar ? <Acciones puedeEditar onRenombrar={onRenombrar} onMover={onMover} onEliminar={onEliminar} /> : undefined}
+    >
       {renombrando ? (
         <span className="flex min-w-0 flex-1 items-center gap-2 pl-5">
           <FileText className="h-4 w-4 shrink-0 text-ink-3" />
           <InputInline inicial={doc.nombre} onOk={onConfirmarRenombre} onCancelar={onCancelarRenombre} />
         </span>
       ) : (
-        <Link href={`/proyectos/doc/${doc.id}`} className="flex min-w-0 flex-1 items-center gap-2 pl-5" aria-current={activo ? "page" : undefined}>
+        <Link href={`/proyectos/doc/${doc.id}`} draggable={false} className="flex min-w-0 flex-1 items-center gap-2 pl-5" aria-current={activo ? "page" : undefined}>
           <FileText className={`h-4 w-4 shrink-0 ${activo ? "text-blue" : "text-ink-3"}`} />
           <span className={`truncate text-[13px] ${activo ? "font-semibold text-ink" : "text-ink-2"}`}>{doc.nombre}</span>
         </Link>

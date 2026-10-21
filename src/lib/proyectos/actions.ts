@@ -248,6 +248,30 @@ export async function eliminarElementoAction(tipo: "carpeta" | "lista" | "doc", 
   return { ok: true };
 }
 
+/** Mueve una lista o documento a una carpeta del MISMO espacio (o a la raíz
+ * del espacio con carpetaId = null). Mover entre espacios no se permite:
+ * las etiquetas y miembros son por espacio. Los permisos los decide RLS y
+ * el trigger trg_proy_*_carpeta valida que la carpeta sea de ese espacio. */
+export async function moverElementoAction(
+  tipo: "lista" | "doc",
+  id: string,
+  carpetaId: string | null
+): Promise<Resultado> {
+  const { sb } = await contexto();
+  if (!UUID.test(id) || (carpetaId !== null && !UUID.test(carpetaId))) return invalido("Datos no válidos.");
+  const tabla = { lista: "proy_listas", doc: "proy_docs" }[tipo];
+  if (!tabla) return invalido("Tipo no válido.");
+  const { data, error } = await sb
+    .from(tabla)
+    .update({ carpeta_id: carpetaId, orden: Date.now() })
+    .eq("id", id)
+    .select("id");
+  if (error) return fallo(error);
+  if (!data || data.length === 0) return invalido("No tienes permiso para mover esto.");
+  refrescar();
+  return { ok: true };
+}
+
 export async function crearListaAction(
   espacioId: string,
   carpetaId: string | null,

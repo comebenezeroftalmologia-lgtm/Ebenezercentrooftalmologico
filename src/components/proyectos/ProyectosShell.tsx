@@ -64,7 +64,7 @@ export function ProyectosShell({
             >
               <TramaArquitectonicaBandeja /><div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-2.5">
                 <p className="truncate text-[14.5px] font-bold tracking-[-0.015em] text-[#0E245E]">
-                  Proyectos
+                  Tareas
                 </p>
                 <button
                   type="button"
@@ -103,7 +103,7 @@ export function ProyectosShell({
                     strokeWidth={1.85}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] leading-tight">Resumen de Proyectos</p>
+                    <p className="truncate text-[13px] leading-tight">Resumen de Tareas</p>
                     <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Espacios y tareas</p>
                   </div>
                 </Link>
@@ -120,7 +120,7 @@ export function ProyectosShell({
               <button
                 type="button"
                 onClick={() => setAbierto(true)}
-                title="Mostrar bandeja de Proyectos"
+                title="Mostrar bandeja de Tareas"
                 className="hidden md:flex absolute left-[86px] top-3.5 z-20 items-center gap-1.5 rounded-[8px] border border-[#DCE4F0] bg-white px-2.5 py-1.5 text-xs font-medium text-[#0E245E] shadow-sm transition hover:bg-[#F8FAFC]"
               >
                 <PanelLeftOpen className="h-3.5 w-3.5 text-[#1D58D8]" strokeWidth={1.75} />
@@ -144,7 +144,7 @@ export function ProyectosShell({
                   aria-label="Abrir menú"
                 >
                   <Menu className="h-5 w-5" />                </button>
-                <span className="text-sm font-semibold">Proyectos</span>
+                <span className="text-sm font-semibold">Tareas</span>
               </div>
               <main className="hoja-cuadriculada min-h-0 min-w-0 flex-1 overflow-hidden">{children}</main>
             </div>

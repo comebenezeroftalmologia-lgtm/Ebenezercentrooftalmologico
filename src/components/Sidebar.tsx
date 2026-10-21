@@ -160,10 +160,10 @@ export function RielGlobal({
         )}
 
         {proyectosPermitido && (
-          <Link href="/proyectos" className={itemClass(enProyectos)} title="Proyectos">
+          <Link href="/proyectos" className={itemClass(enProyectos)} title="Tareas">
             {enProyectos && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <Folder className="h-[19px] w-[19px]" strokeWidth={1.75} />
-            <span className="text-[10.5px] leading-none tracking-tight">Proyectos</span>
+            <span className="text-[10.5px] leading-none tracking-tight">Tareas</span>
           </Link>
         )}
 
@@ -311,7 +311,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                     <Link href="/proyectos" className={pill(false)}>
                       <Folder className={iconCls(false)} strokeWidth={1.85} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] leading-tight">Proyectos</p>
+                        <p className="truncate text-[13px] leading-tight">Tareas</p>
                         <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Espacios, listas y Kanban</p>
                       </div>
                     </Link>

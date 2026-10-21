@@ -8,7 +8,7 @@ export default function NoEncontrado() {
         Puede que se haya eliminado o que no tengas acceso al espacio donde estaba.
       </p>
       <Link href="/proyectos" className="rounded-sm bg-blue px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#0B25C9]">
-        Ir al inicio de Proyectos
+        Ir al inicio de Tareas
       </Link>
     </div>
   );

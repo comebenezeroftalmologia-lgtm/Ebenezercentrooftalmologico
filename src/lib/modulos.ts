@@ -27,7 +27,7 @@ export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoM
   { slug: "frecuencias", label: "Cartera y Radicación", href: "/cartera", grupo: "Analytics" },
   { slug: "venta_del_dia", label: 'Digiturno y Contact', href: '/digiturno-contact', grupo: "Analytics" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
-  { slug: "proyectos", label: "Proyectos", href: "/proyectos", grupo: "Procesos" },
+  { slug: "proyectos", label: "Tareas", href: "/proyectos", grupo: "Procesos" },
 ];
 
 export function moduloLabel(slug: Modulo): string {

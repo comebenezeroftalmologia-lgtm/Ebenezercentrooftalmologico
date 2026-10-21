@@ -6,6 +6,7 @@ import type {
   AppUser,
   Area,
   AreaAsignacion,
+  EstadoAcceso,
   KpisTareas,
   Proceso,
   Tarea,
@@ -124,6 +125,23 @@ export async function listAppUsers(): Promise<AppUser[]> {
     .order("nombre_completo");
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAppUser);
+}
+
+/** Para cada usuario, cuándo fue invitado y cuándo ingresó por última vez
+ * (auth.users). `ultimoIngreso` null = la invitación aún no se ha usado. */
+export async function getEstadoAccesoPorUsuario(): Promise<Record<string, EstadoAcceso>> {
+  const supabase = createServiceClient();
+  const POR_PAGINA = 200;
+  const map: Record<string, EstadoAcceso> = {};
+  for (let pagina = 1; pagina <= 25; pagina++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page: pagina, perPage: POR_PAGINA });
+    if (error) throw new Error(error.message);
+    for (const u of data.users) {
+      map[u.id] = { invitadoAt: u.invited_at ?? u.created_at ?? null, ultimoIngreso: u.last_sign_in_at ?? null };
+    }
+    if (data.users.length < POR_PAGINA) break;
+  }
+  return map;
 }
 
 export async function listModuloAccesosPorUsuario(): Promise<Record<string, Modulo[]>> {

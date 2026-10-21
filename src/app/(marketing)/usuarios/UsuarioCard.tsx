@@ -2,19 +2,30 @@
 
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import type { AppUser } from "@/lib/procesos/types";
+import type { AppUser, EstadoAcceso } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
 import { MODULOS, modulosPorGrupo, moduloLabel } from "@/lib/modulos";
 import { actualizarAccesoUsuarioAction, eliminarUsuarioAction } from "@/lib/procesos/actions";
 import { RestablecerPasswordButton } from "./RestablecerPasswordButton";
 import { ToggleActivoButton } from "./ToggleActivoButton";
 
+function fechaCorta(iso: string): string {
+  return new Intl.DateTimeFormat("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "America/Bogota",
+  }).format(new Date(iso));
+}
+
 export function UsuarioCard({
   usuario,
+  acceso,
   modulos,
   esMiPropiaCuenta,
 }: {
   usuario: AppUser;
+  acceso?: EstadoAcceso;
   modulos: Modulo[];
   esMiPropiaCuenta: boolean;
 }) {
@@ -68,6 +79,22 @@ export function UsuarioCard({
     });
   }
 
+  // Estado real: "Activo" solo si ya ingresó alguna vez (no basta con estar
+  // habilitado); si nunca ha ingresado, la invitación sigue pendiente.
+  const pendienteIngreso = !!acceso && !acceso.ultimoIngreso;
+  const insignia = !usuario.activo
+    ? { texto: "Desactivado", clase: "bg-line-2 text-ink-3" }
+    : pendienteIngreso
+    ? { texto: "Invitación pendiente", clase: "bg-[#FEF3E2] text-[#B54708]" }
+    : { texto: "Activo", clase: "bg-green-10 text-green" };
+  const detalleAcceso = !acceso
+    ? null
+    : pendienteIngreso
+    ? acceso.invitadoAt
+      ? `Invitado el ${fechaCorta(acceso.invitadoAt)} · aún no ha ingresado`
+      : "Aún no ha ingresado"
+    : `Último ingreso: ${fechaCorta(acceso.ultimoIngreso!)}`;
+
   return (
     <div className="rounded-xl border border-line bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -75,14 +102,11 @@ export function UsuarioCard({
           <p className="font-semibold text-navy">{usuario.nombreCompleto}</p>
           <p className="text-xs text-ink-3">{usuario.email}</p>
         </div>
-        <span
-          className={`rounded-pill px-2 py-0.5 text-xs font-medium ${
-            usuario.activo ? "bg-green-10 text-green" : "bg-line-2 text-ink-3"
-          }`}
-        >
-          {usuario.activo ? "Activo" : "Inactivo"}
+        <span className={`shrink-0 rounded-pill px-2 py-0.5 text-xs font-medium ${insignia.clase}`}>
+          {insignia.texto}
         </span>
       </div>
+      {detalleAcceso && <p className="-mt-2 mb-3 text-[11px] text-ink-3">{detalleAcceso}</p>}
 
       {usuario.isAdmin && <p className="mb-2 text-xs font-medium text-blue">Administrador</p>}
 

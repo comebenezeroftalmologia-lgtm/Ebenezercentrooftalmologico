@@ -9,6 +9,13 @@ export interface AppUser {
   activo: boolean;
 }
 
+/** Estado real de acceso según Supabase Auth: si la persona ya entró alguna vez
+ * o la invitación sigue sin usarse. */
+export interface EstadoAcceso {
+  invitadoAt: string | null;
+  ultimoIngreso: string | null;
+}
+
 export interface Area {
   id: string;
   nombre: string;
