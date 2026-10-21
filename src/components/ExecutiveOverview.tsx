@@ -15,23 +15,50 @@ import {
 } from "lucide-react";
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { ProduccionRecienteChart } from "@/components/ProduccionRecienteChart";
+import type { DatosPortada } from "@/lib/portadaReal";
+
+/* La curva de la tarjeta de atenciones se DIBUJA con la serie real de los
+   ultimos dias. Antes los cuatro trazos eran curvas a mano que siempre
+   subian: una linea de tendencia inventada enganna igual que una cifra
+   inventada, y encima cuesta mas notarlo. Las tarjetas que no tienen
+   serie propia ya no llevan curva. */
+function trazo(valores: number[]): { linea: string; area: string; x: number; y: number } | null {
+  if (valores.length < 2) return null;
+  const min = Math.min(...valores);
+  const max = Math.max(...valores);
+  const rango = max - min || 1;
+  const pts = valores.map((v, i) => {
+    const x = 2 + (i * 74) / (valores.length - 1);
+    const y = 32 - ((v - min) / rango) * 26;
+    return [x, y] as const;
+  });
+  const linea = pts.map(([x, y], i) => `${i ? "L" : "M"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const fin = pts[pts.length - 1];
+  return {
+    linea,
+    area: `${linea} L ${fin[0].toFixed(1)} 36 L 2 36 Z`,
+    x: fin[0],
+    y: fin[1],
+  };
+}
 
 export function ExecutiveOverview({
   mode,
   userName,
+  datos,
 }: {
   mode: "inicio" | "analytics";
   userName?: string;
+  datos: DatosPortada;
 }) {
   const primerNombre = userName ? userName.trim().split(/\s+/)[0] : "Pedro";
+
+  const curvaAtenciones = trazo(datos.serie.map((p) => p.valor));
 
   const kpis = [
     {
       titulo: "Atenciones facturadas",
-      valor: "453",
-      delta: "+11,5%",
-      flecha: "up" as const,
-      subtitulo: "vs. mismo período anterior",
+      ...datos.atenciones,
       href: "/frecuencias",
       Icono: Users,
       borderColor: "#2563EB",
@@ -39,17 +66,11 @@ export function ExecutiveOverview({
       iconColor: "#1D4ED8",
       sparkColor: "#2563EB",
       sparkGradId: "eb-kpi-spark-1",
-      sparkPath: "M 2 30 C 14 29, 20 23, 30 24 C 40 25, 48 15, 58 14 C 65 13, 70 8, 76 6",
-      sparkArea: "M 2 30 C 14 29, 20 23, 30 24 C 40 25, 48 15, 58 14 C 65 13, 70 8, 76 6 L 76 36 L 2 36 Z",
-      endX: 76,
-      endY: 6,
+      curva: curvaAtenciones,
     },
     {
-      titulo: "Producción del día",
-      valor: "$ 28,4 M",
-      delta: "+8,2%",
-      flecha: "up" as const,
-      subtitulo: "Acumulado mes: $ 342,0 M",
+      titulo: "Asistencia del día",
+      ...datos.asistencia,
       href: "/venta-del-dia",
       Icono: CircleDollarSign,
       borderColor: "#10B981",
@@ -57,46 +78,31 @@ export function ExecutiveOverview({
       iconColor: "#059669",
       sparkColor: "#10B981",
       sparkGradId: "eb-kpi-spark-2",
-      sparkPath: "M 2 31 C 14 28, 22 26, 32 21 C 42 16, 50 19, 60 12 C 67 8, 71 7, 76 5",
-      sparkArea: "M 2 31 C 14 28, 22 26, 32 21 C 42 16, 50 19, 60 12 C 67 8, 71 7, 76 5 L 76 36 L 2 36 Z",
-      endX: 76,
-      endY: 5,
+      curva: null,
     },
     {
-      titulo: "Tiempo promedio de espera",
-      valor: "14 min",
-      delta: "-2,3%",
-      flecha: "down" as const,
-      subtitulo: "Meta institucional: < 18 min",
-      href: "/procesos",
+      titulo: "Tiempo en el centro",
+      ...datos.espera,
+      href: "/digiturno-contact",
       Icono: Clock,
       borderColor: "#8B5CF6",
       iconBg: "#EDE9FE",
       iconColor: "#7C3AED",
       sparkColor: "#8B5CF6",
       sparkGradId: "eb-kpi-spark-3",
-      sparkPath: "M 2 29 C 14 27, 22 24, 32 22 C 42 20, 50 16, 60 11 C 67 8, 71 7, 76 6",
-      sparkArea: "M 2 29 C 14 27, 22 24, 32 22 C 42 20, 50 16, 60 11 C 67 8, 71 7, 76 6 L 76 36 L 2 36 Z",
-      endX: 76,
-      endY: 6,
+      curva: null,
     },
     {
       titulo: "Cirugías programadas",
-      valor: "38",
-      delta: "+6,4%",
-      flecha: "up" as const,
-      subtitulo: "Quirófano principal y láser",
+      ...datos.cirugias,
       href: "/quirurgicos",
       Icono: Calendar,
       borderColor: "#F59E0B",
       iconBg: "#FEF3C7",
       iconColor: "#D97706",
-      sparkColor: "#10B981",
+      sparkColor: "#F59E0B",
       sparkGradId: "eb-kpi-spark-4",
-      sparkPath: "M 2 30 C 14 28, 22 23, 32 22 C 42 21, 50 14, 60 11 C 67 9, 71 7, 76 5",
-      sparkArea: "M 2 30 C 14 28, 22 23, 32 22 C 42 21, 50 14, 60 11 C 67 9, 71 7, 76 5 L 76 36 L 2 36 Z",
-      endX: 76,
-      endY: 5,
+      curva: null,
     },
   ];
 
@@ -182,63 +188,86 @@ export function ExecutiveOverview({
               <div className="flex items-end justify-between gap-2 px-4 pb-3.5 pt-1">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[26px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-[#0E245E]">
+                    <span
+                      className={`text-[26px] font-extrabold leading-none tracking-[-0.03em] tabular-nums ${
+                        kpi.hayDato ? "text-[#0E245E]" : "text-[#94A3B8]"
+                      }`}
+                    >
                       {kpi.valor}
                     </span>
-                    <span className="inline-flex items-center gap-0.5 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[11px] font-bold tabular-nums text-[#15803D]">
-                      {kpi.flecha === "up" ? (
-                        <ArrowUp className="h-2.5 w-2.5" strokeWidth={2.5} />
-                      ) : (
-                        <ArrowDown className="h-2.5 w-2.5" strokeWidth={2.5} />
-                      )}
-                      {kpi.delta}
-                    </span>
+                    {/* La capsula solo aparece cuando hay comparacion de verdad.
+                        Y el color sigue a la flecha: antes era verde siempre,
+                        asi que un dato a la baja se veia como una mejora. */}
+                    {kpi.delta && kpi.flecha ? (
+                      <span
+                        className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                          kpi.flecha === "up"
+                            ? "bg-[#DCFCE7] text-[#15803D]"
+                            : "bg-[#FEE2E2] text-[#B91C1C]"
+                        }`}
+                      >
+                        {kpi.flecha === "up" ? (
+                          <ArrowUp className="h-2.5 w-2.5" strokeWidth={2.5} />
+                        ) : (
+                          <ArrowDown className="h-2.5 w-2.5" strokeWidth={2.5} />
+                        )}
+                        {kpi.delta}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="mt-1.5 text-[11.5px] font-medium text-[#64748B]">
                     {kpi.subtitulo}
                   </p>
                 </div>
 
-                {/* Mini-gráfica de área integrada en la tarjeta (Opción 1) */}
-                <div className="shrink-0 pt-1">
-                  <svg
-                    className="h-[38px] w-[76px] overflow-visible"
-                    viewBox="0 0 80 38"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <defs>
-                      <linearGradient id={kpi.sparkGradId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={kpi.sparkColor} stopOpacity="0.28" />
-                        <stop offset="100%" stopColor={kpi.sparkColor} stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <path d={kpi.sparkArea} fill={`url(#${kpi.sparkGradId})`} />
-                    <path
-                      d={kpi.sparkPath}
-                      stroke={kpi.sparkColor}
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <circle
-                      cx={kpi.endX}
-                      cy={kpi.endY}
-                      r="2.8"
-                      fill="#FFFFFF"
-                      stroke={kpi.sparkColor}
-                      strokeWidth="2"
-                    />
-                  </svg>
-                </div>
+                {/* Mini-gráfica: solo donde hay serie real que dibujar. */}
+                {kpi.curva ? (
+                  <div className="shrink-0 pt-1">
+                    <svg
+                      className="h-[38px] w-[76px] overflow-visible"
+                      viewBox="0 0 80 38"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <linearGradient id={kpi.sparkGradId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={kpi.sparkColor} stopOpacity="0.28" />
+                          <stop offset="100%" stopColor={kpi.sparkColor} stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      <path d={kpi.curva.area} fill={`url(#${kpi.sparkGradId})`} />
+                      <path
+                        d={kpi.curva.linea}
+                        stroke={kpi.sparkColor}
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <circle
+                        cx={kpi.curva.x}
+                        cy={kpi.curva.y}
+                        r="2.8"
+                        fill="#FFFFFF"
+                        stroke={kpi.sparkColor}
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </div>
+                ) : null}
               </div>
             </Link>
           );
         })}
       </section>
 
-      {/* Fila 2: Producción reciente (14 días) */}
-      <ProduccionRecienteChart />
+      {/* Fila 2: Producción reciente — serie real del motor */}
+      <ProduccionRecienteChart
+        serie={datos.serie}
+        meta={datos.metaSerie}
+        max={datos.maxSerie}
+        titulo={datos.tituloSerie}
+        subtitulo={datos.subtituloSerie}
+      />
 
       {/* Fila 3: Accesos por área */}
       <section>

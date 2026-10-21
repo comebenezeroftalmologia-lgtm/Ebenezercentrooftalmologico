@@ -3,29 +3,56 @@
 import { useState } from "react";
 import { BarChart2, Calendar, ChevronDown } from "lucide-react";
 
-const DATOS_14_DIAS = [
-  { etiqueta: "2 oct", valorM: 18.2, destacado: false, esActual: false },
-  { etiqueta: "3 oct", valorM: 21.5, destacado: false, esActual: false },
-  { etiqueta: "4 oct", valorM: 19.8, destacado: false, esActual: false },
-  { etiqueta: "5 oct", valorM: 22.7, destacado: false, esActual: false },
-  { etiqueta: "6 oct", valorM: 24.1, destacado: false, esActual: false },
-  { etiqueta: "7 oct", valorM: 26.3, destacado: false, esActual: false },
-  { etiqueta: "8 oct", valorM: 23.9, destacado: false, esActual: false },
-  { etiqueta: "9 oct", valorM: 25.6, destacado: false, esActual: false },
-  { etiqueta: "10 oct", valorM: 28.4, destacado: false, esActual: false },
-  { etiqueta: "11 oct", valorM: 27.1, destacado: false, esActual: false },
-  { etiqueta: "12 oct", valorM: 29.8, destacado: false, esActual: false },
-  { etiqueta: "13 oct", valorM: 26.7, destacado: false, esActual: false },
-  { etiqueta: "14 oct", valorM: 30.2, destacado: true, esActual: false },
-  { etiqueta: "15 oct", valorM: 28.4, destacado: true, esActual: true },
-];
+/* ---------------------------------------------------------------------
+   Esta grafica tenia los catorce valores escritos adentro, en millones de
+   pesos, y por eso se quedo congelada en el 15 de octubre: no leia nada.
+   Ahora recibe la serie real de atenciones por dia, la que escribe el
+   motor. Se cambio de pesos a atenciones porque la plataforma no tiene
+   ninguna cifra en pesos de donde sacarlas.
+   --------------------------------------------------------------------- */
+export type PuntoGrafica = {
+  etiqueta: string;
+  valor: number;
+  esActual: boolean;
+  destacado: boolean;
+};
 
-export function ProduccionRecienteChart() {
+export function ProduccionRecienteChart({
+  serie,
+  meta,
+  max,
+  titulo,
+  subtitulo,
+}: {
+  serie: PuntoGrafica[];
+  meta: number | null;
+  max: number;
+  titulo: string;
+  subtitulo: string;
+}) {
   const [rango, setRango] = useState<"14" | "7">("14");
-  const datos = rango === "14" ? DATOS_14_DIAS : DATOS_14_DIAS.slice(-7);
-  const maxEscala = 40;
-  const metaDiaria = 26.0;
-  const metaBottomPct = Math.round((metaDiaria / maxEscala) * 100);
+  const datos = rango === "14" ? serie : serie.slice(-7);
+  const maxEscala = max || 10;
+  const metaBottomPct = meta ? Math.round((meta / maxEscala) * 100) : null;
+
+  const fmt = (n: number) => n.toLocaleString("es-CO");
+  const acumulado = datos.reduce((a, d) => a + d.valor, 0);
+  const promedio = datos.length ? Math.round(acumulado / datos.length) : 0;
+  const pico = datos.reduce(
+    (mx, d) => (d.valor > mx.valor ? d : mx),
+    datos[0] ?? { etiqueta: "—", valor: 0, esActual: false, destacado: false },
+  );
+
+  // Sin serie no se dibuja una grafica vacia que parezca un cero real.
+  if (!datos.length) {
+    return (
+      <section className="mb-5 rounded-[16px] border border-[#E6EEF8] bg-white px-5 py-6 text-center shadow-[0_6px_22px_-10px_rgba(14,36,94,0.08)]">
+        <p className="text-[13px] font-medium text-[#64748B]">
+          No se pudo traer la producción de los últimos días.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="mb-5 rounded-[16px] border border-[#E6EEF8] bg-white px-5 py-4 shadow-[0_6px_22px_-10px_rgba(14,36,94,0.08)]">
@@ -37,11 +64,9 @@ export function ProduccionRecienteChart() {
           </span>
           <div>
             <h2 className="text-[15.5px] font-bold tracking-[-0.015em] text-[#0E245E]">
-              Producción reciente
+              {titulo}
             </h2>
-            <p className="text-[11.5px] font-medium text-[#64748B]">
-              Facturación diaria consolidada — últimos 14 días (millones COP)
-            </p>
+            <p className="text-[11.5px] font-medium text-[#64748B]">{subtitulo}</p>
           </div>
         </div>
 
@@ -59,21 +84,25 @@ export function ProduccionRecienteChart() {
       {/* Cintillo de 3 indicadores resumen (Opción 3) */}
       <div className="mt-3.5 grid grid-cols-1 divide-y divide-[#D5E3F7] rounded-[11px] border border-[#DCE8FA] bg-gradient-to-r from-[#EDF4FE] via-[#F5F9FF] to-[#EDF4FE] px-4 py-2 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <div className="flex items-center justify-between gap-2 py-1 sm:justify-start sm:py-0 sm:pr-4">
-          <span className="text-[12px] font-medium text-[#475569]">Acumulado 14 días:</span>
+          <span className="text-[12px] font-medium text-[#475569]">
+            Acumulado {datos.length} días:
+          </span>
           <span className="text-[13.5px] font-extrabold tabular-nums tracking-[-0.01em] text-[#0E245E]">
-            $354,1 M
+            {fmt(acumulado)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 py-1 sm:justify-center sm:py-0 sm:px-4">
           <span className="text-[12px] font-medium text-[#475569]">Promedio diario:</span>
           <span className="text-[13.5px] font-extrabold tabular-nums tracking-[-0.01em] text-[#0E245E]">
-            $25,3 M
+            {fmt(promedio)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 py-1 sm:justify-end sm:py-0 sm:pl-4">
-          <span className="text-[12px] font-medium text-[#475569]">Día pico (14 oct):</span>
+          <span className="text-[12px] font-medium text-[#475569]">
+            Día pico ({pico.etiqueta}):
+          </span>
           <span className="text-[13.5px] font-extrabold tabular-nums tracking-[-0.01em] text-[#1D4ED8]">
-            $30,2 M
+            {fmt(pico.valor)}
           </span>
         </div>
       </div>
@@ -82,11 +111,9 @@ export function ProduccionRecienteChart() {
       <div className="relative mt-4 flex gap-3 pt-2">
         {/* Eje Y */}
         <div className="flex h-[184px] flex-col justify-between pb-6 pr-1 text-right text-[11px] font-medium tabular-nums text-[#64748B]">
-          <span>40M</span>
-          <span>30M</span>
-          <span>20M</span>
-          <span>10M</span>
-          <span>0</span>
+          {[1, 0.75, 0.5, 0.25, 0].map((f) => (
+            <span key={f}>{fmt(Math.round(maxEscala * f))}</span>
+          ))}
         </div>
 
         {/* Área de barras + líneas guía */}
@@ -99,51 +126,31 @@ export function ProduccionRecienteChart() {
             <div className="border-b border-[#DCE7F7]" />
           </div>
 
-          {/* Onda suave de área en el fondo */}
-          <div className="pointer-events-none absolute inset-x-0 top-2 bottom-6 z-0 overflow-hidden">
-            <svg
-              className="h-full w-full"
-              viewBox="0 0 700 160"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <defs>
-                <linearGradient id="eb-prod-area-wave" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.18" />
-                  <stop offset="75%" stopColor="#93C5FD" stopOpacity="0.06" />
-                  <stop offset="100%" stopColor="#EFF6FF" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M 0 106 C 45 92, 85 88, 125 94 C 165 100, 205 70, 248 74 C 290 78, 330 56, 372 64 C 415 70, 455 44, 498 50 C 540 55, 580 28, 625 32 C 660 35, 682 20, 700 24 L 700 160 L 0 160 Z"
-                fill="url(#eb-prod-area-wave)"
-              />
-              <path
-                d="M 0 106 C 45 92, 85 88, 125 94 C 165 100, 205 70, 248 74 C 290 78, 330 56, 372 64 C 415 70, 455 44, 498 50 C 540 55, 580 28, 625 32 C 660 35, 682 20, 700 24"
-                fill="none"
-                stroke="#93C5FD"
-                strokeWidth="1.6"
-              />
-            </svg>
-          </div>
+          {/* Aqui habia una onda azul de fondo, dibujada a mano, que subia de
+              izquierda a derecha. No representaba nada: era adorno. Pero
+              detras de unas barras se lee como la tendencia del periodo, y
+              siempre contaba la misma historia buena. Se quita. */}
 
-          {/* Línea punteada horizontal de Meta diaria: $26,0M */}
-          <div
-            style={{ bottom: `calc(24px + (160px * ${metaBottomPct} / 100))` }}
-            className="pointer-events-none absolute inset-x-0 z-20 border-t border-dashed border-[#3B82F6]/80"
-          >
-            <span className="absolute -top-5 left-1.5 rounded-md border border-[#DCE8FA] bg-white/95 px-2 py-0.5 text-[10.5px] font-bold text-[#1D4ED8] shadow-[0_2px_6px_rgba(14,36,94,0.06)]">
-              Meta diaria: $26,0M
-            </span>
-          </div>
+          {/* Línea de referencia: lo que cierra un día típico. Sale del mismo
+              archivo que las barras, no es una meta puesta a mano. */}
+          {metaBottomPct !== null ? (
+            <div
+              style={{ bottom: `calc(24px + (160px * ${metaBottomPct} / 100))` }}
+              className="pointer-events-none absolute inset-x-0 z-20 border-t border-dashed border-[#3B82F6]/80"
+            >
+              <span className="absolute -top-5 left-1.5 rounded-md border border-[#DCE8FA] bg-white/95 px-2 py-0.5 text-[10.5px] font-bold text-[#1D4ED8] shadow-[0_2px_6px_rgba(14,36,94,0.06)]">
+                Un día típico: {fmt(meta ?? 0)}
+              </span>
+            </div>
+          ) : null}
 
           <div
             className="relative z-10 grid h-[184px] grid-cols-7 items-end gap-2 sm:gap-3"
             style={{ gridTemplateColumns: `repeat(${datos.length}, minmax(0, 1fr))` }}
           >
             {datos.map((d) => {
-              const alturaPct = Math.min(100, Math.round((d.valorM / maxEscala) * 100));
-              const textoValor = `${d.valorM.toFixed(1).replace(".", ",")}M`;
+              const alturaPct = Math.min(100, Math.round((d.valor / maxEscala) * 100));
+              const textoValor = fmt(d.valor);
 
               return (
                 <div key={d.etiqueta} className="group flex h-full flex-col items-center justify-end">
