@@ -47,26 +47,11 @@ function parseHmsToMin(val: unknown): number {
   return Math.round((Number(s) / 60) * 10) / 10 || 0;
 }
 
-function cleanAgentName(rawName: unknown): string {
-  let s = String(rawName || '').trim();
-  if (s.includes('-')) {
-    s = s.split('-')[1].trim();
-  }
-  const words = s.split(/\s+/);
-  if (words.length >= 2) {
-    return words
-      .slice(0, 2)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(' ');
-  }
-  return s;
-}
-
 async function fetchLatestCloudJson(): Promise<typeof rawData> {
   try {
     const res = await fetch(
       'https://raw.githubusercontent.com/comebenezeroftalmologia-lgtm/Ebenezercentrooftalmologico/main/src/lib/digiturno-contact-data.json',
-      { cache: 'no-store' }
+      { cache: 'no-store', signal: AbortSignal.timeout(3500) }
     );
     if (res.ok) {
       const data = await res.json();
@@ -78,194 +63,119 @@ async function fetchLatestCloudJson(): Promise<typeof rawData> {
   return rawData;
 }
 
-async function fetchLiveCurrentMonthPbx() {
-  const loginRes = await fetch(`${PBX_BASE}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ name: PBX_USER, password: PBX_PASS }),
-    cache: 'no-store',
-  });
-  if (!loginRes.ok) return null;
-  const loginJson = await loginRes.json();
-  const token = loginJson?.access_token;
-  if (!token) return null;
-
-  const now = new Date();
-  const yr = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const lastDay = new Date(yr, m, 0).getDate();
-  const mm = String(m).padStart(2, '0');
-  const dd = String(lastDay).padStart(2, '0');
-
-  const qList = ['T57_Q506012', 'T57_Q506013', 'T57_Q506014', 'T57_Q506015'];
-  const aExt = ['1001', '1002', '1003', '1004', '1005', '1006', '1007', '109', '113', '1018'];
-
-  const basePayload = {
-    start_date: `${yr}-${mm}-01 00:00:00`,
-    end_date: `${yr}-${mm}-${dd} 23:59:59`,
-    queues: qList,
-    agents: aExt,
-    call_type: 'answered',
-    call_wait_limit: 0,
-    call_talk_limit: 0,
-    initial_period: 10,
-    interval: 10,
-    max_period: 60,
-    summary: 1,
-    shift: null,
-    tenant_id: '57',
-    servicelevel: JSON.stringify(qList.map((q) => ({ name: q, servicelevel: 60 }))),
-  };
-
-  const pbxHeaders = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    Authorization: `Bearer ${token}`,
-  };
-
-  const qResp = await fetch(`${PBX_BASE}/calls-by-queue`, {
-    method: 'POST',
-    headers: pbxHeaders,
-    body: JSON.stringify(basePayload),
-    cache: 'no-store',
-  });
-  if (!qResp.ok) return null;
-  const qData = await qResp.json();
-  const rows: Array<Record<string, unknown>> = (qData?.data || []).filter(
-    (r: Record<string, unknown>) => Boolean(r.queue)
-  );
-  const totOff = rows.reduce((acc, r) => acc + Number(r.offered_calls || 0), 0);
-  if (totOff === 0) return null;
-
-  const rowsByCode: Record<string, Record<string, unknown>> = {};
-  for (const r of rows) {
-    const code = String(r.queue || '').split('-')[0].trim();
-    rowsByCode[code] = r;
-  }
-
-  const codes = ['506012', '506013', '506014', '506015'];
-  const perQueueAgentResults = await Promise.all(
-    codes.map(async (code) => {
-      const meta = QUEUE_META[code];
-      const singlePayload = {
-        ...basePayload,
-        queues: [meta.q_key],
-        servicelevel: JSON.stringify([{ name: meta.q_key, servicelevel: 60 }]),
-      };
-      const aResp = await fetch(`${PBX_BASE}/agents-on-queue`, {
-        method: 'POST',
-        headers: pbxHeaders,
-        body: JSON.stringify(singlePayload),
-        cache: 'no-store',
-      });
-      if (!aResp.ok) return { code, agents: [] };
-      const aJson = await aResp.json();
-      return { code, agents: (aJson?.data || []) as Array<Record<string, unknown>> };
-    })
-  );
-
-  const agentsByCode: Record<string, Array<Record<string, unknown>>> = {};
-  for (const item of perQueueAgentResults) {
-    agentsByCode[item.code] = item.agents;
-  }
-
-  const linesOut = [];
-  const monthAgentsMap: Record<
-    string,
-    { id: string; name: string; timbradas: number; contestadas: number; perdidas: number; durW: number }
-  > = {};
-
-  for (const code of codes) {
-    const r = rowsByCode[code];
-    if (!r) continue;
-    const meta = QUEUE_META[code];
-    const rec = Number(r.offered_calls || 0);
-    const con = Number(r.answered_calls || 0);
-    const per = Number(r.abandoned_calls || 0);
-    const esp = parseHmsToMin(r.avg_call_waiting_time);
-    const sla = parseFloat(String(r.service_level || '0').replace('%', '')) || 0;
-
-    const qAgents = [];
-    for (const ag of agentsByCode[code] || []) {
-      const ext = String(ag.extension || '');
-      const agName = cleanAgentName(ag.agent);
-      const agCon = Number(ag.answered_calls || 0);
-      const agLost = Number(ag.lost_calls || 0);
-      const agTimb = agCon + agLost;
-      const agDur = parseHmsToMin(ag.avg_call_time);
-      if (agTimb > 0) {
-        qAgents.push({
-          id: ext,
-          name: agName,
-          timbradas: agTimb,
-          contestadas: agCon,
-          perdidas: agLost,
-          duracionMin: agDur,
-        });
-        if (!monthAgentsMap[ext]) {
-          monthAgentsMap[ext] = {
-            id: ext,
-            name: agName,
-            timbradas: 0,
-            contestadas: 0,
-            perdidas: 0,
-            durW: 0,
-          };
-        }
-        monthAgentsMap[ext].timbradas += agTimb;
-        monthAgentsMap[ext].contestadas += agCon;
-        monthAgentsMap[ext].perdidas += agLost;
-        monthAgentsMap[ext].durW += agDur * Math.max(1, agCon);
-      }
-    }
-    qAgents.sort((a, b) => b.contestadas - a.contestadas);
-
-    linesOut.push({
-      id: code,
-      name: meta.name,
-      isMutual: meta.isMutual,
-      recibidas: rec,
-      contestadas: con,
-      perdidas: per,
-      esperaMin: esp,
-      slaPct: sla,
-      agents: qAgents,
+async function fetchLiveCurrentMonthQueues(existingMonth?: (typeof rawData.contactCenterMonthly)[number]) {
+  try {
+    const loginRes = await fetch(`${PBX_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ name: PBX_USER, password: PBX_PASS }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(3500),
     });
+    if (!loginRes.ok) return null;
+    const loginJson = await loginRes.json();
+    const token = loginJson?.access_token;
+    if (!token) return null;
+
+    const now = new Date();
+    const yr = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const lastDay = new Date(yr, m, 0).getDate();
+    const mm = String(m).padStart(2, '0');
+    const dd = String(lastDay).padStart(2, '0');
+
+    const qList = ['T57_Q506012', 'T57_Q506013', 'T57_Q506014', 'T57_Q506015'];
+    const aExt = ['1001', '1002', '1003', '1004', '1005', '1006', '1007', '109', '113', '1018'];
+
+    const basePayload = {
+      start_date: `${yr}-${mm}-01 00:00:00`,
+      end_date: `${yr}-${mm}-${dd} 23:59:59`,
+      queues: qList,
+      agents: aExt,
+      call_type: 'answered',
+      call_wait_limit: 0,
+      call_talk_limit: 0,
+      initial_period: 10,
+      interval: 10,
+      max_period: 60,
+      summary: 1,
+      shift: null,
+      tenant_id: '57',
+      servicelevel: JSON.stringify(qList.map((q) => ({ name: q, servicelevel: 60 }))),
+    };
+
+    const qResp = await fetch(`${PBX_BASE}/calls-by-queue`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(basePayload),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(4500),
+    });
+    if (!qResp.ok) return null;
+    const qData = await qResp.json();
+    const rows: Array<Record<string, unknown>> = (qData?.data || []).filter(
+      (r: Record<string, unknown>) => Boolean(r.queue)
+    );
+    const totOff = rows.reduce((acc, r) => acc + Number(r.offered_calls || 0), 0);
+    if (totOff === 0) return null;
+
+    const rowsByCode: Record<string, Record<string, unknown>> = {};
+    for (const r of rows) {
+      const code = String(r.queue || '').split('-')[0].trim();
+      rowsByCode[code] = r;
+    }
+
+    const codes = ['506012', '506013', '506014', '506015'];
+    const linesOut = [];
+
+    for (const code of codes) {
+      const r = rowsByCode[code];
+      if (!r) continue;
+      const meta = QUEUE_META[code];
+      const existingLine = existingMonth?.lines?.find((l) => l.id === code);
+      linesOut.push({
+        id: code,
+        name: meta.name,
+        isMutual: meta.isMutual,
+        recibidas: Number(r.offered_calls || 0),
+        contestadas: Number(r.answered_calls || 0),
+        perdidas: Number(r.abandoned_calls || 0),
+        esperaMin: parseHmsToMin(r.avg_call_waiting_time),
+        slaPct: parseFloat(String(r.service_level || '0').replace('%', '')) || 0,
+        agents: existingLine?.agents || [],
+      });
+    }
+
+    return {
+      year: yr,
+      monthNum: m,
+      month: MONTH_NAMES[m],
+      lines: linesOut,
+      agents: existingMonth?.agents || [],
+    };
+  } catch {
+    return null;
   }
-
-  const agentsOut = Object.values(monthAgentsMap)
-    .map((a) => ({
-      id: a.id,
-      name: a.name,
-      timbradas: a.timbradas,
-      contestadas: a.contestadas,
-      perdidas: a.perdidas,
-      duracionMin: Math.round((a.durW / Math.max(1, a.contestadas)) * 10) / 10,
-    }))
-    .sort((a, b) => b.contestadas - a.contestadas);
-
-  return {
-    year: yr,
-    monthNum: m,
-    month: MONTH_NAMES[m],
-    lines: linesOut,
-    agents: agentsOut,
-  };
 }
 
 export async function GET() {
   try {
-    const [latestJson, liveMonth] = await Promise.all([
-      fetchLatestCloudJson(),
-      fetchLiveCurrentMonthPbx(),
-    ]);
+    const latestJson = await fetchLatestCloudJson();
     const baseMonths = [...(latestJson.contactCenterMonthly || [])];
+    const now = new Date();
+    const curYr = now.getFullYear();
+    const curM = now.getMonth() + 1;
+    const existingIdx = baseMonths.findIndex((item) => item.year === curYr && item.monthNum === curM);
+    const existingMonth = existingIdx >= 0 ? baseMonths[existingIdx] : undefined;
+
+    const liveMonth = await fetchLiveCurrentMonthQueues(existingMonth);
     if (liveMonth) {
-      const idx = baseMonths.findIndex(
-        (item) => item.year === liveMonth.year && item.monthNum === liveMonth.monthNum
-      );
-      if (idx >= 0) {
-        baseMonths[idx] = liveMonth;
+      if (existingIdx >= 0) {
+        baseMonths[existingIdx] = liveMonth;
       } else {
         baseMonths.push(liveMonth);
       }
