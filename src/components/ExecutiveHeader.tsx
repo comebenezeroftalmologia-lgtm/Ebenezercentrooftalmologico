@@ -9,8 +9,13 @@ export type HeaderVariant =
   | "no_quirurgicos"
   | "redes_sociales" | "procesos" | "proyectos";
 
-function fechaHoyFormateada(): string {
-  const d = new Date(Date.now() - 5 * 60 * 60 * 1000);
+/* Con un selector de fecha arriba, el rotulo NO puede seguir diciendo
+   "hoy": las dos cosas se contradicen en la misma franja y quien mira no
+   sabe de que dia son las cifras. Si le pasan una fecha, muestra esa. */
+function fechaFormateada(iso?: string): string {
+  const d = iso
+    ? new Date(iso + "T12:00:00Z")
+    : new Date(Date.now() - 5 * 60 * 60 * 1000);
   const dias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   return `${dias[d.getUTCDay()]}, ${d.getUTCDate()} de ${meses[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
@@ -185,14 +190,17 @@ export function ExecutiveHeader({
   subtitle,
   variant,
   rightControls,
+  fechaISO,
 }: {
   overline?: string;
   title: string;
   subtitle?: string;
   variant: HeaderVariant;
   rightControls?: React.ReactNode;
+  /** Dia que se esta mostrando. Si no viene, se muestra hoy. */
+  fechaISO?: string;
 }) {
-  const fechaTexto = fechaHoyFormateada();
+  const fechaTexto = fechaFormateada(fechaISO);
 
   return (
     <header className="mb-5">

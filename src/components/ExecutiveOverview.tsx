@@ -16,6 +16,7 @@ import {
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { ProduccionRecienteChart } from "@/components/ProduccionRecienteChart";
 import type { DatosPortada } from "@/lib/portadaReal";
+import { SelectorFechaPortada } from "@/components/SelectorFechaPortada";
 
 /* La curva de la tarjeta de atenciones se DIBUJA con la serie real de los
    ultimos dias. Antes los cuatro trazos eran curvas a mano que siempre
@@ -152,6 +153,12 @@ export function ExecutiveOverview({
             : "Pulso consolidado de operación clínica y embudo comercial."
         }
         variant={mode}
+        fechaISO={mode === "inicio" ? datos.fecha : undefined}
+        rightControls={
+          mode === "inicio" ? (
+            <SelectorFechaPortada fecha={datos.fecha} maximo={datos.hoy} />
+          ) : undefined
+        }
       />
 
       {/* Fila 1: 4 KPIs ejecutivos (Combinación Ganadora: Opción 3 + Mini-gráfica Opción 1) */}

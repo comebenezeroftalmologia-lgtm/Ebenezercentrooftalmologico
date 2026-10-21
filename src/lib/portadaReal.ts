@@ -46,6 +46,12 @@ export type PuntoSerie = {
 };
 
 export type DatosPortada = {
+  /** El dia que se esta mostrando, AAAA-MM-DD. */
+  fecha: string;
+  /** Hoy en Colombia: el tope del selector. */
+  hoy: string;
+  /** Si el dia elegido es el de hoy, la jornada va corriendo. */
+  enCurso: boolean;
   atenciones: KpiReal;
   asistencia: KpiReal;
   espera: KpiReal;
@@ -85,7 +91,7 @@ function comoFecha(f: string): Date {
 }
 
 /** El ultimo dia CERRADO y la serie de los ultimos 14, del archivo del motor. */
-async function deDiaTipico(): Promise<{
+async function deDiaTipico(fecha: string): Promise<{
   atenciones: KpiReal;
   serie: PuntoSerie[];
   meta: number | null;
@@ -97,15 +103,20 @@ async function deDiaTipico(): Promise<{
     const archivo = await traerDiasTipicos();
     if (!archivo?.dias) return vacio;
 
-    const hoy = hoyColombia();
-    // Nunca el dia en curso: a media manana un dia a medias parece una
-    // caida que no existe. Solo dias ya cerrados.
+    // Hasta la fecha pedida, inclusive. La serie de barras termina ahi,
+    // asi quien mira un dia de la semana pasada ve el contexto de esos
+    // dias y no el de hoy.
     const cerrados = Object.entries(archivo.dias)
-      .filter(([f]) => f < hoy)
+      .filter(([f]) => f <= fecha)
       .sort(([a], [b]) => (a < b ? -1 : 1));
     if (!cerrados.length) return vacio;
 
-    const [fechaUlt, ult] = cerrados[cerrados.length - 1];
+    // Si el dia pedido no tiene cierre todavia (hoy, o un domingo), se
+    // muestra el ultimo que si lo tenga y se dice cual es.
+    const exacto = archivo.dias[fecha];
+    const [fechaUlt, ult] = exacto
+      ? ([fecha, exacto] as const)
+      : cerrados[cerrados.length - 1];
     const d = comoFecha(fechaUlt);
     const cuando = `${d.getDate()} de ${MES_CORTO[d.getMonth()]}`;
 
@@ -156,26 +167,42 @@ async function deDiaTipico(): Promise<{
 }
 
 /** Asistencia del dia y cirugias programadas: SISMA en vivo. */
-async function deVentaDelDia(): Promise<{ asistencia: KpiReal; cirugias: KpiReal }> {
+async function deVentaDelDia(
+  fecha: string,
+  enCurso: boolean,
+): Promise<{ asistencia: KpiReal; cirugias: KpiReal }> {
   try {
-    const v = await calcularVentaDelDia({ fecha: hoyColombia(), sede: "todas" });
+    const v = await calcularVentaDelDia({ fecha, sede: "todas" });
 
+    // Con el dia corriendo NO se muestra el porcentaje: a media manana
+    // "19%" no es la asistencia del dia, es la hora que es. Se muestra el
+    // avance, que si se puede leer a cualquier hora.
     const asistencia: KpiReal =
       v.hayAgendado && v.agendaDia > 0
-        ? {
-            valor: `${Math.round((v.asistidas / v.agendaDia) * 100)}%`,
-            subtitulo: `${num(v.asistidas)} atendidos de ${num(v.agendaDia)} agendados hoy`,
-            delta: null,
-            flecha: null,
-            hayDato: true,
-          }
+        ? enCurso
+          ? {
+              valor: `${num(v.asistidas)} de ${num(v.agendaDia)}`,
+              subtitulo: "Atendidos hasta ahora · la jornada va corriendo",
+              delta: null,
+              flecha: null,
+              hayDato: true,
+            }
+          : {
+              valor: `${Math.round((v.asistidas / v.agendaDia) * 100)}%`,
+              subtitulo: `${num(v.asistidas)} atendidos de ${num(v.agendaDia)} agendados`,
+              delta: null,
+              flecha: null,
+              hayDato: true,
+            }
         : SIN_DATO;
 
     const cirugias: KpiReal = v.cirugiaError
       ? SIN_DATO
       : {
           valor: num(v.cirugiaTotal),
-          subtitulo: "Programadas hoy en quirófano",
+          subtitulo: enCurso
+            ? "Programadas hoy en quirófano"
+            : "Programadas ese día en quirófano",
           delta: null,
           flecha: null,
           hayDato: true,
@@ -227,13 +254,35 @@ function deDigiturno(): KpiReal {
   }
 }
 
-export async function traerDatosPortada(): Promise<DatosPortada> {
-  const [dt, vd] = await Promise.all([deDiaTipico(), deVentaDelDia()]);
+/** Ultimo dia CERRADO: es con lo que abre la portada. Nunca el de hoy. */
+function diaPorDefecto(): string {
+  const hoy = hoyColombia();
+  const d = new Date(hoy + "T12:00:00");
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+export async function traerDatosPortada(fechaPedida?: string): Promise<DatosPortada> {
+  const hoy = hoyColombia();
+  // Una fecha que llega por la direccion no se usa en crudo: se valida el
+  // formato y no se deja pasar del dia de hoy.
+  const valida = /^\d{4}-\d{2}-\d{2}$/.test(fechaPedida ?? "");
+  let fecha = valida ? (fechaPedida as string) : diaPorDefecto();
+  if (fecha > hoy) fecha = hoy;
+  const enCurso = fecha === hoy;
+
+  const [dt, vd] = await Promise.all([
+    deDiaTipico(fecha),
+    deVentaDelDia(fecha, enCurso),
+  ]);
   const espera = deDigiturno();
 
   const kpis = [dt.atenciones, vd.asistencia, espera, vd.cirugias];
 
   return {
+    fecha,
+    hoy,
+    enCurso,
     atenciones: dt.atenciones,
     asistencia: vd.asistencia,
     espera,
