@@ -186,9 +186,7 @@ export default function TableroCarteraAnalytics() {
       pendienteRadicar: number;
       total: number;
     }[];
-  } | null>(
-    (carteraInitialData.sismaBack as unknown as { datosSismaVivo?: typeof datosSismaVivo }).datosSismaVivo || null
-  );
+  } | null>(carteraInitialData.sismaBack.datosSismaVivo);
 
   // 6 Top Bar Filters
   const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
