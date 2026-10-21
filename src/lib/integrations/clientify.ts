@@ -144,21 +144,48 @@ async function clientifyFetch<T>(url: string, attempt = 1): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Trae TODOS los deals de un pipeline, paginando hasta el final. */
+/** Trae TODOS los deals de un pipeline. La primera página dice cuántos
+ * hay (`count`); las demás se piden en paralelo (4 a la vez) porque
+ * paginar una por una con 1.500+ deals tardaba tanto que el sync
+ * superaba el límite de 60 s de Vercel (504 confirmado el 2026-10-21 y
+ * sync detenido desde el 12-oct). Si lo recibido es notablemente menor
+ * que `count` se lanza error en vez de seguir: el sync borra los
+ * "fantasmas" (IDs que ya no vienen en el listado), y una lista
+ * incompleta borraría deals reales. */
 export async function fetchClientifyDealsForPipeline(
   pipeline: Pipeline
 ): Promise<ClientifyDealRaw[]> {
   const pipelineId = CLIENTIFY_PIPELINE_IDS[pipeline];
-  let url: string | null = `${BASE_URL}/deals/?pipeline_id=${pipelineId}&page_size=100`;
-  const all: ClientifyDealRaw[] = [];
+  const PAGE_SIZE = 100;
+  const CONCURRENCY = 4;
+  const pageUrl = (page: number) =>
+    `${BASE_URL}/deals/?pipeline_id=${pipelineId}&page_size=${PAGE_SIZE}&page=${page}`;
 
-  while (url) {
-    const page: ClientifyDealsPage = await clientifyFetch<ClientifyDealsPage>(url);
-    all.push(...page.results);
-    url = page.next;
+  const first = await clientifyFetch<ClientifyDealsPage>(pageUrl(1));
+  const byId = new Map<number, ClientifyDealRaw>();
+  for (const d of first.results) byId.set(d.id, d);
+
+  const totalPages = Math.ceil((first.count ?? 0) / PAGE_SIZE);
+  const pending: number[] = [];
+  for (let p = 2; p <= totalPages; p++) pending.push(p);
+
+  const workers = Array.from({ length: Math.min(CONCURRENCY, pending.length) }, async () => {
+    while (pending.length > 0) {
+      const p = pending.shift();
+      if (p === undefined) return;
+      const page = await clientifyFetch<ClientifyDealsPage>(pageUrl(p));
+      for (const d of page.results) byId.set(d.id, d);
+    }
+  });
+  await Promise.all(workers);
+
+  if (byId.size < (first.count ?? 0) * 0.99) {
+    throw new Error(
+      `Clientify (${pipeline}): se recibieron ${byId.size} de ${first.count} deals — sync abortado para no borrar datos por una lista incompleta`
+    );
   }
 
-  return all;
+  return Array.from(byId.values());
 }
 
 function findCustomField(deal: ClientifyDealRaw, normalizedFieldName: string): string | null {

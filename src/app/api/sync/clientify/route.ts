@@ -49,7 +49,16 @@ export async function GET(req: NextRequest) {
   const servicioAgendadoLogged: Record<string, number> = {};
   const cirugiaExitosaLogged: Record<string, number> = {};
 
-  for (const pipeline of PIPELINES) {
+  // ?pipeline=<nombre> sincroniza solo ese pipeline (un cron por pipeline,
+  // ver vercel.json) — hacerlo todo en una sola invocación superaba los
+  // 60 s de Vercel. Sin parámetro sincroniza los tres (uso manual).
+  const only = req.nextUrl.searchParams.get("pipeline");
+  if (only && !PIPELINES.includes(only as Pipeline)) {
+    return NextResponse.json({ error: `pipeline inválido: ${only}` }, { status: 400 });
+  }
+  const targets: Pipeline[] = only ? [only as Pipeline] : PIPELINES;
+
+  for (const pipeline of targets) {
     const deals = await fetchClientifyDealsForPipeline(pipeline);
     const rows = deals.map((deal) => {
       const normalized = normalizeClientifyDeal(deal, pipeline);
@@ -147,9 +156,15 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const { error } = await supabase.from("opportunities").upsert(rows, {
-        onConflict: "id",
-      });
+      // En lotes de 500 — un solo upsert de 1.500+ filas con `raw` es lento
+      // y propenso a timeouts.
+      let error: { message: string } | null = null;
+      for (let i = 0; i < rows.length && !error; i += 500) {
+        const res = await supabase
+          .from("opportunities")
+          .upsert(rows.slice(i, i + 500), { onConflict: "id" });
+        error = res.error;
+      }
       if (error) {
         return NextResponse.json(
           { error: `${pipeline}: ${error.message}`, syncedBeforeError: totalSynced },
