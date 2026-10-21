@@ -152,6 +152,11 @@ export default function TableroCarteraAnalytics() {
   const [cortinaTablaAbierta, setCortinaTablaAbierta] = useState<boolean>(true);
   const [persianaMesaAbierta, setPersianaMesaAbierta] = useState<boolean>(true);
 
+  // Multi-date calendar popover state
+  const [calendarioAbierto, setCalendarioAbierto] = useState<boolean>(false);
+  const [mesCalendario, setMesCalendario] = useState<number>(9); // 0-indexed: 9 = Octubre
+  const [anioCalendario, setAnioCalendario] = useState<number>(2026);
+
   // Live SISMA API state (Faber endpoints: cartera-edades & auxiliar-abierto)
   const [fechaCorteVivo, setFechaCorteVivo] = useState<string>("2026-10-20");
   const [cargandoSismaVivo, setCargandoSismaVivo] = useState<boolean>(false);
@@ -343,12 +348,23 @@ export default function TableroCarteraAnalytics() {
       }
       setDatosSismaVivo(json);
       if (json.resumenCorte) {
+        const aClaveOrden = (f: string) => {
+          const p = f.slice(0, 10).split("/");
+          return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : f;
+        };
         setCortesTodas((prev) => {
-          const sinVivoPrevio = prev.filter(
-            (c) => !c.fechaCorte.includes("SISMA Vivo") && c.fechaCorte !== json.fechaCorte
+          const sinDuplicado = prev.filter(
+            (c) =>
+              !c.fechaCorte.includes("SISMA Vivo") &&
+              c.fechaCorte.slice(0, 10) !== json.fechaCorte.slice(0, 10)
           );
-          const nuevaLista = [...sinVivoPrevio, json.resumenCorte];
-          setIndiceCorteActivo(nuevaLista.length - 1);
+          const nuevaLista = [...sinDuplicado, json.resumenCorte].sort((a, b) =>
+            aClaveOrden(a.fechaCorte).localeCompare(aClaveOrden(b.fechaCorte))
+          );
+          const nuevoIdx = nuevaLista.findIndex(
+            (c) => c.fechaCorte.slice(0, 10) === json.fechaCorte.slice(0, 10)
+          );
+          setIndiceCorteActivo(nuevoIdx !== -1 ? nuevoIdx : nuevaLista.length - 1);
           return nuevaLista;
         });
         setModalidadSisma("TODAS");
@@ -371,6 +387,83 @@ export default function TableroCarteraAnalytics() {
     sincronizarConSismaVivo("2026-10-20", true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const MESES_NOMBRES = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+
+  const cambiarMesCalendario = (delta: number) => {
+    let nuevoMes = mesCalendario + delta;
+    let nuevoAnio = anioCalendario;
+    if (nuevoMes < 0) {
+      nuevoMes = 11;
+      nuevoAnio -= 1;
+    } else if (nuevoMes > 11) {
+      nuevoMes = 0;
+      nuevoAnio += 1;
+    }
+    setMesCalendario(nuevoMes);
+    setAnioCalendario(nuevoAnio);
+  };
+
+  const toggleFechaEnCalendario = (dia: number) => {
+    const dd = String(dia).padStart(2, "0");
+    const mm = String(mesCalendario + 1).padStart(2, "0");
+    const yyyy = String(anioCalendario);
+    const labelFecha = `${dd}/${mm}/${yyyy}`;
+    const isoFecha = `${yyyy}-${mm}-${dd}`;
+
+    const idxExistente = listaCortesActiva.findIndex(
+      (c) => c.fechaCorte.slice(0, 10) === labelFecha
+    );
+
+    if (idxExistente !== -1) {
+      // Si ya estaba marcada y hay más de 1 fecha, desmarcarla; si no era la activa, activarla
+      if (indiceCorteActivo !== idxExistente) {
+        setIndiceCorteActivo(idxExistente);
+        setFechaCorteVivo(isoFecha);
+        if (modalidadSisma === "TODAS") {
+          sincronizarConSismaVivo(isoFecha, true);
+        }
+      } else if (listaCortesActiva.length > 1) {
+        if (modalidadSisma === "TODAS") {
+          const filtrada = cortesTodas.filter(
+            (c) => c.fechaCorte.slice(0, 10) !== labelFecha
+          );
+          setCortesTodas(filtrada);
+          setIndiceCorteActivo(Math.max(0, filtrada.length - 1));
+        } else {
+          const filtrada = cortesPyp.filter(
+            (c) => c.fechaCorte.slice(0, 10) !== labelFecha
+          );
+          setCortesPyp(filtrada);
+          setIndiceCorteActivo(Math.max(0, filtrada.length - 1));
+        }
+      }
+    } else {
+      // Si no estaba marcada, consultarla en vivo en SISMA y agregarla
+      setFechaCorteVivo(isoFecha);
+      if (modalidadSisma === "TODAS") {
+        sincronizarConSismaVivo(isoFecha, false);
+      } else {
+        const base = cortesPyp[cortesPyp.length - 1] || carteraInitialData.sismaBack.cortes.PYP[0];
+        const nueva = [...cortesPyp, { ...base, fechaCorte: labelFecha }];
+        setCortesPyp(nueva);
+        setIndiceCorteActivo(nueva.length - 1);
+      }
+    }
+  };
 
   const limpiarTodosLosFiltros = () => {
     setFiltroAnio("TODOS");
@@ -1404,34 +1497,194 @@ export default function TableroCarteraAnalytics() {
               </button>
             </div>
 
-            <div
-              className="inline-flex rounded-xl p-1 border"
-              style={{ backgroundColor: "#F1F5F9", borderColor: "#CBD5E1" }}
-            >
-              {listaCortesActiva.map((c, idx) => {
-                const activo = indiceCorteActivo === idx;
-                return (
-                  <button
-                    type="button"
-                    key={c.fechaCorte}
-                    onClick={() => {
-                      setIndiceCorteActivo(idx);
-                      const partes = c.fechaCorte.slice(0, 10).split("/");
-                      if (partes.length === 3) {
-                        const iso = `${partes[2]}-${partes[1]}-${partes[0]}`;
-                        setFechaCorteVivo(iso);
-                      }
-                    }}
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setCalendarioAbierto((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 border text-xs sm:text-sm font-bold transition cursor-pointer shadow-2xs"
+                style={{
+                  backgroundColor: calendarioAbierto ? "#EFF6FF" : "#F8FAFC",
+                  borderColor: calendarioAbierto ? "#1D58D8" : "#CBD5E1",
+                  color: "#0E245E",
+                }}
+              >
+                <span>📅</span>
+                <span>Fechas de corte ({listaCortesActiva.length})</span>
+                <span className="text-[10px]" style={{ color: "#1D58D8" }}>
+                  {calendarioAbierto ? "▴" : "▾"}
+                </span>
+              </button>
+
+              {calendarioAbierto && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setCalendarioAbierto(false)}
+                  />
+                  <div
+                    className="absolute right-0 top-full mt-2 w-72 rounded-xl shadow-2xl border p-4 z-40 space-y-3"
                     style={{
-                      backgroundColor: activo ? "#0E245E" : "transparent",
-                      color: activo ? "#FFFFFF" : "#334155",
+                      backgroundColor: "#FFFFFF",
+                      borderColor: "#CBD5E1",
+                      color: "#0E245E",
                     }}
                   >
-                    {c.fechaCorte}
-                  </button>
-                );
-              })}
+                    {/* Navegación Mes / Año */}
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => cambiarMesCalendario(-1)}
+                        className="w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-sm hover:bg-slate-50 cursor-pointer"
+                        style={{ borderColor: "#E2ECF8", color: "#0E245E" }}
+                      >
+                        ‹
+                      </button>
+                      <span className="font-extrabold text-sm" style={{ color: "#0E245E" }}>
+                        {MESES_NOMBRES[mesCalendario]} {anioCalendario}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => cambiarMesCalendario(1)}
+                        className="w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-sm hover:bg-slate-50 cursor-pointer"
+                        style={{ borderColor: "#E2ECF8", color: "#0E245E" }}
+                      >
+                        ›
+                      </button>
+                    </div>
+
+                    {/* Encabezado días de la semana */}
+                    <div className="grid grid-cols-7 text-center text-[11px] font-bold" style={{ color: "#64748B" }}>
+                      {["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"].map((d) => (
+                        <div key={d} className="py-1">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Cuadrícula de días del mes */}
+                    <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                      {(() => {
+                        const primerDiaSemana = new Date(anioCalendario, mesCalendario, 1).getDay();
+                        const offsetLunes = (primerDiaSemana + 6) % 7;
+                        const totalDiasMes = new Date(anioCalendario, mesCalendario + 1, 0).getDate();
+                        const celdas = [];
+
+                        for (let i = 0; i < offsetLunes; i++) {
+                          celdas.push(<div key={`empty-${i}`} className="h-8" />);
+                        }
+
+                        for (let d = 1; d <= totalDiasMes; d++) {
+                          const dd = String(d).padStart(2, "0");
+                          const mm = String(mesCalendario + 1).padStart(2, "0");
+                          const label = `${dd}/${mm}/${anioCalendario}`;
+                          const idxCorte = listaCortesActiva.findIndex(
+                            (c) => c.fechaCorte.slice(0, 10) === label
+                          );
+                          const marcado = idxCorte !== -1;
+                          const esCorteActivo = idxCorte === indiceCorteActivo;
+
+                          celdas.push(
+                            <button
+                              type="button"
+                              key={label}
+                              onClick={() => toggleFechaEnCalendario(d)}
+                              className="h-8 w-8 mx-auto rounded-full flex items-center justify-center font-bold transition cursor-pointer"
+                              style={{
+                                backgroundColor: marcado ? "#1D58D8" : "transparent",
+                                color: marcado ? "#FFFFFF" : "#0E245E",
+                                boxShadow: esCorteActivo
+                                  ? "0 0 0 2px #93C5FD"
+                                  : "none",
+                              }}
+                              title={
+                                marcado
+                                  ? `Corte ${label} seleccionado (clic para ver o quitar)`
+                                  : `Marcar corte ${label} en SISMA`
+                              }
+                            >
+                              {d}
+                            </button>
+                          );
+                        }
+                        return celdas;
+                      })()}
+                    </div>
+
+                    {/* Fechas seleccionadas dentro del popover para cambiar vista o desmarcar */}
+                    <div className="pt-2 border-t space-y-2" style={{ borderColor: "#E2ECF8" }}>
+                      <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                        {listaCortesActiva.map((c, idx) => {
+                          const activo = idx === indiceCorteActivo;
+                          return (
+                            <div
+                              key={c.fechaCorte}
+                              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold cursor-pointer"
+                              style={{
+                                backgroundColor: activo ? "#0E245E" : "#EFF6FF",
+                                color: activo ? "#FFFFFF" : "#1D58D8",
+                              }}
+                              onClick={() => {
+                                setIndiceCorteActivo(idx);
+                                const partes = c.fechaCorte.slice(0, 10).split("/");
+                                if (partes.length === 3) {
+                                  const iso = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                                  setFechaCorteVivo(iso);
+                                }
+                              }}
+                            >
+                              <span>{c.fechaCorte.slice(0, 10)}</span>
+                              {listaCortesActiva.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const label = c.fechaCorte.slice(0, 10);
+                                    if (modalidadSisma === "TODAS") {
+                                      const filtrada = cortesTodas.filter(
+                                        (x) => x.fechaCorte.slice(0, 10) !== label
+                                      );
+                                      setCortesTodas(filtrada);
+                                      setIndiceCorteActivo(Math.max(0, filtrada.length - 1));
+                                    } else {
+                                      const filtrada = cortesPyp.filter(
+                                        (x) => x.fechaCorte.slice(0, 10) !== label
+                                      );
+                                      setCortesPyp(filtrada);
+                                      setIndiceCorteActivo(Math.max(0, filtrada.length - 1));
+                                    }
+                                  }}
+                                  className="ml-0.5 hover:opacity-75 cursor-pointer"
+                                  title="Quitar fecha"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[11px] font-semibold" style={{ color: "#64748B" }}>
+                          {cargandoSismaVivo
+                            ? "Consultando SISMA..."
+                            : `${listaCortesActiva.length} ${
+                                listaCortesActiva.length === 1 ? "fecha marcada" : "fechas marcadas"
+                              }`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCalendarioAbierto(false)}
+                          className="px-3.5 py-1 rounded-lg text-xs font-extrabold cursor-pointer"
+                          style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
+                        >
+                          Listo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
