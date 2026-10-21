@@ -355,7 +355,7 @@ export function ArbolEspacios({
                     >
                       {espacio.nombre[0]?.toUpperCase()}
                     </span>
-                    <span className="truncate text-[13px] font-semibold text-ink">{espacio.nombre}</span>
+                    <span className="truncate text-[13px] font-semibold text-ink" title={espacio.nombre}>{espacio.nombre}</span>
                     {espacio.privado && <Lock className="h-3 w-3 shrink-0 text-ink-3" aria-label="Privado" />}
                   </Link>
                 </Fila>
@@ -770,7 +770,7 @@ function CarpetaNodo(props: {
           {renombrando ? (
             <InputInline inicial={c.nombre} onOk={props.onConfirmarRenombre} onCancelar={props.onCancelarRenombre} />
           ) : (
-            <span className="truncate text-[13px] text-ink-2">{c.nombre}</span>
+            <span className="truncate text-[13px] text-ink-2" title={c.nombre}>{c.nombre}</span>
           )}
         </button>
       </Fila>
@@ -862,7 +862,7 @@ function HojaLista({
       ) : (
         <Link href={`/proyectos/lista/${lista.id}`} draggable={false} className="flex min-w-0 flex-1 items-center gap-2 pl-5" aria-current={activo ? "page" : undefined}>
           <ListIcon className={`h-4 w-4 shrink-0 ${activo ? "text-blue" : "text-ink-3"}`} />
-          <span className={`truncate text-[13px] ${activo ? "font-semibold text-ink" : "text-ink-2"}`}>{lista.nombre}</span>
+          <span className={`truncate text-[13px] ${activo ? "font-semibold text-ink" : "text-ink-2"}`} title={lista.nombre}>{lista.nombre}</span>
           {lista.abiertas > 0 && <span className="ml-auto shrink-0 pr-1 text-[11px] text-ink-3 group-hover:hidden">{lista.abiertas}</span>}
         </Link>
       )}
@@ -910,7 +910,7 @@ function HojaDoc({
       ) : (
         <Link href={`/proyectos/doc/${doc.id}`} draggable={false} className="flex min-w-0 flex-1 items-center gap-2 pl-5" aria-current={activo ? "page" : undefined}>
           <FileText className={`h-4 w-4 shrink-0 ${activo ? "text-blue" : "text-ink-3"}`} />
-          <span className={`truncate text-[13px] ${activo ? "font-semibold text-ink" : "text-ink-2"}`}>{doc.nombre}</span>
+          <span className={`truncate text-[13px] ${activo ? "font-semibold text-ink" : "text-ink-2"}`} title={doc.nombre}>{doc.nombre}</span>
         </Link>
       )}
     </Fila>

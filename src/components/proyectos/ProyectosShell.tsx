@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LayoutGrid, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,6 +14,12 @@ import { BANDEJA_BLANCA_STYLE, RielGlobal, TramaArquitectonicaBandeja } from "@/
 const ListaActivaCtx = createContext<string | null>(null);
 const SetListaActivaCtx = createContext<(id: string | null) => void>(() => {});
 export const useListaActiva = () => useContext(ListaActivaCtx);
+
+const ANCHO_INICIAL = 236;
+const ANCHO_MIN = 200;
+const ANCHO_MAX = 560;
+const CLAVE_ANCHO = "proyectos:anchoBandeja";
+const limitarAncho = (n: number) => Math.min(ANCHO_MAX, Math.max(ANCHO_MIN, Math.round(n)));
 
 export function MarcarListaActiva({ listaId }: { listaId: string }) {
   const set = useContext(SetListaActivaCtx);
@@ -39,10 +45,43 @@ export function ProyectosShell({
   const [menuMovil, setMenuMovil] = useState(false);
   const [abierto, setAbierto] = useState(true);
   const [listaActiva, setListaActiva] = useState<string | null>(null);
+  const [ancho, setAncho] = useState(ANCHO_INICIAL);
+  const [redimensionando, setRedimensionando] = useState(false);
+  const arrastre = useRef<{ x: number; ancho: number } | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => setMenuMovil(false), [pathname]);
+
+  // El ancho de la bandeja se recuerda entre visitas (si no hay almacenamiento,
+  // simplemente vuelve al ancho por defecto).
+  useEffect(() => {
+    try {
+      const guardado = Number(localStorage.getItem(CLAVE_ANCHO));
+      if (Number.isFinite(guardado) && guardado > 0) setAncho(limitarAncho(guardado));
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, []);
+  function guardarAncho(n: number) {
+    try {
+      localStorage.setItem(CLAVE_ANCHO, String(n));
+    } catch {
+      /* sin almacenamiento */
+    }
+  }
+
+  // Atajo ⌘\ / Ctrl+\ para contraer o abrir la bandeja.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
+        e.preventDefault();
+        setAbierto((v) => !v);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <AvisosProvider>
@@ -55,11 +94,14 @@ export function ProyectosShell({
               onToggleBandeja={() => setAbierto((v) => !v)} onOpenBandeja={() => setAbierto(true)}
             />
 
-            <aside style={BANDEJA_BLANCA_STYLE}
+            <aside
+              style={{ ...BANDEJA_BLANCA_STYLE, "--ancho-bandeja": `${ancho}px` } as React.CSSProperties}
               className={`${
                 menuMovil ? "fixed inset-y-0 left-[78px] z-40 flex w-[236px] shadow-eb-4" : "hidden"
-              } relative shrink-0 flex-col overflow-hidden border-r border-[#DCE7F7] bg-[#FAFBFD] shadow-[4px_0_16px_rgba(14,36,94,0.035)] transition-all duration-200 ease-eb-out md:static md:flex md:shadow-none ${
-                abierto ? "md:w-[236px]" : "md:w-0 md:overflow-hidden md:border-r-0"
+              } relative shrink-0 flex-col overflow-hidden border-r border-[#DCE7F7] bg-[#FAFBFD] shadow-[4px_0_16px_rgba(14,36,94,0.035)] ${
+                redimensionando ? "" : "transition-all duration-200 ease-eb-out"
+              } md:static md:flex md:shadow-none ${
+                abierto ? "md:w-[var(--ancho-bandeja)]" : "md:w-0 md:overflow-hidden md:border-r-0"
               }`}
             >
               <TramaArquitectonicaBandeja /><div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-2.5">
@@ -69,7 +111,7 @@ export function ProyectosShell({
                 <button
                   type="button"
                   onClick={() => setAbierto(false)}
-                  title="Contraer bandeja lateral"
+                  title="Contraer bandeja lateral (Ctrl/⌘ + \)"
                   className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-[7px] border border-[#DCE4F0] bg-white text-[#475569] transition hover:border-[#94A3B8] hover:text-[#0E245E] md:flex"
                 >
                   <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
@@ -114,6 +156,59 @@ export function ProyectosShell({
                 yoId={usuario.id}
                 onNuevoEspacio={() => setNuevoEspacio(true)}
               />
+
+              {abierto && (
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Cambiar el ancho de la bandeja"
+                  aria-valuemin={ANCHO_MIN}
+                  aria-valuemax={ANCHO_MAX}
+                  aria-valuenow={ancho}
+                  tabIndex={0}
+                  title="Arrastra para cambiar el ancho · doble clic para restablecer"
+                  className={`absolute inset-y-0 right-0 z-30 hidden w-1.5 cursor-col-resize touch-none transition-colors hover:bg-[#2563EB]/30 focus-visible:bg-[#2563EB]/40 focus-visible:outline-none md:block ${
+                    redimensionando ? "bg-[#2563EB]/40" : ""
+                  }`}
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    arrastre.current = { x: e.clientX, ancho };
+                    setRedimensionando(true);
+                  }}
+                  onPointerMove={(e) => {
+                    const a = arrastre.current;
+                    if (!a) return;
+                    setAncho(limitarAncho(a.ancho + (e.clientX - a.x)));
+                  }}
+                  onPointerUp={(e) => {
+                    if (!arrastre.current) return;
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                    arrastre.current = null;
+                    setRedimensionando(false);
+                    guardarAncho(ancho);
+                  }}
+                  onPointerCancel={() => {
+                    arrastre.current = null;
+                    setRedimensionando(false);
+                  }}
+                  onDoubleClick={() => {
+                    setAncho(ANCHO_INICIAL);
+                    guardarAncho(ANCHO_INICIAL);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                      e.preventDefault();
+                      const n = limitarAncho(ancho + (e.key === "ArrowRight" ? 16 : -16));
+                      setAncho(n);
+                      guardarAncho(n);
+                    } else if (e.key === "Home") {
+                      e.preventDefault();
+                      setAncho(ANCHO_INICIAL);
+                      guardarAncho(ANCHO_INICIAL);
+                    }
+                  }}
+                />
+              )}
             </aside>
 
             {!abierto && (
