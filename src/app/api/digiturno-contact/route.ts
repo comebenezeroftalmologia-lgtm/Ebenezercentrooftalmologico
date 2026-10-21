@@ -62,6 +62,22 @@ function cleanAgentName(rawName: unknown): string {
   return s;
 }
 
+async function fetchLatestCloudJson(): Promise<typeof rawData> {
+  try {
+    const res = await fetch(
+      'https://raw.githubusercontent.com/comebenezeroftalmologia-lgtm/Ebenezercentrooftalmologico/main/src/lib/digiturno-contact-data.json',
+      { cache: 'no-store' }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.digiturnoMonthly) && Array.isArray(data.contactCenterMonthly)) {
+        return data;
+      }
+    }
+  } catch {}
+  return rawData;
+}
+
 async function fetchLiveCurrentMonthPbx() {
   const loginRes = await fetch(`${PBX_BASE}/login`, {
     method: 'POST',
@@ -127,7 +143,6 @@ async function fetchLiveCurrentMonthPbx() {
     rowsByCode[code] = r;
   }
 
-  // Fetch per-queue agents in parallel directly from Sonata PBX cloud
   const codes = ['506012', '506013', '506014', '506015'];
   const perQueueAgentResults = await Promise.all(
     codes.map(async (code) => {
@@ -240,8 +255,11 @@ async function fetchLiveCurrentMonthPbx() {
 
 export async function GET() {
   try {
-    const liveMonth = await fetchLiveCurrentMonthPbx();
-    const baseMonths = [...(rawData.contactCenterMonthly || [])];
+    const [latestJson, liveMonth] = await Promise.all([
+      fetchLatestCloudJson(),
+      fetchLiveCurrentMonthPbx(),
+    ]);
+    const baseMonths = [...(latestJson.contactCenterMonthly || [])];
     if (liveMonth) {
       const idx = baseMonths.findIndex(
         (item) => item.year === liveMonth.year && item.monthNum === liveMonth.monthNum
@@ -253,7 +271,7 @@ export async function GET() {
       }
     }
     return NextResponse.json({
-      ...rawData,
+      ...latestJson,
       updatedAt: new Date().toISOString(),
       liveCloudSync: Boolean(liveMonth),
       contactCenterMonthly: baseMonths,
