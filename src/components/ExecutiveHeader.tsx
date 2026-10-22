@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Calendar, ChevronDown, User } from "lucide-react";
+import { Calendar, User } from "lucide-react";
+import { HeaderDatePicker } from "@/components/HeaderDatePicker";
 
 export type HeaderVariant =
   | "inicio"
@@ -191,6 +192,8 @@ export function ExecutiveHeader({
   variant,
   rightControls,
   fechaISO,
+  selectableDate = false,
+  availableDates,
 }: {
   overline?: string;
   title: string;
@@ -199,13 +202,19 @@ export function ExecutiveHeader({
   rightControls?: React.ReactNode;
   /** Dia que se esta mostrando. Si no viene, se muestra hoy. */
   fechaISO?: string;
+  /** Si es true, la pildora de fecha abre un calendario interactivo. */
+  selectableDate?: boolean;
+  /** Fechas con datos disponibles para resaltar en el calendario. */
+  availableDates?: string[];
 }) {
   const fechaTexto = fechaFormateada(fechaISO);
 
   return (
     <header className="mb-5">
-      <div className="relative overflow-hidden rounded-[18px] border border-[#D5E3F7] bg-gradient-to-r from-[#EEF4FD] via-[#E5EFFC] to-[#D4E5FA] px-6 py-5 shadow-[0_2px_10px_rgba(14,36,94,0.04)]">
-        <WatermarkArtwork variant={variant} />
+      <div className="relative rounded-[18px] border border-[#D5E3F7] bg-gradient-to-r from-[#EEF4FD] via-[#E5EFFC] to-[#D4E5FA] px-6 py-5 shadow-[0_2px_10px_rgba(14,36,94,0.04)]">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[18px]">
+          <WatermarkArtwork variant={variant} />
+        </div>
 
         <Link
           href="/perfil"
@@ -215,16 +224,24 @@ export function ExecutiveHeader({
           <User className="h-4 w-4" strokeWidth={1.9} />
         </Link>
 
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4 pr-10">
+        <div className="relative z-20 flex flex-wrap items-start justify-between gap-4 pr-10">
           <div className="min-w-0 max-w-[680px]">
             <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
               <span className="text-[11px] font-bold uppercase tracking-[0.09em] text-[#47597A]">
                 {overline}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#CBD9EE] bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-[#0E245E] shadow-[0_1px_3px_rgba(14,36,94,0.04)]">
-                <Calendar className="h-3 w-3 text-[#1D58D8]" strokeWidth={2} />
-                <span>{fechaTexto}</span>
-              </span>
+              {selectableDate ? (
+                <HeaderDatePicker
+                  fechaISO={fechaISO}
+                  fechaTexto={fechaTexto}
+                  availableDates={availableDates}
+                />
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#CBD9EE] bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-[#0E245E] shadow-[0_1px_3px_rgba(14,36,94,0.04)]">
+                  <Calendar className="h-3 w-3 text-[#1D58D8]" strokeWidth={2} />
+                  <span>{fechaTexto}</span>
+                </span>
+              )}
             </div>
             <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[#0E245E]">
               {title}

@@ -55,7 +55,11 @@ function IconoTarjeta({ slug }: { slug: Modulo }) {
   }
 }
 
-export default async function AnalyticsOverview() {
+export default async function AnalyticsOverview({
+  searchParams,
+}: {
+  searchParams?: { fecha?: string };
+}) {
   void Chispa;
   const user = await requireAppUser();
   const modulos = await getMisModulos(user.id, user.isAdmin);
@@ -68,8 +72,16 @@ export default async function AnalyticsOverview() {
       ? await traerDiasTipicos()
       : null;
   const hoy = hoyColombia();
+  const fechaParam =
+    searchParams?.fecha && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.fecha)
+      ? searchParams.fecha
+      : undefined;
+  const fechaHeader = fechaParam || hoy;
+
+  const todasLasFechas = Object.keys(archivo?.dias ?? {}).sort();
+
   const cerrados = Object.entries(archivo?.dias ?? {})
-    .filter(([f]) => f < hoy)
+    .filter(([f]) => (fechaParam ? f <= fechaParam : f < hoy))
     .sort(([a], [b]) => (a < b ? -1 : 1));
 
   const ultimas = cerrados.slice(-14).map(([fecha, d]) => ({
@@ -79,7 +91,12 @@ export default async function AnalyticsOverview() {
     etiqueta: `${DIA_CORTO[aFecha(fecha).getDay()]} ${aFecha(fecha).getDate()}`,
   }));
 
-  const ultimo = cerrados.length ? cerrados[cerrados.length - 1] : null;
+  const datoExactoElegido =
+    fechaParam && archivo?.dias?.[fechaParam]
+      ? ([fechaParam, archivo.dias[fechaParam]] as const)
+      : null;
+
+  const ultimo = datoExactoElegido ?? (cerrados.length ? cerrados[cerrados.length - 1] : null);
   const pct =
     ultimo && ultimo[1].tipico && ultimo[1].tipico > 0
       ? Math.round((ultimo[1].total / ultimo[1].tipico) * 100)
@@ -133,6 +150,9 @@ export default async function AnalyticsOverview() {
         title="Resumen de Analítica"
         subtitle="Indicadores operativos, financieros y comerciales consolidados por frente."
         variant="analytics"
+        fechaISO={fechaHeader}
+        selectableDate={true}
+        availableDates={todasLasFechas}
       />
 
       {ultimo && pct !== null && (
@@ -141,7 +161,16 @@ export default async function AnalyticsOverview() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6EEF8] bg-gradient-to-r from-[#EDF4FE] via-[#F5F9FF] to-[#EDF4FE] px-6 py-2.5">
             <div className="flex items-center gap-2 text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#1E3A8A]">
               <span className="h-2 w-2 rounded-full bg-[#2563EB]" />
-              <span>Último cierre operativo · {nombreDia} {fechaLarga}</span>
+              <span>
+                {fechaParam
+                  ? `Cierre operativo consultado · ${nombreDia} ${fechaLarga}`
+                  : `Último cierre operativo · ${nombreDia} ${fechaLarga}`}
+              </span>
+              {fechaParam && ultimo[0] !== fechaParam && (
+                <span className="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[10.5px] font-semibold normal-case tracking-normal text-[#B45309]">
+                  (El {fechaParam} no registra cierre; mostrando el último cierre previo)
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-4 text-[12px]">
               <span className="text-[#475569]">
@@ -229,7 +258,7 @@ export default async function AnalyticsOverview() {
                       Últimos {ultimas.length} días cerrados
                     </span>
                     <span className="ml-2 text-[11.5px] font-medium text-[#64748B]">
-                      (cifra diaria de atenciones comparado contra su mismo día de la semana)
+                      (haz clic en una barra o en la fecha superior para consultar ese día)
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-[#475569]">
@@ -243,7 +272,7 @@ export default async function AnalyticsOverview() {
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2.5 w-2.5 rounded-sm bg-[#1D4ED8]" />
-                      Último cierre
+                      Día seleccionado
                     </span>
                   </div>
                 </div>
@@ -276,7 +305,7 @@ export default async function AnalyticsOverview() {
                     style={{ gridTemplateColumns: `repeat(${ultimas.length}, minmax(0, 1fr))` }}
                   >
                     {ultimas.map((d, idx) => {
-                      const esUltimo = idx === ultimas.length - 1;
+                      const esUltimo = ultimo ? d.fecha === ultimo[0] : idx === ultimas.length - 1;
                       const esPico = diaPico14 ? d.fecha === diaPico14.fecha : false;
                       const pctDia =
                         d.tipico && d.tipico > 0
@@ -289,10 +318,12 @@ export default async function AnalyticsOverview() {
                       );
 
                       return (
-                        <div
+                        <Link
                           key={d.fecha}
-                          title={`${d.etiqueta}: ${formatNumber(d.total)} atenciones (${pctDia}% del típico ${formatNumber(d.tipico ?? 0)})`}
-                          className="group flex flex-col items-center justify-end"
+                          href={`/analytics?fecha=${d.fecha}`}
+                          scroll={false}
+                          title={`${d.etiqueta}: ${formatNumber(d.total)} atenciones (${pctDia}% del típico ${formatNumber(d.tipico ?? 0)}) — Clic para ver este día`}
+                          className="group flex flex-col items-center justify-end cursor-pointer"
                         >
                           {/* Cifra exacta encima de CADA barra */}
                           <span
@@ -336,7 +367,7 @@ export default async function AnalyticsOverview() {
                           >
                             {d.etiqueta}
                           </span>
-                        </div>
+                        </Link>
                       );
                     })}
                   </div>
