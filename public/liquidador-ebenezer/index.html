@@ -1,108 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
-<!-- EBENEZER PLATFORM SSO DIRECT LOGIN (OPCION B) -->
-<script>
-(function() {
-  try {
-    var params = new URLSearchParams(window.location.search);
-    var ebzUser = window.__EBZ_SSO_USER || {
-      id: params.get("ebz_id") || "ebz-admin",
-      nombre: params.get("ebz_name") || "Administrador Ebenezer",
-      email: params.get("ebz_email") || "admin@ebenezer.com",
-      usuario: params.get("ebz_user") || "admin",
-      esAdmin: params.get("ebz_admin") !== "0"
-    };
-    window.__EBZ_SSO_USER = ebzUser;
-
-    var adminProfile = {
-      id: ebzUser.id || "admin",
-      usuario: ebzUser.usuario || ebzUser.nombre || "admin",
-      username: ebzUser.usuario || "admin",
-      user: ebzUser.usuario || "admin",
-      nombre: ebzUser.nombre || "Administrador Ebenezer",
-      nombreCompleto: ebzUser.nombre || "Administrador Ebenezer",
-      name: ebzUser.nombre || "Administrador Ebenezer",
-      email: ebzUser.email || "admin@ebenezer.com",
-      correo: ebzUser.email || "admin@ebenezer.com",
-      rol: "admin",
-      role: "admin",
-      perfil: "admin",
-      tipo: "admin",
-      esAdmin: true,
-      isAdmin: true,
-      admin: true,
-      activo: true,
-      active: true,
-      aprobado: true,
-      approved: true,
-      estado: "activo",
-      permisos: { admin: true, todo: true, editar: true, borrar: true, exportar: true, firmar: true },
-      ts: Date.now(),
-      loginAt: new Date().toISOString()
-    };
-    window.__EBZ_ADMIN_PROFILE = adminProfile;
-
-    // 1. Look in localStorage for any existing users list from Liquidador cloud/local
-    var matchedUser = null;
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (!k) continue;
-      try {
-        var raw = localStorage.getItem(k);
-        if (!raw || (raw[0] !== "[" && raw[0] !== "{")) continue;
-        var parsed = JSON.parse(raw);
-        var arr = Array.isArray(parsed)
-          ? parsed
-          : (parsed && Array.isArray(parsed.usuarios)
-              ? parsed.usuarios
-              : (parsed && Array.isArray(parsed.users) ? parsed.users : null));
-        if (arr && arr.length > 0) {
-          for (var j = 0; j < arr.length; j++) {
-            var u = arr[j];
-            if (!u || typeof u !== "object") continue;
-            var uRole = String(u.rol || u.role || u.perfil || u.tipo || "").toLowerCase();
-            if (uRole.indexOf("admin") !== -1 || u.admin === true || u.esAdmin === true || u.isAdmin === true) {
-              matchedUser = u;
-              break;
-            }
-          }
-          if (!matchedUser && typeof arr[0] === "object") {
-            matchedUser = arr[0];
-          }
-        }
-      } catch (e) {}
-    }
-
-    var sessionObj = matchedUser ? Object.assign({}, adminProfile, matchedUser, { activo: true, aprobado: true }) : adminProfile;
-    window.__EBZ_ACTIVE_SESSION_OBJ = sessionObj;
-
-    
-    var candidateUsersListKeys = [];
-    for (var uIdx = 0; uIdx < candidateUsersListKeys.length; uIdx++) {
-      var uk = candidateUsersListKeys[uIdx];
-      try {
-        if (!localStorage.getItem(uk)) {
-          localStorage.setItem(uk, JSON.stringify([sessionObj]));
-        }
-      } catch (e) {}
-    }
-
-    var candidateSessionKeys = ["liq_usuario"];
-    for (var s = 0; s < candidateSessionKeys.length; s++) {
-      var sk = candidateSessionKeys[s];
-      try {
-        if (!localStorage.getItem(sk)) localStorage.setItem(sk, JSON.stringify(sessionObj));
-        if (!sessionStorage.getItem(sk)) sessionStorage.setItem(sk, JSON.stringify(sessionObj));
-      } catch (e) {}
-    }
-  } catch (err) {
-    console.warn("EBZ pre-head SSO warning:", err);
-  }
-})();
-</script>
-
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Liquidador de Honorarios Médicos — Centro Oftalmológico Ebenezer</title>
@@ -6627,133 +6525,7 @@ async function simpleComoTabla(f){
   const hojas = cmpLeerXlsBin(await f.arrayBuffer());
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const html = '<html><body>'+hojas.map(h=>'<table>'+h.rows.map(r=>'<tr height="1">'+
-      r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('')+'</table>').join('')+'
-<script>
-(function() {
-  function syncEbenezerDirectLogin() {
-    try {
-      var sessionObj = window.__EBZ_ACTIVE_SESSION_OBJ || window.__EBZ_ADMIN_PROFILE;
-      if (!sessionObj) return;
-
-      // Re-scan localStorage in case cloud sync just populated the real users table
-      var cloudAdmin = null;
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (!k) continue;
-        try {
-          var raw = localStorage.getItem(k);
-          if (!raw || (raw[0] !== "[" && raw[0] !== "{")) continue;
-          var parsed = JSON.parse(raw);
-          var arr = Array.isArray(parsed)
-            ? parsed
-            : (parsed && Array.isArray(parsed.usuarios)
-                ? parsed.usuarios
-                : (parsed && Array.isArray(parsed.users) ? parsed.users : null));
-          if (arr && arr.length > 0) {
-            for (var j = 0; j < arr.length; j++) {
-              var u = arr[j];
-              if (!u || typeof u !== "object") continue;
-              var uRole = String(u.rol || u.role || u.perfil || u.tipo || "").toLowerCase();
-              if (uRole.indexOf("admin") !== -1 || u.admin === true || u.esAdmin === true || u.isAdmin === true) {
-                cloudAdmin = u;
-                break;
-              }
-            }
-            if (!cloudAdmin && typeof arr[0] === "object" && (arr[0].usuario || arr[0].nombre || arr[0].rol || arr[0].perfil)) {
-              cloudAdmin = arr[0];
-            }
-          }
-        } catch (e) {}
-      }
-
-      if (cloudAdmin) {
-        sessionObj = Object.assign({}, sessionObj, cloudAdmin, { activo: true, aprobado: true });
-        window.__EBZ_ACTIVE_SESSION_OBJ = sessionObj;
-      }
-
-      var skeys = window.__EBZ_DETECTED_SESSION_KEYS || [];
-      for (var s = 0; s < skeys.length; s++) {
-        try {
-          localStorage.setItem(skeys[s], JSON.stringify(sessionObj));
-          sessionStorage.setItem(skeys[s], JSON.stringify(sessionObj));
-        } catch (e) {}
-      }
-
-      if (typeof window.__EBZ_NATIVE_LOGIN_HOOK === "function") {
-        window.__EBZ_NATIVE_LOGIN_HOOK(sessionObj);
-      }
-
-      // If login gate overlay ("Ingreso" or "No se puede entrar todavía") is visible,
-      // check if we can auto-fill & submit or hide the gate overlay cleanly
-      var headings = document.querySelectorAll("h1, h2, h3, div");
-      for (var h = 0; h < headings.length; h++) {
-        var el = headings[h];
-        if (el.children.length > 0 && el.tagName === "DIV") continue;
-        var txt = (el.textContent || "").trim();
-        if (txt === "Ingreso" || txt === "No se puede entrar todavía") {
-          var p = el.parentElement;
-          while (p && p !== document.body && p !== document.documentElement) {
-            var st = window.getComputedStyle(p);
-            var pid = (p.id || "").toLowerCase();
-            var pcls = (typeof p.className === "string" ? p.className : "").toLowerCase();
-            if (
-              st.position === "fixed" ||
-              st.position === "absolute" ||
-              /login|auth|gate|ingreso|modal|overlay/.test(pid) ||
-              /login|auth|gate|ingreso|modal|overlay/.test(pcls)
-            ) {
-              if ((p.textContent || "").indexOf("Ranking de honorarios por médico") === -1) {
-                // Before hiding, if there is a username/password input and cloudAdmin has credentials, try native login click first
-                if (cloudAdmin && !p.dataset.ebzTriedClick) {
-                  p.dataset.ebzTriedClick = "1";
-                  var inputs = p.querySelectorAll("input");
-                  var userInp = null, passInp = null;
-                  for (var inpIdx = 0; inpIdx < inputs.length; inpIdx++) {
-                    var t = (inputs[inpIdx].type || "text").toLowerCase();
-                    if (t === "password" && !passInp) passInp = inputs[inpIdx];
-                    else if ((t === "text" || t === "email") && !userInp) userInp = inputs[inpIdx];
-                  }
-                  var uVal = cloudAdmin.usuario || cloudAdmin.username || cloudAdmin.user || cloudAdmin.email || cloudAdmin.nombre;
-                  var pVal = cloudAdmin.password || cloudAdmin.pass || cloudAdmin.clave || cloudAdmin.pin || cloudAdmin.contrasena;
-                  if (userInp && passInp && uVal && pVal) {
-                    userInp.value = uVal;
-                    userInp.dispatchEvent(new Event("input", { bubbles: true }));
-                    passInp.value = pVal;
-                    passInp.dispatchEvent(new Event("input", { bubbles: true }));
-                    var btn = p.querySelector("button[type='submit'], button.btn-primary, button");
-                    if (btn) {
-                      try { btn.click(); } catch (e) {}
-                    }
-                  }
-                }
-                p.style.setProperty("display", "none", "important");
-                break;
-              }
-            }
-            p = p.parentElement;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("EBZ syncDirectLogin warning:", err);
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", syncEbenezerDirectLogin);
-  } else {
-    syncEbenezerDirectLogin();
-  }
-  window.addEventListener("load", function() {
-    syncEbenezerDirectLogin();
-    setTimeout(syncEbenezerDirectLogin, 300);
-    setTimeout(syncEbenezerDirectLogin, 1000);
-    setTimeout(syncEbenezerDirectLogin, 2500);
-  });
-})();
-</script>
-
-</body></html>';
+      r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('')+'</table>').join('')+'</body></html>';
   return new File([html], f.name, {type:'text/html'});
 }
 // Pone el archivo en la tarjeta donde lo soltaron, PERO comprobando que sea lo que dice ser
@@ -15124,15 +14896,167 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
     try{ if(typeof NUBE!=='undefined' && NUBE_ON) NUBE.guardarAjuste(kk, x); }catch(e){} }
   acGuardarLocal(todos);
   document.getElementById('btnCalc').click(); }
+</script>
+<script>
+// === PUENTE SSO PLATAFORMA EBENEZER (OPCIÓN B: INGRESO DIRECTO AUTOMÁTICO) ===
+(function() {
+  function obtenerUsuarioEbenezer() {
+    var u = window.__EBZ_SSO_USER;
+    if (!u) {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        if (p.get("ebz_user")) {
+          u = {
+            id: p.get("ebz_uid") || "ebz-admin",
+            nombre: p.get("ebz_user"),
+            email: p.get("ebz_email") || "admin@ebenezer.com",
+            usuario: p.get("ebz_login") || "admin",
+            esAdmin: true,
+            rol: "gerencia"
+          };
+        }
+      } catch (e) {}
+    }
+    return u;
+  }
 
+  var ebzUser = obtenerUsuarioEbenezer();
+  if (!ebzUser || !ebzUser.nombre) return;
 
-// === EBENEZER NATIVE LEXICAL SCOPE SSO HOOK (OPCION B) ===
-window.__EBZ_DETECTED_SESSION_KEYS = ["liq_usuario"];
-window.__EBZ_DETECTED_USERS_KEYS = [];
-window.__EBZ_NATIVE_LOGIN_HOOK = function(finalUser) {
-  
-};
+  window.__EBZ_SSO_ACTIVE = true;
+  var perfilSSO = {
+    uid: String(ebzUser.id || "ebz-admin"),
+    nombre: String(ebzUser.nombre),
+    cargo: "Administrador",
+    rol: "gerencia",
+    perfil: "admin",
+    esAdmin: true,
+    admin: true,
+    activo: true,
+    aprobado: true,
+    estado: "activo",
+    email: String(ebzUser.email || "")
+  };
 
+  try {
+    sessionStorage.setItem("liq_quien", perfilSSO.nombre);
+    sessionStorage.setItem("liq_usuario", JSON.stringify(perfilSSO));
+    localStorage.setItem("liq_quien_ult", perfilSSO.nombre);
+    localStorage.setItem("liq_quien_" + perfilSSO.uid, perfilSSO.nombre);
+  } catch (e) {}
+
+  function aplicarEstadoSSO() {
+    try {
+      var gate = document.getElementById("gate");
+      if (gate && !window.__EBZ_MANUAL_LOGIN_OPEN) {
+        gate.style.display = "none";
+      }
+
+      var ng = document.getElementById("nubeGate");
+      if (ng && !document.getElementById("ebzCloseGateBtn")) {
+        var closeBtn = document.createElement("button");
+        closeBtn.id = "ebzCloseGateBtn";
+        closeBtn.type = "button";
+        closeBtn.className = "btn quiet";
+        closeBtn.style.cssText = "margin-top:10px;width:100%;font-size:12.5px";
+        closeBtn.textContent = "✕ Volver al tablero (seguir con usuario Ebenezer)";
+        closeBtn.onclick = function() {
+          window.__EBZ_MANUAL_LOGIN_OPEN = false;
+          if (gate) gate.style.display = "none";
+        };
+        ng.appendChild(closeBtn);
+      }
+
+      window.USUARIO = {
+        nombre: perfilSSO.nombre,
+        cargo: "Administrador",
+        uid: perfilSSO.uid,
+        rol: "gerencia",
+        email: perfilSSO.email,
+        cuenta: perfilSSO.email || perfilSSO.nombre
+      };
+      try {
+        sessionStorage.setItem("liq_quien", perfilSSO.nombre);
+        sessionStorage.setItem("liq_usuario", JSON.stringify(window.USUARIO));
+      } catch (e) {}
+
+      if (typeof window.cgEsAdmin === "function" && !window.__EBZ_WRAPPED_ADMIN) {
+        window.__EBZ_WRAPPED_ADMIN = true;
+        window.cgEsAdmin = function() { return true; };
+        window.valEsAdmin = function() { return true; };
+        window.fkEsAdmin = function() { return true; };
+        if (typeof window.NUBE === "object" && window.NUBE) {
+          var origEsGerencia = window.NUBE.esGerencia ? window.NUBE.esGerencia.bind(window.NUBE) : null;
+          window.NUBE.esGerencia = function() {
+            return origEsGerencia ? (origEsGerencia() || true) : true;
+          };
+        }
+        window.nubeBloquear = function(motivo) {
+          console.warn("Aviso nube:", motivo);
+          var g = document.getElementById("gate");
+          if (g && !window.__EBZ_MANUAL_LOGIN_OPEN) g.style.display = "none";
+        };
+        window.ebzAbrirLoginNube = function() {
+          window.__EBZ_MANUAL_LOGIN_OPEN = true;
+          var g = document.getElementById("gate"), ng = document.getElementById("nubeGate"), gl = document.getElementById("gateLocal"), gb = document.getElementById("gateBloqueo");
+          if (g && ng) {
+            g.style.display = "flex";
+            ng.style.display = "block";
+            if (gl) gl.style.display = "none";
+            if (gb) gb.style.display = "none";
+            ["rowQuien", "rowCred"].forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) el.style.display = "block";
+            });
+            var iq = document.getElementById("nQuien");
+            if (iq) iq.value = perfilSSO.nombre;
+            var ie = document.getElementById("nEmail");
+            if (ie && !ie.value && perfilSSO.email) ie.value = perfilSSO.email;
+            var bq = document.getElementById("nBtnQuien");
+            if (bq) bq.style.display = "none";
+            var b1 = document.getElementById("nBtn");
+            if (b1) b1.style.display = "inline-block";
+          }
+        };
+      }
+
+      var ub = document.getElementById("userBadge");
+      if (ub) {
+        ub.style.display = "block";
+        ub.innerHTML = '<span class="uic">👤</span> <b>' + perfilSSO.nombre + '</b> · Administrador'
+          + ' <a href="#" onclick="abrirEquipo();return false" class="chg">👥 equipo</a>';
+      }
+
+      var nb = document.getElementById("nubeBadge");
+      if (nb && (!window.NUBE_ON)) {
+        nb.innerHTML = '<span class="npill on" style="cursor:pointer" title="Sesión directa Ebenezer activa. Clic si desea iniciar sesión en Firebase Nube" onclick="if(window.ebzAbrirLoginNube)window.ebzAbrirLoginNube()">● Sesión Ebenezer · ' + perfilSSO.nombre + '</span>';
+      }
+
+      window.SESION_LISTA = true;
+      var zc = document.querySelector(".cargas");
+      if (zc) zc.classList.remove("espera");
+
+      if (typeof window.simpleChips === "function") window.simpleChips();
+      if (typeof window.admPanelVer === "function") window.admPanelVer();
+      if (typeof window.firLeer === "function") { window.firLeer(); if (typeof window.firPintar === "function") window.firPintar(); }
+      if (typeof window.permPintar === "function") window.permPintar();
+      if (typeof window.pintarFichasHist === "function") window.pintarFichasHist();
+    } catch (err) {
+      console.warn("SSO Ebenezer:", err);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    aplicarEstadoSSO();
+    setTimeout(aplicarEstadoSSO, 150);
+    setTimeout(aplicarEstadoSSO, 600);
+    setTimeout(aplicarEstadoSSO, 1800);
+  });
+  window.addEventListener("load", function() {
+    aplicarEstadoSSO();
+    setTimeout(aplicarEstadoSSO, 400);
+  });
+})();
 </script>
 </body>
 </html>
