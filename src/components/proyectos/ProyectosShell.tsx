@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { Calculator, LayoutGrid, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import type { EspacioArbol } from "@/lib/proyectos/types";
 import type { Modulo } from "@/lib/modulos";
@@ -156,6 +156,40 @@ export function ProyectosShell({
                 yoId={usuario.id}
                 onNuevoEspacio={() => setNuevoEspacio(true)}
               />
+
+              <div className="relative z-10 shrink-0 border-t border-[#DCE7F7] bg-[#F8FAFE]/95 px-3 pt-2.5 pb-3">
+                <div className="flex items-center justify-between px-2.5 pb-1.5">
+                  <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#1D4ED8]">
+                    Archivos de Trabajo
+                  </span>
+                  <span className="rounded-full bg-[#EBF3FE] px-1.5 py-0.5 text-[9px] font-bold text-[#1D4ED8]">
+                    Activo
+                  </span>
+                </div>
+                <Link
+                  href="/proyectos/liquidador"
+                  className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] transition ${
+                    pathname.startsWith("/proyectos/liquidador")
+                      ? "border border-[#C9DDFB] border-l-[3.5px] border-l-[#2563EB] bg-[#E6F0FD] font-semibold text-[#0E245E] shadow-[0_2px_6px_rgba(37,99,235,0.08)]"
+                      : "border border-transparent text-[#334155] hover:border-[#DCE7F7] hover:bg-white hover:text-[#0E245E]"
+                  }`}
+                >
+                  <Calculator
+                    className={`h-4 w-4 shrink-0 ${
+                      pathname.startsWith("/proyectos/liquidador")
+                        ? "text-[#1D58D8]"
+                        : "text-[#2563EB] group-hover:text-[#0E245E]"
+                    }`}
+                    strokeWidth={1.85}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] leading-tight">Liquidador de Honorarios</p>
+                    <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">
+                      Honorarios médicos y actas
+                    </p>
+                  </div>
+                </Link>
+              </div>
 
               {abierto && (
                 <div
