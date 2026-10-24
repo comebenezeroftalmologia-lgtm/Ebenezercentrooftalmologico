@@ -1,19 +1,5 @@
-import { requireModuloAccess } from "@/lib/auth";
-import { LiquidadorWorkspace } from "@/components/proyectos/LiquidadorWorkspace";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function LiquidadorHonorariosPage() {
-  const user = await requireModuloAccess("proyectos");
-
-  return (
-    <LiquidadorWorkspace
-      usuario={{
-        id: user.id,
-        nombre: user.nombreCompleto,
-        email: user.email,
-        esAdmin: user.isAdmin,
-      }}
-    />
-  );
+export default function RedirectLiquidadorPage() {
+  redirect("/workcenter/liquidador");
 }

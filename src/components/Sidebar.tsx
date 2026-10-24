@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart2,
+  Briefcase,
   CalendarClock,
   Folder,
   Home,
@@ -116,6 +117,7 @@ export function RielGlobal({
   const enInicio = pathname === "/";
   const enProcesos = pathname === "/procesos" || pathname.startsWith("/procesos/");
   const enProyectos = pathname === "/proyectos" || pathname.startsWith("/proyectos/");
+  const enWorkCenter = pathname === "/workcenter" || pathname.startsWith("/workcenter/");
   const enUsuarios = pathname === "/usuarios" || pathname.startsWith("/usuarios/");
   const enPerfil = pathname === "/perfil" || pathname.startsWith("/perfil/");
   const enAnalytics = pathname === "/analytics" || analyticsAllowed.some((m) => pathname === m.href);
@@ -164,6 +166,14 @@ export function RielGlobal({
             {enProyectos && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <Folder className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="text-[10.5px] leading-none tracking-tight">Tareas</span>
+          </Link>
+        )}
+
+        {proyectosPermitido && (
+          <Link href="/workcenter" className={itemClass(enWorkCenter)} title="WorkCenter">
+            {enWorkCenter && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
+            <Briefcase className="h-[19px] w-[19px]" strokeWidth={1.75} />
+            <span className="text-[10.5px] leading-none tracking-tight">WorkCenter</span>
           </Link>
         )}
 
@@ -313,6 +323,15 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] leading-tight">Tareas</p>
                         <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Espacios, listas y Kanban</p>
+                      </div>
+                    </Link>
+                  )}
+                  {proyectosPermitido && (
+                    <Link href="/workcenter" className={pill(false)}>
+                      <Briefcase className={iconCls(false)} strokeWidth={1.85} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] leading-tight">WorkCenter</p>
+                        <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Apps y archivos operativos</p>
                       </div>
                     </Link>
                   )}

@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
-  Calculator,
   Calendar,
   CheckCircle2,
   ChevronRight,
@@ -257,82 +256,12 @@ export default async function InicioProyectos() {
           )}
         </section>
 
-        {/* Sección 2: Archivos y Aplicativos de Trabajo */}
-        <section aria-label="Archivos de Trabajo" className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6EEF8] pb-3">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EBF3FE] text-[12px] font-extrabold text-[#1D4ED8]">
-                02
-              </span>
-              <div>
-                <h2 className="font-display text-[17px] font-bold tracking-tight text-[#0F172A]">
-                  Archivos de Trabajo
-                </h2>
-                <p className="text-[12px] text-[#64748B]">
-                  Aplicativos y archivos operativos interactivos conectados en tiempo real con la nube
-                </p>
-              </div>
-            </div>
-            <span className="rounded-full border border-[#C9DDFB] bg-[#EBF3FE] px-3 py-1 text-[11px] font-semibold text-[#1D4ED8]">
-              1 aplicativo activo
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Link
-              href="/proyectos/liquidador"
-              style={{
-                borderLeftWidth: "4px",
-                borderLeftColor: "#2563EB",
-              }}
-              className="group flex flex-col justify-between rounded-[16px] border border-[#E6EEF8] bg-white p-5 shadow-[0_2px_12px_rgba(14,36,94,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-[0_10px_28px_rgba(37,99,235,0.10)]"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#2563EB] text-white shadow-sm">
-                      <Calculator className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="truncate font-display text-[15.5px] font-bold text-[#0F172A] group-hover:text-[#1D4ED8]">
-                          Liquidador de Honorarios Médicos
-                        </h3>
-                      </div>
-                      <p className="truncate text-[12px] text-[#64748B]">
-                        Liquidación médica, actas, tarifarios 2026 y Excel
-                      </p>
-                    </div>
-                  </div>
-                  <span className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-semibold text-[#2563EB] opacity-80 transition group-hover:translate-x-0.5 group-hover:opacity-100">
-                    Abrir <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-[#F1F5F9] pt-3.5 text-[11.5px]">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-[#ECFDF5] px-2.5 py-1 font-semibold text-[#047857]">
-                    Ingreso directo
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-[#EBF3FE] px-2.5 py-1 font-semibold text-[#1D4ED8]">
-                    7 Aseguradoras 2026
-                  </span>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-md bg-[#F5F3FF] px-2 py-1 font-semibold text-[#6D28D9]">
-                  Nube conectada
-                </span>
-              </div>
-            </Link>
-          </div>
-        </section>
-
-        {/* Sección 3: Mis Tareas Pendientes */}
+        {/* Sección 2: Mis Tareas Pendientes */}
         <section aria-label="Mis tareas" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6EEF8] pb-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#ECFDF5] text-[12px] font-extrabold text-[#047857]">
-                03
+                02
               </span>
               <div>
                 <h2 className="font-display text-[17px] font-bold tracking-tight text-[#0F172A]">

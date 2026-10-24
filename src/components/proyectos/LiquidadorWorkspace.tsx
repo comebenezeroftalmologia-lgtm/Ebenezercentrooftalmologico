@@ -32,7 +32,7 @@ export function LiquidadorWorkspace({
             <Calculator className="h-4 w-4" />
           </span>
           <div className="flex min-w-0 items-center gap-1.5 text-[13px]">
-            <span className="hidden font-medium text-[#64748B] sm:inline">Archivos de Trabajo</span>
+            <span className="hidden font-medium text-[#64748B] sm:inline">WorkCenter</span>
             <span className="hidden text-[#CBD5E1] sm:inline">/</span>
             <span className="truncate font-bold text-[#0E245E]">
               Liquidador de Honorarios Médicos
