@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Calculator,
+  FileSpreadsheet,
   LayoutGrid,
   Menu,
   PanelLeftClose,
@@ -15,11 +15,11 @@ import {
 import type { Modulo } from "@/lib/modulos";
 import { BANDEJA_BLANCA_STYLE, RielGlobal, TramaArquitectonicaBandeja } from "@/components/Sidebar";
 
-const HERRAMIENTAS = [
+const ARCHIVOS_TRABAJO = [
   {
     id: "liquidador",
     nombre: "Liquidador de Honorarios",
-    subtitulo: "Honorarios médicos y PDF",
+    subtitulo: "Archivo de trabajo · Clave propia",
     href: "/workcenter/liquidador",
   },
 ];
@@ -41,7 +41,7 @@ export function WorkCenterShell({
   useEffect(() => setMenuMovil(false), [pathname]);
 
   const q = busqueda.trim().toLowerCase();
-  const filtradas = HERRAMIENTAS.filter(
+  const filtrados = ARCHIVOS_TRABAJO.filter(
     (h) =>
       !q ||
       h.nombre.toLowerCase().includes(q) ||
@@ -110,9 +110,9 @@ export function WorkCenterShell({
               strokeWidth={1.85}
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] leading-tight">Resumen de Trabajo</p>
+              <p className="truncate text-[13px] leading-tight">Archivos de Trabajo</p>
               <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">
-                Apps y herramientas
+                Catálogo de archivos activos
               </p>
             </div>
           </Link>
@@ -128,7 +128,7 @@ export function WorkCenterShell({
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar en WorkCenter..."
+              placeholder="Buscar archivo..."
               className="w-full rounded-[10px] border border-[#CBD8EE] bg-white/95 py-1.5 pl-8 pr-3 text-[12px] text-[#0E245E] shadow-[0_1px_4px_rgba(14,36,94,0.04)] placeholder:text-[#94A3B8] transition focus:border-[#2563EB] focus:bg-white focus:outline-none"
             />
           </div>
@@ -136,10 +136,10 @@ export function WorkCenterShell({
 
         <nav className="relative z-10 flex-1 overflow-y-auto px-3 py-1">
           <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">
-            Herramientas Activas
+            Archivos de Trabajo
           </div>
           <div className="flex flex-col gap-1">
-            {filtradas.map((h) => {
+            {filtrados.map((h) => {
               const activo = pathname === h.href || pathname.startsWith(`${h.href}/`);
               return (
                 <Link
@@ -151,7 +151,7 @@ export function WorkCenterShell({
                       : "text-[#334155] hover:bg-[#F3F7FD] hover:text-[#0E245E]"
                   }`}
                 >
-                  <Calculator
+                  <FileSpreadsheet
                     className={`h-4 w-4 shrink-0 ${
                       activo ? "text-[#1D58D8]" : "text-[#2563EB] group-hover:text-[#0E245E]"
                     }`}

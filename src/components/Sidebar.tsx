@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart2,
-  Briefcase,
+  FileSpreadsheet,
   CalendarClock,
   Folder,
   Home,
@@ -172,7 +172,7 @@ export function RielGlobal({
         {proyectosPermitido && (
           <Link href="/workcenter" className={itemClass(enWorkCenter)} title="WorkCenter">
             {enWorkCenter && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
-            <Briefcase className="h-[19px] w-[19px]" strokeWidth={1.75} />
+            <FileSpreadsheet className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="text-[10.5px] leading-none tracking-tight">WorkCenter</span>
           </Link>
         )}
@@ -328,7 +328,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                   )}
                   {proyectosPermitido && (
                     <Link href="/workcenter" className={pill(false)}>
-                      <Briefcase className={iconCls(false)} strokeWidth={1.85} />
+                      <FileSpreadsheet className={iconCls(false)} strokeWidth={1.85} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] leading-tight">WorkCenter</p>
                         <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Apps y archivos operativos</p>
