@@ -28,6 +28,14 @@ const NATIVE_EBENEZER_STYLE = `
     --r: 16px !important;
   }
 
+  /* Bloqueo estricto: jamás permite que #gate se cierre solo sin haber dado clic en Entrar */
+  body:not(.ebz-auth-unlocked) #gate {
+    display: flex !important;
+  }
+  body:not(.ebz-auth-unlocked) #nubeGate {
+    display: block !important;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
     background: #F8FAFC !important;
@@ -263,6 +271,89 @@ const NATIVE_EBENEZER_STYLE = `
 </style>
 `;
 
+const STRICT_MANUAL_LOGIN_SCRIPT = `
+<script>
+(function() {
+  // 1. Limpiar cualquier sesión automática o nombre recordado al abrir la pantalla
+  try {
+    sessionStorage.removeItem("liq_quien");
+    sessionStorage.removeItem("liq_usuario");
+    localStorage.removeItem("liq_quien_ult");
+    Object.keys(localStorage).forEach(function(k) {
+      if (k.indexOf("liq_quien_") === 0 || k.indexOf("firebase:authUser:") === 0) {
+        localStorage.removeItem(k);
+      }
+    });
+    if (window.indexedDB && typeof window.indexedDB.deleteDatabase === "function") {
+      try { window.indexedDB.deleteDatabase("firebaseLocalStorageDb"); } catch (e) {}
+    }
+  } catch (e) {}
+
+  window.__EBZ_USER_CLICKED_LOGIN = false;
+
+  function prepararFormularioLimpio() {
+    if (window.__EBZ_USER_CLICKED_LOGIN) return;
+    var q = document.getElementById("nQuien");
+    var em = document.getElementById("nEmail");
+    var pw = document.getElementById("nPass");
+    var rq = document.getElementById("rowQuien");
+    var rc = document.getElementById("rowCred");
+    var b1 = document.getElementById("nBtn");
+    var bq = document.getElementById("nBtnQuien");
+
+    if (rq) rq.style.display = "block";
+    if (rc) rc.style.display = "block";
+    if (b1) b1.style.display = "inline-block";
+    if (bq) bq.style.display = "none";
+
+    if (q && !q.dataset.ebzCleaned) {
+      q.value = "";
+      q.setAttribute("autocomplete", "off");
+      q.dataset.ebzCleaned = "1";
+    }
+    if (em && !em.dataset.ebzCleaned) {
+      em.value = "";
+      em.setAttribute("autocomplete", "off");
+      em.dataset.ebzCleaned = "1";
+    }
+    if (pw && !pw.dataset.ebzCleaned) {
+      pw.value = "";
+      pw.setAttribute("autocomplete", "new-password");
+      pw.dataset.ebzCleaned = "1";
+    }
+  }
+
+  function autorizarIngresoPorClic() {
+    window.__EBZ_USER_CLICKED_LOGIN = true;
+    document.body.classList.add("ebz-auth-unlocked");
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    prepararFormularioLimpio();
+    setTimeout(prepararFormularioLimpio, 120);
+    setTimeout(prepararFormularioLimpio, 450);
+
+    ["nBtn", "nBtnQuien", "nBtn2"].forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener("mousedown", autorizarIngresoPorClic, true);
+        btn.addEventListener("click", autorizarIngresoPorClic, true);
+      }
+    });
+
+    ["nPass", "nEmail", "nQuien"].forEach(function(id) {
+      var inp = document.getElementById(id);
+      if (inp) {
+        inp.addEventListener("keydown", function(ev) {
+          if (ev.key === "Enter") autorizarIngresoPorClic();
+        }, true);
+      }
+    });
+  });
+})();
+</script>
+`;
+
 export async function GET() {
   const user = await getCurrentAppUser();
   if (!user || !user.activo) {
@@ -281,9 +372,7 @@ export async function GET() {
     html = await res.text();
   }
 
-  // Limpia cualquier sesión automática de prueba previa y aplica únicamente el tema visual nativo
-  const cleanScript = `<script>try{var u=JSON.parse(sessionStorage.getItem("liq_usuario")||"{}");if(u&&u.perfil==="admin"){sessionStorage.removeItem("liq_usuario");sessionStorage.removeItem("liq_quien");}}catch(e){}</script>`;
-  const injection = `${cleanScript}\n${NATIVE_EBENEZER_STYLE}`;
+  const injection = `${STRICT_MANUAL_LOGIN_SCRIPT}\n${NATIVE_EBENEZER_STYLE}`;
 
   if (html.includes("</head>")) {
     html = html.replace("</head>", `${injection}\n</head>`);
