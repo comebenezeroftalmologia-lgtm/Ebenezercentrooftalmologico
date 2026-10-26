@@ -274,25 +274,31 @@ const NATIVE_EBENEZER_STYLE = `
 const STRICT_MANUAL_LOGIN_SCRIPT = `
 <script>
 (function() {
-  // 1. Limpiar cualquier sesión automática o nombre recordado al abrir la pantalla
+  var SESSION_FLAG_KEY = "ebz_liq_session_active";
+  var tieneSesionActiva = false;
+
   try {
-    sessionStorage.removeItem("liq_quien");
-    sessionStorage.removeItem("liq_usuario");
-    localStorage.removeItem("liq_quien_ult");
-    Object.keys(localStorage).forEach(function(k) {
-      if (k.indexOf("liq_quien_") === 0 || k.indexOf("firebase:authUser:") === 0) {
-        localStorage.removeItem(k);
+    tieneSesionActiva = localStorage.getItem(SESSION_FLAG_KEY) === "1";
+    if (tieneSesionActiva) {
+      // Restaurar el nombre de sesión si se abrió en otra pestaña o tras recargar
+      var ultNombre = localStorage.getItem("liq_quien_ult") || "";
+      if (ultNombre && !sessionStorage.getItem("liq_quien")) {
+        sessionStorage.setItem("liq_quien", ultNombre);
       }
-    });
-    if (window.indexedDB && typeof window.indexedDB.deleteDatabase === "function") {
-      try { window.indexedDB.deleteDatabase("firebaseLocalStorageDb"); } catch (e) {}
+    } else {
+      // Solo limpiar si no hay sesión activa iniciada por el usuario
+      sessionStorage.removeItem("liq_quien");
+      sessionStorage.removeItem("liq_usuario");
     }
   } catch (e) {}
 
-  window.__EBZ_USER_CLICKED_LOGIN = false;
+  window.__EBZ_USER_CLICKED_LOGIN = tieneSesionActiva;
 
   function prepararFormularioLimpio() {
-    if (window.__EBZ_USER_CLICKED_LOGIN) return;
+    if (window.__EBZ_USER_CLICKED_LOGIN) {
+      document.body.classList.add("ebz-auth-unlocked");
+      return;
+    }
     var q = document.getElementById("nQuien");
     var em = document.getElementById("nEmail");
     var pw = document.getElementById("nPass");
@@ -326,12 +332,39 @@ const STRICT_MANUAL_LOGIN_SCRIPT = `
   function autorizarIngresoPorClic() {
     window.__EBZ_USER_CLICKED_LOGIN = true;
     document.body.classList.add("ebz-auth-unlocked");
+    try {
+      localStorage.setItem(SESSION_FLAG_KEY, "1");
+      var q = document.getElementById("nQuien");
+      if (q && q.value && q.value.trim().length >= 3) {
+        localStorage.setItem("liq_quien_ult", q.value.trim());
+        sessionStorage.setItem("liq_quien", q.value.trim());
+      }
+    } catch (e) {}
   }
 
   document.addEventListener("DOMContentLoaded", function() {
-    prepararFormularioLimpio();
-    setTimeout(prepararFormularioLimpio, 120);
-    setTimeout(prepararFormularioLimpio, 450);
+    if (tieneSesionActiva) {
+      document.body.classList.add("ebz-auth-unlocked");
+    } else {
+      prepararFormularioLimpio();
+      setTimeout(prepararFormularioLimpio, 120);
+      setTimeout(prepararFormularioLimpio, 450);
+    }
+
+    // Si en algún momento nubeSalir() se ejecuta (clic en "salir"), apagar la bandera de sesión activa
+    if (typeof window.nubeSalir === "function" && !window.nubeSalir.__ebzWrapped) {
+      var origSalir = window.nubeSalir;
+      window.nubeSalir = async function() {
+        try {
+          localStorage.removeItem(SESSION_FLAG_KEY);
+          localStorage.removeItem("liq_quien_ult");
+          sessionStorage.removeItem("liq_quien");
+          sessionStorage.removeItem("liq_usuario");
+        } catch (e) {}
+        return await origSalir.apply(this, arguments);
+      };
+      window.nubeSalir.__ebzWrapped = true;
+    }
 
     ["nBtn", "nBtnQuien", "nBtn2"].forEach(function(id) {
       var btn = document.getElementById(id);
