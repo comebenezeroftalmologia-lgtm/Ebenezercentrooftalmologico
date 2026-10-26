@@ -27,10 +27,10 @@ function detectarLadoHC(resTxt, plantilla, examen) {
   const parts = T.split("|").map(x => x.trim());
   let odVal = null, oiVal = null;
   for (const p of parts) {
-    const mD = p.match(/^O\s*\.?\s*D\s*:+\s*(.*)$/);
-    if (mD) odVal = mD[1].trim();
-    const mI = p.match(/^O\s*\.?\s*I\s*:+\s*(.*)$/);
-    if (mI) oiVal = mI[1].trim();
+    const mD = p.match(/^(?:DIAMETRO DE PUPILA\s+)?O\s*\.?\s*D\s*:+\s*([\s\S]*)$/);
+    if (mD && (odVal === null || /^O\s*\.?\s*D\s*:/.test(p))) odVal = mD[1].trim();
+    const mI = p.match(/^(?:DIAMETRO DE PUPILA\s+)?O\s*\.?\s*I\s*:+\s*([\s\S]*)$/);
+    if (mI && (oiVal === null || /^O\s*\.?\s*I\s*:/.test(p))) oiVal = mI[1].trim();
   }
   if (odVal !== null && oiVal !== null) {
     const naRe = /^(NO APLICA|N\/A|-|SIN DATO|NO SE REALIZA|NO VALORABLE|VACIO|)$/;
