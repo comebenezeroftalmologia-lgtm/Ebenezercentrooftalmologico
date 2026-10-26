@@ -6129,6 +6129,7 @@ const PERM_CAPS = [
   {k:'valores',       t:'Decidir los servicios sin tarifa', d:'digitar el valor con su motivo'},
   {k:'normas',        t:'Dejar normas para los próximos meses', d:'que el tablero lo aplique solo'},
   {g:'Revisar'},
+  {k:'aprobar_acta',  t:'Aprobar o devolver el acta de cada médico', d:'botones ✓ Aprobar y ↩ Devolver en el encabezado del acta'},
   {k:'comparativo',   t:'Ver el comparativo con lo que liquidaron', d:'y el cruce paciente por paciente'},
   {k:'validacion',    t:'Ver la validación contra la base', d:'lo facturado frente a lo liquidado'},
   {k:'facturado',     t:'Ver cuánto se facturó por cada acto', d:'para no liquidar a ciegas · nunca sale en el acta del médico'},
@@ -6140,9 +6141,9 @@ const PERM_ROLES = [['sede1','Sede Principal'],['sede2','Sede 2'],['cirugia','Ci
 // Quien liquida tiene UNA sola casilla: el informe del sistema. Sube su archivo, el tablero
 // liquida, ella ajusta lo que pactó con el médico y lo envía a contabilidad.
 const PERM_DEF = {
-  sede1:   {subir_informe:1, comparativo:1, validacion:1, valores:1, normas:1, historial:1, facturado:1, novedades:1},
-  sede2:   {subir_informe:1, comparativo:1, validacion:1, valores:1, normas:1, historial:1, facturado:1, novedades:1},
-  cirugia: {subir_informe:1, comparativo:1, validacion:1, valores:1, normas:1, historial:1, facturado:1, novedades:1},
+  sede1:   {subir_informe:1, comparativo:1, validacion:1, valores:1, normas:1, aprobar_acta:1, historial:1, facturado:1, novedades:1},
+  sede2:   {subir_informe:1, comparativo:1, validacion:1, valores:1, normas:1, aprobar_acta:1, historial:1, facturado:1, novedades:1},
+  cirugia: {subir_informe:1, comparativo:1, validacion:1, valores:1, normas:1, aprobar_acta:1, historial:1, facturado:1, novedades:1},
   consulta:{comparativo:1, validacion:1, historial:1},
 };
 var PERM = JSON.parse(JSON.stringify(PERM_DEF));
@@ -6344,10 +6345,11 @@ function permMigrar(P){
   try{ for(const r of ['sede1','sede2','cirugia']){
     if(!P[r]) continue;
     P[r].subir_informe = 1;        // es su casilla: sin ella no puede liquidar
+    if(!P._aprobActa) P[r].aprobar_acta = 1;
     // «subir su liquidación manual» sale solo cuando el administrador la marca y guarda.
     // Lo guardado antes de esta versión no cuenta (esa casilla era otra cosa).
     if(!P._mano) delete P[r].subir_equipo;
-  } P._mano=1; }catch(e){}
+  } P._mano=1; P._aprobActa=1; }catch(e){}
   return P;
 }
 // Esconde de la barra lo que ese perfil no puede ver.
@@ -6380,8 +6382,8 @@ function permRestaurar(){
 }
 async function permGuardar(){
   const m={}; PERM_ROLES.forEach(([r])=>m[r]={});
-  document.querySelectorAll('.permchk').forEach(c=>{ if(c.checked) m[c.dataset.rol][c.dataset.cap]=1; });
-  m._mano=1;   // lo que marque el administrador manda: la migración de «liquidación manual» ya no vuelve a tocarlo
+  document.querySelectorAll('.permchk').forEach(c=>{ m[c.dataset.rol][c.dataset.cap]=c.checked?1:0; });
+  m._mano=1; m._aprobActa=1;   // lo que marque el administrador manda: la migración ya no vuelve a tocarlo
   const msg=document.getElementById('permMsg');
   try{
     await NUBE.guardarPermisos(m);
@@ -6442,6 +6444,14 @@ function liqBloqueo(){
   if(!hayEst) return 'Las estadísticas de cirugía de '+mt+' están publicadas pero no llegaron a este equipo.';
   return '';
 }
+function nubeEstaGuardado(tipo){
+  const pub = SIMPLE._pub||{};
+  if(tipo==='informe')   return !!(pub.informe && (!SIMPLE._infFile || SIMPLE._infFile._meta || pub.informe.nombre===FILENAME));
+  if(tipo==='estad')     return !!(pub.estad && (!SIMPLE._estadFile || SIMPLE._estadFile._meta || pub.estad.nombre===ESTADNAME));
+  if(tipo==='base')      return !!(pub.base && (!SIMPLE._baseFile || SIMPLE._baseFile._meta || pub.base.nombre===(typeof VBASE!=='undefined'&&VBASE&&VBASE.archivo)));
+  if(tipo==='novedades') return !!(pub.novedades && (!SIMPLE._novFile || SIMPLE._novFile._meta || pub.novedades.nombre===(typeof NOV!=='undefined'&&NOV&&NOV.archivo)));
+  return false;
+}
 function cgAvisoMes(){
   const zona=document.querySelector('.cargas'); if(!zona) return;
   let a=document.getElementById('cgAvEstad');
@@ -6452,6 +6462,7 @@ function cgAvisoMes(){
   if(!per){ a.className='cgav falta';
     a.innerHTML='<b>Elija abajo el mes y el año del cierre</b> — el tablero trae solos los archivos guardados en la nube para ese mes.'; return; }
   const mt=liqMesTxt(per);
+  if(SIMPLE._publicando){ a.className='cgav esp'; a.innerHTML='<b>⏳ '+esc(SIMPLE._publicando)+'</b> — guardando en la nube para todo el equipo…'; return; }
   if(SIMPLE._trayendo){ a.className='cgav esp'; a.innerHTML='<b>⏳ Consultando y recibiendo los archivos de '+mt+'</b> guardados en la nube…'; return; }
   const pub=SIMPLE._pub||{};
 
@@ -6461,19 +6472,23 @@ function cgAvisoMes(){
     const estLoc = !!(typeof ACTOS!=='undefined' && ACTOS && ACTOS.length);
     const basLoc = !!(typeof VBASE!=='undefined' && VBASE);
     const novLoc = !!(typeof NOV!=='undefined' && NOV && NOV.n);
-    const faltaSubir = (infLoc && !pub.informe && SIMPLE._infFile) ||
-                       (estLoc && !pub.estad && SIMPLE._estadFile) ||
-                       (basLoc && !pub.base && SIMPLE._baseFile) ||
-                       (novLoc && !pub.novedades && SIMPLE._novFile);
+    const infG = nubeEstaGuardado('informe');
+    const estG = nubeEstaGuardado('estad');
+    const basG = nubeEstaGuardado('base');
+    const novG = nubeEstaGuardado('novedades');
+    const faltaSubir = (infLoc && !infG && SIMPLE._infFile) ||
+                       (estLoc && !estG && SIMPLE._estadFile) ||
+                       (basLoc && !basG && SIMPLE._baseFile) ||
+                       (novLoc && !novG && SIMPLE._novFile);
     const guardados = [];
-    if(pub.informe)   guardados.push('✔ <b>Informe del sistema</b> ('+esc(pub.informe.nombre||FILENAME||'guardado')+')');
-    if(pub.estad)     guardados.push('✔ <b>Estadísticas de cirugía</b> ('+esc(pub.estad.nombre||ESTADNAME||'guardado')+')');
-    if(pub.base)      guardados.push('✔ <b>Base de frecuencias</b> ('+esc(pub.base.nombre||'guardada')+')');
-    if(pub.novedades) guardados.push('✔ <b>Novedades de cirugía</b> ('+esc(pub.novedades.nombre||(NOV&&NOV.archivo)||'guardadas')+')');
+    if(infG) guardados.push('✔ <b>Informe del sistema</b> ('+esc(FILENAME||(pub.informe&&pub.informe.nombre)||'guardado')+')');
+    if(estG) guardados.push('✔ <b>Estadísticas de cirugía</b> ('+esc(ESTADNAME||(pub.estad&&pub.estad.nombre)||'guardado')+')');
+    if(basG) guardados.push('✔ <b>Base de frecuencias</b> ('+esc((pub.base&&pub.base.nombre)||'guardada')+')');
+    if(novG) guardados.push('✔ <b>Novedades de cirugía</b> ('+esc((NOV&&NOV.archivo)||(pub.novedades&&pub.novedades.nombre)||'guardadas')+')');
 
     if(faltaSubir){
       a.className='cgav falta';
-      a.innerHTML='<b>⚠ Atención Administrador:</b> Cargó archivo(s) en las casillas pero <b>todavía NO están guardados en la nube</b>. Haga clic en el botón azul <b>«☁ Guardar y publicar estos archivos en la nube para el equipo»</b> de aquí abajo.'
+      a.innerHTML='<b>⚠ Atención Administrador:</b> Cargó archivo(s) nuevos en las casillas pero <b>todavía NO están guardados en la nube</b>. Haga clic en el botón azul <b>«☁ Guardar y publicar estos archivos en la nube para el equipo»</b> de aquí abajo.'
         + (guardados.length ? '<div style="margin-top:4px;font-size:12px;color:#3f6b1f">Ya guardados en la nube de '+mt+': '+guardados.join(' · ')+'</div>' : '');
       return;
     }
@@ -6524,15 +6539,15 @@ async function simpleRecibir(fileList, destino){
       cgMsg(destino,'');
       if(destino){ if(await simplePonerEn(destino, f)) continue; }
       // sin tarjeta (soltado en la zona de arriba): el tablero reparte solo
-      if(n.endsWith('.parquet')){ await valLeer(f); SIMPLE._baseFile=f; simpleChips(); continue; }              // base de frecuencias
+      if(n.endsWith('.parquet')){ if(SIMPLE._pub && !f._meta) delete SIMPLE._pub.base; await valLeer(f); SIMPLE._baseFile=f; simpleChips(); continue; }              // base de frecuencias
       const head = new Uint8Array(await f.slice(0,4).arrayBuffer());
       if(head[0]===0x50 && head[1]===0x4b){                                                 // .xlsx → lo liquidado por el equipo
         await simpleEquipo(f); continue;
       }
       const txt = new TextDecoder('windows-1252').decode(await f.slice(0,60000).arrayBuffer());
       const esInforme = /fecha_servicio/.test(txt) && /DetalleCargo/i.test(txt);
-      if(esInforme || (/informe/i.test(n) && !/estad/i.test(n))){ await leer(f); SIMPLE._infFile=f; }
-      else { await leerEstad(f); SIMPLE._estadFile=f; }                                       // estadísticas de cirugía
+      if(esInforme || (/informe/i.test(n) && !/estad/i.test(n))){ if(SIMPLE._pub && !f._meta) delete SIMPLE._pub.informe; await leer(f); SIMPLE._infFile=f; }
+      else { if(SIMPLE._pub && !f._meta) delete SIMPLE._pub.estad; await leerEstad(f); SIMPLE._estadFile=f; }                                       // estadísticas de cirugía
     }catch(e){ console.error('simpleRecibir', f.name, e);
       const msg='✖ '+explicarFallo(f, e);
       if(destino) cgMsg(destino, msg, true);
@@ -6680,8 +6695,11 @@ function cgMsg(tipo, texto, malo){
   d.textContent=texto;
 }
 function simpleChips(){
-  const pub = SIMPLE._pub||{};
   const esAdm = cgPuedeSubir('estad');
+  const infG = nubeEstaGuardado('informe');
+  const estG = nubeEstaGuardado('estad');
+  const basG = nubeEstaGuardado('base');
+  const novG = nubeEstaGuardado('novedades');
   const set=(id, tipo, ok, texto, pie)=>{
     const e=document.getElementById(id); if(!e) return;
     e.textContent = ok? '✔ '+texto : texto;
@@ -6691,16 +6709,16 @@ function simpleChips(){
     const p=card.querySelector('.cg-pie'); if(p && pie!==undefined) p.textContent=pie;
   };
   const inf = (typeof RECORDS!=='undefined' && RECORDS && RECORDS.length)? RECORDS.length.toLocaleString('es-CO')+' registros' : '';
-  set('cgInforme','informe', !!inf, inf||'Sin cargar', inf? ((FILENAME||'')+(esAdm? (pub.informe?' · ✔ guardado en la nube':' · ⏳ falta guardar en nube') : '')) : 'Toda la producción del corte');
+  set('cgInforme','informe', !!inf, inf||'Sin cargar', inf? ((FILENAME||'')+(esAdm? (infG?' · ✔ guardado en la nube':' · ⏳ falta guardar en nube') : '')) : 'Toda la producción del corte');
   const est = (typeof ACTOS!=='undefined' && ACTOS && ACTOS.length)? ACTOS.length+' cirugías' : '';
-  set('cgEstad','estad', !!est, est||'Sin cargar', est? ((ESTADNAME||'')+(pub.estad?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Da precisión a cirugía y anestesia');
+  set('cgEstad','estad', !!est, est||'Sin cargar', est? ((ESTADNAME||'')+(estG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Da precisión a cirugía y anestesia');
   const bas = (typeof VBASE!=='undefined' && VBASE)? (VBASE.filas? VBASE.filas.length.toLocaleString('es-CO')+' filas':'cargada') : '';
-  set('cgBase','base', !!bas, bas||'Sin cargar', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(pub.base?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Para validar contra lo facturado');
+  set('cgBase','base', !!bas, bas||'Sin cargar', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(basG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Para validar contra lo facturado');
   const nCmp=(typeof CMP!=='undefined' && CMP.archivos? CMP.archivos.length:0)+SIMPLE.recibidos.length;
   const novOk = !!(typeof NOV!=='undefined' && NOV && NOV.n);
   set('cgNov','novedades', novOk,
       novOk? NOV.n.toLocaleString('es-CO')+' pacientes' : 'Sin cargar',
-      novOk? (NOV.archivo+' · '+NOV.rango.min+' a '+NOV.rango.max+(pub.novedades?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Lente, observación y estado de cada paciente');
+      novOk? (NOV.archivo+' · '+NOV.rango.min+' a '+NOV.rango.max+(novG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Lente, observación y estado de cada paciente');
   set('cgEquipo','equipo', !!nCmp, nCmp? nCmp+' archivo'+(nCmp>1?'s':'') : 'Sin cargar',
       nCmp? [...(CMP.archivos||[]).map(a=>nomArchivoBonito(a.nombre))].slice(0,2).join(' · ') : 'Solo para comparar: no cambia la liquidación');
   // --- quien no es administrador: SOLO su informe. Lo demás es del administrador y no lo ve ---
@@ -6730,10 +6748,15 @@ function simpleChips(){
   if(bc && inf){ const bl=liqBloqueo(); bc.disabled=!!bl; bc.title=bl||''; }
   // botón de publicar para el administrador
   const pie=document.querySelector('.cargapie');
-  if(pie && typeof NUBE_ON!=='undefined' && NUBE_ON && puede('publicar')
-     && ((inf && !pub.informe && SIMPLE._infFile) || (est && !pub.estad && SIMPLE._estadFile) || (bas && !pub.base && SIMPLE._baseFile) || (novOk && !pub.novedades && SIMPLE._novFile))){
+  const faltaPub = (inf && !infG && SIMPLE._infFile) || (est && !estG && SIMPLE._estadFile) || (bas && !basG && SIMPLE._baseFile) || (novOk && !novG && SIMPLE._novFile);
+  if(pie && typeof NUBE_ON!=='undefined' && NUBE_ON && puede('publicar') && (faltaPub || SIMPLE._publicando)){
     if(!document.getElementById('btnPub'))
       pie.insertAdjacentHTML('afterend','<div style="text-align:center;margin-top:12px"><button class="btn" id="btnPub" style="padding:10px 22px;font-size:13.5px;font-weight:700" onclick="nubePublicarArchivos()">☁ Guardar y publicar estos archivos en la nube para el equipo</button></div>');
+    const b=document.getElementById('btnPub');
+    if(b){
+      b.disabled = !!SIMPLE._publicando;
+      b.textContent = SIMPLE._publicando ? ('⏳ '+SIMPLE._publicando) : '☁ Guardar y publicar estos archivos en la nube para el equipo';
+    }
   } else { const b=document.getElementById('btnPub'); if(b) b.parentElement.remove(); }
 }
 try{ simpleChips(); }catch(e){}
@@ -7113,7 +7136,7 @@ function actaSubtitulo(m, tot){
   return [crt, esc(sd), esc(per), est].filter(Boolean).join(' · ');
 }
 function actaBotones(m, tot){
-  if(!cgEsAdmin()) return '';
+  if(!(typeof puede==='function' ? puede('aprobar_acta') : cgEsAdmin())) return '';
   // Un corte parcial no se aprueba: la cuenta todavía va subiendo. Solo el final se aprueba.
   if(typeof corteInterno==='function' && corteInterno())
     return '<span class="small" style="color:#8a5a00">Un corte parcial no se aprueba · la aprobación va en el corte final</span>';
@@ -7131,18 +7154,19 @@ function actaEstadoHTML(m, tot){
 }
 function actaTot(m){ const x=(RESULT&&RESULT._datos||[]).find(d=>d.m===m); return x? Math.round(x.cir+x.sed+(x.man||0)) : 0; }
 function actaAprobar(m){
-  if(!cgEsAdmin()){ alert('Solo el administrador aprueba.'); return; }
+  if(!(typeof puede==='function' ? puede('aprobar_acta') : cgEsAdmin())){ alert('No tiene permiso para aprobar el acta.'); return; }
   try{ const a=MANO.cache[m]||manoAnalizar(m); if(actaDobles(m,a).length){ alert('Esta acta tiene un pago repetido. Quítelo primero con «Quitar el repetido» (arriba del comparativo).'); return; } }catch(e){}
   const quien=(typeof USUARIO!=='undefined'&&USUARIO&&USUARIO.nombre)||'?';
   revGuardar(m, {estado:'ok', origen:'acta', motivo:'Aprobado en el acta', por:quien, t:new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}), tot:actaTot(m), sis:actaTot(m)});
   try{ manToast(m+' aprobado · firmado a su nombre'); }catch(e){}
 }
 function actaQuitar(m){
+  if(!(typeof puede==='function' ? puede('aprobar_acta') : cgEsAdmin())){ alert('No tiene permiso para quitar la aprobación.'); return; }
   if(!confirm('¿Quitar la aprobación de '+m+'? Queda pendiente otra vez.')) return;
   revGuardar(m, null);
 }
 function actaDevolver(m){
-  if(!cgEsAdmin()){ alert('Solo el administrador devuelve.'); return; }
+  if(!(typeof puede==='function' ? puede('aprobar_acta') : cgEsAdmin())){ alert('No tiene permiso para devolver el acta.'); return; }
   const viejo=document.getElementById('actaDevModal'); if(viejo) viejo.remove();
   const div=document.createElement('div'); div.id='actaDevModal';
   div.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px';
@@ -10885,7 +10909,7 @@ function manoDetalle(){
   let h=`<div class="md-h"><div><div class="md-n">${esc(fmtNom(a.med))}</div>
       <div class="md-lks"><a class="mano-lk" onclick="showTab('resumen');semAbrir._m=null;semAbrir('${jsqM(a.med)}')">Abrir su acta</a>
       <a class="mano-lk" onclick="fkAbrir('${jsqM(a.med)}')">Corregir la ficha</a>
-      ${cgEsAdmin()?`<a class="mano-lk dev" onclick="actaDevolver('${jsqM(a.med)}')">↩ Devolver a la liquidadora</a>`:''}</div></div></div>
+      ${(typeof puede==='function' ? puede('aprobar_acta') : cgEsAdmin())?`<a class="mano-lk dev" onclick="actaDevolver('${jsqM(a.med)}')">↩ Devolver a la liquidadora</a>`:''}</div></div></div>
     <div class="mano-tri"><div><div class="l">Liquidación manual</div><div class="v">${a.fila.rec==null?'—':money(a.man)}</div></div>
       <div><div class="l">Tablero</div><div class="v">${money(a.tab)}</div></div>
       <div><div class="l">${ok?'Diferencia':(a.dif>0?'El tablero paga más':'La liquidación manual paga más')}</div><div class="v ${ok?'':(a.dif>0?'mas':'dif')}">${ok?'$ 0':(a.dif>0?'+':'')+money(a.dif)}</div></div></div>`;
@@ -12672,24 +12696,53 @@ async function nubeComparativoCierres(){
 }
 // ---- archivos del mes: publicar (administrador) y traer (todos) ----
 async function nubePublicarArchivos(){
-  if(!NUBE_ON || !NUBE.esGerencia()){ alert('Solo el administrador publica los archivos del mes.'); return; }
+  if(!NUBE_ON || !(NUBE.esGerencia() || (typeof puede==='function' && puede('publicar')))){ alert('Solo el administrador publica los archivos del mes.'); return; }
+  if(SIMPLE._publicando) return;
   const per = nubeMesActual(); if(!per){ alert('Elija primero el mes y el año.'); return; }
   const st=document.getElementById('status');
-  const tareas=[];
-  if(typeof RECORDS!=='undefined' && RECORDS && RECORDS.length && SIMPLE._infFile) tareas.push(['informe', SIMPLE._infFile, 'Informe del sistema']);
-  if(typeof ACTOS!=='undefined' && ACTOS && ACTOS.length && SIMPLE._estadFile) tareas.push(['estad', SIMPLE._estadFile, 'Estadísticas de cirugía']);
-  if(typeof VBASE!=='undefined' && VBASE && SIMPLE._baseFile) tareas.push(['base', SIMPLE._baseFile, 'Base de frecuencias']);
-  if(typeof NOV!=='undefined' && NOV && NOV.n && SIMPLE._novFile) tareas.push(['novedades', SIMPLE._novFile, 'Novedades de cirugía']);
+  const candidatos=[];
+  if(typeof RECORDS!=='undefined' && RECORDS && RECORDS.length && SIMPLE._infFile) candidatos.push(['informe', SIMPLE._infFile, 'Informe del sistema']);
+  if(typeof ACTOS!=='undefined' && ACTOS && ACTOS.length && SIMPLE._estadFile) candidatos.push(['estad', SIMPLE._estadFile, 'Estadísticas de cirugía']);
+  if(typeof VBASE!=='undefined' && VBASE && SIMPLE._baseFile) candidatos.push(['base', SIMPLE._baseFile, 'Base de frecuencias']);
+  if(typeof NOV!=='undefined' && NOV && NOV.n && SIMPLE._novFile) candidatos.push(['novedades', SIMPLE._novFile, 'Novedades de cirugía']);
+  let tareas = candidatos.filter(t => !nubeEstaGuardado(t[0]));
+  if(!tareas.length) tareas = candidatos;
   if(!tareas.length){ alert('Suelte primero el informe del sistema, las estadísticas de cirugía, la base de frecuencias o las novedades de cirugía.'); return; }
+  SIMPLE._publicando = 'Preparando subida a la nube ('+tareas.length+' archivo'+(tareas.length>1?'s':'')+')…';
+  simpleChips();
   try{
+    let idx = 0;
     for(const [tipo,f,nom] of tareas){
-      await NUBE.publicarArchivo(per, tipo, f, (i,n)=>{ st.innerHTML='⏳ Publicando '+nom+' — parte '+i+' de '+n+'…'; });
+      idx++;
+      const pref = 'Subiendo ('+idx+' de '+tareas.length+') '+nom+' ('+f.name+')';
+      SIMPLE._publicando = pref+'…';
+      simpleChips();
+      await NUBE.publicarArchivo(per, tipo, f, (i,n)=>{
+        const txt = pref+' — parte '+i+' de '+n+'…';
+        SIMPLE._publicando = txt;
+        if(st) st.innerHTML='⏳ '+esc(txt);
+        const b=document.getElementById('btnPub'); if(b){ b.disabled=true; b.textContent='⏳ '+txt; }
+        const av=document.getElementById('cgAvEstad'); if(av){ av.className='cgav esp'; av.innerHTML='<b>⏳ '+esc(txt)+'</b> — guardando en la nube para todo el equipo…'; }
+      });
       await NUBE.audit({accion:'ARCHIVO PUBLICADO', periodo:per, detalle:nom+' · '+f.name+' · '+(f.size/1048576).toFixed(1)+' MB'});
+      const meta = {porNombre:(typeof USUARIO!=='undefined'&&USUARIO&&USUARIO.nombre)||'Administrador', nombre:f.name};
+      try{ f._meta = meta; }catch(e){}
+      SIMPLE._pub = SIMPLE._pub||{};
+      SIMPLE._pub[tipo] = meta;
+      SIMPLE._pubDe = per;
     }
-    SIMPLE._pub = SIMPLE._pub||{}; for(const t of tareas) SIMPLE._pub[t[0]]={porNombre:USUARIO&&USUARIO.nombre, nombre:t[1].name};
-    st.innerHTML='✔ Publicado para el equipo: '+tareas.map(t=>t[2]).join(' y ')+'. Cada liquidadora los recibirá sola al elegir '+per+'.';
+    SIMPLE._publicando = null;
+    const msgOk = '✔ Guardado en la nube para el equipo: '+tareas.map(t=>t[2]+' ('+t[1].name+')').join(', ')+'.';
+    if(st) st.innerHTML=msgOk+' Cada liquidadora los recibirá sola al elegir '+per+'.';
     simpleChips();
-  }catch(e){ st.innerHTML='<span style="color:var(--danger)">✖ No se pudo publicar: '+(e.message||e)+'</span>'; }
+    try{ manToast('☁ '+msgOk); }catch(e){}
+  }catch(e){
+    SIMPLE._publicando = null;
+    simpleChips();
+    const errTxt = (e&&e.message)||String(e);
+    if(st) st.innerHTML='<span style="color:var(--danger)">✖ No se pudo publicar: '+esc(errTxt)+'</span>';
+    alert('No se pudo guardar en la nube: '+errTxt);
+  }
 }
 // Trae lo que el administrador publicó para el mes elegido. Lo ya publicado NO se borra de la
 // pantalla mientras llega la respuesta (antes se vaciaba y se volvía a pintar: el «brinco»).
