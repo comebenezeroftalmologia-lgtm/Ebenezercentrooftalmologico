@@ -203,6 +203,23 @@ export default function TableroCarteraAnalytics() {
   const [filtroResponsable, setFiltroResponsable] = useState<string>("TODAS");
   const [busqueda, setBusqueda] = useState<string>("");
 
+  // Barra de filtros superior estilo Tablero de Frecuencias (.period-bar)
+  const [ddFrecAbierto, setDdFrecAbierto] = useState<
+    "year" | "month" | "dias" | "grp" | "resp" | null
+  >(null);
+  const [aniosFrecSel, setAniosFrecSel] = useState<string[]>(
+    () => [...carteraInitialData.aniosDisponibles]
+  );
+  const [mesesFrecSel, setMesesFrecSel] = useState<string[]>([]);
+  const [empresasFrecSel, setEmpresasFrecSel] = useState<string[]>([]);
+  const [responsablesFrecSel, setResponsablesFrecSel] = useState<string[]>([]);
+  const [incluirMutual, setIncluirMutual] = useState<boolean>(true);
+  const [diasDesde, setDiasDesde] = useState<string>("");
+  const [diasHasta, setDiasHasta] = useState<string>("");
+  const [diasSemanaSel, setDiasSemanaSel] = useState<number[]>([]);
+  const [diasFiltroActivo, setDiasFiltroActivo] = useState<boolean>(false);
+  const [diasEtiqueta, setDiasEtiqueta] = useState<string>("📅 Todos los días");
+
   // Excel-style floating column filter popover state
   const [colMenuAbierto, setColMenuAbierto] = useState<string | null>(null);
   const [busquedaMenuCol, setBusquedaMenuCol] = useState<string>("");
@@ -468,6 +485,154 @@ export default function TableroCarteraAnalytics() {
     }
   };
 
+  const MESES_FREC = [
+    { id: "01", label: "Enero" },
+    { id: "02", label: "Febrero" },
+    { id: "03", label: "Marzo" },
+    { id: "04", label: "Abril" },
+    { id: "05", label: "Mayo" },
+    { id: "06", label: "Junio" },
+    { id: "07", label: "Julio" },
+    { id: "08", label: "Agosto" },
+    { id: "09", label: "Septiembre" },
+    { id: "10", label: "Octubre" },
+    { id: "11", label: "Noviembre" },
+    { id: "12", label: "Diciembre" },
+  ];
+
+  const DIAS_SEMANA_FREC = [
+    { id: 1, label: "Lun" },
+    { id: 2, label: "Mar" },
+    { id: 3, label: "Mié" },
+    { id: 4, label: "Jue" },
+    { id: 5, label: "Vie" },
+    { id: 6, label: "Sáb" },
+    { id: 0, label: "Dom" },
+  ];
+
+  const toggleItemEnLista = <T,>(lista: T[], item: T, setter: (val: T[]) => void) => {
+    if (lista.includes(item)) {
+      setter(lista.filter((x) => x !== item));
+    } else {
+      setter([...lista, item]);
+    }
+    setPaginaActual(1);
+  };
+
+  const aplicarPreseleccionDias = (modo: 0 | 1 | 7 | 30 | "sem") => {
+    const hoy = new Date(Date.now() - 5 * 60 * 60 * 1000);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    if (modo === 0) {
+      const f = fmt(hoy);
+      setDiasDesde(f);
+      setDiasHasta(f);
+    } else if (modo === 1) {
+      const ayer = new Date(hoy.getTime() - 86400000);
+      const f = fmt(ayer);
+      setDiasDesde(f);
+      setDiasHasta(f);
+    } else if (modo === 7) {
+      const d1 = new Date(hoy.getTime() - 6 * 86400000);
+      setDiasDesde(fmt(d1));
+      setDiasHasta(fmt(hoy));
+    } else if (modo === 30) {
+      const d1 = new Date(hoy.getTime() - 29 * 86400000);
+      setDiasDesde(fmt(d1));
+      setDiasHasta(fmt(hoy));
+    } else if (modo === "sem") {
+      const day = hoy.getDay();
+      const diffLunes = (day + 6) % 7;
+      const lunes = new Date(hoy.getTime() - diffLunes * 86400000);
+      setDiasDesde(fmt(lunes));
+      setDiasHasta(fmt(hoy));
+    }
+  };
+
+  const aplicarPanelDias = () => {
+    const tieneRango = Boolean(diasDesde || diasHasta);
+    const tieneSem = diasSemanaSel.length > 0;
+    if (!tieneRango && !tieneSem) {
+      setDiasFiltroActivo(false);
+      setDiasEtiqueta("📅 Todos los días");
+    } else {
+      setDiasFiltroActivo(true);
+      const partes: string[] = [];
+      if (diasDesde && diasHasta) {
+        partes.push(diasDesde === diasHasta ? diasDesde : `${diasDesde} → ${diasHasta}`);
+      } else if (diasDesde) {
+        partes.push(`Desde ${diasDesde}`);
+      } else if (diasHasta) {
+        partes.push(`Hasta ${diasHasta}`);
+      }
+      if (tieneSem) {
+        const nombres = DIAS_SEMANA_FREC.filter((d) => diasSemanaSel.includes(d.id)).map(
+          (d) => d.label
+        );
+        partes.push(nombres.join(", "));
+      }
+      setDiasEtiqueta(`📅 ${partes.join(" · ")}`);
+      if (diasHasta && /^\d{4}-\d{2}-\d{2}$/.test(diasHasta)) {
+        setFechaCorteVivo(diasHasta);
+        sincronizarConSismaVivo(diasHasta, false);
+      }
+    }
+    setDdFrecAbierto(null);
+    setPaginaActual(1);
+  };
+
+  const quitarPanelDias = () => {
+    setDiasDesde("");
+    setDiasHasta("");
+    setDiasSemanaSel([]);
+    setDiasFiltroActivo(false);
+    setDiasEtiqueta("📅 Todos los días");
+    setDdFrecAbierto(null);
+    setPaginaActual(1);
+  };
+
+  const cumpleFiltrosFrecuencias = (
+    anioReg: string,
+    empresaReg: string,
+    responsableReg: string,
+    fechaISO?: string
+  ): boolean => {
+    if (!incluirMutual && String(empresaReg || "").toUpperCase().includes("MUTUAL")) {
+      return false;
+    }
+    if (
+      aniosFrecSel.length > 0 &&
+      aniosFrecSel.length < carteraInitialData.aniosDisponibles.length &&
+      !aniosFrecSel.includes(String(anioReg || ""))
+    ) {
+      return false;
+    }
+    if (empresasFrecSel.length > 0 && !empresasFrecSel.includes(String(empresaReg || ""))) {
+      return false;
+    }
+    if (
+      responsablesFrecSel.length > 0 &&
+      !responsablesFrecSel.includes(String(responsableReg || ""))
+    ) {
+      return false;
+    }
+    const fStr = String(fechaISO || "").trim().slice(0, 10);
+    if (mesesFrecSel.length > 0) {
+      if (!/^\d{4}-\d{2}/.test(fStr)) return false;
+      const mm = fStr.slice(5, 7);
+      if (!mesesFrecSel.includes(mm)) return false;
+    }
+    if (diasFiltroActivo) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fStr)) return false;
+      if (diasDesde && fStr < diasDesde) return false;
+      if (diasHasta && fStr > diasHasta) return false;
+      if (diasSemanaSel.length > 0) {
+        const dt = new Date(`${fStr}T12:00:00`);
+        if (!diasSemanaSel.includes(dt.getDay())) return false;
+      }
+    }
+    return true;
+  };
+
   const limpiarTodosLosFiltros = () => {
     setFiltroAnio("TODOS");
     setFiltroEmpresa("TODAS");
@@ -475,6 +640,17 @@ export default function TableroCarteraAnalytics() {
     setFiltroEstado("TODOS");
     setFiltroResponsable("TODAS");
     setBusqueda("");
+    setAniosFrecSel([...carteraInitialData.aniosDisponibles]);
+    setMesesFrecSel([]);
+    setEmpresasFrecSel([]);
+    setResponsablesFrecSel([]);
+    setIncluirMutual(true);
+    setDiasDesde("");
+    setDiasHasta("");
+    setDiasSemanaSel([]);
+    setDiasFiltroActivo(false);
+    setDiasEtiqueta("📅 Todos los días");
+    setDdFrecAbierto(null);
     setValoresExcluidosPorCol({});
     setBusquedaTextoPorCol({});
     setOrdenColumna(null);
@@ -489,6 +665,13 @@ export default function TableroCarteraAnalytics() {
     filtroEstado !== "TODOS" ||
     filtroResponsable !== "TODAS" ||
     busqueda.trim() !== "" ||
+    !incluirMutual ||
+    (aniosFrecSel.length > 0 &&
+      aniosFrecSel.length < carteraInitialData.aniosDisponibles.length) ||
+    mesesFrecSel.length > 0 ||
+    empresasFrecSel.length > 0 ||
+    responsablesFrecSel.length > 0 ||
+    diasFiltroActivo ||
     Object.values(valoresExcluidosPorCol).some((arr) => arr && arr.length > 0) ||
     Object.values(busquedaTextoPorCol).some((txt) => txt && txt.trim() !== "") ||
     ordenColumna !== null;
@@ -568,6 +751,17 @@ export default function TableroCarteraAnalytics() {
   const filtrarBaseAnuladas = (lista: AnuladaRow[]) => {
     const q = busqueda.toLowerCase().trim();
     const base = lista.filter((r) => {
+      const respReal = normalizarResponsableReal(r.responsable, r.empresa);
+      if (
+        !cumpleFiltrosFrecuencias(
+          r.anio,
+          r.empresa,
+          respReal,
+          r.fechaRadicacion || r.fechaFactura
+        )
+      ) {
+        return false;
+      }
       if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
       if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
       if (filtroTipo !== "TODOS" && !normalizarEtiquetaTipo(r.tipo).includes(filtroTipo)) return false;
@@ -576,7 +770,6 @@ export default function TableroCarteraAnalytics() {
         if (filtroEstado === "REEMPLAZADA" && !tieneReemplazo) return false;
         if (filtroEstado === "PENDIENTE" && tieneReemplazo) return false;
       }
-      const respReal = normalizarResponsableReal(r.responsable, r.empresa);
       if (filtroResponsable !== "TODAS" && respReal !== filtroResponsable) return false;
       if (q) {
         const texto = `${r.factura} ${r.empresa} ${r.motivo} ${r.facturaReemplaza} ${respReal} ${r.revisionFinanciera} ${r.rips}`.toLowerCase();
@@ -600,6 +793,15 @@ export default function TableroCarteraAnalytics() {
       valoresExcluidosPorCol,
       busquedaTextoPorCol,
       ordenColumna,
+      aniosFrecSel,
+      mesesFrecSel,
+      empresasFrecSel,
+      responsablesFrecSel,
+      incluirMutual,
+      diasFiltroActivo,
+      diasDesde,
+      diasHasta,
+      diasSemanaSel,
     ]
   );
 
@@ -616,15 +818,27 @@ export default function TableroCarteraAnalytics() {
       valoresExcluidosPorCol,
       busquedaTextoPorCol,
       ordenColumna,
+      aniosFrecSel,
+      mesesFrecSel,
+      empresasFrecSel,
+      responsablesFrecSel,
+      incluirMutual,
+      diasFiltroActivo,
+      diasDesde,
+      diasHasta,
+      diasSemanaSel,
     ]
   );
 
   const glosasFiltradas = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     const base = glosas.filter((r) => {
+      const facReal = normalizarResponsableReal(r.facturador, r.empresa);
+      if (!cumpleFiltrosFrecuencias(r.anio, r.empresa, facReal, "")) {
+        return false;
+      }
       if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
       if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      const facReal = normalizarResponsableReal(r.facturador, r.empresa);
       if (filtroResponsable !== "TODAS" && facReal !== filtroResponsable) return false;
       if (filtroEstado !== "TODOS") {
         if (filtroEstado === "REEMPLAZADA" && r.subtabla !== "RESPONDIDA_NO_ACEPTADA") return false;
@@ -647,14 +861,26 @@ export default function TableroCarteraAnalytics() {
     valoresExcluidosPorCol,
     busquedaTextoPorCol,
     ordenColumna,
+    aniosFrecSel,
+    mesesFrecSel,
+    empresasFrecSel,
+    responsablesFrecSel,
+    incluirMutual,
+    diasFiltroActivo,
+    diasDesde,
+    diasHasta,
+    diasSemanaSel,
   ]);
 
   const pendientesFiltradas = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     const base = pendientes.filter((r) => {
+      const respReal = normalizarResponsableReal(r.responsable, r.empresa);
+      if (!cumpleFiltrosFrecuencias(r.anio, r.empresa, respReal, r.fechaServicio)) {
+        return false;
+      }
       if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
       if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      const respReal = normalizarResponsableReal(r.responsable, r.empresa);
       if (filtroResponsable !== "TODAS" && respReal !== filtroResponsable) return false;
       if (filtroEstado !== "TODOS") {
         if (filtroEstado === "REEMPLAZADA" && r.estado !== "FACTURADO") return false;
@@ -677,6 +903,15 @@ export default function TableroCarteraAnalytics() {
     valoresExcluidosPorCol,
     busquedaTextoPorCol,
     ordenColumna,
+    aniosFrecSel,
+    mesesFrecSel,
+    empresasFrecSel,
+    responsablesFrecSel,
+    incluirMutual,
+    diasFiltroActivo,
+    diasDesde,
+    diasHasta,
+    diasSemanaSel,
   ]);
 
   const listaActivaCompleta = useMemo(() => {
@@ -1431,6 +1666,697 @@ export default function TableroCarteraAnalytics() {
           <span>{notificacion}</span>
         </div>
       )}
+
+      {/* ===================================================================== */}
+      {/* BARRA DE FILTROS SUPERIOR ESTILO TABLERO DE FRECUENCIAS (.period-bar) */}
+      {/* ===================================================================== */}
+      <div
+        className="rounded-xl px-4 py-3 border shadow-2xs flex flex-wrap items-center gap-2 relative"
+        style={{
+          background: "linear-gradient(90deg, #F4F8FE 0%, #E7F0FD 58%, #D4E5FA 100%)",
+          borderColor: "#D5E3F7",
+        }}
+      >
+        {ddFrecAbierto && (
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setDdFrecAbierto(null)}
+          />
+        )}
+
+        {/* 1. DESPLEGABLE DE AÑO */}
+        <div className="relative z-40">
+          <button
+            type="button"
+            onClick={() => setDdFrecAbierto((p) => (p === "year" ? null : "year"))}
+            className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
+            style={{
+              backgroundColor:
+                aniosFrecSel.length > 0 ? "#E7ECFE" : "#FFFFFF",
+              borderColor:
+                ddFrecAbierto === "year"
+                  ? "#1A3174"
+                  : aniosFrecSel.length > 0
+                  ? "#0F2FF3"
+                  : "#E1E4EC",
+              color: "#0E245E",
+              fontWeight: aniosFrecSel.length > 0 ? 600 : 500,
+              boxShadow:
+                ddFrecAbierto === "year"
+                  ? "0 0 0 3px rgba(58,100,148,0.12)"
+                  : "none",
+            }}
+          >
+            <span>
+              {aniosFrecSel.length === 0
+                ? "Todos los años"
+                : [...aniosFrecSel].sort().join(" · ")}
+            </span>
+            <span className="text-[11px]" style={{ color: "#5B6483" }}>
+              ▾
+            </span>
+          </button>
+
+          {ddFrecAbierto === "year" && (
+            <div
+              className="absolute left-0 top-full mt-1.5 w-56 rounded-xl border bg-white p-2 shadow-2xl z-50 max-h-72 overflow-y-auto"
+              style={{ borderColor: "#E1E4EC" }}
+            >
+              <div
+                className="flex gap-1.5 pb-2 mb-1.5 border-b"
+                style={{ borderColor: "#EFF1F6" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAniosFrecSel([...carteraInitialData.aniosDisponibles]);
+                    setFiltroAnio("TODOS");
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAniosFrecSel([]);
+                    setFiltroAnio("TODOS");
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Ninguno
+                </button>
+              </div>
+              <div className="space-y-0.5">
+                {carteraInitialData.aniosDisponibles.map((yr) => {
+                  const sel = aniosFrecSel.includes(yr);
+                  return (
+                    <div
+                      key={yr}
+                      onClick={() =>
+                        toggleItemEnLista(aniosFrecSel, yr, setAniosFrecSel)
+                      }
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] cursor-pointer transition"
+                      style={{
+                        backgroundColor: sel ? "#E7ECFE" : "transparent",
+                        color: sel ? "#0E245E" : "#2A335A",
+                        fontWeight: sel ? 600 : 400,
+                      }}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-[4px] border-2 flex items-center justify-center text-[10px] text-white shrink-0"
+                        style={{
+                          backgroundColor: sel ? "#1A3174" : "transparent",
+                          borderColor: sel ? "#1A3174" : "#C7CDE0",
+                        }}
+                      >
+                        {sel ? "✓" : ""}
+                      </span>
+                      <span>{yr}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 2. DESPLEGABLE DE MES */}
+        <div className="relative z-40">
+          <button
+            type="button"
+            onClick={() =>
+              setDdFrecAbierto((p) => (p === "month" ? null : "month"))
+            }
+            className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
+            style={{
+              backgroundColor:
+                mesesFrecSel.length > 0 ? "#E7ECFE" : "#FFFFFF",
+              borderColor:
+                ddFrecAbierto === "month"
+                  ? "#1A3174"
+                  : mesesFrecSel.length > 0
+                  ? "#0F2FF3"
+                  : "#E1E4EC",
+              color: "#0E245E",
+              fontWeight: mesesFrecSel.length > 0 ? 600 : 500,
+            }}
+          >
+            <span>
+              {mesesFrecSel.length === 0
+                ? "Todos los meses"
+                : mesesFrecSel.length === 1
+                ? MESES_FREC.find((m) => m.id === mesesFrecSel[0])?.label ||
+                  "1 mes"
+                : `${mesesFrecSel.length} seleccionados`}
+            </span>
+            <span className="text-[11px]" style={{ color: "#5B6483" }}>
+              ▾
+            </span>
+          </button>
+
+          {ddFrecAbierto === "month" && (
+            <div
+              className="absolute left-0 top-full mt-1.5 w-56 rounded-xl border bg-white p-2 shadow-2xl z-50 max-h-72 overflow-y-auto"
+              style={{ borderColor: "#E1E4EC" }}
+            >
+              <div
+                className="flex gap-1.5 pb-2 mb-1.5 border-b"
+                style={{ borderColor: "#EFF1F6" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMesesFrecSel(MESES_FREC.map((m) => m.id));
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMesesFrecSel([]);
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Ninguno
+                </button>
+              </div>
+              <div className="space-y-0.5">
+                {MESES_FREC.map((m) => {
+                  const sel = mesesFrecSel.includes(m.id);
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() =>
+                        toggleItemEnLista(mesesFrecSel, m.id, setMesesFrecSel)
+                      }
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] cursor-pointer transition"
+                      style={{
+                        backgroundColor: sel ? "#E7ECFE" : "transparent",
+                        color: sel ? "#0E245E" : "#2A335A",
+                        fontWeight: sel ? 600 : 400,
+                      }}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-[4px] border-2 flex items-center justify-center text-[10px] text-white shrink-0"
+                        style={{
+                          backgroundColor: sel ? "#1A3174" : "transparent",
+                          borderColor: sel ? "#1A3174" : "#C7CDE0",
+                        }}
+                      >
+                        {sel ? "✓" : ""}
+                      </span>
+                      <span>{m.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. DESPLEGABLE DE DÍAS (RANGO DE FECHAS Y DÍAS DE LA SEMANA IDÉNTICO A FRECUENCIAS) */}
+        <div className="relative z-40">
+          <button
+            type="button"
+            onClick={() =>
+              setDdFrecAbierto((p) => (p === "dias" ? null : "dias"))
+            }
+            className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
+            style={{
+              backgroundColor:
+                ddFrecAbierto === "dias"
+                  ? "#0E245E"
+                  : diasFiltroActivo
+                  ? "#E7ECFE"
+                  : "#FFFFFF",
+              borderColor:
+                ddFrecAbierto === "dias"
+                  ? "#0E245E"
+                  : diasFiltroActivo
+                  ? "#0F2FF3"
+                  : "#E1E4EC",
+              color: ddFrecAbierto === "dias" ? "#FFFFFF" : "#0E245E",
+              fontWeight: diasFiltroActivo || ddFrecAbierto === "dias" ? 600 : 500,
+            }}
+          >
+            <span>{diasEtiqueta}</span>
+            <span
+              className="text-[11px]"
+              style={{
+                color: ddFrecAbierto === "dias" ? "#FFFFFF" : "#5B6483",
+              }}
+            >
+              ▾
+            </span>
+          </button>
+
+          {ddFrecAbierto === "dias" && (
+            <div
+              className="absolute left-0 top-full mt-1.5 w-80 rounded-[14px] border bg-white p-4 shadow-2xl z-50 space-y-3"
+              style={{ borderColor: "#C7CDE0" }}
+            >
+              <div>
+                <div
+                  className="text-[11px] font-extrabold uppercase tracking-wider mb-1.5"
+                  style={{ color: "#5B6483" }}
+                >
+                  RANGO DE FECHAS
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={diasDesde}
+                    onChange={(e) => setDiasDesde(e.target.value)}
+                    className="flex-1 rounded-lg border px-2 py-1.5 text-xs"
+                    style={{ borderColor: "#C7CDE0", color: "#0E245E" }}
+                  />
+                  <input
+                    type="date"
+                    value={diasHasta}
+                    onChange={(e) => setDiasHasta(e.target.value)}
+                    className="flex-1 rounded-lg border px-2 py-1.5 text-xs"
+                    style={{ borderColor: "#C7CDE0", color: "#0E245E" }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 0 as const, label: "Hoy" },
+                  { id: 1 as const, label: "Ayer" },
+                  { id: 7 as const, label: "Últimos 7" },
+                  { id: 30 as const, label: "Últimos 30" },
+                  { id: "sem" as const, label: "Semana" },
+                ].map((b) => (
+                  <button
+                    type="button"
+                    key={String(b.id)}
+                    onClick={() => aplicarPreseleccionDias(b.id)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer hover:bg-slate-100"
+                    style={{
+                      backgroundColor: "#EFF1F6",
+                      borderColor: "#E1E4EC",
+                      color: "#0E245E",
+                    }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <div
+                  className="text-[11px] font-extrabold uppercase tracking-wider mb-1.5"
+                  style={{ color: "#5B6483" }}
+                >
+                  DÍAS DE LA SEMANA
+                </div>
+                <div
+                  className="flex flex-wrap gap-1 rounded-[10px] p-1 border"
+                  style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
+                >
+                  {DIAS_SEMANA_FREC.map((d) => {
+                    const act = diasSemanaSel.includes(d.id);
+                    return (
+                      <button
+                        type="button"
+                        key={d.id}
+                        onClick={() =>
+                          toggleItemEnLista(
+                            diasSemanaSel,
+                            d.id,
+                            setDiasSemanaSel
+                          )
+                        }
+                        className="px-2 py-1 rounded-[7px] text-[11.5px] font-bold transition cursor-pointer"
+                        style={{
+                          backgroundColor: act ? "#FFFFFF" : "transparent",
+                          color: act ? "#0E245E" : "#5B6483",
+                          boxShadow: act
+                            ? "0 1px 3px rgba(15,23,42,0.12)"
+                            : "none",
+                        }}
+                      >
+                        {d.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={aplicarPanelDias}
+                  className="flex-1 rounded-[9px] py-2 text-xs font-extrabold uppercase tracking-wider text-white cursor-pointer"
+                  style={{ backgroundColor: "#0E245E" }}
+                >
+                  APLICAR
+                </button>
+                <button
+                  type="button"
+                  onClick={quitarPanelDias}
+                  className="flex-1 rounded-[9px] py-2 text-xs font-bold uppercase border bg-white cursor-pointer"
+                  style={{ borderColor: "#C7CDE0", color: "#1A3174" }}
+                >
+                  QUITAR
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 4. DESPLEGABLE DE EMPRESA */}
+        <div className="relative z-40">
+          <button
+            type="button"
+            onClick={() =>
+              setDdFrecAbierto((p) => (p === "grp" ? null : "grp"))
+            }
+            className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
+            style={{
+              backgroundColor:
+                empresasFrecSel.length > 0 ? "#E7ECFE" : "#FFFFFF",
+              borderColor:
+                ddFrecAbierto === "grp"
+                  ? "#1A3174"
+                  : empresasFrecSel.length > 0
+                  ? "#0F2FF3"
+                  : "#E1E4EC",
+              color: "#0E245E",
+              fontWeight: empresasFrecSel.length > 0 ? 600 : 500,
+            }}
+          >
+            <span>
+              {empresasFrecSel.length === 0
+                ? "Todas las empresas"
+                : empresasFrecSel.length === 1
+                ? empresasFrecSel[0]
+                : `${empresasFrecSel.length} seleccionadas`}
+            </span>
+            <span className="text-[11px]" style={{ color: "#5B6483" }}>
+              ▾
+            </span>
+          </button>
+
+          {ddFrecAbierto === "grp" && (
+            <div
+              className="absolute left-0 top-full mt-1.5 w-64 rounded-xl border bg-white p-2 shadow-2xl z-50 max-h-72 overflow-y-auto"
+              style={{ borderColor: "#E1E4EC" }}
+            >
+              <div
+                className="flex gap-1.5 pb-2 mb-1.5 border-b"
+                style={{ borderColor: "#EFF1F6" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmpresasFrecSel([
+                      ...carteraInitialData.empresasDisponibles,
+                    ]);
+                    setFiltroEmpresa("TODAS");
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmpresasFrecSel([]);
+                    setFiltroEmpresa("TODAS");
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Ninguno
+                </button>
+              </div>
+              <div className="space-y-0.5">
+                {carteraInitialData.empresasDisponibles.map((emp) => {
+                  const sel = empresasFrecSel.includes(emp);
+                  return (
+                    <div
+                      key={emp}
+                      onClick={() =>
+                        toggleItemEnLista(
+                          empresasFrecSel,
+                          emp,
+                          setEmpresasFrecSel
+                        )
+                      }
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] cursor-pointer transition"
+                      style={{
+                        backgroundColor: sel ? "#E7ECFE" : "transparent",
+                        color: sel ? "#0E245E" : "#2A335A",
+                        fontWeight: sel ? 600 : 400,
+                      }}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-[4px] border-2 flex items-center justify-center text-[10px] text-white shrink-0"
+                        style={{
+                          backgroundColor: sel ? "#1A3174" : "transparent",
+                          borderColor: sel ? "#1A3174" : "#C7CDE0",
+                        }}
+                      >
+                        {sel ? "✓" : ""}
+                      </span>
+                      <span className="truncate">{emp}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 5. DESPLEGABLE DE RESPONSABLES */}
+        <div className="relative z-40">
+          <button
+            type="button"
+            onClick={() =>
+              setDdFrecAbierto((p) => (p === "resp" ? null : "resp"))
+            }
+            className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
+            style={{
+              backgroundColor:
+                responsablesFrecSel.length > 0 ? "#E7ECFE" : "#FFFFFF",
+              borderColor:
+                ddFrecAbierto === "resp"
+                  ? "#1A3174"
+                  : responsablesFrecSel.length > 0
+                  ? "#0F2FF3"
+                  : "#E1E4EC",
+              color: "#0E245E",
+              fontWeight: responsablesFrecSel.length > 0 ? 600 : 500,
+            }}
+          >
+            <span>
+              {responsablesFrecSel.length === 0
+                ? "Todas las responsables"
+                : responsablesFrecSel.length === 1
+                ? responsablesFrecSel[0]
+                : `${responsablesFrecSel.length} seleccionadas`}
+            </span>
+            <span className="text-[11px]" style={{ color: "#5B6483" }}>
+              ▾
+            </span>
+          </button>
+
+          {ddFrecAbierto === "resp" && (
+            <div
+              className="absolute left-0 top-full mt-1.5 w-60 rounded-xl border bg-white p-2 shadow-2xl z-50 max-h-72 overflow-y-auto"
+              style={{ borderColor: "#E1E4EC" }}
+            >
+              <div
+                className="flex gap-1.5 pb-2 mb-1.5 border-b"
+                style={{ borderColor: "#EFF1F6" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResponsablesFrecSel([
+                      ...carteraInitialData.responsablesDisponibles,
+                    ]);
+                    setFiltroResponsable("TODAS");
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResponsablesFrecSel([]);
+                    setFiltroResponsable("TODAS");
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
+                  style={{
+                    backgroundColor: "#FAFBFC",
+                    borderColor: "#E1E4EC",
+                    color: "#1A3174",
+                  }}
+                >
+                  Ninguno
+                </button>
+              </div>
+              <div className="space-y-0.5">
+                {carteraInitialData.responsablesDisponibles.map((resp) => {
+                  const sel = responsablesFrecSel.includes(resp);
+                  return (
+                    <div
+                      key={resp}
+                      onClick={() =>
+                        toggleItemEnLista(
+                          responsablesFrecSel,
+                          resp,
+                          setResponsablesFrecSel
+                        )
+                      }
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] cursor-pointer transition"
+                      style={{
+                        backgroundColor: sel ? "#E7ECFE" : "transparent",
+                        color: sel ? "#0E245E" : "#2A335A",
+                        fontWeight: sel ? 600 : 400,
+                      }}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-[4px] border-2 flex items-center justify-center text-[10px] text-white shrink-0"
+                        style={{
+                          backgroundColor: sel ? "#1A3174" : "transparent",
+                          borderColor: sel ? "#1A3174" : "#C7CDE0",
+                        }}
+                      >
+                        {sel ? "✓" : ""}
+                      </span>
+                      <span>{resp}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 6. BOTONES APLICAR Y LIMPIAR */}
+        <button
+          type="button"
+          onClick={() => {
+            setDdFrecAbierto(null);
+            setPaginaActual(1);
+          }}
+          className="px-4 py-1.5 rounded-full text-[11.5px] font-bold uppercase tracking-wider text-white cursor-pointer transition shrink-0"
+          style={{
+            backgroundColor: "#0F2FF3",
+            boxShadow: "0 4px 10px rgba(15,47,243,0.22)",
+          }}
+        >
+          Aplicar
+        </button>
+
+        <button
+          type="button"
+          onClick={limpiarTodosLosFiltros}
+          className="px-3.5 py-1.5 rounded-full text-[11.5px] font-bold uppercase tracking-wider border bg-white cursor-pointer transition shrink-0"
+          style={{ borderColor: "#C7CDE0", color: "#1A3174" }}
+        >
+          Limpiar
+        </button>
+
+        {/* 7. INTERRUPTOR MUTUAL: INCLUIR | EXCLUIR (ALINEADO A LA DERECHA) */}
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          <span
+            className="text-[10.5px] font-bold uppercase tracking-wider"
+            style={{ color: "#5B6483" }}
+          >
+            MUTUAL
+          </span>
+          <div
+            className="inline-flex rounded-[10px] p-0.5 border"
+            style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setIncluirMutual(true);
+                setPaginaActual(1);
+              }}
+              className="px-2.5 py-1 rounded-[7px] text-[11.5px] font-bold transition cursor-pointer"
+              style={{
+                backgroundColor: incluirMutual ? "#FFFFFF" : "transparent",
+                color: incluirMutual ? "#0E245E" : "#5B6483",
+                boxShadow: incluirMutual
+                  ? "0 1px 3px rgba(15,23,42,0.1)"
+                  : "none",
+              }}
+            >
+              Incluir
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIncluirMutual(false);
+                setPaginaActual(1);
+              }}
+              className="px-2.5 py-1 rounded-[7px] text-[11.5px] font-bold transition cursor-pointer"
+              style={{
+                backgroundColor: !incluirMutual ? "#FFFFFF" : "transparent",
+                color: !incluirMutual ? "#0E245E" : "#5B6483",
+                boxShadow: !incluirMutual
+                  ? "0 1px 3px rgba(15,23,42,0.1)"
+                  : "none",
+              }}
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* ===================================================================== */}
       {/* CUADRO 1: RESUMEN DE CARTERA (DESPLEGABLE COMO PERSIANA AL CLIC)      */}
