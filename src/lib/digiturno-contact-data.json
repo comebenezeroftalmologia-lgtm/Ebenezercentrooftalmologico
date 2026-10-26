@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-26 08:59:11",
+  "updatedAt": "2026-10-26 09:02:14",
   "sources": {
     "digiturno": "http://192.168.200.11:6663/SGTWidgetGestureApi",
     "contactCenter": "https://pbx.itmsas.com/sonata/service/v1/api"
@@ -309,7 +309,7 @@
             "atencion": 11.6
           },
           "sede2": {
-            "turnos": 3980,
+            "turnos": 3981,
             "espera": 27.9,
             "atencion": 0.1
           }
@@ -340,12 +340,12 @@
         }
       },
       "_extraccion": {
-        "cuando": "2026-10-26 08:58",
+        "cuando": "2026-10-26 09:01",
         "desde": "2026-10-01",
         "hasta": "2026-10-26",
-        "registros_leidos": 16709,
+        "registros_leidos": 16710,
         "turnos_sede1": 4769,
-        "turnos_sede2": 11940
+        "turnos_sede2": 11941
       }
     }
   ],
@@ -4088,11 +4088,11 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 6071,
+          "recibidas": 6075,
           "contestadas": 2688,
-          "perdidas": 3383,
+          "perdidas": 3387,
           "esperaMin": 7.0,
-          "slaPct": 8.6,
+          "slaPct": 8.59,
           "agents": [
             {
               "id": "1003",
@@ -4192,17 +4192,17 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 1010,
-          "contestadas": 935,
+          "recibidas": 1011,
+          "contestadas": 936,
           "perdidas": 75,
           "esperaMin": 0.5,
-          "slaPct": 84.75,
+          "slaPct": 84.77,
           "agents": [
             {
               "id": "1005",
               "name": "Yuranis Castañeda",
-              "timbradas": 601,
-              "contestadas": 512,
+              "timbradas": 602,
+              "contestadas": 513,
               "perdidas": 89,
               "duracionMin": 2.8
             },
@@ -4244,19 +4244,19 @@
           "id": "506015",
           "name": "Cirugía Refractiva",
           "isMutual": false,
-          "recibidas": 64,
-          "contestadas": 55,
+          "recibidas": 65,
+          "contestadas": 56,
           "perdidas": 9,
           "esperaMin": 0.5,
-          "slaPct": 82.81,
+          "slaPct": 81.54,
           "agents": [
             {
               "id": "1005",
               "name": "Yuranis Castañeda",
-              "timbradas": 39,
-              "contestadas": 30,
+              "timbradas": 40,
+              "contestadas": 31,
               "perdidas": 9,
-              "duracionMin": 3.3
+              "duracionMin": 3.2
             },
             {
               "id": "1001",
@@ -4313,8 +4313,8 @@
         {
           "id": "1005",
           "name": "Yuranis Castañeda",
-          "timbradas": 640,
-          "contestadas": 542,
+          "timbradas": 642,
+          "contestadas": 544,
           "perdidas": 98,
           "duracionMin": 2.8
         },
