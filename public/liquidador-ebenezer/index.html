@@ -209,6 +209,11 @@ tr.drill>td{padding:0 8px 10px!important;border-bottom:none!important}
 .kpi.kpiir .s b{color:var(--brand)}
 .jorsub{font-size:11.5px;color:var(--ink2);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
 .jorsub span{background:#eef2f7;border-radius:8px;padding:1px 7px;white-space:nowrap;color:#1f3550}
+.dhcpill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;cursor:pointer;margin-left:6px;border:1px solid transparent;vertical-align:middle;transition: opacity .15s}
+.dhcpill:hover{opacity:.85}
+.dhcbil{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7}
+.dhcuni{background:#fff8e1;color:#8a5a00;border-color:#ffe082}
+.dhcinf{background:#eef4ff;color:#1e40af;border-color:#bfdbfe}
 .dojo{background:#eef6ea;color:#2f5d1f;border-radius:8px;padding:0 6px;font-size:10.5px;white-space:nowrap}
 .btn.actaok{background:#2f7d32;color:#fff;border-color:#2f7d32;padding:7px 14px;font-size:13px;margin-top:0}
 .btn.actadev{color:#a4262c}
@@ -5365,7 +5370,7 @@ function liquidarV4(recs, actos, actosAll){
     const K=(cirFecha[ced]=cirFecha[ced]||{}); if(!K[h]||f<K[h]) K[h]=f; }
   for(const a of actos){ regCir(a.ced, mHojaDe(a.cirujano), a.fecha); }
   // pacientes que tienen aplicación intravítrea en este corte (para fichas que no pagan sus lecturas)
-  const pacIV = new Set();
+  const pacIV = new Set(typeof SISMA_HC!=='undefined' && SISMA_HC && SISMA_HC.ivSet ? [...SISMA_HC.ivSet] : []);
   for(const r of recs) if(/INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test((r.d||'')+' '+(r.sv||'')+' '+(r.as||''))){ const c=((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''); if(c) pacIV.add(c); }
   for(const a of (actos||[])) if(/INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test((a.proc||'')+' '+(a.obs||''))){ const c=a.ced||((a.pac||'').match(/(\d{5,12})/)||[])[1]||mNorm(a.pac||''); if(c) pacIV.add(c); }
   for(const r of recs) if(esCirUf(r) && /HONORARIO|EXTRACAPSULAR|FACO/i.test(r.d||'')){
@@ -7648,7 +7653,18 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
   // todos los destinos tiene que dar el número de registros del archivo. Sin agujeros.
   try{ FACT_CED = null; }catch(e){}   // lo facturado se recalcula con el informe de esta corrida
   CUADRE = {}; CORRIDA++; NOTAS_CIR = {}; ORIGEN_AG = {}; AJENAS_AG = {}; _LADOV = null; _PARES = null; LADO_CORR = [];
-  const _pacIVCalc = new Set();
+  const _perKeyHC = periodoAno+'-'+String(periodoMes).padStart(2,'0');
+  if(typeof cargarSismaHC==='function' && (!SISMA_HC || SISMA_HC.per!==_perKeyHC)){
+    if(SISMA_HC && SISMA_HC._loading) return;
+    SISMA_HC._loading = true;
+    try{ document.getElementById('status').innerHTML='? Consultando Historias Cl?nicas y ?rdenes en Sisma?'; }catch(e){}
+    cargarSismaHC(iso(fechaInicio), iso(fechaFin), _perKeyHC).finally(()=>{
+      SISMA_HC._loading = false;
+      document.getElementById('btnCalc').click();
+    });
+    return;
+  }
+  const _pacIVCalc = new Set(SISMA_HC && SISMA_HC.ivSet ? [...SISMA_HC.ivSet] : []);
   for(const _r of RECORDS){
     const _f = new Date(_r.fecha);
     if(isNaN(_f) || _f < fechaInicio || _f > fechaFin) continue;
@@ -9271,7 +9287,7 @@ function toggleDrill(i, tr){
         + (verFact? `<td class="ddoc">${esc3(r.factura||'')}</td>` : '')
         + `<td class="dsrv">${esc3(drillServ(r.detalle||r.servicio))}${(()=>{ const o=drillOjo(r.detalle||r.servicio); return o? ' <span class="dojo">'+o+'</span>':''; })()}${(()=>{
              if(!verNov) return ''; const nv=novDe(r.paciente, String(r.fecha||'').slice(0,10), r.ced);
-             return nv? '<div class="dnov'+(nv.alerta?' alerta':'')+'">'+esc3(nv.txt)+'</div>' : ''; })()}${(()=>{ const l=(r.med&&r.total>0)? ladoDe(r.med, r.total, r.regla) : ''; return l? ` <span class="dojo">${/ambos/.test(l)?'Bilateral':'Unilateral'}</span>` : ''; })()}${esExtra?' <span class="dexpill">extra</span>':''}${verRegla && r.regla && !/JORNADA/i.test(r.regla)?`<div class="obs">${esc3(latTxt(String(r.regla).slice(0,70)))}</div>`:''}</td>`
+             return nv? '<div class="dnov'+(nv.alerta?' alerta':'')+'">'+esc3(nv.txt)+'</div>' : ''; })()}${(()=>{ const l=(r.med&&r.total>0)? ladoDe(r.med, r.total, r.regla) : ''; return l? ` <span class="dojo">${/ambos/.test(l)?'Bilateral':'Unilateral'}</span>` : ''; })()}${(()=>{ if(typeof sismaHcDe!=='function') return ''; const sh=sismaHcDe(r.paciente||r.ced, r.fecha, r.detalle||r.servicio); if(!sh) return ''; const h=sh.hc, o=sh.ord; if(h){ const cls=h.lado==='ambos'?'dhcbil':(h.lado==='un'?'dhcuni':'dhcinf'); const txt=h.nota||('HC #'+h.id); return ` <span class="dhcpill ${cls}" title="Clic para ver la Historia Cl?nica de Sisma completa" onclick="event.stopPropagation();verHcSisma('${jsq(r.ced||r.paciente)}','${jsq(String(r.fecha||'').slice(0,10))}','${jsq(r.detalle||r.servicio||'')}','${jsq(P.nom)}')">?? ${esc3(txt)}</span>`; } if(o){ return ` <span class="dhcpill dhcinf" title="Clic para ver la Orden M?dica de Sisma" onclick="event.stopPropagation();verHcSisma('${jsq(r.ced||r.paciente)}','${jsq(String(r.fecha||'').slice(0,10))}','${jsq(r.detalle||r.servicio||'')}','${jsq(P.nom)}')">?? Orden #${esc3(o.ord)}${o.lado==='ambos'?' ? Bilateral':''}</span>`; } return ''; })()}${esExtra?' <span class="dexpill">extra</span>':''}${verRegla && r.regla && !/JORNADA/i.test(r.regla)?`<div class="obs">${esc3(latTxt(String(r.regla).slice(0,70)))}</div>`:''}</td>`
         + (verCir? `<td class="ddoc dcir">${esc3(drillCir(r.cir))}</td>` : '')
         + (verAg? `<td>${r.agenda?`<span class="dagpill">${esc3(r.agenda)}</span>`:'<span class="ddoc">propia</span>'}</td>` : '')
         + (verEmp? `<td class="ddoc">${esc3(r.emp||'')}</td>` : '')
@@ -10069,6 +10085,121 @@ function resumenMedico(d, med){
 }
 // Un ojo / ambos ojos: se sabe por la regla del acto («(un ojo)», «(ambos ojos)») o porque el valor
 // pagado es el de la línea UNILATERAL o BILATERAL de la ficha de ese médico.
+var SISMA_HC = { per: null, hc: {}, ord: {}, ivSet: new Set(), _loading: false };
+function sismaSrvTag(s){
+  const D = mNorm(s||'');
+  if(/CAMPO VISUAL|CAMPIMETR/.test(D)) return 'CV';
+  if(/ANGIOTOMOGRAF|TOMOGRAF|\bOCT\b/.test(D)) return 'OCT';
+  if(/ANGIOGRAF/.test(D)) return 'ANGIO';
+  if(/FOTODISCO|FOTOGRAF/.test(D)) return 'FOTO';
+  if(/ECOGRAF/.test(D)) return 'ECO';
+  if(/BIOMETR/.test(D)) return 'BIO';
+  if(/PAQUIMETR/.test(D)) return 'PAQ';
+  if(/TOPOGRAF|PENTACAM|SIRIUS|OCULYZER/.test(D)) return 'TOPO';
+  if(/ENDOTELIAL/.test(D)) return 'ENDO';
+  if(/INTERFEROMETR/.test(D)) return 'INTERF';
+  if(/ABERROMETR/.test(D)) return 'ABERR';
+  if(/IRIDOTOM|IRIDOPLAST/.test(D)) return 'IRIDO';
+  if(/CAPSULOTOM/.test(D)) return 'CAPSULO';
+  if(/TRABECULOPLAST/.test(D)) return 'TRABEC';
+  if(/FOTOCOAGULAC|ABLACION/.test(D)) return 'FOTOCOAG';
+  if(/PLASTIA|PLUG|TAPON|PUNTO LAGRIMAL/.test(D)) return 'PLASTIA';
+  if(/TONOGRAF/.test(D)) return 'TONO';
+  if(/LUZ PULSADA|IURPL|FOTOBIOMOD|OJO SECO/.test(D)) return 'IPL';
+  if(/LENTE TERAPEUTICO|CUERPO EXTRA/.test(D)) return 'LENTETER';
+  return 'OTRO';
+}
+async function cargarSismaHC(desde, hasta, perKey){
+  const urls = [
+    `/api/sisma-hc?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`,
+    `/api/liquidador/sisma-hc?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`,
+    `https://liquidador-ebenezer.pages.dev/api/sisma-hc?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
+  ];
+  for(const u of urls){
+    try{
+      const ctrl = new AbortController();
+      const tm = setTimeout(()=>ctrl.abort(), 14000);
+      const r = await fetch(u, { signal: ctrl.signal });
+      clearTimeout(tm);
+      if(!r.ok) continue;
+      const d = await r.json();
+      if(d && d.ok){
+        SISMA_HC = { per: perKey, hc: d.hc||{}, ord: d.ord||{}, ivSet: new Set(d.ivCeds||[]), _loading: false };
+        return true;
+      }
+    }catch(e){}
+  }
+  SISMA_HC = { per: perKey, hc: {}, ord: {}, ivSet: new Set(), _loading: false };
+  return false;
+}
+function sismaHcDe(pacOrCed, fecha, det){
+  if(!SISMA_HC || !SISMA_HC.per) return null;
+  const m = String(pacOrCed||'').match(/(\d{5,12})/);
+  const ced = m ? m[1] : String(pacOrCed||'').replace(/\D/g,'');
+  if(!ced) return null;
+  const tag = sismaSrvTag(det||'');
+  const f10 = String(fecha||'').slice(0,10);
+  const hcs = (SISMA_HC.hc && SISMA_HC.hc[ced]) || [];
+  const ords = (SISMA_HC.ord && SISMA_HC.ord[ced]) || [];
+  let bestHc = null, bestDiff = 999999;
+  for(const x of hcs){
+    if(tag!=='OTRO' && x.tag!==tag) continue;
+    const df = (f10 && x.f) ? Math.abs((new Date(f10+'T12:00:00') - new Date(x.f+'T12:00:00'))/86400000) : 0;
+    if(df < bestDiff){ bestDiff = df; bestHc = x; }
+  }
+  let bestOrd = null;
+  for(const o of ords){
+    if(tag!=='OTRO' && o.tag!==tag) continue;
+    bestOrd = o; break;
+  }
+  if(!bestHc && !bestOrd) return null;
+  return { ced, hc: bestHc, ord: bestOrd };
+}
+function verHcSisma(ced, fecha, det, pacNom){
+  const info = sismaHcDe(ced||pacNom, fecha, det);
+  if(!info || (!info.hc && !info.ord)){
+    alert('Este registro fue facturado en Sisma sin plantilla de lectura paracl?nica ni orden interna asociada en el corte.');
+    return;
+  }
+  const esc = x => String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const h = info.hc, o = info.ord;
+  let html = `<div style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">
+    <div style="background:#fff;border-radius:12px;max-width:680px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,.3);font-family:system-ui,sans-serif">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid #e2e8f0;padding-bottom:12px;margin-bottom:14px">
+        <div>
+          <div style="font-size:11.5px;font-weight:700;color:#0f5c4d;text-transform:uppercase;letter-spacing:.04em">Evidencia Directa de Sisma (Historia Cl?nica / Orden)</div>
+          <div style="font-size:16px;font-weight:800;color:#0f172a;margin-top:2px">${esc(pacNom||('CC '+info.ced))}</div>
+          <div style="font-size:12.5px;color:#475569;margin-top:2px">${esc(det||'')}</div>
+        </div>
+        <button class="btn ghost" onclick="this.closest('[ style*=\"position:fixed\"]').remove()" style="padding:4px 10px;font-size:14px">? Cerrar</button>
+      </div>`;
+  if(h){
+    const badgeColor = h.lado==='ambos' ? 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7' : (h.lado==='un' ? 'background:#fff8e1;color:#8a5a00;border:1px solid #ffe082' : 'background:#eef4ff;color:#1e40af;border:1px solid #bfdbfe');
+    html += `<div style="margin-bottom:14px;padding:12px 14px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <span style="font-weight:700;font-size:13px;color:#0f172a">?? Paracl?nico / HC Sisma #${esc(h.id)} (${esc(h.pl||h.ex)})</span>
+        <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;${badgeColor}">${esc(h.nota || (h.lado==='ambos'?'Bilateral':'Unilateral'))}</span>
+      </div>
+      <div style="font-size:12px;color:#475569;margin-bottom:8px">
+        <b>Fecha examen:</b> ${esc(h.f)} ? <b>Fecha resultado:</b> ${esc(h.fr||'?')} ? <b>Registrado por:</b> ${esc(h.med||'?')}
+      </div>
+      <div style="font-size:12.5px;line-height:1.5;color:#1e293b;background:#fff;padding:10px 12px;border-radius:6px;border:1px solid #cbd5e1;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Consolas,monospace">${esc(h.res||'')}</div>
+    </div>`;
+  }
+  if(o){
+    html += `<div style="padding:12px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0">
+      <div style="font-weight:700;font-size:13px;color:#166534;margin-bottom:4px">?? Orden M?dica en Sisma #${esc(o.ord)}</div>
+      <div style="font-size:12px;color:#15803d">
+        <b>Fecha orden:</b> ${esc(o.f)} ? <b>M?dico que orden?:</b> ${esc(o.med||'?')} ? <b>Cantidad ordenada:</b> ${esc(o.q)}
+      </div>
+      <div style="font-size:12.5px;font-weight:600;color:#14532d;margin-top:4px">${esc(o.desc)}</div>
+    </div>`;
+  }
+  html += `</div></div>`;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  document.body.appendChild(div.firstElementChild);
+}
 var _LADOV=null, _PARES=null, LADO_CORR=[];
 // parejas de la ficha: {tokens, un, ambos} por médico (mismo servicio y empresa, con valor de un ojo y de ambos ojos)
 function ladoPares(med){
@@ -10093,7 +10224,13 @@ function ladoCorregir(h, fx){
   const v=Math.round(fx.pago||0); if(!(v>0)) return null;
   if(/%|rubro|paquete|jornada|acuerdo|valor aprobado|cambiado/i.test(fx.regla||'')) return null;
   const D=mNorm((fx.det||'')+' '+(fx.as||'')); if(!D) return null;
-  const dice = /AMBOS OJOS|\bBILATERAL\b/.test(D) ? 'ambos' : /\(OJO (DERECHO|IZQUIERDO)\)|\bUNILATERAL\b|UN SOLO OJO/.test(D) ? 'un' : null;
+  let dice = /AMBOS OJOS|\bBILATERAL\b/.test(D) ? 'ambos' : /\(OJO (DERECHO|IZQUIERDO)\)|\bUNILATERAL\b|UN SOLO OJO/.test(D) ? 'un' : null;
+  let desdeHC = false;
+  if(!dice && typeof sismaHcDe==='function'){
+    const info = sismaHcDe(fx.pac||fx.ced, fx.fecha, fx.det);
+    if(info && info.hc && info.hc.lado){ dice = info.hc.lado; desdeHC = true; }
+    else if(info && !info.hc && info.ord && info.ord.lado==='ambos'){ dice = 'ambos'; desdeHC = true; }
+  }
   if(!dice) return null;
   const gF = v4EmpG(fx.emp||'');
   for(const P of ladoPares(h)){
@@ -10101,7 +10238,8 @@ function ladoCorregir(h, fx){
     const gP = /MUTUAL/.test(P.emp) ? 'M' : /SURA/.test(P.emp) && /EPS|PLAN COMP|PAC/.test(P.emp) ? 'S' : 'O';
     if((gF==='M') !== (gP==='M') || (gF==='S') !== (gP==='S')) continue;   // y la misma empresa
     if(v===P.un && dice==='ambos') return {v:P.ambos, antes:v, lado:'ambos ojos'};
-    if(v===P.ambos && dice==='un') return {v:P.un, antes:v, lado:'un ojo'};
+    // Si el Excel factur? Cantidad=2 (P.ambos), solo baja a 1 ojo si el texto del acto lo dice expl?citamente (no desde HC)
+    if(v===P.ambos && dice==='un' && !desdeHC) return {v:P.un, antes:v, lado:'un ojo'};
   }
   return null;
 }
