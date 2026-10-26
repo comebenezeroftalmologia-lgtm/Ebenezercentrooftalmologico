@@ -6445,19 +6445,53 @@ function liqBloqueo(){
 function cgAvisoMes(){
   const zona=document.querySelector('.cargas'); if(!zona) return;
   let a=document.getElementById('cgAvEstad');
-  const mostrar = typeof NUBE_ON!=='undefined' && NUBE_ON && SESION_LISTA && !cgPuedeSubir('estad');
+  const mostrar = typeof NUBE_ON!=='undefined' && NUBE_ON && SESION_LISTA;
   if(!mostrar){ if(a) a.remove(); return; }
   if(!a){ a=document.createElement('div'); a.id='cgAvEstad'; zona.insertAdjacentElement('afterend', a); }
   const per=nubeMesActual();
   if(!per){ a.className='cgav falta';
-    a.innerHTML='<b>Elija el mes y el año del cierre</b> — el tablero trae solos los archivos que el administrador publicó para ese mes.'; return; }
+    a.innerHTML='<b>Elija abajo el mes y el año del cierre</b> — el tablero trae solos los archivos guardados en la nube para ese mes.'; return; }
   const mt=liqMesTxt(per);
-  if(SIMPLE._trayendo){ a.className='cgav esp'; a.innerHTML='<b>⏳ Recibiendo los archivos de '+mt+'</b> que publicó el administrador…'; return; }
+  if(SIMPLE._trayendo){ a.className='cgav esp'; a.innerHTML='<b>⏳ Consultando y recibiendo los archivos de '+mt+'</b> guardados en la nube…'; return; }
+  const pub=SIMPLE._pub||{};
+
+  // Vista exclusiva para el Administrador (quien sube los 4 archivos)
+  if(cgPuedeSubir('estad')){
+    const infLoc = !!(typeof RECORDS!=='undefined' && RECORDS && RECORDS.length);
+    const estLoc = !!(typeof ACTOS!=='undefined' && ACTOS && ACTOS.length);
+    const basLoc = !!(typeof VBASE!=='undefined' && VBASE);
+    const novLoc = !!(typeof NOV!=='undefined' && NOV && NOV.n);
+    const faltaSubir = (infLoc && !pub.informe && SIMPLE._infFile) ||
+                       (estLoc && !pub.estad && SIMPLE._estadFile) ||
+                       (basLoc && !pub.base && SIMPLE._baseFile) ||
+                       (novLoc && !pub.novedades && SIMPLE._novFile);
+    const guardados = [];
+    if(pub.informe)   guardados.push('✔ <b>Informe del sistema</b> ('+esc(pub.informe.nombre||FILENAME||'guardado')+')');
+    if(pub.estad)     guardados.push('✔ <b>Estadísticas de cirugía</b> ('+esc(pub.estad.nombre||ESTADNAME||'guardado')+')');
+    if(pub.base)      guardados.push('✔ <b>Base de frecuencias</b> ('+esc(pub.base.nombre||'guardada')+')');
+    if(pub.novedades) guardados.push('✔ <b>Novedades de cirugía</b> ('+esc(pub.novedades.nombre||(NOV&&NOV.archivo)||'guardadas')+')');
+
+    if(faltaSubir){
+      a.className='cgav falta';
+      a.innerHTML='<b>⚠ Atención Administrador:</b> Cargó archivo(s) en las casillas pero <b>todavía NO están guardados en la nube</b>. Haga clic en el botón azul <b>«☁ Guardar y publicar estos archivos en la nube para el equipo»</b> de aquí abajo.'
+        + (guardados.length ? '<div style="margin-top:4px;font-size:12px;color:#3f6b1f">Ya guardados en la nube de '+mt+': '+guardados.join(' · ')+'</div>' : '');
+      return;
+    }
+    if(guardados.length){
+      a.className='cgav ok';
+      a.innerHTML='<b>☁ Archivos de '+mt+' YA GUARDADOS en la nube ('+guardados.length+' de 4):</b> '+guardados.join(' · ')+
+        ' · <a href="#" onclick="nubeTraerArchivosMes(true);return false" style="font-weight:700;white-space:nowrap">↻ Verificar nube</a>';
+      return;
+    }
+    a.className='cgav falta';
+    a.innerHTML='<b>☁ Nube de '+mt+':</b> Todavía no hay archivos guardados en la nube para <b>'+mt+'</b>. Suelte los archivos en las 4 casillas de arriba y luego pulse el botón azul <b>«☁ Guardar y publicar estos archivos en la nube»</b>. <a href="#" onclick="nubeTraerArchivosMes(true);return false" style="font-weight:700;white-space:nowrap">↻ Verificar de nuevo</a>';
+    return;
+  }
+
   const b=liqBloqueo();
   if(b){ a.className='cgav falta';
     a.innerHTML='<b>⛔ Todavía no se puede liquidar '+mt+'.</b> '+b+
       ' <a href="#" onclick="nubeTraerArchivosMes(true);return false" style="font-weight:600;white-space:nowrap">↻ Revisar de nuevo</a>'; return; }
-  const pub=SIMPLE._pub||{};
   const quien=(pub.estad&&pub.estad.porNombre)||(pub.informe&&pub.informe.porNombre)||'el administrador';
   if(!(typeof RECORDS!=='undefined' && RECORDS && RECORDS.length)){ a.className='cgav falta';
     a.innerHTML='<b>Suba el informe del sistema del corte</b> — las estadísticas de cirugía de '+mt+' ya están (las publicó '+esc(quien)+').'; return; }
@@ -6551,6 +6585,7 @@ async function simplePonerEn(destino, f){
   if(destino==='equipo'){ await simpleEquipo(f); return true; }
   if(destino==='novedades'){
     try{
+      if(SIMPLE._pub && !f._meta) delete SIMPLE._pub.novedades;
       await novCargarDe(f); SIMPLE._novFile=f; simpleChips();
       if(!NOV || !NOV.n) cgMsg('novedades','✖ '+f.name+' — no se encontraron pacientes. ¿Es el libro CIRUGIA del año?', true);
       else cgMsg('novedades','✔ '+nomArchivoBonito(f.name)+' — '+NOV.n.toLocaleString('es-CO')+' pacientes ('+NOV.rango.min+' a '+NOV.rango.max+')');
@@ -6558,6 +6593,7 @@ async function simplePonerEn(destino, f){
     return true;
   }
   if(destino==='base'){
+    if(SIMPLE._pub && !f._meta) delete SIMPLE._pub.base;
     await valLeer(f); SIMPLE._baseFile=f; simpleChips();
     if(typeof VBASE==='undefined' || !VBASE) cgMsg('base','✖ '+f.name+' — no se reconoció la base de frecuencias.', true);
     return true;
@@ -6570,7 +6606,7 @@ async function simplePonerEn(destino, f){
       RECORDS = antes;                                  // no se pisa lo que ya estaba
       cgMsg('informe','✖ '+f.name+' — aquí no se encontró el informe del sistema (0 registros). Revise que sea el archivo del corte.', true);
       const st=document.getElementById('status'); if(st) st.innerHTML='<span style="color:var(--danger)">✖ '+f.name+': no es el informe del sistema.</span>';
-    } else { SIMPLE._infFile=f; cgMsg('informe','✔ '+nomArchivoBonito(f.name)+' — '+RECORDS.length.toLocaleString('es-CO')+' registros'); }
+    } else { if(SIMPLE._pub && !f._meta) delete SIMPLE._pub.informe; SIMPLE._infFile=f; cgMsg('informe','✔ '+nomArchivoBonito(f.name)+' — '+RECORDS.length.toLocaleString('es-CO')+' registros'); }
     simpleChips(); return true;
   }
   if(destino==='estad'){
@@ -6579,7 +6615,7 @@ async function simplePonerEn(destino, f){
     if(!ACTOS || !ACTOS.length){
       ACTOS = antes;
       cgMsg('estad','✖ '+f.name+' — aquí no se encontraron cirugías. Revise que sea la estadística del mes.', true);
-    } else { SIMPLE._estadFile=f; cgMsg('estad','✔ '+nomArchivoBonito(f.name)+' — '+ACTOS.length+' cirugías'); }
+    } else { if(SIMPLE._pub && !f._meta) delete SIMPLE._pub.estad; SIMPLE._estadFile=f; cgMsg('estad','✔ '+nomArchivoBonito(f.name)+' — '+ACTOS.length+' cirugías'); }
     simpleChips(); return true;
   }
   return false;
@@ -6645,6 +6681,7 @@ function cgMsg(tipo, texto, malo){
 }
 function simpleChips(){
   const pub = SIMPLE._pub||{};
+  const esAdm = cgPuedeSubir('estad');
   const set=(id, tipo, ok, texto, pie)=>{
     const e=document.getElementById(id); if(!e) return;
     e.textContent = ok? '✔ '+texto : texto;
@@ -6654,15 +6691,16 @@ function simpleChips(){
     const p=card.querySelector('.cg-pie'); if(p && pie!==undefined) p.textContent=pie;
   };
   const inf = (typeof RECORDS!=='undefined' && RECORDS && RECORDS.length)? RECORDS.length.toLocaleString('es-CO')+' registros' : '';
-  set('cgInforme','informe', !!inf, inf||'Sin cargar', inf? (FILENAME||'') : 'Toda la producción del corte');
+  set('cgInforme','informe', !!inf, inf||'Sin cargar', inf? ((FILENAME||'')+(esAdm? (pub.informe?' · ✔ guardado en la nube':' · ⏳ falta guardar en nube') : '')) : 'Toda la producción del corte');
   const est = (typeof ACTOS!=='undefined' && ACTOS && ACTOS.length)? ACTOS.length+' cirugías' : '';
-  set('cgEstad','estad', !!est, est||'Sin cargar', est? ((ESTADNAME||'')+(pub.estad?' · publicada al equipo':'')) : 'Da precisión a cirugía y anestesia');
+  set('cgEstad','estad', !!est, est||'Sin cargar', est? ((ESTADNAME||'')+(pub.estad?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Da precisión a cirugía y anestesia');
   const bas = (typeof VBASE!=='undefined' && VBASE)? (VBASE.filas? VBASE.filas.length.toLocaleString('es-CO')+' filas':'cargada') : '';
-  set('cgBase','base', !!bas, bas||'Sin cargar', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(pub.base?' · publicada':'')) : 'Para validar contra lo facturado');
+  set('cgBase','base', !!bas, bas||'Sin cargar', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(pub.base?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Para validar contra lo facturado');
   const nCmp=(typeof CMP!=='undefined' && CMP.archivos? CMP.archivos.length:0)+SIMPLE.recibidos.length;
-  set('cgNov','novedades', !!(typeof NOV!=='undefined' && NOV && NOV.n),
-      (typeof NOV!=='undefined' && NOV && NOV.n)? NOV.n.toLocaleString('es-CO')+' pacientes' : 'Sin cargar',
-      (typeof NOV!=='undefined' && NOV && NOV.n)? (NOV.archivo+' · '+NOV.rango.min+' a '+NOV.rango.max) : 'Lente, observación y estado de cada paciente');
+  const novOk = !!(typeof NOV!=='undefined' && NOV && NOV.n);
+  set('cgNov','novedades', novOk,
+      novOk? NOV.n.toLocaleString('es-CO')+' pacientes' : 'Sin cargar',
+      novOk? (NOV.archivo+' · '+NOV.rango.min+' a '+NOV.rango.max+(pub.novedades?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Lente, observación y estado de cada paciente');
   set('cgEquipo','equipo', !!nCmp, nCmp? nCmp+' archivo'+(nCmp>1?'s':'') : 'Sin cargar',
       nCmp? [...(CMP.archivos||[]).map(a=>nomArchivoBonito(a.nombre))].slice(0,2).join(' · ') : 'Solo para comparar: no cambia la liquidación');
   // --- quien no es administrador: SOLO su informe. Lo demás es del administrador y no lo ve ---
@@ -6693,9 +6731,9 @@ function simpleChips(){
   // botón de publicar para el administrador
   const pie=document.querySelector('.cargapie');
   if(pie && typeof NUBE_ON!=='undefined' && NUBE_ON && puede('publicar')
-     && ((inf && !pub.informe && SIMPLE._infFile) || (est && !pub.estad && SIMPLE._estadFile) || (bas && !pub.base && SIMPLE._baseFile))){
+     && ((inf && !pub.informe && SIMPLE._infFile) || (est && !pub.estad && SIMPLE._estadFile) || (bas && !pub.base && SIMPLE._baseFile) || (novOk && !pub.novedades && SIMPLE._novFile))){
     if(!document.getElementById('btnPub'))
-      pie.insertAdjacentHTML('afterend','<div style="text-align:center;margin-top:10px"><button class="btn quiet" id="btnPub" onclick="nubePublicarArchivos()">Publicar estos archivos para el equipo</button></div>');
+      pie.insertAdjacentHTML('afterend','<div style="text-align:center;margin-top:12px"><button class="btn" id="btnPub" style="padding:10px 22px;font-size:13.5px;font-weight:700" onclick="nubePublicarArchivos()">☁ Guardar y publicar estos archivos en la nube para el equipo</button></div>');
   } else { const b=document.getElementById('btnPub'); if(b) b.parentElement.remove(); }
 }
 try{ simpleChips(); }catch(e){}
@@ -12700,7 +12738,20 @@ async function nubeTraerArchivosMes(forzar){
   // cambiaron el mes mientras llegaban los archivos: traer los del mes nuevo
   if(SIMPLE._otraVez){ SIMPLE._otraVez=false; if(nubeMesActual()!==per) await nubeTraerArchivosMes(); }
 }
-['periodoMes','periodoAno'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('change', ()=>{ try{ corteFechasPintar(); }catch(e){} nubeTraerArchivosMes(); }); });
+['periodoMes','periodoAno'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el){
+    try{
+      const saved = localStorage.getItem('ebz_ult_'+id);
+      if(saved) el.value = saved;
+    }catch(e){}
+    el.addEventListener('change', ()=>{
+      try{ localStorage.setItem('ebz_ult_'+id, el.value); }catch(e){}
+      try{ corteFechasPintar(); }catch(e){}
+      nubeTraerArchivosMes();
+    });
+  }
+});
 // Al abrir, el corte sale según el día de hoy: antes del 16 es el inicial, del 16 al 25 el
 // de transcurso, y del 26 en adelante el final.
 try{
