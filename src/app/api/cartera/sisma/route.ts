@@ -12,7 +12,7 @@ const SISMA_BASE_URL = RAW_BASE_URL.endsWith("/node")
   : `${RAW_BASE_URL}/node`;
 
 const SISMA_API_KEY =
-  process.env.SISMA_NODE_API_KEY ||
+  process.env.SISMA_CONTABILIDAD_API_KEY ||
   "ynrViZLIPJ6hrwhtTMbBvh7ecEmhkasc7UceX8O4s/A=";
 
 type CarteraEdadesItem = {
