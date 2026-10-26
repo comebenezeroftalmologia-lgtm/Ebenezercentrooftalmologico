@@ -5365,7 +5365,9 @@ function liquidarV4(recs, actos, actosAll){
     const K=(cirFecha[ced]=cirFecha[ced]||{}); if(!K[h]||f<K[h]) K[h]=f; }
   for(const a of actos){ regCir(a.ced, mHojaDe(a.cirujano), a.fecha); }
   // pacientes que tienen aplicación intravítrea en este corte (para fichas que no pagan sus lecturas)
-  const pacIV = new Set(); for(const r of recs) if(/INTRAVIT/i.test((r.d||'')+' '+(r.sv||''))){ const c=((r.p||'').match(/(\d{5,12})/)||[])[1]; if(c) pacIV.add(c); }
+  const pacIV = new Set();
+  for(const r of recs) if(/INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test((r.d||'')+' '+(r.sv||'')+' '+(r.as||''))){ const c=((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''); if(c) pacIV.add(c); }
+  for(const a of (actos||[])) if(/INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test((a.proc||'')+' '+(a.obs||''))){ const c=a.ced||((a.pac||'').match(/(\d{5,12})/)||[])[1]||mNorm(a.pac||''); if(c) pacIV.add(c); }
   for(const r of recs) if(esCirUf(r) && /HONORARIO|EXTRACAPSULAR|FACO/i.test(r.d||'')){
     const c=((r.p||'').match(/(\d{5,12})/)||[])[1]; regCir(c, mHojaDe(r.m), r.f.slice(0,10));
   }
@@ -5943,7 +5945,8 @@ function liquidarV4(recs, actos, actosAll){
     else if(g==='M' && esCons && RM.consCond){ M.consM++; pago=RM.consCond.bajo; regla='Consulta Mutual condicional'; }
     else if(g==='M' && esCons && cfg.consM){ M.consM++; pago=cfg.consM; regla='Consulta Mutual a $'+cfg.consM.toLocaleString(); }
     else if(g==='M' && esCons && RM.rubroCons){ M.consM++; if(/NEURO/.test(D)){ pago=66000; regla='Consulta neuroftalmología Mutual a $66.000'; } else { pago=0; regla='Cubierta por rubro de consultas Mutual'; } }
-    else if(!esCons && cfg.sinLecturaIV && cfg.sinLecturaIV.test(D) && pacIV.has(((r.p||'').match(/(\d{5,12})/)||[])[1])){
+    else if(g==='M' && !esCons && cfg.sinLecturaIV && cfg.sinLecturaIV.test(D) && (pacIV.has(((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||'')) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(D+' '+(r.as||'')))){
+      marcar(r._src,'no_cobro'); continue; })/)||[])[1])){
       pago=0; regla='Paciente de intravítrea en este corte: su lectura no se le paga'; }
     else if(g==='M' && !esCons && cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (M._upp=M._upp||new Set()).has(((r.p||'').match(/(\d{5,12})/)||[])[1]+'|'+r.f.slice(0,10))){
       pago=0; regla='Lectura del mismo paciente ese día: la ficha la paga por paciente, no por estudio';
@@ -7645,6 +7648,26 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
   // todos los destinos tiene que dar el número de registros del archivo. Sin agujeros.
   try{ FACT_CED = null; }catch(e){}   // lo facturado se recalcula con el informe de esta corrida
   CUADRE = {}; CORRIDA++; NOTAS_CIR = {}; ORIGEN_AG = {}; AJENAS_AG = {}; _LADOV = null; _PARES = null; LADO_CORR = [];
+  const _pacIVCalc = new Set();
+  for(const _r of RECORDS){
+    const _f = new Date(_r.fecha);
+    if(isNaN(_f) || _f < fechaInicio || _f > fechaFin) continue;
+    if(exAnul && /ANULADO/i.test(_r.tipoPago)) continue;
+    const _d0 = (_r.detalle||'')+' '+(_r.servicio||'')+' '+(_r.asunto||'');
+    if(/INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(_d0)){
+      const _c = ((_r.paciente||'').match(/(\d{5,12})/)||[])[1] || mNorm(_r.paciente||'');
+      if(_c) _pacIVCalc.add(_c);
+    }
+  }
+  for(const _a of (ACTOS||[])){
+    const _fa = String(_a.fecha||'').slice(0,10);
+    if(_fa < iso(fechaInicio) || _fa > iso(new Date(periodoAno, periodoMes-1, 25))) continue;
+    const _da = (_a.procedimiento||_a.proc||'')+' '+(_a.obs||'');
+    if(/INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(_da)){
+      const _c = String(_a.cedula||_a.ced||'').replace(/\D/g,'') || ((_a.paciente||_a.pac||'').match(/(\d{5,12})/)||[])[1] || mNorm(_a.paciente||_a.pac||'');
+      if(_c) _pacIVCalc.add(_c);
+    }
+  }
   const recs=[]; const sinFichaSet=new Set();
   for(const r of RECORDS){
     const fecha = new Date(r.fecha);
@@ -7659,7 +7682,12 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
     if(!mHojaDe(_m)){
       const _d = (r.detalle||'')+' '+(r.servicio||'');
       if(/CAMPO VISUAL/i.test(_d)){ _m = 'ANA ALVAREZ'; _lect = true; }                     // ficha: Lectura de Campo Visual
-      else if(/TOMOGRAFIA OPTICA|ANGIOTOMOGRAFIA/i.test(_d)){ _m = 'ANALITH BARRIGA'; _lect = true; }  // ficha: Lectura de tomografías (la toman Yina/Mairena/agendas)
+      else if(/TOMOGRAFIA OPTICA|ANGIOTOMOGRAFIA/i.test(_d)){
+        const _gR = v4EmpG((r.empresa||'')+' '+(r.contrato||''));
+        const _cR = ((r.paciente||'').match(/(\d{5,12})/)||[])[1] || mNorm(r.paciente||'');
+        const _esIV = (_cR && _pacIVCalc.has(_cR)) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(_d+' '+(r.asunto||''));
+        if(!(_gR === 'M' && _esIV)){ _m = 'ANALITH BARRIGA'; _lect = true; }
+      }  // ficha: Lectura de tomografías (la toman Yina/Mairena/agendas)
     }
     // Reasignaciones: consultas de una agenda atendidas por otro médico (reemplazos)
     if(_REAS.length){
