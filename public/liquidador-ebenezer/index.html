@@ -5150,7 +5150,7 @@ const REGLAS_DOC = {
  'SOFIA JACOME OPTOMETRA': { soloRubro:true },
  'JUDY GOMEZ': { soloRubro:true },
  'GERARDO COY': { soloRubro:true, posQxEnRubro:true },   // ficha G6: los posQx del Dr. Granados van en su frecuencia · F24: la cirugía va dentro de los $5.500.000
- 'SHIRLEY POMARES': { consP:{t:'fijo',v:50000}, cirPct:0.7 },
+ 'SHIRLEY POMARES': { consP:{t:'fijo',v:50000}, cirPct:0.7, cirFijas:[{re:/CAPSULOTOMIA|IRIDOTOMIA/, P1:250000, P:437500, S:70000}] },
  'MARIA SERGINA': { consP:{t:'fijo',v:40000}, cirFijas:[
     // plastia de punto + sondeo en el mismo acto: se pagan los dos ($111.125 + $40.005)
     {re:/PLASTIA DE PUNTO.*SONDEO|SONDEO.*PLASTIA DE PUNTO/, M:151130},
@@ -5173,7 +5173,7 @@ const REGLAS_DOC = {
     // ficha: fotocoagulación láser prepagadas y particulares $600.000 por paciente · EPS Sura $200.000
     {re:/ABLACION|RETINOPEXIA/, P:600000, S:200000},
     {re:/CAPSULOTOMIA|IRIDOTOMIA/, P:250000, S:150000, M:55000}] },
- 'CESAR ATENCIA': { soloMutual:true, consM:14000, consP:{t:'fijo',v:30000, particularPct:0.5}, cirFijas:[{re:/INTRAVITREA/, P:450000, S:160000}] },
+ 'CESAR ATENCIA': { soloMutual:true, consM:14000, consP:{t:'fijo',v:30000, particularPct:0.5}, cirFijas:[{re:/INTRAVITREA/, P1:450000, P:787500, S:160000, M1:220000, M:440000}, {re:/FOTOCOAGULACION/, P:460000, S:160000, M1:200000, M:400000}, {re:/RETINOBLASTOMA/, M1:293400, M:513450}] },
  'JAYSI PASTRANA': { consM:20000, consP:{t:'jornada',v:500000,extra:50000,cupo:10,modo:'fecha',umbral:5}, cirFijas:[
     // ficha: terapia intravítrea $450.000 un ojo · $787.500 ambos · EPS Sura $220.000 / $385.000 · Mutual $100.000 por ojo
     {re:/INTRAVITREA/, P1:450000, P:787500, S1:220000, S:385000, M1:100000, M:200000},
@@ -5182,7 +5182,7 @@ const REGLAS_DOC = {
     {re:/PANFOTOCOAGULA/, PART:560000},
     {re:/ABLACION|FOTOCOAGULA/, P:460000, S:200000}] },
  'RICARDO INFANTE': { consP:{t:'jornada',v:1000000,cupo:35,modo:'bloque'}, cirFijas:[
-    {re:/INTRAVITREA/, P:450000},
+    {re:/INTRAVITREA/, P1:450000, P:787500},
     // ficha: vitrectomía con retiro de material prepagada $550.000 · particular $1.632.000
     //        con silicón o gas $650.000 · $1.872.000 · completa con retinopexia $800.000 · $2.059.200
     //        FACO como segundo procedimiento en cirugía de retina: prepagada $300.000 · particular $528.000 (se suma)
@@ -5205,6 +5205,8 @@ const REGLAS_DOC = {
     {re:/PTERIGION/, P:200000}] },
  // ficha: cirugías prepagadas 90% del concepto de honorarios médicos; Mutual: cirugía de oculoplastia $330.000
  'ANA ALVAREZ': { consP:{t:'jornada',v:600000,extra:50000,cupo:12,modo:'fecha',umbral:5}, camposPct:0.15, cirPct:0.9, cirFijas:[
+    {re:/RETINOBLASTOMA/, M1:322740, M:564795},
+    {re:/CAMPO VISUAL/, M1:8423, M:16846},
     {re:/ENUCLEACION/, M:385000},   // ficha B28
     {re:/RESECCION.*(QUISTE|TUMOR)/, M:330000}] },
  // Anestesiólogos: jornada desde estadísticas (columna anestesiólogo)
@@ -5486,7 +5488,14 @@ function liquidarV4(recs, actos, actosAll){
   // --- 1b. QUIRÓFANOS del informe sin acto en estadísticas (sede 2 / Mutual) ---
   const actKeys = new Set();
   for(const a of actos) actKeys.add(a.ced);
-  const honK = new Set();
+  const honK = new Set(), qCirInf = {}, _dedupCir1b = {};
+  for(const r0 of recs){
+    if(!esCirUf(r0) || esLente(r0) || !esProced(r0) || /HONORARIO/i.test(r0.d||'') || esPosQx(r0)) continue;
+    const h0=mHojaDe(r0.m), gp0=v4GrupoProc(mNorm(r0.d||'')); if(!h0 || !gp0) continue;
+    const ced0=((r0.p||'').match(/(\d{5,12})/)||[])[1]||r0.p;
+    const k0=h0+'|'+ced0+'|'+r0.f.slice(0,10)+'|'+gp0;
+    qCirInf[k0]=(qCirInf[k0]||0)+(r0.q||1);
+  }
   for(const r of recs) if(esCirUf(r) && /HONORARIO/i.test(r.d)){
     const mm=(r.d.match(/(\d{5,6})/)||[])[1]||baseCUPS(r.cg);
     if(mm) honK.add(r.fa+'|'+r.p+'|'+mm);
@@ -5523,8 +5532,14 @@ function liquidarV4(recs, actos, actosAll){
       else { M.frecN++; pago = M.frecN<=RM.frecCir.cupo ? RM.frecCir.v1 : RM.frecCir.adic; regla='Cirugía retina Mutual #'+M.frecN; }
     } else if(g!=='M' && cfg.soloMutual){ pago=0; regla='Convenio propio: no se liquida';
     } else {
-      const fj=v4CirFija(cfg, r.d, r.e+' '+r.ct, r.q||1);
-      if(fj){ pago=fj.v; regla=fj.nota+v4Lado(fj); }
+      const gp1b = v4GrupoProc(mNorm(r.d||''));
+      const k1b = gp1b ? (h+'|'+(ced||r.p)+'|'+r.f.slice(0,10)+'|'+gp1b) : null;
+      const qTot1b = k1b ? Math.max(qCirInf[k1b]||0, r.q||1) : (r.q||1);
+      const fj1 = v4CirFija(cfg, r.d, r.e+' '+r.ct, 1);
+      const fj2 = qTot1b>=2 ? v4CirFija(cfg, r.d, r.e+' '+r.ct, qTot1b) : null;
+      const fj = (k1b && qTot1b>=2 && fj2 && fj1 && fj2.lado==='ambos ojos' && fj2.v!==fj1.v && fj2.v!==2*fj1.v) ? fj2 : v4CirFija(cfg, r.d, r.e+' '+r.ct, r.q||1);
+      if(fj && k1b && fj===fj2 && _dedupCir1b[k1b]){ pago=0; regla='Mismo acto ya liquidado con tarifa bilateral (ambos ojos)'; }
+      else if(fj){ if(k1b && fj===fj2) _dedupCir1b[k1b]=true; pago=fj.v; regla=fj.nota+v4Lado(fj); }
       else if(cfg.cirPct && g!=='M' && /HONORARIO/i.test(r.d)){ pago=Math.round(cfg.cirPct*(r.t||0)); regla=(cfg.cirPct*100)+'% del rubro honorarios ('+money(r.t||0)+')'; }
       else { const [v,rg]=mPredecir(r.m,r.d,r.sv,r.e+' '+r.ct,r.q,r.t||null,true); pago=v||0; regla=rg||'';
         if(v===null&&rg!=='porcentual') M.hallazgos.add('[CIR]Sin regla cirugía informe: '+(r.d||'').slice(0,38)); }
@@ -5935,7 +5950,19 @@ function liquidarV4(recs, actos, actosAll){
     }
     else if(g==='M' && !esCons && cfg.cirFijas && v4CirFija(cfg, r.d, r.e+' '+r.ct, r.q||1)){
       if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)) (M._upp=M._upp||new Set()).add(((r.p||'').match(/(\d{5,12})/)||[])[1]+'|'+r.f.slice(0,10));
-      const fjM=v4CirFija(cfg, r.d, r.e+' '+r.ct, r.q||1); pago=fjM.v; regla=fjM.nota+v4Lado(fjM);
+      const cedM=((r.p||'').match(/(\d{5,12})/)||[])[1]||r.p;
+      const gpM=v4GrupoProc(D);
+      const kM=gpM ? (h+'|'+cedM+'|'+r.f.slice(0,10)+'|'+gpM) : null;
+      const qTotM=kM ? Math.max(gruposQ[kM]||0, r.q||1) : (r.q||1);
+      const fj1M=v4CirFija(cfg, r.d, r.e+' '+r.ct, 1);
+      const fj2M=qTotM>=2 ? v4CirFija(cfg, r.d, r.e+' '+r.ct, qTotM) : null;
+      if(kM && qTotM>=2 && fj2M && fj1M && fj2M.lado==='ambos ojos' && fj2M.v!==fj1M.v && fj2M.v!==2*fj1M.v){
+        M._dedupM = M._dedupM || {};
+        if(M._dedupM[kM]){ pago=0; regla='Mismo acto ya liquidado con tarifa bilateral (ambos ojos)'; }
+        else { M._dedupM[kM]=true; pago=fj2M.v; regla=fj2M.nota+v4Lado(fj2M); }
+      } else {
+        const fjM=v4CirFija(cfg, r.d, r.e+' '+r.ct, r.q||1); pago=fjM.v; regla=fjM.nota+v4Lado(fjM);
+      }
       if(h==='ANALITH BARRIGA' && /TOMOGRAF/.test(D)) M.hallazgos.add('[S2]Lectura de tomografías Mutual ($22.500 por paciente): la ficha pide liquidar solo los estudios confirmados dentro de los 9 días hábiles, incluidos los de las agendas de Yina Blanco y Mairena Jaraba. Verifique con la agenda de estudios cuáles se leyeron a tiempo.');
     }
     else {
@@ -8633,6 +8660,7 @@ const FICHAS_SYNC = {"upd": [{"h": "MARIA AUXILIADRA", "s": "Consultas Atendidas
     if (!k || !TARIFAS[k]) return;
     if (!tieneFila(TARIFAS[k], obj.servicio, obj.tipo, obj.empresa)) {
       TARIFAS[k].push(obj);
+      if (typeof TARIFAS_V2 !== 'undefined' && TARIFAS_V2[k] && !tieneFila(TARIFAS_V2[k], obj.servicio, obj.tipo, obj.empresa)) TARIFAS_V2[k].push(Object.assign({}, obj));
     }
   };
 
@@ -9241,6 +9269,39 @@ function toggleDrill(i, tr){
 // ===== CAMBIO POR PACIENTE / POR ÍTEM =====
 function itemLeer(){ try{ return JSON.parse(localStorage.getItem('liq_items')||'{}'); }catch(e){ return {}; } }
 function itemGuardarLocal(o){ try{ localStorage.setItem('liq_items', JSON.stringify(o)); }catch(e){} }
+function edParesHTML(med, srvTxt, empTxt){
+  try{
+    const cfgE = (typeof REGLAS_DOC!=='undefined' && REGLAS_DOC[med]) || null;
+    const empE = String(empTxt||'');
+    const detE = String(srvTxt||'');
+    let vUni = null, vBil = null;
+    if(cfgE && typeof v4CirFija==='function'){
+      const f1 = v4CirFija(cfgE, detE, empE, 1);
+      const f2 = v4CirFija(cfgE, detE, empE, 2);
+      if(f1 && f1.v>0){
+        vUni = f1.v;
+        vBil = (f2 && f2.lado==='ambos ojos' && f2.v!==f1.v) ? f2.v : (f1.v * 2);
+      }
+    }
+    if((!vUni || !vBil) && typeof ladoPares==='function'){
+      const D0 = mNorm(detE), gF = v4EmpG(empE);
+      for(const P of ladoPares(med)){
+        if(!P.tok.every(w=>D0.includes(w))) continue;
+        const gP = /MUTUAL/.test(P.emp) ? 'M' : /SURA/.test(P.emp) && /EPS|PLAN COMP|PAC/.test(P.emp) ? 'S' : 'O';
+        if(empE && ((gF==='M') !== (gP==='M') || (gF==='S') !== (gP==='S'))) continue;
+        vUni = P.un; vBil = P.ambos; break;
+      }
+    }
+    if(!vUni || !vBil) return '';
+    return `<div style="margin:6px 0 8px;padding:7px 9px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px">
+      <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:5px">?? Tarifa Ficha T?cnica por lateralidad (1 clic):</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn" style="flex:1;padding:5px 8px;font-size:11.5px;background:#fff;border:1px solid #0284c7;color:#0369a1;font-weight:700;border-radius:5px;cursor:pointer;margin:0" onclick="const b=this.closest('.edbox'),iv=b.querySelector('.edval'),io=b.querySelector('.edmot');if(iv){iv.value=${vUni};iv.dataset.touched='1';}if(io&&(!io.value||/Unilateral|Bilateral/i.test(io.value)))io.value='Tarifa Unilateral (un ojo) seg?n ficha t?cnica';">?? Unilateral (1 ojo): ${money(vUni)}</button>
+        <button type="button" class="btn" style="flex:1;padding:5px 8px;font-size:11.5px;background:#0284c7;border:1px solid #0284c7;color:#fff;font-weight:700;border-radius:5px;cursor:pointer;margin:0" onclick="const b=this.closest('.edbox'),iv=b.querySelector('.edval'),io=b.querySelector('.edmot');if(iv){iv.value=${vBil};iv.dataset.touched='1';}if(io&&(!io.value||/Unilateral|Bilateral/i.test(io.value)))io.value='Tarifa Bilateral (ambos ojos) seg?n ficha t?cnica';">???? Bilateral (ambos ojos): ${money(vBil)}</button>
+      </div>
+    </div>`;
+  }catch(e){ return ''; }
+}
 function itemEditar(el, k, med, pagoActual, sistema){
   if(!RESULT){ alert('Primero liquide.'); return; }
   if(typeof puede==='function' && !puede('valores')){ alert('Su perfil no cambia valores. Avísele al administrador.'); return; }
@@ -9249,6 +9310,7 @@ function itemEditar(el, k, med, pagoActual, sistema){
   td.dataset.prev = td.innerHTML;
   const kk = k.replace(/'/g,"\\'"), mm = med.replace(/'/g,"\\'");
   td.innerHTML = `<div class="edbox" style="text-align:left" onclick="event.stopPropagation()">
+      ${edParesHTML(med, k.split('|').slice(3).join(' '), '')}
       <label>Se paga por este paciente</label>
       <input type="number" class="edval" value="${Math.round(pagoActual||0)}" step="1">
       <label>Por qué se cambia</label>
@@ -14883,6 +14945,7 @@ function edRenglon(el, med, servicio, uf, pagoActual){
         <select class="edcir" style="width:100%;margin-top:4px">${optsMed}</select>
         <input type="text" class="edpac" placeholder="Nombre o cédula del paciente (opcional)" style="width:100%;margin-top:6px">
       </div>
+      ${edParesHTML(med, servicio, (_g&&_g.recs&&_g.recs[0]&&_g.recs[0].emp)||((uf==='Sede 2')?'MUTUAL SER':''))}
       <label class="edlbl">${esAcuerdoRow ? 'Total que se paga en esta línea' : 'Cuánto vale cada uno'}</label>
       <input type="number" class="edval" value="${esAcuerdoRow ? antes : _uni}" step="1" oninput="this.dataset.touched='1'">
       <label>Por qué se cambia</label>
