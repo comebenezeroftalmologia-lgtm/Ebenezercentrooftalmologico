@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const SISMA_BASE_URL =
+const RAW_BASE_URL = (
   process.env.SISMA_API_BASE_URL ||
-  "https://api.centrooftalmologicoebenezer.com/node";
+  "https://api.centrooftalmologicoebenezer.com"
+).replace(/\/+$/, "");
+
+const SISMA_BASE_URL = RAW_BASE_URL.endsWith("/node")
+  ? RAW_BASE_URL
+  : `${RAW_BASE_URL}/node`;
 
 const SISMA_API_KEY =
-  process.env.SISMA_API_KEY ||
+  process.env.SISMA_NODE_API_KEY ||
   "ynrViZLIPJ6hrwhtTMbBvh7ecEmhkasc7UceX8O4s/A=";
 
 type CarteraEdadesItem = {

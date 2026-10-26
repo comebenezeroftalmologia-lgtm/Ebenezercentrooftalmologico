@@ -385,7 +385,9 @@ export default function TableroCarteraAnalytics() {
   };
 
   useEffect(() => {
-    sincronizarConSismaVivo("2026-10-20", true);
+    const hoyCol = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    setFechaCorteVivo(hoyCol);
+    sincronizarConSismaVivo(hoyCol, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
