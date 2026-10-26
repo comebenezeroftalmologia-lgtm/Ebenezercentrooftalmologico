@@ -4670,7 +4670,7 @@ async function cmpDetectar(hojas, medicos, avisar){
           if(v===null || incl) continue;
           // renglón escrito al pie: «6 JORNADAS A 600.000 CADA UNA … 3.600.000», «CONSULTAS ADICIONALES … 500.000»
           const txt=cel.find((x,k)=>k!==iV && x.length>=8 && /[A-Za-zÁÉÍÓÚÑáéíóúñ]{4}/.test(x) && !cmpFecha(x));
-          if(txt){ if(Math.abs(v)>=1000) pies.push({txt, v}); continue; }
+          if(txt){ if(Math.abs(v)>=1000 && !/APLICA PARA LOS PACIENTE|^NOTA\b|^OBSERV/i.test(txt.trim())) pies.push({txt, v}); continue; }
           if(cel.every((x,k)=>k===iV || !x)){ if(Math.abs(v)>=1000) totSolo=v; continue; }   // el total al pie, sin etiqueta
           if(iF>=0 && r[iF]) items.push({f:cmpFecha(r[iF]), pac:'', srv: iS>=0? (cel[iS]||''):'', emp: iE>=0? (cel[iE]||''):'', v});
         }
@@ -4731,7 +4731,7 @@ async function cmpDetectar(hojas, medicos, avisar){
         // renglón escrito al final: «se atendieron 3 agendas … $1.500.000», «SE LIQUIDAN 5 JORNADAS …»
         const txt=(r.find((x,j)=>j!==cVal && x && String(x).trim().length>=8 && !/^\d/.test(String(x).trim()))||'').trim();
         const vp=cmpNum(r[cVal]);
-        if(txt && vp!==null && Math.abs(vp)>=1000 && !cmpEsEtiquetaTotal(txt)) pies.push({txt, v:vp});
+        if(txt && vp!==null && Math.abs(vp)>=1000 && !cmpEsEtiquetaTotal(txt) && !/APLICA PARA LOS PACIENTE|^NOTA\b|^OBSERV/i.test(txt.trim())) pies.push({txt, v:vp});
         continue;
       }
       let v=cmpNum(r[cVal]); let incl=false;
@@ -5801,7 +5801,8 @@ function liquidarV4(recs, actos, actosAll){
         regla='PosQx de otro cirujano: se paga y se descuenta a la cirugía';
         for(const c of cirs){ const O=get(c);
           O.filas.push({fuente:'sede', fecha:r.f, pac:r.p, det:'Descuento: control posquirúrgico atendido por '+h+' — '+String(r.d||'').slice(0,50),
-            emp:r.e, t:0, fa:r.fa, pago:-pago, regla:'Control posquirúrgico atendido por otro médico (ya iba en el paquete)'});
+            emp:r.e, t:0, fa:r.fa, pago:-pago, regla:'Control posquirúrgico atendido por Dr(a). '+h+' (se cobra a quien atendió y se descuenta al cirujano que operó)'});
+          O[g==='M'?'M':'P'] -= pago;
           O.hallazgos.add('[CIR]Se descontó '+money(pago)+' por control posQx que atendió '+h); }
       } else { pago=0; regla='PosQx: incluido en la cirugía'; }
       M.filas.push({fuente:'sede',fecha:r.f,pac:r.p,det:r.d,emp:r.e,t:r.t,fa:r.fa,pago,regla});
@@ -10097,7 +10098,7 @@ function detalleHTML(d, med, f){
           : esJor? (g.modo==='fijo_mes'?'valor fijo del mes':'según lo pactado')
           : (_des && (g.uniforme===false || /lateral/.test(_des))) ? _des
           : g.cant.toLocaleString('es-CO')+' × '+tarifa;
-        const acN = g.acuerdo ? `<div class="obs" style="color:#9a6a00">${acNota(g.acuerdo)}${g.acuerdo.tipo==='medico'?` <a href="#" onclick="event.stopPropagation();acQuitarMedico('ACU|${med.replace(/'/g,"\\'")}|M|${g.acuerdo.id}');return false" style="color:#9a6a00">quitar</a>`:''}</div>` : '';
+        const acN = g.acuerdo ? `<div class="obs" style="color:#9a6a00">${acNota(g.acuerdo)} <a href="#" onclick="event.stopPropagation();acQuitarDeFila('${med.replace(/'/g,"\\'")}','${String(g.servicio).replace(/'/g,"\\'")}','${g.uf}','${String(g.acuerdo.id||'').replace(/'/g,"\\'")}');return false" style="color:#a4262c;font-weight:600;margin-left:6px">quitar</a></div>` : '';
         // el valor se cambia AQUÍ: se toca y se vuelve un campo, como una casilla de Excel
         const ed = `edRenglon(this,'${med.replace(/'/g,"\\'")}','${String(g.servicio).replace(/'/g,"\\'")}','${g.uf}',${Math.round(pago)})`;
         hh+=`<tr class="clickable${g.rev?' revfila':''}" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(jorPac(g))},this)">
@@ -14742,13 +14743,77 @@ function pdfCuadre(){
 </div>
 <script>
 // ===== ACUERDOS: lo pactado de palabra queda escrito, con valor obligatorio, firmado y editable =====
-function acLeer(){ try{ return JSON.parse(localStorage.getItem('liq_acuerdos')||'{}'); }catch(e){ return {}; } }
+function acEsNotaInvalida(a){
+  if(!a) return true;
+  const txt = String(a.texto||'') + ' ' + String(a.servicio||'') + ' ' + String(a.id||'');
+  if(/APLICA PARA LOS PACIENTE/i.test(txt)) return true;
+  return false;
+}
+function acLeer(){
+  try{
+    const d = JSON.parse(localStorage.getItem('liq_acuerdos')||'{}');
+    let limp = false;
+    for(const [k, a] of Object.entries(d)){
+      if(acEsNotaInvalida(a) && (!a || !a.quitado)){
+        if(a){
+          a.quitado = true;
+          a.quitadoPor = 'Sistema (nota de ficha técnica, no es servicio)';
+          a.quitadoEl = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
+          try{ if(typeof NUBE!=='undefined' && typeof NUBE_ON!=='undefined' && NUBE_ON) NUBE.guardarAjuste(k, a); }catch(e){}
+        } else {
+          delete d[k];
+        }
+        limp = true;
+      }
+    }
+    if(limp){ try{ localStorage.setItem('liq_acuerdos', JSON.stringify(d)); }catch(e){} }
+    return d;
+  }catch(e){ return {}; }
+}
 function acGuardarLocal(o){ try{ localStorage.setItem('liq_acuerdos', JSON.stringify(o)); }catch(e){} }
 function acKeyDe(a){ return 'ACU|'+a.med+'|'+(a.tipo==='renglon' ? 'R|'+a.servicio+'|'+a.uf : 'M|'+a.id); }
-function acVigentes(med, periodo){ return Object.values(acLeer()).filter(a=>a.med===med && !a.quitado && (a.periodo==='siempre' || a.periodo===periodo) && !(a.sinPer||[]).includes(periodo)); }
+function acVigentes(med, periodo){
+  return Object.values(acLeer()).filter(a=>a && !acEsNotaInvalida(a) && a.med===med && !a.quitado && (a.periodo==='siempre' || a.periodo===periodo) && !(a.sinPer||[]).includes(periodo));
+}
+async function acQuitarDeFila(med, servicio, uf, idMed){
+  if(typeof puede==='function' && !puede('valores')){ alert('Su perfil no cambia valores. Avísele al administrador.'); return; }
+  const todos = acLeer();
+  const kR = 'ACU|'+med+'|R|'+servicio+'|'+uf;
+  const kM = idMed ? ('ACU|'+med+'|M|'+idMed) : null;
+  let mKey = (kM && todos[kM]) ? kM : null;
+  if(!mKey && servicio.startsWith('Acuerdo: ')){
+    for(const [k, a] of Object.entries(todos)){
+      if(a && a.med===med && a.tipo==='medico' && !a.quitado && ('Acuerdo: '+String(a.texto||'').slice(0,60))===servicio){
+        mKey = k; break;
+      }
+    }
+  }
+  const aRef = (kR && todos[kR] && !todos[kR].quitado) ? todos[kR] : (mKey ? todos[mKey] : null);
+  if(!aRef) return;
+  const bPar = (aRef.par && todos[aRef.par] && !todos[aRef.par].quitado) ? todos[aRef.par] : (mKey && todos[mKey] && todos[mKey].par && todos[todos[mKey].par] && !todos[todos[mKey].par].quitado ? todos[todos[mKey].par] : null);
+  const parKey = (aRef.par && todos[aRef.par]) ? aRef.par : (mKey && todos[mKey] && todos[mKey].par ? todos[mKey].par : null);
+  if(!confirm('¿Quitar este acuerdo ('+money(aRef.valor)+' · «'+(aRef.texto||servicio)+'»)?'+(bPar ? '\n\nTambién se quitará el descuento/cobro cruzado en '+bPar.med+' ('+money(bPar.valor)+').' : ''))) return;
+  const qn = (typeof USUARIO!=='undefined' && USUARIO && USUARIO.nombre) || '?';
+  const ql = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
+  const keysToQuit = [];
+  if(kR && todos[kR] && !todos[kR].quitado) keysToQuit.push(kR);
+  if(mKey && todos[mKey] && !todos[mKey].quitado) keysToQuit.push(mKey);
+  if(parKey && todos[parKey] && !todos[parKey].quitado) keysToQuit.push(parKey);
+  for(const kk of keysToQuit){
+    todos[kk].quitado = true;
+    todos[kk].quitadoPor = qn;
+    todos[kk].quitadoEl = ql;
+    try{ if(typeof NUBE!=='undefined' && NUBE_ON) await NUBE.guardarAjuste(kk, todos[kk]); }catch(e){}
+  }
+  acGuardarLocal(todos);
+  try{ registrarAudit({t:ql, accion:'ACUERDO QUITADO', periodo:(RESULT?RESULT.periodoInicio:''), medico:med, servicio, antes:aRef.valor, despues:0, motivo:aRef.texto||'', usuario:qn, cargo:(USUARIO&&USUARIO.cargo)||''}); }catch(e){}
+  document.getElementById('btnCalc').click();
+}
 function aplicarAcuerdos(porMedico, periodo){
+  const sedeSel = (document.getElementById('sede')||{}).value || '';
   for(const [h,d] of Object.entries(porMedico)){
-    for(const a of acVigentes(h, periodo)){
+    const vigentes = acVigentes(h, periodo).slice().sort((a,b) => (a.tipo==='medico'?0:1) - (b.tipo==='medico'?0:1));
+    for(const a of vigentes){
       if(a.tipo==='renglon'){
         const bl = (a.uf==='Quirófano'||a.uf==='Anestesia'||a.uf==='Mes completo') ? d.cir : d.sede;
         const g = Object.values(bl).find(g=>g.servicio===a.servicio && g.uf===a.uf) || Object.values(d.cir).concat(Object.values(d.sede)).find(g=>g.servicio===a.servicio);
@@ -14757,97 +14822,222 @@ function aplicarAcuerdos(porMedico, periodo){
           if(partes.length) (d._avisos=d._avisos||[]).push('<b>'+fraseConcepto(a.servicio)+'</b>: el '+(a.fecha||'')+' '+(a.usuario||'')+' lo había dejado en '+money(a.valor)+' («'+(a.texto||'')+'»). Ahora ese renglón está separado en <b>unilateral</b> y <b>bilateral</b>: vuelva a poner el valor en el que corresponda.');
           continue; }
         const esM = g.pago>0 ? (g.pagoM||0)>=g.pago-1 : /MUTUAL/i.test(((g.recs||[])[0]||{}).emp||'');
-        if(g._pagoSist===undefined) g._pagoSist = g.pago;   // lo que dio el sistema, para contabilidad
+        if(g._pagoSist===undefined) g._pagoSist = g.pago;
         g.pago = a.valor; g.pagoM = esM ? a.valor : 0;
         g.unit = g.cant ? a.valor/g.cant : a.valor; g.uniforme=false; g.acuerdo=a;
-        const n=(g.recs||[]).length; if(n){ const u=Math.floor(a.valor/n); let acc=0; g.recs.forEach((r,i)=>{ r.total = (i===n-1) ? a.valor-acc : u; acc+=r.total; }); }
-      } else {
-        const bl = a.bloque==='cir' ? d.cir : d.sede;
+      } else if(a.tipo==='medico'){
+        const scopeAcu = a.bloque==='cir' ? 'Cirugía' : (a.mutual ? 'Sede 2' : 'Sede Principal');
+        if(sedeSel && scopeAcu !== sedeSel && a.tipoSv !== 'descuento') continue;
+        if(sedeSel === 'Cirugía' && a.bloque !== 'cir') continue;
+        if((sedeSel === 'Sede 2' || sedeSel === 'Sede Principal') && a.bloque === 'cir' && a.tipoSv !== 'descuento') continue;
+        const bl = (a.bloque==='cir' && sedeSel !== 'Sede 2' && sedeSel !== 'Sede Principal') ? d.cir : d.sede;
         const k = 'Acuerdo: '+String(a.texto||'').slice(0,60);
-        bl[k] = {servicio:k, tipo:'', uf: a.bloque==='cir'?'Quirófano':'Sede', unit:a.valor, uniforme:true, esPct:false, obs:'', cant:1, fact:0, pago:a.valor, pagoM: a.mutual? a.valor:0,
-          recs:[{fecha:'', paciente:'', factura:'', detalle:a.texto, cantidad:1, total:a.valor, emp:a.mutual?'MUTUAL SER':'', fuente:a.bloque==='cir'?'cirugia':'sede', regla:'Acuerdo'}], acuerdo:a};
+        bl[k] = {servicio:k, uf:a.bloque==='cir'?'Quirófano':(a.mutual?'Sede 2':'Sede Principal'),
+          cant:1, fact:0, pago:a.valor, pagoM:a.mutual?a.valor:0, unit:a.valor, uniforme:true,
+          obs:'', acuerdo:a, recs:[]};
       }
     }
   }
 }
-function acNota(a){ return 'Acuerdo: '+a.texto+' — '+(a.usuario||'')+(a.fecha?', '+a.fecha:'')+(a.periodo==='siempre'?' · desde ahora en adelante':''); }
-// ===== CAMBIAR EL VALOR EN EL PROPIO RENGLÓN =====
-// Una sola forma de cambiar valores en todo el tablero: se toca el número, se escribe el
-// nuevo y el motivo, y se guarda ahí mismo. Sin ventanas y sin salir de donde se está.
+function acNota(a){
+  return 'Acuerdo: '+esc(a.texto||'')+' — '+esc(a.usuario||'?')+', '+esc(a.fecha||'');
+}
+function edGrupo(med, servicio, uf){
+  const d = RESULT && RESULT.porMedico && RESULT.porMedico[med]; if(!d) return null;
+  const bl = (uf==='Quirófano'||uf==='Anestesia'||uf==='Mes completo') ? d.cir : d.sede;
+  return Object.values(bl).find(g=>g.servicio===servicio && g.uf===uf) || Object.values(d.cir).concat(Object.values(d.sede)).find(g=>g.servicio===servicio) || null;
+}
 function edRenglon(el, med, servicio, uf, pagoActual){
   if(!RESULT){ alert('Primero liquide.'); return; }
   if(typeof puede==='function' && !puede('valores')){ alert('Su perfil no cambia valores. Avísele al administrador.'); return; }
   const td = el.closest('td'); if(!td || td.querySelector('.edbox')) return;
-  const ex = Object.values(acLeer()).find(a=>a.med===med && a.tipo==='renglon' && a.servicio===servicio && !a.quitado);
+  const todosAc = acLeer();
+  const exR = Object.values(todosAc).find(a=>a && a.med===med && a.tipo==='renglon' && a.servicio===servicio && !a.quitado);
+  const exM = servicio.startsWith('Acuerdo: ') ? Object.values(todosAc).find(a=>a && a.med===med && a.tipo==='medico' && !a.quitado && ('Acuerdo: '+String(a.texto||'').slice(0,60))===servicio) : null;
+  const ex = exR || exM;
+  const esAcuerdoRow = servicio.startsWith('Acuerdo: ') || !!exM;
   const antes = Math.round(pagoActual||0);
-  const _g = edGrupo(med, servicio, uf);                 // el renglón tal como quedó liquidado
+  const _g = edGrupo(med, servicio, uf);
   const _cant = Math.max(1, Math.round((_g && _g.cant) || 1));
   const _uni  = Math.round(antes / _cant);
   const _esc  = t => String(t).replace(/"/g,'&quot;');
   const _expUni = _esc('Queda como regla: se aplica a '+(_cant===1?'este y a los que falten por facturar':'los '+_cant+' que van y a los que falten por facturar')+'. Hoy cada uno va en '+money(_uni)+'.');
   const _expLin = _esc('Esta línea paga el total que usted escriba y no cambia aunque se facturen más. Hoy la línea va en '+money(antes)+' ('+_cant+' × '+money(_uni)+').');
+  const _expPosPropio = _esc('Control posquirúrgico del mismo cirujano que operó al paciente: va incluido en la cirugía y queda en $ 0.');
+  const _expPosOtro = _esc('Control posquirúrgico atendido por este médico pero operado por otro cirujano: se le paga a este médico y se le descuenta automáticamente al cirujano que operó.');
+  const medsLista = [...new Set(Object.keys(typeof TARIFAS!=='undefined'?TARIFAS:{}).concat((RESULT&&RESULT._datos||[]).map(x=>x.m)))].filter(m=>m!==med).sort();
+  const optsMed = '<option value="">— Elija el cirujano que operó al paciente (a quien se descuenta) —</option>' + medsLista.map(m=>`<option value="${_esc(m)}">${_esc(m)}</option>`).join('');
+  const valSugPosOtro = antes > 0 ? antes : ((typeof acValorConsulta==='function' && acValorConsulta(med, uf==='Sede 2')) || 50000);
   td.dataset.prev = td.innerHTML;
   td.innerHTML = `<div class="edbox" onclick="event.stopPropagation()">
-      <label class="edlbl">Cuánto vale cada uno</label>
-      <input type="number" class="edval" value="${_uni}" step="1">
-      <label>Por qué se cambia</label>
-      <input type="text" class="edmot" placeholder="Ej.: pactado con el médico, autorizado por gerencia" value="${ex? String(ex.texto||'').replace(/"/g,'&quot;') : ''}">
       <label>Qué se está haciendo</label>
       <select class="edalc" onchange="edModo(this)">
-        <option value="unidad" data-v="${_uni}" data-exp="${_expUni}" selected>Corregir lo que vale cada uno</option>
-        ${corteInterno()? '' : `<option value="linea" data-v="${antes}" data-exp="${_expLin}">Fijar el total de la línea</option>`}
+        <option value="unidad" data-v="${_uni}" data-lbl="Cuánto vale cada uno" data-exp="${_expUni}" ${!esAcuerdoRow?'selected':''}>Corregir lo que vale cada uno${_cant>1?' ('+_cant+' casos)':''}</option>
+        <option value="linea" data-v="${antes}" data-lbl="Total que se paga en esta línea" data-exp="${_expLin}" ${esAcuerdoRow?'selected':''}>Fijar el total de la línea</option>
+        <option value="posqx_propio" data-v="0" data-lbl="Valor a pagar ($ 0 — cirugía propia)" data-exp="${_expPosPropio}">Posquirúrgico del mismo cirujano (No se paga → $ 0)</option>
+        <option value="posqx_otro" data-v="${valSugPosOtro}" data-lbl="Valor a pagar a quien hizo el control (y descontar al cirujano)" data-exp="${_expPosOtro}">Posquirúrgico hecho por otro médico (Cobrar aquí y descontar al cirujano)</option>
       </select>
-      <div class="edexp">${_expUni}</div>
-      ${corteInterno()? '<div class="edhist">En los cortes internos solo se corrige el valor de cada uno: el mes va corriendo y la línea todavía crece. El total de la línea se fija en el corte final.</div>' : ''}
+      <div class="edexp">${esAcuerdoRow ? _expLin : _expUni}</div>
+      <div class="edposqx-box" style="display:none;margin:6px 0;padding:8px;background:#fffbeb;border:1px solid #f59e0b;border-radius:6px">
+        <label style="color:#92400e;font-weight:700">¿Qué cirujano operó al paciente? (se le descontará este valor)</label>
+        <select class="edcir" style="width:100%;margin-top:4px">${optsMed}</select>
+        <input type="text" class="edpac" placeholder="Nombre o cédula del paciente (opcional)" style="width:100%;margin-top:6px">
+      </div>
+      <label class="edlbl">${esAcuerdoRow ? 'Total que se paga en esta línea' : 'Cuánto vale cada uno'}</label>
+      <input type="number" class="edval" value="${esAcuerdoRow ? antes : _uni}" step="1" oninput="this.dataset.touched='1'">
+      <label>Por qué se cambia</label>
+      <input type="text" class="edmot" placeholder="Ej.: Posquirúrgico, pactado con el médico, autorizado por gerencia" value="${ex? String(ex.texto||'').replace(/"/g,'&quot;') : ''}">
       <div class="ederr"></div>
       <div class="edbtns">
         <button class="btn" onclick="edGuardar(this,'${med.replace(/'/g,"\\'")}','${String(servicio).replace(/'/g,"\\'")}','${uf}',${antes})">Guardar</button>
-        ${ex? `<button class="btn ghost" onclick="edQuitar(this,'${med.replace(/'/g,"\\'")}','${String(servicio).replace(/'/g,"\\'")}','${uf}')">Dejarlo como estaba</button>`:''}
         <button class="btn ghost" onclick="edCancelar(this)">Cancelar</button>
+        ${ex?`<button class="btn ghost" style="color:#a4262c" onclick="acQuitarDeFila('${med.replace(/'/g,"\\'")}','${String(servicio).replace(/'/g,"\\'")}','${uf}','${exM?String(exM.id||'').replace(/'/g,"\\'"):''}')">Quitar acuerdo</button>`:''}
+        ${(!ex && _g && _g._norma)?`<button class="btn ghost" style="color:#a4262c" onclick="edQuitarNorma('${String(_g._norma).replace(/'/g,"\\'")}')">Quitar regla</button>`:''}
       </div>
-      ${ex && ex.hist && ex.hist.length? '<div class="edhist">Antes: '+ex.hist.slice(-2).map(h=>money(h.valor)+' «'+String(h.texto).slice(0,30)+'» · '+h.usuario).join(' · ')+'</div>':''}
     </div>`;
-  const v=td.querySelector('.edval'); if(v){ v.focus(); v.select(); }
-  td.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',ev=>{
+  const inp = td.querySelector('.edval'); inp.focus(); inp.select();
+  td.querySelectorAll('.edval,.edmot').forEach(x=>x.addEventListener('keydown', ev=>{
     if(ev.key==='Enter'){ ev.preventDefault(); td.querySelector('.edbtns .btn').click(); }
-    if(ev.key==='Escape'){ ev.preventDefault(); edCancelar(td.querySelector('.edbtns .btn')); }
+    if(ev.key==='Escape'){ ev.preventDefault(); edCancelar(x); }
   }));
 }
-function edCancelar(btn){ const td=btn.closest('.nacc') || btn.closest('td'); if(td && td.dataset.prev!==undefined) td.innerHTML=td.dataset.prev; }
-// El renglón tal como quedó liquidado, para saber cuántos van y de qué servicio se trata.
-function edGrupo(med, servicio, uf){
-  try{
-    const d = (RESULT.porMedico||{})[med]; if(!d) return null;
-    for(const bl of [d.sede, d.cir])
-      for(const g of Object.values(bl||{}))
-        if(g.servicio===servicio && (g.uf===uf || !uf)) return g;
-  }catch(e){}
-  return null;
-}
-// Al cambiar de opción, el valor sugerido cambia con ella: lo que se escribe
-// siempre corresponde a lo que dice la opción escogida.
 function edModo(sel){
-  try{
-    const box = sel.closest('.edbox'); if(!box) return;
-    const v = sel.options[sel.selectedIndex].dataset.v;
-    const inp = box.querySelector('.edval'); if(inp && v!=null) inp.value = v;
-    const lb = box.querySelector('.edlbl');
-    if(lb) lb.textContent = sel.value==='unidad' ? 'Cuánto vale cada uno' : 'Cuánto paga la línea completa';
-    const ex = box.querySelector('.edexp');
-    if(ex) ex.textContent = sel.options[sel.selectedIndex].dataset.exp || '';
-  }catch(e){}
+  const box = sel.closest('.edbox'); if(!box) return;
+  const opt = sel.options[sel.selectedIndex];
+  const lbl = box.querySelector('.edlbl'); if(lbl && opt.dataset.lbl) lbl.textContent = opt.dataset.lbl;
+  const exp = box.querySelector('.edexp'); if(exp && opt.dataset.exp) exp.textContent = opt.dataset.exp;
+  const inp = box.querySelector('.edval');
+  const mot = box.querySelector('.edmot');
+  const posBox = box.querySelector('.edposqx-box');
+  if(posBox) posBox.style.display = sel.value === 'posqx_otro' ? 'block' : 'none';
+  if(sel.value === 'posqx_propio'){
+    if(inp){ inp.value = 0; inp.dataset.touched = '1'; }
+    if(mot && (!mot.value.trim() || /^Servicio que no est/i.test(mot.value.trim()))) mot.value = 'Posquirúrgico de cirugía propia (no se paga)';
+  } else if(sel.value === 'posqx_otro'){
+    if(inp && (Number(inp.value)||0) <= 0 && opt.dataset.v !== undefined) inp.value = opt.dataset.v;
+    if(mot && (!mot.value.trim() || /^Servicio que no est/i.test(mot.value.trim()))) mot.value = 'Control posquirúrgico atendido por este médico (operado por otro cirujano)';
+  } else {
+    if(inp && opt.dataset.v!==undefined && inp.dataset.touched !== '1') inp.value = opt.dataset.v;
+  }
+}
+function edCancelar(el){
+  const td = el.closest('td'); if(!td) return;
+  if(td.dataset.prev!==undefined){ td.innerHTML = td.dataset.prev; delete td.dataset.prev; }
 }
 async function edGuardar(btn, med, servicio, uf, antes){
-  const td=btn.closest('td'), err=td.querySelector('.ederr');
-  const vtxt=td.querySelector('.edval').value.trim();
-  const motivo=td.querySelector('.edmot').value.trim();
-  const alc=td.querySelector('.edalc').value;
-  if(vtxt==='' || isNaN(parseFloat(vtxt))){ err.textContent='Escriba cuánto se paga (0 si no se paga).'; err.style.display='block'; return; }
-  if(motivo.length<5){ err.textContent='Falta el motivo: sin él no se guarda.'; err.style.display='block'; return; }
-  const valor=Math.round(parseFloat(vtxt));
+  const box = btn.closest('.edbox');
+  const inpEl = box.querySelector('.edval');
+  const vtxt = inpEl.value.trim();
+  let motivo = box.querySelector('.edmot').value.trim();
+  let alc = (box.querySelector('.edalc')||{}).value || 'linea';
+  const err = box.querySelector('.ederr');
+  if(vtxt==='' || isNaN(parseFloat(vtxt))){ err.textContent='Escriba el valor en pesos (0 si no se paga).'; err.style.display='block'; return; }
+  let valor = Math.round(parseFloat(vtxt));
+  const userTouched = inpEl.dataset.touched === '1';
+
+  // Si el usuario escribe "Posquirúrgico" en el motivo sin elegir cruce con otro médico y sin haber cambiado el valor anterior, se asume cirugía propia ($ 0)
+  if(alc !== 'posqx_otro' && /posquir|postquir|posqx/i.test(motivo) && (!userTouched || valor === Math.round(antes||0))){
+    alc = 'posqx_propio';
+    valor = 0;
+  }
+  if(alc === 'posqx_propio'){
+    valor = 0;
+    if(motivo.length < 4) motivo = 'Posquirúrgico de cirugía propia (no se paga)';
+  }
+  if(motivo.length<4){ err.textContent='Escriba por qué se cambia (al menos 4 letras). Queda firmado con su nombre.'; err.style.display='block'; return; }
+
   const quien=(typeof USUARIO!=='undefined' && USUARIO && USUARIO.nombre)||'?';
-  // «Cada uno vale $X»: queda como regla aprendida, por unidad, y se aplica también
-  // a lo que se facture después. Es lo que hay que usar cuando la tarifa está mal.
+  const fecha=new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
+  const todos=acLeer();
+
+  // Caso B: Posquirúrgico atendido por otro médico -> se cobra aquí y se descuenta al cirujano que operó
+  if(alc === 'posqx_otro'){
+    const cirSel = box.querySelector('.edcir');
+    const pacInp = box.querySelector('.edpac');
+    const descMed = cirSel ? cirSel.value.trim() : '';
+    const pacTxt = (pacInp && pacInp.value.trim()) ? (' — paciente ' + pacInp.value.trim()) : '';
+    if(!descMed){ err.textContent='Elija el cirujano que operó al paciente: a él se le descontará automáticamente este control.'; err.style.display='block'; return; }
+    const valCobro = Math.abs(valor);
+    const kR = 'ACU|'+med+'|R|'+servicio+'|'+uf;
+    const idDesc = Date.now().toString(36)+'d';
+    const kDesc = 'ACU|'+descMed+'|M|'+idDesc;
+    const textoCobro = 'Control posquirúrgico atendido por '+med+pacTxt+' (operó '+descMed+': se cobra aquí y se descuenta a '+descMed+') · '+motivo;
+    const textoDesc = 'Descuento: Control posquirúrgico'+pacTxt+' atendido por '+med+' ('+motivo+')';
+    const aCobro = {
+      tipo:'renglon', med, servicio, uf, valor:valCobro, texto:textoCobro,
+      periodo: RESULT.periodoInicio, usuario:quien, fecha, par:kDesc, hist:(todos[kR]&&todos[kR].hist)||[]
+    };
+    const bDesc = {
+      tipo:'medico', id:idDesc, med:descMed, bloque:'cir', mutual:(uf==='Sede 2'),
+      valor:-valCobro, texto:textoDesc, tipoSv:'descuento', pac:(pacInp&&pacInp.value.trim())||'',
+      par:kR, periodo:RESULT.periodoInicio, usuario:quien, fecha, hist:[]
+    };
+    todos[kR] = aCobro;
+    todos[kDesc] = bDesc;
+    acGuardarLocal(todos);
+    UI_FOCO={lbl:servicio, m:med, antes:Math.round(antes||0), v:valCobro};
+    try{
+      if(typeof NUBE!=='undefined' && NUBE_ON){
+        await NUBE.guardarAjuste(kR, aCobro);
+        await NUBE.guardarAjuste(kDesc, bDesc);
+      }
+    }catch(e){ console.warn('acuerdo posqx nube', e); }
+    try{
+      registrarAudit({t:fecha, accion:'POSQUIRÚRGICO CRUZADO (COBRO)', periodo:RESULT.periodoInicio, medico:med, servicio, antes:Math.round(antes||0), despues:valCobro, motivo:textoCobro, usuario:quien, cargo:(USUARIO&&USUARIO.cargo)||''});
+      registrarAudit({t:fecha, accion:'POSQUIRÚRGICO CRUZADO (DESCUENTO)', periodo:RESULT.periodoInicio, medico:descMed, servicio:textoDesc.slice(0,60), antes:0, despues:-valCobro, motivo:textoDesc, usuario:quien, cargo:(USUARIO&&USUARIO.cargo)||''});
+    }catch(e){}
+    document.getElementById('btnCalc').click();
+    try{ manToast('Cobrado '+money(valCobro)+' a '+med+' y descontado a '+descMed); }catch(e){}
+    return;
+  }
+
+  // Si se está editando un renglón que empieza por "Acuerdo: " (tipo === 'medico')
+  if(servicio.startsWith('Acuerdo: ')){
+    let mKey = null, mObj = null;
+    for(const [k, a] of Object.entries(todos)){
+      if(a && a.med===med && a.tipo==='medico' && !a.quitado && ('Acuerdo: '+String(a.texto||'').slice(0,60))===servicio){
+        mKey = k; mObj = a; break;
+      }
+    }
+    const kR = 'ACU|'+med+'|R|'+servicio+'|'+uf;
+    if(mKey && mObj){
+      if(valor === 0){
+        mObj.quitado = true; mObj.quitadoPor = quien; mObj.quitadoEl = fecha; mObj.motivoQuitado = motivo;
+        todos[mKey] = mObj;
+        if(todos[kR]){ todos[kR].quitado = true; todos[kR].quitadoPor = quien; todos[kR].quitadoEl = fecha; }
+        acGuardarLocal(todos);
+        try{
+          if(typeof NUBE!=='undefined' && NUBE_ON){
+            await NUBE.guardarAjuste(mKey, mObj);
+            if(todos[kR]) await NUBE.guardarAjuste(kR, todos[kR]);
+          }
+        }catch(e){}
+        try{ registrarAudit({t:fecha, accion:'ACUERDO ANULADO ($ 0)', periodo:RESULT.periodoInicio, medico:med, servicio, antes:Math.round(antes||0), despues:0, motivo, usuario:quien, cargo:(USUARIO&&USUARIO.cargo)||''}); }catch(e){}
+        document.getElementById('btnCalc').click();
+        try{ manToast('Acuerdo dejado en $ 0 / retirado · firmado a su nombre'); }catch(e){}
+        return;
+      } else {
+        (mObj.hist = mObj.hist || []).push({valor:mObj.valor, texto:mObj.texto, usuario:mObj.usuario, fecha:mObj.fecha});
+        mObj.valor = valor;
+        mObj.usuario = quien;
+        mObj.fecha = fecha;
+        todos[mKey] = mObj;
+        if(todos[kR]){ todos[kR].quitado = true; }
+        acGuardarLocal(todos);
+        try{
+          if(typeof NUBE!=='undefined' && NUBE_ON){
+            await NUBE.guardarAjuste(mKey, mObj);
+            if(todos[kR]) await NUBE.guardarAjuste(kR, todos[kR]);
+          }
+        }catch(e){}
+        try{ registrarAudit({t:fecha, accion:'ACUERDO EDITADO', periodo:RESULT.periodoInicio, medico:med, servicio, antes:Math.round(antes||0), despues:valor, motivo, usuario:quien, cargo:(USUARIO&&USUARIO.cargo)||''}); }catch(e){}
+        document.getElementById('btnCalc').click();
+        try{ manToast('Guardado '+money(valor)+' · firmado a su nombre'); }catch(e){}
+        return;
+      }
+    }
+  }
+
   if(alc==='unidad'){
     if(typeof puede==='function' && !puede('normas')){
       err.textContent='Su perfil no deja crear reglas. Avísele al administrador.'; err.style.display='block'; return; }
@@ -14856,7 +15046,7 @@ async function edGuardar(btn, med, servicio, uf, antes){
     const emp = (g && ((g.recs||[])[0]||{}).emp) || '';
     const r = norCrear({med, det, emp, valor, cant:1, motivo, ambito:'medico'});
     if(!r.ok){ err.innerHTML = r.msg; err.style.display='block'; return; }
-    try{ registrarAudit({t:new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}), accion:'VALOR POR UNIDAD',
+    try{ registrarAudit({t:fecha, accion:'VALOR POR UNIDAD',
       periodo:RESULT.periodoInicio, medico:med, servicio, antes:Math.round(antes||0), despues:valor, motivo,
       usuario:quien, cargo:(USUARIO&&USUARIO.cargo)||''}); }catch(e){}
     try{ manToast('Regla guardada: '+money(valor)+' cada uno · firmada a su nombre'); }catch(e){}
@@ -14864,31 +15054,21 @@ async function edGuardar(btn, med, servicio, uf, antes){
     document.getElementById('btnCalc').click();
     return;
   }
-  const fecha=new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
-  const todos=acLeer(); const k='ACU|'+med+'|R|'+servicio+'|'+uf; const prev=todos[k];
+  const k='ACU|'+med+'|R|'+servicio+'|'+uf; const prev=todos[k];
   const a={tipo:'renglon', med, servicio, uf, valor, texto:motivo,
            periodo: RESULT.periodoInicio, usuario:quien, fecha, hist:(prev&&prev.hist)||[]};
   if(prev && !prev.quitado) a.hist.push({valor:prev.valor, texto:prev.texto, usuario:prev.usuario, fecha:prev.fecha});
   todos[k]=a; acGuardarLocal(todos);
   UI_FOCO={lbl:servicio, m:med, antes:Math.round(antes||0), v:valor};
   try{ if(typeof NUBE!=='undefined' && NUBE_ON) await NUBE.guardarAjuste(k, a); }catch(e){ console.warn('acuerdo nube', e); }
-  try{ registrarAudit({t:fecha, accion:'VALOR CAMBIADO', periodo:RESULT.periodoInicio, medico:med, servicio,
+  try{ registrarAudit({t:fecha, accion: alc==='posqx_propio' ? 'POSQUIRÚRGICO CIRUGÍA PROPIA ($ 0)' : 'VALOR CAMBIADO', periodo:RESULT.periodoInicio, medico:med, servicio,
     antes:Math.round(antes||0), despues:valor, motivo, usuario:quien, cargo:(USUARIO&&USUARIO.cargo)||''}); }catch(e){}
   edRefrescar(med);
   try{ manToast('Guardado '+money(valor)+' · firmado a su nombre'); }catch(e){}
 }
 async function edQuitar(btn, med, servicio, uf){
-  const todos=acLeer(); const k='ACU|'+med+'|R|'+servicio+'|'+uf; const a=todos[k]; if(!a) return;
-  if(!confirm('¿Dejar este renglón como lo calculó el tablero?\n\nSe quita el cambio de '+money(a.valor)+' («'+(a.texto||'')+'») y queda registrado quién lo quitó.')) return;
-  a.quitado=true; a.quitadoPor=(USUARIO&&USUARIO.nombre)||'?'; a.quitadoEl=new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
-  acGuardarLocal(todos); UI_FOCO={lbl:servicio, m:med};
-  try{ if(typeof NUBE!=='undefined' && NUBE_ON) await NUBE.guardarAjuste(k, a); }catch(e){}
-  try{ registrarAudit({t:a.quitadoEl, accion:'CAMBIO DESHECHO', periodo:RESULT.periodoInicio, medico:med, servicio,
-    antes:a.valor, despues:0, motivo:a.texto||'', usuario:a.quitadoPor, cargo:(USUARIO&&USUARIO.cargo)||''}); }catch(e){}
-  // el renglón vuelve a su valor calculado: hay que rehacer la liquidación de ese médico
-  document.getElementById('btnCalc').click();
+  return acQuitarDeFila(med, servicio, uf, '');
 }
-// Aplica el cambio sin volver a liquidar todo: el acta y el semáforo quedan al día al instante.
 function edRefrescar(med){
   try{
     const d = RESULT.porMedico && RESULT.porMedico[med];
