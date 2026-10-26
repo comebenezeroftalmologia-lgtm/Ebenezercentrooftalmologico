@@ -651,7 +651,7 @@ export default function DigiturnoContactPage() {
                   archivo que hay que regenerar. Se dice de cuando es. */}
               <div className="mt-1.5">
                 <FechaDelDato
-                  fecha={(rawData as { updatedAt?: string }).updatedAt}
+                  fecha={(liveDataset as { updatedAt?: string }).updatedAt || (rawData as { updatedAt?: string }).updatedAt}
                   queEs="Datos"
                   avisaA={2}
                   alarmaA={5}
