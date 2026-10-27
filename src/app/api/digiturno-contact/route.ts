@@ -63,6 +63,17 @@ async function fetchLatestCloudJson(): Promise<typeof rawData> {
   return rawData;
 }
 
+function cleanAgentName(raw: unknown): string {
+  const s = String(raw || '').trim();
+  const parts = s.includes(' - ') ? s.split(' - ').slice(1).join(' - ').trim() : s;
+  const words = parts.split(/\s+/).filter(Boolean);
+  const short = words.slice(0, 2).join(' ');
+  return short
+    .split(' ')
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
+    .join(' ');
+}
+
 async function fetchLiveCurrentMonthQueues(existingMonth?: (typeof rawData.contactCenterMonthly)[number]) {
   try {
     const loginRes = await fetch(`${PBX_BASE}/login`, {
@@ -70,7 +81,7 @@ async function fetchLiveCurrentMonthQueues(existingMonth?: (typeof rawData.conta
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ name: PBX_USER, password: PBX_PASS }),
       cache: 'no-store',
-      signal: AbortSignal.timeout(3500),
+      signal: AbortSignal.timeout(5000),
     });
     if (!loginRes.ok) return null;
     const loginJson = await loginRes.json();
@@ -104,16 +115,18 @@ async function fetchLiveCurrentMonthQueues(existingMonth?: (typeof rawData.conta
       servicelevel: JSON.stringify(qList.map((q) => ({ name: q, servicelevel: 60 }))),
     };
 
+    const headers = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+
     const qResp = await fetch(`${PBX_BASE}/calls-by-queue`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify(basePayload),
       cache: 'no-store',
-      signal: AbortSignal.timeout(4500),
+      signal: AbortSignal.timeout(6000),
     });
     if (!qResp.ok) return null;
     const qData = await qResp.json();
@@ -130,13 +143,86 @@ async function fetchLiveCurrentMonthQueues(existingMonth?: (typeof rawData.conta
     }
 
     const codes = ['506012', '506013', '506014', '506015'];
+    const agentPromises = codes.map(async (code) => {
+      const meta = QUEUE_META[code];
+      try {
+        const singlePayload = {
+          ...basePayload,
+          queues: [meta.q_key],
+          servicelevel: JSON.stringify([{ name: meta.q_key, servicelevel: 60 }]),
+        };
+        const aResp = await fetch(`${PBX_BASE}/agents-on-queue`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(singlePayload),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!aResp.ok) return { code, agents: null };
+        const aData = await aResp.json();
+        const qAgents = [];
+        for (const ag of aData?.data || []) {
+          const ext = String(ag.extension || '');
+          const name = cleanAgentName(ag.agent);
+          const con = Number(ag.answered_calls || 0);
+          const lost = Number(ag.lost_calls || 0);
+          const timb = con + lost;
+          const dur = parseHmsToMin(ag.avg_call_time);
+          if (timb > 0) {
+            qAgents.push({
+              id: ext,
+              name,
+              timbradas: timb,
+              contestadas: con,
+              perdidas: lost,
+              duracionMin: dur,
+            });
+          }
+        }
+        qAgents.sort((a, b) => b.contestadas - a.contestadas || b.timbradas - a.timbradas);
+        return { code, agents: qAgents };
+      } catch {
+        return { code, agents: null };
+      }
+    });
+
+    const agentResults = await Promise.all(agentPromises);
+    const agentsByCode: Record<string, typeof existingMonth extends undefined ? never : NonNullable<(typeof rawData.contactCenterMonthly)[number]['lines'][number]['agents']>> = {};
+    for (const item of agentResults) {
+      if (item.agents && item.agents.length > 0) {
+        agentsByCode[item.code] = item.agents;
+      }
+    }
+
     const linesOut = [];
+    const monthAgentsMap: Record<
+      string,
+      { id: string; name: string; timbradas: number; contestadas: number; perdidas: number; duracionWeighted: number }
+    > = {};
 
     for (const code of codes) {
       const r = rowsByCode[code];
       if (!r) continue;
       const meta = QUEUE_META[code];
       const existingLine = existingMonth?.lines?.find((l) => l.id === code);
+      const lineAgents = agentsByCode[code] || existingLine?.agents || [];
+      for (const qa of lineAgents) {
+        if (!monthAgentsMap[qa.id]) {
+          monthAgentsMap[qa.id] = {
+            id: qa.id,
+            name: qa.name,
+            timbradas: 0,
+            contestadas: 0,
+            perdidas: 0,
+            duracionWeighted: 0,
+          };
+        }
+        monthAgentsMap[qa.id].timbradas += qa.timbradas;
+        monthAgentsMap[qa.id].contestadas += qa.contestadas;
+        monthAgentsMap[qa.id].perdidas += qa.perdidas;
+        monthAgentsMap[qa.id].duracionWeighted += qa.duracionMin * Math.max(1, qa.contestadas);
+      }
+
       linesOut.push({
         id: code,
         name: meta.name,
@@ -146,16 +232,27 @@ async function fetchLiveCurrentMonthQueues(existingMonth?: (typeof rawData.conta
         perdidas: Number(r.abandoned_calls || 0),
         esperaMin: parseHmsToMin(r.avg_call_waiting_time),
         slaPct: parseFloat(String(r.service_level || '0').replace('%', '')) || 0,
-        agents: existingLine?.agents || [],
+        agents: lineAgents,
       });
     }
+
+    const agentsOut = Object.values(monthAgentsMap)
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        timbradas: a.timbradas,
+        contestadas: a.contestadas,
+        perdidas: a.perdidas,
+        duracionMin: Math.round((a.duracionWeighted / Math.max(1, a.contestadas)) * 10) / 10,
+      }))
+      .sort((a, b) => b.contestadas - a.contestadas || b.timbradas - a.timbradas);
 
     return {
       year: yr,
       monthNum: m,
       month: MONTH_NAMES[m],
       lines: linesOut,
-      agents: existingMonth?.agents || [],
+      agents: agentsOut.length > 0 ? agentsOut : existingMonth?.agents || [],
     };
   } catch {
     return null;
@@ -182,7 +279,7 @@ export async function GET() {
     }
     return NextResponse.json({
       ...latestJson,
-      updatedAt: new Date().toISOString(),
+      updatedAt: liveMonth ? new Date().toISOString() : latestJson.updatedAt,
       liveCloudSync: Boolean(liveMonth),
       contactCenterMonthly: baseMonths,
     });

@@ -273,20 +273,33 @@ export default function DigiturnoContactPage() {
       let wS2 = 0;
       let aS2 = 0;
 
+      let wS1Weight = 0;
+      let aS1Weight = 0;
+      let wS2Weight = 0;
+      let aS2Weight = 0;
+
       records.forEach((r) => {
         const st = r.steps[k];
         tS1 += st.sede1.turnos;
         tS2 += st.sede2.turnos;
-        wS1 += st.sede1.espera;
-        aS1 += st.sede1.atencion;
-        wS2 += st.sede2.espera;
-        aS2 += st.sede2.atencion;
+        if (st.sede1.turnos > 0) {
+          wS1 += st.sede1.espera * st.sede1.turnos;
+          aS1 += st.sede1.atencion * st.sede1.turnos;
+          wS1Weight += st.sede1.turnos;
+          aS1Weight += st.sede1.turnos;
+        }
+        if (st.sede2.turnos > 0) {
+          wS2 += st.sede2.espera * st.sede2.turnos;
+          aS2 += st.sede2.atencion * st.sede2.turnos;
+          wS2Weight += st.sede2.turnos;
+          aS2Weight += st.sede2.turnos;
+        }
       });
 
-      wS1 = wS1 / nMonths;
-      aS1 = aS1 / nMonths;
-      wS2 = wS2 / nMonths;
-      aS2 = aS2 / nMonths;
+      wS1 = wS1Weight > 0 ? Math.round((wS1 / wS1Weight) * 10) / 10 : 0;
+      aS1 = aS1Weight > 0 ? Math.round((aS1 / aS1Weight) * 10) / 10 : 0;
+      wS2 = wS2Weight > 0 ? Math.round((wS2 / wS2Weight) * 10) / 10 : 0;
+      aS2 = aS2Weight > 0 ? Math.round((aS2 / aS2Weight) * 10) / 10 : 0;
 
       const totS1 = wS1 + aS1;
       const totS2 = wS2 + aS2;
@@ -299,8 +312,9 @@ export default function DigiturnoContactPage() {
       sumAtencionS2 += aS2;
 
       let turnos = tS1 + tS2;
-      let espera = (wS1 + wS2) / 2;
-      let atencion = (aS1 + aS2) / 2;
+      const totBoth = Math.max(1, tS1 + tS2);
+      let espera = Math.round(((wS1 * tS1 + wS2 * tS2) / totBoth) * 10) / 10;
+      let atencion = Math.round(((aS1 * tS1 + aS2 * tS2) / totBoth) * 10) / 10;
       if (selectedSede === 'Sede 1') {
         turnos = tS1;
         espera = wS1;
@@ -341,6 +355,10 @@ export default function DigiturnoContactPage() {
       };
     });
 
+    const totalTurnosBoth = Math.max(1, totalTurnosS1 + totalTurnosS2);
+    const pctTurnosS1 = Math.round((totalTurnosS1 / totalTurnosBoth) * 1000) / 10;
+    const pctTurnosS2 = Math.round((totalTurnosS2 / totalTurnosBoth) * 1000) / 10;
+
     const totalTurnos =
       selectedSede === 'Sede 1'
         ? totalTurnosS1
@@ -353,14 +371,14 @@ export default function DigiturnoContactPage() {
         ? sumEsperaS1
         : selectedSede === 'Sede 2'
         ? sumEsperaS2
-        : (sumEsperaS1 + sumEsperaS2) / 2;
+        : Math.round(((sumEsperaS1 * totalTurnosS1 + sumEsperaS2 * totalTurnosS2) / totalTurnosBoth) * 10) / 10;
 
     const totalAtencion =
       selectedSede === 'Sede 1'
         ? sumAtencionS1
         : selectedSede === 'Sede 2'
         ? sumAtencionS2
-        : (sumAtencionS1 + sumAtencionS2) / 2;
+        : Math.round(((sumAtencionS1 * totalTurnosS1 + sumAtencionS2 * totalTurnosS2) / totalTurnosBoth) * 10) / 10;
 
     const totalCiclo = totalEspera + totalAtencion;
     const cumplGlobal = Math.min(100, Math.round((90.0 / Math.max(1, totalCiclo)) * 1000) / 10);
@@ -371,6 +389,8 @@ export default function DigiturnoContactPage() {
       totalTurnos,
       totalTurnosS1,
       totalTurnosS2,
+      pctTurnosS1,
+      pctTurnosS2,
       totalEspera,
       totalAtencion,
       totalCiclo,
@@ -421,7 +441,7 @@ export default function DigiturnoContactPage() {
       };
     });
 
-    // Aggregate lines
+    // Aggregate lines (weighted by recibidas)
     const lineMap: Record<
       string,
       {
@@ -431,8 +451,9 @@ export default function DigiturnoContactPage() {
         recibidas: number;
         contestadas: number;
         perdidas: number;
-        esperaMin: number;
-        slaPct: number;
+        esperaWeighted: number;
+        slaWeighted: number;
+        weightSum: number;
         count: number;
         agentsMap: Record<string, { id: string; name: string; timbradas: number; contestadas: number; perdidas: number; duracionWeighted: number }>;
       }
@@ -447,21 +468,26 @@ export default function DigiturnoContactPage() {
         timbradas: number;
         contestadas: number;
         perdidas: number;
-        duracionMin: number;
+        duracionWeighted: number;
         count: number;
       }
     > = {};
 
-    let allWithMutualRec = 0;
-    let allWithoutMutualRec = 0;
-    let allWithoutMutualCon = 0;
+    let pypRec = 0;
+    let pypCon = 0;
+    let pypEsperaWeighted = 0;
+    let totalDaysSelected = 0;
 
     records.forEach((r) => {
+      const daysInMonth = new Date(r.year, r.monthNum, 0).getDate();
+      const elapsedDays = r.year === 2026 && r.monthNum === 10 ? Math.min(daysInMonth, 27) : daysInMonth;
+      totalDaysSelected += elapsedDays;
+
       r.lines.forEach((l) => {
-        allWithMutualRec += l.recibidas;
-        if (!l.isMutual) {
-          allWithoutMutualRec += l.recibidas;
-          allWithoutMutualCon += l.contestadas;
+        if (l.id === '506014') {
+          pypRec += l.recibidas;
+          pypCon += l.contestadas;
+          pypEsperaWeighted += l.esperaMin * Math.max(1, l.recibidas);
         }
         if (!selectedLines.includes(l.id)) return;
 
@@ -473,17 +499,20 @@ export default function DigiturnoContactPage() {
             recibidas: 0,
             contestadas: 0,
             perdidas: 0,
-            esperaMin: 0,
-            slaPct: 0,
+            esperaWeighted: 0,
+            slaWeighted: 0,
+            weightSum: 0,
             count: 0,
             agentsMap: {},
           };
         }
+        const w = Math.max(1, l.recibidas);
         lineMap[l.id].recibidas += l.recibidas;
         lineMap[l.id].contestadas += l.contestadas;
         lineMap[l.id].perdidas += l.perdidas;
-        lineMap[l.id].esperaMin += l.esperaMin;
-        lineMap[l.id].slaPct += l.slaPct;
+        lineMap[l.id].esperaWeighted += l.esperaMin * w;
+        lineMap[l.id].slaWeighted += l.slaPct * w;
+        lineMap[l.id].weightSum += w;
         lineMap[l.id].count += 1;
         (l.agents || []).forEach((qa: QueueAgentItem) => {
           if (!lineMap[l.id].agentsMap[qa.id]) {
@@ -511,21 +540,21 @@ export default function DigiturnoContactPage() {
             timbradas: 0,
             contestadas: 0,
             perdidas: 0,
-            duracionMin: 0,
+            duracionWeighted: 0,
             count: 0,
           };
         }
         agentMap[a.id].timbradas += a.timbradas;
         agentMap[a.id].contestadas += a.contestadas;
         agentMap[a.id].perdidas += a.perdidas;
-        agentMap[a.id].duracionMin += a.duracionMin;
+        agentMap[a.id].duracionWeighted += a.duracionMin * Math.max(1, a.contestadas);
         agentMap[a.id].count += 1;
       });
     });
 
     const linesList = Object.values(lineMap).map((l) => {
-      const espera = l.count > 0 ? l.esperaMin / l.count : 0;
-      const sla = l.count > 0 ? l.slaPct / l.count : 0;
+      const espera = l.weightSum > 0 ? Math.round((l.esperaWeighted / l.weightSum) * 10) / 10 : 0;
+      const sla = l.weightSum > 0 ? Math.round((l.slaWeighted / l.weightSum) * 100) / 100 : 0;
       const efect = l.recibidas > 0 ? (l.contestadas / l.recibidas) * 100 : 0;
       const qAgents = Object.values(l.agentsMap)
         .map((qa) => ({
@@ -553,7 +582,7 @@ export default function DigiturnoContactPage() {
     );
 
     const agentsList = Object.values(agentMap).map((a) => {
-      const dur = a.count > 0 ? a.duracionMin / a.count : 0;
+      const dur = a.contestadas > 0 ? Math.round((a.duracionWeighted / a.contestadas) * 10) / 10 : 0;
       const efect = a.timbradas > 0 ? (a.contestadas / a.timbradas) * 100 : 0;
       const share =
         totalContestadasGlobal > 0 ? a.contestadas / totalContestadasGlobal : 1 / 6;
@@ -568,6 +597,12 @@ export default function DigiturnoContactPage() {
     const totalRecibidas = linesList.reduce((acc, l) => acc + l.recibidas, 0);
     const totalContestadas = linesList.reduce((acc, l) => acc + l.contestadas, 0);
     const totalPerdidas = linesList.reduce((acc, l) => acc + l.perdidas, 0);
+    const mutualPerdidas = linesList
+      .filter((l) => l.isMutual)
+      .reduce((acc, l) => acc + l.perdidas, 0);
+    const noMutualPerdidas = linesList
+      .filter((l) => !l.isMutual)
+      .reduce((acc, l) => acc + l.perdidas, 0);
     const efectividadGlobal =
       totalRecibidas > 0 ? (totalContestadas / totalRecibidas) * 100 : 0;
     const abandonoGlobal =
@@ -585,14 +620,9 @@ export default function DigiturnoContactPage() {
           totalRecibidas
         : 0;
 
-    const totalTimbresNoContestados = agentsList.reduce(
-      (acc, a) => acc + a.perdidas,
-      0
-    );
-    const sinMutualEfect =
-      allWithoutMutualRec > 0
-        ? (allWithoutMutualCon / allWithoutMutualRec) * 100
-        : 92.7;
+    const promDiario = Math.max(1, Math.round(totalRecibidas / Math.max(1, totalDaysSelected)));
+    const pypEfect = pypRec > 0 ? (pypCon / pypRec) * 100 : 0;
+    const pypEspera = pypRec > 0 ? Math.round((pypEsperaWeighted / pypRec) * 10) / 10 : 0;
 
     return {
       monthlyChart,
@@ -601,13 +631,16 @@ export default function DigiturnoContactPage() {
       totalRecibidas,
       totalContestadas,
       totalPerdidas,
+      mutualPerdidas,
+      noMutualPerdidas,
       efectividadGlobal,
       abandonoGlobal,
       weightedEspera,
       weightedSla,
-      totalTimbresNoContestados,
-      allWithoutMutualRec,
-      sinMutualEfect,
+      promDiario,
+      pypRec,
+      pypEfect,
+      pypEspera,
     };
   }, [liveDataset, selectedYear, selectedYears, selectedMonths, selectedLines]);
 
@@ -1037,9 +1070,9 @@ export default function DigiturnoContactPage() {
                 {fmtNum(contactComputed.totalRecibidas)}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Prom: {fmtNum(Math.max(1, contactComputed.totalRecibidas / 48))} llamadas/día · PYP y Ecopetrol:{' '}
+                Prom: {fmtNum(contactComputed.promDiario)} llamadas/día · PYP y Ecopetrol:{' '}
                 <span className="font-semibold text-slate-700">
-                  {fmtNum(contactComputed.allWithoutMutualRec)}
+                  {fmtNum(contactComputed.pypRec)}
                 </span>
               </div>
             </div>
@@ -1057,7 +1090,7 @@ export default function DigiturnoContactPage() {
               <div className="text-[10px] text-slate-500 mt-1">
                 {fmtDec(contactComputed.efectividadGlobal)}% efectividad · PYP y Ecopetrol:{' '}
                 <span className="font-semibold text-emerald-700">
-                  {fmtDec(contactComputed.sinMutualEfect)}%
+                  {fmtDec(contactComputed.pypEfect)}%
                 </span>
               </div>
             </div>
@@ -1073,8 +1106,8 @@ export default function DigiturnoContactPage() {
                 {fmtNum(contactComputed.totalPerdidas)}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                {fmtDec(contactComputed.abandonoGlobal)}% perdidas ·{' '}
-                {fmtNum(contactComputed.totalTimbresNoContestados)} por timbre no contestado
+                {fmtDec(contactComputed.abandonoGlobal)}% perdidas · Mutual: {fmtNum(contactComputed.mutualPerdidas)} · PYP/Refr.:{' '}
+                {fmtNum(contactComputed.noMutualPerdidas)}
               </div>
             </div>
 
@@ -1090,7 +1123,7 @@ export default function DigiturnoContactPage() {
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
                 Espera prom: {fmtDec(contactComputed.weightedEspera)} min · PYP y Ecopetrol:{' '}
-                <span className="font-semibold text-slate-700">0,5 min</span>
+                <span className="font-semibold text-slate-700">{fmtDec(contactComputed.pypEspera)} min</span>
               </div>
             </div>
           </div>
@@ -1424,8 +1457,8 @@ export default function DigiturnoContactPage() {
                 {fmtNum(digiturnoComputed.totalTurnos)}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Sede 1: {fmtNum(digiturnoComputed.totalTurnosS1)} (30,7%) · Sede 2:{' '}
-                {fmtNum(digiturnoComputed.totalTurnosS2)} (69,3%)
+                Sede 1: {fmtNum(digiturnoComputed.totalTurnosS1)} ({fmtDec(digiturnoComputed.pctTurnosS1)}%) · Sede 2:{' '}
+                {fmtNum(digiturnoComputed.totalTurnosS2)} ({fmtDec(digiturnoComputed.pctTurnosS2)}%)
               </div>
             </div>
 

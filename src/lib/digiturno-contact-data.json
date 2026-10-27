@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-26 09:02:14",
+  "updatedAt": "2026-10-27 08:04:36",
   "sources": {
     "digiturno": "http://192.168.200.11:6663/SGTWidgetGestureApi",
     "contactCenter": "https://pbx.itmsas.com/sonata/service/v1/api"
@@ -12,318 +12,50 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 3234,
-            "espera": 6.0,
+            "turnos": 358,
+            "espera": 8.1,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 6988,
-            "espera": 18.0,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 3234,
-            "espera": 0.0,
-            "atencion": 0.5
-          },
-          "sede2": {
-            "turnos": 6988,
-            "espera": 0.0,
-            "atencion": 0.3
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 1230,
-            "espera": 24.0,
-            "atencion": 1.0
-          },
-          "sede2": {
-            "turnos": 3712,
-            "espera": 36.0,
-            "atencion": 0.5
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 525,
-            "espera": 36.0,
-            "atencion": 5.0
-          },
-          "sede2": {
-            "turnos": 1440,
-            "espera": 54.0,
-            "atencion": 5.0
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 75,
-            "espera": 17.2,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 260,
-            "espera": 18.0,
-            "atencion": 0.6
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 7,
-      "month": "Julio",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 3612,
-            "espera": 6.0,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 5460,
-            "espera": 18.0,
+            "turnos": 822,
+            "espera": 36.3,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 3612,
+            "turnos": 358,
             "espera": 0.0,
-            "atencion": 0.5
+            "atencion": 3.3
           },
           "sede2": {
-            "turnos": 5460,
+            "turnos": 822,
             "espera": 0.0,
-            "atencion": 0.3
+            "atencion": 0.8
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 1709,
-            "espera": 18.0,
-            "atencion": 1.0
+            "turnos": 2224,
+            "espera": 16.4,
+            "atencion": 8.3
           },
           "sede2": {
-            "turnos": 4124,
-            "espera": 36.0,
-            "atencion": 0.5
+            "turnos": 4196,
+            "espera": 30.1,
+            "atencion": 1.5
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 575,
-            "espera": 36.0,
-            "atencion": 5.0
+            "turnos": 2764,
+            "espera": 11.4,
+            "atencion": 4.1
           },
           "sede2": {
-            "turnos": 1633,
-            "espera": 54.0,
-            "atencion": 5.0
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 75,
-            "espera": 17.2,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 1965,
-            "espera": 12.0,
-            "atencion": 0.5
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 8,
-      "month": "Agosto",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 3750,
-            "espera": 6.0,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 6295,
-            "espera": 30.0,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 3750,
-            "espera": 0.0,
-            "atencion": 0.5
-          },
-          "sede2": {
-            "turnos": 6295,
-            "espera": 0.0,
-            "atencion": 0.3
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 1772,
-            "espera": 18.0,
-            "atencion": 1.0
-          },
-          "sede2": {
-            "turnos": 4489,
-            "espera": 24.0,
-            "atencion": 0.5
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 609,
-            "espera": 42.0,
-            "atencion": 5.0
-          },
-          "sede2": {
-            "turnos": 2045,
-            "espera": 54.0,
-            "atencion": 5.0
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 75,
-            "espera": 17.2,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 2599,
-            "espera": 18.0,
-            "atencion": 0.5
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 9,
-      "month": "Septiembre",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 3990,
-            "espera": 6.0,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 6035,
-            "espera": 18.0,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 3990,
-            "espera": 0.0,
-            "atencion": 0.5
-          },
-          "sede2": {
-            "turnos": 6035,
-            "espera": 0.0,
-            "atencion": 0.3
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 1818,
-            "espera": 18.0,
-            "atencion": 1.0
-          },
-          "sede2": {
-            "turnos": 4754,
-            "espera": 30.0,
-            "atencion": 0.5
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 529,
-            "espera": 30.0,
-            "atencion": 5.0
-          },
-          "sede2": {
-            "turnos": 1642,
-            "espera": 48.0,
-            "atencion": 5.0
-          }
-        },
-        "step5": {
-          "sede1": {
-            "turnos": 75,
-            "espera": 17.2,
-            "atencion": 1.2
-          },
-          "sede2": {
-            "turnos": 1659,
-            "espera": 18.0,
-            "atencion": 0.5
-          }
-        }
-      }
-    },
-    {
-      "year": 2026,
-      "monthNum": 10,
-      "month": "Octubre",
-      "steps": {
-        "step1": {
-          "sede1": {
-            "turnos": 3014,
-            "espera": 9.4,
-            "atencion": 0.0
-          },
-          "sede2": {
-            "turnos": 5059,
-            "espera": 24.9,
-            "atencion": 0.0
-          }
-        },
-        "step2": {
-          "sede1": {
-            "turnos": 3014,
-            "espera": 0.0,
-            "atencion": 2.2
-          },
-          "sede2": {
-            "turnos": 5059,
-            "espera": 0.0,
-            "atencion": 0.1
-          }
-        },
-        "step3": {
-          "sede1": {
-            "turnos": 1290,
-            "espera": 18.2,
-            "atencion": 11.6
-          },
-          "sede2": {
-            "turnos": 3981,
-            "espera": 27.9,
-            "atencion": 0.1
-          }
-        },
-        "step4": {
-          "sede1": {
-            "turnos": 465,
-            "espera": 32.3,
-            "atencion": 15.6
-          },
-          "sede2": {
-            "turnos": 1223,
-            "espera": 51.0,
-            "atencion": 6.8
+            "turnos": 9394,
+            "espera": 32.9,
+            "atencion": 2.4
           }
         },
         "step5": {
@@ -333,19 +65,319 @@
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 1678,
-            "espera": 18.4,
+            "turnos": 462,
+            "espera": 26.6,
             "atencion": 0.1
           }
         }
       },
       "_extraccion": {
-        "cuando": "2026-10-26 09:01",
+        "cuando": "2026-10-27 08:04",
+        "desde": "2026-06-01",
+        "hasta": "2026-06-30",
+        "registros_leidos": 20220,
+        "turnos_sede1": 5346,
+        "turnos_sede2": 14874
+      }
+    },
+    {
+      "year": 2026,
+      "monthNum": 7,
+      "month": "Julio",
+      "steps": {
+        "step1": {
+          "sede1": {
+            "turnos": 378,
+            "espera": 13.0,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 754,
+            "espera": 51.1,
+            "atencion": 0.0
+          }
+        },
+        "step2": {
+          "sede1": {
+            "turnos": 378,
+            "espera": 0.0,
+            "atencion": 3.9
+          },
+          "sede2": {
+            "turnos": 754,
+            "espera": 0.0,
+            "atencion": 0.4
+          }
+        },
+        "step3": {
+          "sede1": {
+            "turnos": 2363,
+            "espera": 15.3,
+            "atencion": 9.1
+          },
+          "sede2": {
+            "turnos": 5076,
+            "espera": 26.0,
+            "atencion": 0.6
+          }
+        },
+        "step4": {
+          "sede1": {
+            "turnos": 3479,
+            "espera": 13.2,
+            "atencion": 4.3
+          },
+          "sede2": {
+            "turnos": 8416,
+            "espera": 36.4,
+            "atencion": 1.6
+          }
+        },
+        "step5": {
+          "sede1": {
+            "turnos": 0,
+            "espera": 0.0,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 2581,
+            "espera": 20.5,
+            "atencion": 0.0
+          }
+        }
+      },
+      "_extraccion": {
+        "cuando": "2026-10-27 08:04",
+        "desde": "2026-07-01",
+        "hasta": "2026-07-31",
+        "registros_leidos": 23047,
+        "turnos_sede1": 6220,
+        "turnos_sede2": 16827
+      }
+    },
+    {
+      "year": 2026,
+      "monthNum": 8,
+      "month": "Agosto",
+      "steps": {
+        "step1": {
+          "sede1": {
+            "turnos": 395,
+            "espera": 17.1,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 553,
+            "espera": 65.6,
+            "atencion": 0.0
+          }
+        },
+        "step2": {
+          "sede1": {
+            "turnos": 395,
+            "espera": 0.0,
+            "atencion": 3.1
+          },
+          "sede2": {
+            "turnos": 553,
+            "espera": 0.0,
+            "atencion": 0.1
+          }
+        },
+        "step3": {
+          "sede1": {
+            "turnos": 2159,
+            "espera": 14.1,
+            "atencion": 10.4
+          },
+          "sede2": {
+            "turnos": 4538,
+            "espera": 27.9,
+            "atencion": 0.2
+          }
+        },
+        "step4": {
+          "sede1": {
+            "turnos": 3528,
+            "espera": 13.7,
+            "atencion": 4.5
+          },
+          "sede2": {
+            "turnos": 7210,
+            "espera": 37.4,
+            "atencion": 1.5
+          }
+        },
+        "step5": {
+          "sede1": {
+            "turnos": 0,
+            "espera": 0.0,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 2474,
+            "espera": 19.7,
+            "atencion": 0.2
+          }
+        }
+      },
+      "_extraccion": {
+        "cuando": "2026-10-27 08:04",
+        "desde": "2026-08-01",
+        "hasta": "2026-08-31",
+        "registros_leidos": 20857,
+        "turnos_sede1": 6082,
+        "turnos_sede2": 14775
+      }
+    },
+    {
+      "year": 2026,
+      "monthNum": 9,
+      "month": "Septiembre",
+      "steps": {
+        "step1": {
+          "sede1": {
+            "turnos": 351,
+            "espera": 12.9,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 595,
+            "espera": 66.3,
+            "atencion": 0.0
+          }
+        },
+        "step2": {
+          "sede1": {
+            "turnos": 351,
+            "espera": 0.0,
+            "atencion": 3.3
+          },
+          "sede2": {
+            "turnos": 595,
+            "espera": 0.0,
+            "atencion": 0.1
+          }
+        },
+        "step3": {
+          "sede1": {
+            "turnos": 2414,
+            "espera": 15.1,
+            "atencion": 9.1
+          },
+          "sede2": {
+            "turnos": 5032,
+            "espera": 30.9,
+            "atencion": 0.1
+          }
+        },
+        "step4": {
+          "sede1": {
+            "turnos": 3469,
+            "espera": 10.4,
+            "atencion": 4.2
+          },
+          "sede2": {
+            "turnos": 7936,
+            "espera": 35.1,
+            "atencion": 1.4
+          }
+        },
+        "step5": {
+          "sede1": {
+            "turnos": 0,
+            "espera": 0.0,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 2338,
+            "espera": 23.1,
+            "atencion": 0.1
+          }
+        }
+      },
+      "_extraccion": {
+        "cuando": "2026-10-27 08:04",
+        "desde": "2026-09-01",
+        "hasta": "2026-09-30",
+        "registros_leidos": 22135,
+        "turnos_sede1": 6234,
+        "turnos_sede2": 15901
+      }
+    },
+    {
+      "year": 2026,
+      "monthNum": 10,
+      "month": "Octubre",
+      "steps": {
+        "step1": {
+          "sede1": {
+            "turnos": 316,
+            "espera": 16.6,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 393,
+            "espera": 49.9,
+            "atencion": 0.0
+          }
+        },
+        "step2": {
+          "sede1": {
+            "turnos": 316,
+            "espera": 0.0,
+            "atencion": 3.9
+          },
+          "sede2": {
+            "turnos": 393,
+            "espera": 0.0,
+            "atencion": 0.1
+          }
+        },
+        "step3": {
+          "sede1": {
+            "turnos": 1794,
+            "espera": 14.3,
+            "atencion": 9.2
+          },
+          "sede2": {
+            "turnos": 3992,
+            "espera": 25.3,
+            "atencion": 0.1
+          }
+        },
+        "step4": {
+          "sede1": {
+            "turnos": 2919,
+            "espera": 13.5,
+            "atencion": 4.3
+          },
+          "sede2": {
+            "turnos": 6310,
+            "espera": 29.6,
+            "atencion": 1.4
+          }
+        },
+        "step5": {
+          "sede1": {
+            "turnos": 0,
+            "espera": 0.0,
+            "atencion": 0.0
+          },
+          "sede2": {
+            "turnos": 1731,
+            "espera": 18.3,
+            "atencion": 0.0
+          }
+        }
+      },
+      "_extraccion": {
+        "cuando": "2026-10-27 08:04",
         "desde": "2026-10-01",
-        "hasta": "2026-10-26",
-        "registros_leidos": 16710,
-        "turnos_sede1": 4769,
-        "turnos_sede2": 11941
+        "hasta": "2026-10-27",
+        "registros_leidos": 17455,
+        "turnos_sede1": 5029,
+        "turnos_sede2": 12426
       }
     }
   ],
@@ -4088,11 +4120,11 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 6075,
-          "contestadas": 2688,
-          "perdidas": 3387,
-          "esperaMin": 7.0,
-          "slaPct": 8.59,
+          "recibidas": 6528,
+          "contestadas": 2729,
+          "perdidas": 3799,
+          "esperaMin": 7.3,
+          "slaPct": 8.03,
           "agents": [
             {
               "id": "1003",
@@ -4113,9 +4145,9 @@
             {
               "id": "1006",
               "name": "Juliam Aguilar",
-              "timbradas": 704,
-              "contestadas": 586,
-              "perdidas": 118,
+              "timbradas": 753,
+              "contestadas": 627,
+              "perdidas": 126,
               "duracionMin": 4.8
             },
             {
@@ -4140,11 +4172,11 @@
           "id": "506013",
           "name": "Mutual Contributivo",
           "isMutual": true,
-          "recibidas": 1317,
-          "contestadas": 788,
-          "perdidas": 529,
-          "esperaMin": 5.0,
-          "slaPct": 15.95,
+          "recibidas": 1418,
+          "contestadas": 831,
+          "perdidas": 587,
+          "esperaMin": 5.2,
+          "slaPct": 15.8,
           "agents": [
             {
               "id": "1003",
@@ -4155,20 +4187,20 @@
               "duracionMin": 4.8
             },
             {
+              "id": "1006",
+              "name": "Juliam Aguilar",
+              "timbradas": 276,
+              "contestadas": 217,
+              "perdidas": 59,
+              "duracionMin": 4.9
+            },
+            {
               "id": "1018",
               "name": "Karen Tatiana",
               "timbradas": 213,
               "contestadas": 208,
               "perdidas": 5,
               "duracionMin": 3.5
-            },
-            {
-              "id": "1006",
-              "name": "Juliam Aguilar",
-              "timbradas": 252,
-              "contestadas": 202,
-              "perdidas": 50,
-              "duracionMin": 4.9
             },
             {
               "id": "1002",
@@ -4181,10 +4213,10 @@
             {
               "id": "1001",
               "name": "Fabiola Bustos",
-              "timbradas": 16,
-              "contestadas": 12,
-              "perdidas": 4,
-              "duracionMin": 3.0
+              "timbradas": 52,
+              "contestadas": 40,
+              "perdidas": 12,
+              "duracionMin": 3.5
             }
           ]
         },
@@ -4192,19 +4224,19 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 1011,
-          "contestadas": 936,
-          "perdidas": 75,
+          "recibidas": 1075,
+          "contestadas": 996,
+          "perdidas": 79,
           "esperaMin": 0.5,
-          "slaPct": 84.77,
+          "slaPct": 84.74,
           "agents": [
             {
               "id": "1005",
               "name": "Yuranis Castañeda",
-              "timbradas": 602,
-              "contestadas": 513,
-              "perdidas": 89,
-              "duracionMin": 2.8
+              "timbradas": 639,
+              "contestadas": 547,
+              "perdidas": 92,
+              "duracionMin": 2.9
             },
             {
               "id": "1001",
@@ -4217,10 +4249,10 @@
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 109,
-              "contestadas": 98,
-              "perdidas": 11,
-              "duracionMin": 4.5
+              "timbradas": 134,
+              "contestadas": 121,
+              "perdidas": 13,
+              "duracionMin": 4.3
             },
             {
               "id": "1003",
@@ -4233,30 +4265,30 @@
             {
               "id": "1006",
               "name": "Juliam Aguilar",
-              "timbradas": 26,
-              "contestadas": 24,
+              "timbradas": 29,
+              "contestadas": 27,
               "perdidas": 2,
-              "duracionMin": 4.7
+              "duracionMin": 5.1
             }
           ]
         },
         {
           "id": "506015",
-          "name": "Cirugía Refractiva",
+          "name": "Cirug?a Refractiva",
           "isMutual": false,
-          "recibidas": 65,
-          "contestadas": 56,
+          "recibidas": 72,
+          "contestadas": 63,
           "perdidas": 9,
           "esperaMin": 0.5,
-          "slaPct": 81.54,
+          "slaPct": 81.94,
           "agents": [
             {
               "id": "1005",
               "name": "Yuranis Castañeda",
-              "timbradas": 40,
-              "contestadas": 31,
+              "timbradas": 41,
+              "contestadas": 32,
               "perdidas": 9,
-              "duracionMin": 3.2
+              "duracionMin": 3.3
             },
             {
               "id": "1001",
@@ -4269,10 +4301,10 @@
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 6,
-              "contestadas": 5,
+              "timbradas": 12,
+              "contestadas": 11,
               "perdidas": 1,
-              "duracionMin": 2.2
+              "duracionMin": 3.3
             },
             {
               "id": "1006",
@@ -4297,26 +4329,26 @@
         {
           "id": "1018",
           "name": "Karen Tatiana",
-          "timbradas": 1118,
-          "contestadas": 1091,
-          "perdidas": 27,
+          "timbradas": 1149,
+          "contestadas": 1120,
+          "perdidas": 29,
           "duracionMin": 3.6
         },
         {
           "id": "1006",
           "name": "Juliam Aguilar",
-          "timbradas": 983,
-          "contestadas": 813,
-          "perdidas": 170,
+          "timbradas": 1059,
+          "contestadas": 872,
+          "perdidas": 187,
           "duracionMin": 4.8
         },
         {
           "id": "1005",
           "name": "Yuranis Castañeda",
-          "timbradas": 642,
-          "contestadas": 544,
-          "perdidas": 98,
-          "duracionMin": 2.8
+          "timbradas": 680,
+          "contestadas": 579,
+          "perdidas": 101,
+          "duracionMin": 2.9
         },
         {
           "id": "1002",
@@ -4329,10 +4361,10 @@
         {
           "id": "1001",
           "name": "Fabiola Bustos",
-          "timbradas": 470,
-          "contestadas": 354,
-          "perdidas": 116,
-          "duracionMin": 4.0
+          "timbradas": 506,
+          "contestadas": 382,
+          "perdidas": 124,
+          "duracionMin": 3.9
         }
       ]
     }
