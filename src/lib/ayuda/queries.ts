@@ -121,3 +121,35 @@ export async function listTodasFallas(): Promise<Falla[]> {
     .limit(200);
   return (data ?? []).map(mapFalla);
 }
+
+export interface EventoHistorial {
+  id: string;
+  createdAt: string;
+  accion: string;
+  documentoId: string | null;
+  documentoTitulo: string | null;
+  documentoCodigo: string | null;
+  documentoVersion: string | null;
+  usuarioNombre: string;
+  detalle: Record<string, any>;
+}
+
+export async function listHistorialConocimiento(limite = 300): Promise<EventoHistorial[]> {
+  const admin = createServiceClient();
+  const { data } = await admin
+    .from("conocimiento_historial")
+    .select("id, created_at, accion, documento_id, documento_titulo, documento_codigo, documento_version, usuario_nombre, detalle")
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    createdAt: r.created_at,
+    accion: r.accion,
+    documentoId: r.documento_id,
+    documentoTitulo: r.documento_titulo,
+    documentoCodigo: r.documento_codigo,
+    documentoVersion: r.documento_version,
+    usuarioNombre: r.usuario_nombre,
+    detalle: (r.detalle ?? {}) as Record<string, any>,
+  }));
+}

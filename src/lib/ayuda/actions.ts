@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { puedeGestionarConocimiento, requireAdmin, requireAppUser, requireDesarrollador } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
+import { registrarHistorial } from "@/lib/ayuda/historial";
 import { EXTENSIONES_PERMITIDAS, TAMANO_MAXIMO_BYTES, extensionDe, extraerTexto, partirEnFragmentos } from "@/lib/ayuda/extraer";
 
 type Res<T = unknown> = ({ ok: true } & T) | { ok: false; error: string };
@@ -109,6 +110,18 @@ export async function registrarDocumentoAction(input: {
     }
   }
 
+  const errHist = await registrarHistorial(admin, user, {
+    accion: "subida",
+    documento: { id: doc.id, titulo, codigo: limpiar(input.codigo, 60), version: limpiar(input.version, 30) },
+    detalle: { archivo: input.nombreArchivo, tamano_bytes: input.tamano, fragmentos: fragmentos.length, es_formato: !!input.esFormato },
+  });
+  if (errHist) {
+    // Sin historial no hay carga: se deshace para no dejar cambios sin rastro.
+    await admin.from("conocimiento_documentos").delete().eq("id", doc.id);
+    await admin.storage.from(BUCKET).remove([input.path]);
+    return { ok: false, error: "No se pudo registrar el cambio en el historial, así que no se cargó el documento: " + errHist };
+  }
+
   revalidatePath("/ayuda/conocimiento/gestionar");
   return { ok: true, id: doc.id, fragmentos: fragmentos.length };
 }
@@ -117,16 +130,22 @@ export async function cambiarEstadoDocumentoAction(
   id: string,
   estado: "borrador" | "publicado" | "obsoleto"
 ): Promise<Res> {
+  let user;
   try {
-    await requireGestor();
+    user = await requireGestor();
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
   if (!UUID.test(id)) return { ok: false, error: "Documento no válido." };
   const admin = createServiceClient();
 
-  const { data: doc } = await admin.from("conocimiento_documentos").select("codigo").eq("id", id).maybeSingle();
+  const { data: doc } = await admin
+    .from("conocimiento_documentos")
+    .select("id, titulo, codigo, version, estado")
+    .eq("id", id)
+    .maybeSingle();
   if (!doc) return { ok: false, error: "No se encontró el documento." };
+  if (doc.estado === estado) return { ok: true };
 
   const { error } = await admin
     .from("conocimiento_documentos")
@@ -138,30 +157,125 @@ export async function cambiarEstadoDocumentoAction(
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
+  const accion = estado === "publicado" ? "publicacion" : estado === "obsoleto" ? "obsoleto" : "vuelta_a_borrador";
+  const errores: string[] = [];
+  const e1 = await registrarHistorial(admin, user, {
+    accion,
+    documento: { id: doc.id, titulo: doc.titulo, codigo: doc.codigo, version: doc.version },
+    detalle: { de: doc.estado, a: estado },
+  });
+  if (e1) errores.push(e1);
+
   // Una versión nueva reemplaza a la anterior: mismo código => la anterior queda obsoleta.
   if (estado === "publicado" && doc.codigo) {
-    await admin
+    const { data: previas } = await admin
       .from("conocimiento_documentos")
-      .update({ estado: "obsoleto", updated_at: new Date().toISOString() })
+      .select("id, titulo, codigo, version")
       .eq("codigo", doc.codigo)
       .eq("estado", "publicado")
       .neq("id", id);
+    for (const previa of previas ?? []) {
+      await admin
+        .from("conocimiento_documentos")
+        .update({ estado: "obsoleto", updated_at: new Date().toISOString() })
+        .eq("id", previa.id);
+      const e2 = await registrarHistorial(admin, user, {
+        accion: "obsoleto_por_nueva_version",
+        documento: { id: previa.id, titulo: previa.titulo, codigo: previa.codigo, version: previa.version },
+        detalle: { reemplazado_por: id, nueva_version: doc.version },
+      });
+      if (e2) errores.push(e2);
+    }
   }
 
   revalidatePath("/ayuda/conocimiento/gestionar");
+  if (errores.length > 0) {
+    return { ok: false, error: "El cambio se aplicó, pero no se pudo registrar en el historial. Avisa al equipo de desarrollo: " + errores[0] };
+  }
+  return { ok: true };
+}
+
+export async function editarDocumentoAction(
+  id: string,
+  campos: { titulo: string; descripcion: string; proceso: string; codigo: string; version: string; esFormato: boolean }
+): Promise<Res> {
+  let user;
+  try {
+    user = await requireGestor();
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  if (!UUID.test(id)) return { ok: false, error: "Documento no válido." };
+  const titulo = limpiar(campos.titulo, 200);
+  if (!titulo) return { ok: false, error: "El título no puede quedar vacío." };
+
+  const admin = createServiceClient();
+  const { data: actual } = await admin
+    .from("conocimiento_documentos")
+    .select("id, titulo, descripcion, proceso, codigo, version, es_formato")
+    .eq("id", id)
+    .maybeSingle();
+  if (!actual) return { ok: false, error: "No se encontró el documento." };
+
+  const nuevo = {
+    titulo,
+    descripcion: limpiar(campos.descripcion, 1000),
+    proceso: limpiar(campos.proceso, 120),
+    codigo: limpiar(campos.codigo, 60),
+    version: limpiar(campos.version, 30),
+    es_formato: !!campos.esFormato,
+  };
+  const cambios: Record<string, { de: unknown; a: unknown }> = {};
+  (Object.keys(nuevo) as (keyof typeof nuevo)[]).forEach((k) => {
+    if ((actual[k] ?? null) !== (nuevo[k] ?? null)) cambios[k] = { de: actual[k] ?? null, a: nuevo[k] ?? null };
+  });
+  if (Object.keys(cambios).length === 0) return { ok: true };
+
+  const { error } = await admin
+    .from("conocimiento_documentos")
+    .update({ ...nuevo, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  // El primer fragmento lleva título/código/proceso/descripción: se actualiza para que la búsqueda los vea.
+  const cabecera = [nuevo.titulo, nuevo.codigo, nuevo.proceso, nuevo.descripcion].filter(Boolean).join(" — ");
+  await admin.from("conocimiento_fragmentos").update({ texto: cabecera }).eq("documento_id", id).eq("orden", 0);
+
+  const errHist = await registrarHistorial(admin, user, {
+    accion: "edicion",
+    documento: { id, titulo: nuevo.titulo, codigo: nuevo.codigo, version: nuevo.version },
+    detalle: { cambios },
+  });
+  revalidatePath("/ayuda/conocimiento/gestionar");
+  if (errHist) {
+    return { ok: false, error: "El cambio se aplicó, pero no se pudo registrar en el historial. Avisa al equipo de desarrollo: " + errHist };
+  }
   return { ok: true };
 }
 
 export async function eliminarDocumentoAction(id: string): Promise<Res> {
+  let user;
   try {
-    await requireGestor();
+    user = await requireGestor();
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
   if (!UUID.test(id)) return { ok: false, error: "Documento no válido." };
   const admin = createServiceClient();
-  const { data: doc } = await admin.from("conocimiento_documentos").select("storage_path").eq("id", id).maybeSingle();
+  const { data: doc } = await admin
+    .from("conocimiento_documentos")
+    .select("id, titulo, codigo, version, estado, storage_path, nombre_archivo")
+    .eq("id", id)
+    .maybeSingle();
   if (!doc) return { ok: false, error: "No se encontró el documento." };
+
+  // Primero el rastro: si no se puede registrar, no se elimina.
+  const errHist = await registrarHistorial(admin, user, {
+    accion: "eliminacion",
+    documento: { id: doc.id, titulo: doc.titulo, codigo: doc.codigo, version: doc.version },
+    detalle: { estado_al_eliminar: doc.estado, archivo: doc.nombre_archivo },
+  });
+  if (errHist) return { ok: false, error: "No se pudo registrar en el historial, así que no se eliminó: " + errHist };
 
   const { error } = await admin.from("conocimiento_documentos").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
@@ -194,16 +308,28 @@ export async function urlDescargaAction(id: string): Promise<Res<{ url: string }
 }
 
 export async function setGestorConocimientoAction(userId: string, valor: boolean): Promise<Res> {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch {
     return { ok: false, error: "Solo un administrador puede dar este permiso." };
   }
   if (!UUID.test(userId)) return { ok: false, error: "Usuario no válido." };
   const admin = createServiceClient();
+  const { data: objetivo } = await admin.from("app_users").select("nombre_completo, email").eq("id", userId).maybeSingle();
+  if (!objetivo) return { ok: false, error: "Usuario no encontrado." };
+
   const { error } = await admin.from("app_users").update({ es_gestor_conocimiento: valor }).eq("id", userId);
   if (error) return { ok: false, error: error.message };
+
+  const errHist = await registrarHistorial(admin, actor, {
+    accion: valor ? "permiso_gestor_otorgado" : "permiso_gestor_retirado",
+    detalle: { usuario_afectado: objetivo.nombre_completo, correo: objetivo.email, usuario_afectado_id: userId },
+  });
   revalidatePath("/usuarios");
+  if (errHist) {
+    return { ok: false, error: "El permiso se cambió, pero no se pudo registrar en el historial: " + errHist };
+  }
   return { ok: true };
 }
 

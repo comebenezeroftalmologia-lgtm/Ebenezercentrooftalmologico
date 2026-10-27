@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, History } from "lucide-react";
 import { puedeGestionarConocimiento, requireAppUser } from "@/lib/auth";
 import { listDocumentosConocimiento, listPreguntasSinRespuesta } from "@/lib/ayuda/queries";
 import { redirect } from "next/navigation";
@@ -19,7 +19,16 @@ export default async function GestionarConocimientoPage() {
       <Link href="/ayuda/conocimiento" className="mb-3 inline-flex items-center gap-1 text-xs text-ink-3 hover:text-navy">
         <ArrowLeft className="h-3 w-3" /> Volver al Centro de Conocimiento
       </Link>
-      <h1 className="mb-1 text-2xl font-semibold text-navy">Gestionar documentos</h1>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold text-navy">Gestionar documentos</h1>
+        <Link
+          href="/ayuda/conocimiento/gestionar/historial"
+          className="flex items-center gap-1.5 rounded-md border border-line bg-white px-3 py-1.5 text-xs text-ink-2 transition hover:border-navy-20"
+        >
+          <History className="h-3.5 w-3.5" strokeWidth={1.75} />
+          Historial de cambios
+        </Link>
+      </div>
       <p className="mb-6 text-sm text-ink-3">
         Sube los documentos oficiales. Quedan en <strong>borrador</strong> hasta que los publiques; solo los publicados los usa la IA
         y los ve el equipo. Al publicar una versión nueva con el mismo código, la anterior pasa a obsoleta.

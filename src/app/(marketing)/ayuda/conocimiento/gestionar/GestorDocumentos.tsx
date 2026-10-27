@@ -2,10 +2,11 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Trash2, Upload } from "lucide-react";
+import { Download, Pencil, Trash2, Upload } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
   cambiarEstadoDocumentoAction,
+  editarDocumentoAction,
   eliminarDocumentoAction,
   prepararSubidaAction,
   registrarDocumentoAction,
@@ -24,6 +25,71 @@ function tamano(b: number | null): string {
   return b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
 }
 
+function EditorDocumento({ d, onListo }: { d: DocumentoConocimiento; onListo: () => void }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function guardar(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setError(null);
+    start(async () => {
+      const r = await editarDocumentoAction(d.id, {
+        titulo: String(fd.get("titulo") ?? ""),
+        descripcion: String(fd.get("descripcion") ?? ""),
+        proceso: String(fd.get("proceso") ?? ""),
+        codigo: String(fd.get("codigo") ?? ""),
+        version: String(fd.get("version") ?? ""),
+        esFormato: fd.get("esFormato") === "on",
+      });
+      if (!r.ok) return setError(r.error);
+      router.refresh();
+      onListo();
+    });
+  }
+
+  return (
+    <form onSubmit={guardar} className="mt-3 grid w-full grid-cols-1 gap-3 rounded-lg border border-line-2 bg-paper p-3 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <label className={etiqueta}>Título</label>
+        <input name="titulo" required defaultValue={d.titulo} maxLength={200} className={campo} />
+      </div>
+      <div>
+        <label className={etiqueta}>Proceso o área</label>
+        <input name="proceso" defaultValue={d.proceso ?? ""} maxLength={120} className={campo} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={etiqueta}>Código</label>
+          <input name="codigo" defaultValue={d.codigo ?? ""} maxLength={60} className={campo} />
+        </div>
+        <div>
+          <label className={etiqueta}>Versión</label>
+          <input name="version" defaultValue={d.version ?? ""} maxLength={30} className={campo} />
+        </div>
+      </div>
+      <div className="sm:col-span-2">
+        <label className={etiqueta}>Descripción</label>
+        <input name="descripcion" defaultValue={d.descripcion ?? ""} maxLength={1000} className={campo} />
+      </div>
+      <label className="flex items-center gap-2 text-sm text-ink-2">
+        <input name="esFormato" type="checkbox" defaultChecked={d.esFormato} className="h-4 w-4 rounded border-line" />
+        Es un formato descargable
+      </label>
+      <div className="flex items-center gap-2 sm:justify-end">
+        <button type="submit" disabled={pending} className="rounded-md bg-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-navy-90 disabled:opacity-60">
+          {pending ? "Guardando…" : "Guardar (queda en el historial)"}
+        </button>
+        <button type="button" onClick={onListo} className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-navy-20">
+          Cancelar
+        </button>
+      </div>
+      {error && <p className="text-xs text-[#B3261E] sm:col-span-2">{error}</p>}
+    </form>
+  );
+}
+
 const campo = "w-full rounded-lg border border-line px-3 py-2 text-sm text-ink";
 const etiqueta = "eb-label mb-1 block text-[11px] text-ink-3";
 
@@ -39,6 +105,7 @@ export function GestorDocumentos({
   const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
   const [pending, start] = useTransition();
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
   async function subir(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -175,6 +242,9 @@ export function GestorDocumentos({
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
+                  <button type="button" onClick={() => setEditandoId(editandoId === d.id ? null : d.id)} title="Editar datos" className="rounded-md border border-line p-1.5 text-ink-2 hover:border-navy-20">
+                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  </button>
                   <button type="button" onClick={() => void descargar(d.id)} title="Descargar original" className="rounded-md border border-line p-1.5 text-ink-2 hover:border-navy-20">
                     <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
                   </button>
@@ -210,6 +280,7 @@ export function GestorDocumentos({
                     <Trash2 className="h-3 w-3" strokeWidth={1.75} />
                   </button>
                 </div>
+                {editandoId === d.id && <EditorDocumento d={d} onListo={() => setEditandoId(null)} />}
               </li>
             ))}
           </ul>
