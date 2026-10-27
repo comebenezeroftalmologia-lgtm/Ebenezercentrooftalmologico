@@ -6,6 +6,7 @@ import { ROLES_PLATAFORMA, rolLabel, type AppUser, type EstadoAcceso, type RolPl
 import type { Modulo } from "@/lib/modulos";
 import { MODULOS, modulosPorGrupo, moduloLabel } from "@/lib/modulos";
 import { actualizarAccesoUsuarioAction, eliminarUsuarioAction } from "@/lib/procesos/actions";
+import { GestorConocimientoToggle } from "./GestorConocimientoToggle";
 import { RestablecerPasswordButton } from "./RestablecerPasswordButton";
 import { ToggleActivoButton } from "./ToggleActivoButton";
 
@@ -30,6 +31,7 @@ export function UsuarioCard({
   liderNombre,
   yoEsLider,
   modulosDisponibles,
+  puedeAsignarGestor,
 }: {
   usuario: AppUser;
   acceso?: EstadoAcceso;
@@ -42,6 +44,7 @@ export function UsuarioCard({
   liderNombre: string | null;
   yoEsLider: boolean;
   modulosDisponibles: Modulo[];
+  puedeAsignarGestor: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [rol, setRol] = useState<RolPlataforma>(usuario.rol);
@@ -208,6 +211,10 @@ export function UsuarioCard({
             </div>
           )}
         </div>
+      )}
+
+      {puedeAsignarGestor && !usuario.isAdmin && (
+        <GestorConocimientoToggle userId={usuario.id} inicial={usuario.esGestorConocimiento} />
       )}
 
       {error && <p className="mb-3 text-xs text-[#B3261E]">{error}</p>}

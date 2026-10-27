@@ -36,6 +36,8 @@ export interface AppUser {
   rol: RolPlataforma;
   /** Líder directo (solo usuarios básicos). */
   liderId: string | null;
+  /** Puede cargar y publicar documentos del Centro de Conocimiento. */
+  esGestorConocimiento: boolean;
   activo: boolean;
 }
 

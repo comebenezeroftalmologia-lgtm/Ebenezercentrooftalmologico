@@ -98,6 +98,7 @@ function mapAppUser(row: any): AppUser {
     isAdmin: row.is_admin,
     rol: (row.rol ?? (row.is_admin ? "administrador" : "usuario_basico")) as RolPlataforma,
     liderId: row.lider_id ?? null,
+    esGestorConocimiento: row.es_gestor_conocimiento ?? false,
     activo: row.activo,
   };
 }
@@ -124,7 +125,7 @@ export async function listAppUsers(): Promise<AppUser[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("app_users")
-    .select("id, nombre_completo, email, is_admin, rol, lider_id, activo")
+    .select("id, nombre_completo, email, is_admin, rol, lider_id, es_gestor_conocimiento, activo")
     .order("nombre_completo");
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAppUser);

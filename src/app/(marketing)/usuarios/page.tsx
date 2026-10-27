@@ -77,6 +77,7 @@ export default async function UsuariosPage() {
             liderNombre={u.liderId ? nombrePorId[u.liderId] ?? null : null}
             yoEsLider={yo.rol === "lider"}
             modulosDisponibles={modulosDisponibles}
+            puedeAsignarGestor={yo.isAdmin}
           />
         ))}
       </div>

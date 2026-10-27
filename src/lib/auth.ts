@@ -22,13 +22,13 @@ export const getCurrentAppUser = cache(async (): Promise<AppUser | null> => {
   const admin = createServiceClient();
   let { data, error } = (await admin
     .from("app_users")
-    .select("id, nombre_completo, email, is_admin, rol, lider_id, activo")
+    .select("id, nombre_completo, email, is_admin, rol, lider_id, es_gestor_conocimiento, activo")
     .eq("id", userId)
     .single()) as { data: any; error: any };
 
   // Si la migración 019 (roles) aún no se ha corrido, las columnas nuevas no
   // existen: se cae al esquema anterior en vez de sacar a todos de la plataforma.
-  if (error && /rol|lider_id/.test(String(error.message))) {
+  if (error && /rol|lider_id|es_gestor/.test(String(error.message))) {
     const legacy = await admin
       .from("app_users")
       .select("id, nombre_completo, email, is_admin, activo")
@@ -49,6 +49,7 @@ export const getCurrentAppUser = cache(async (): Promise<AppUser | null> => {
     isAdmin: data.is_admin,
     rol,
     liderId: data.lider_id ?? null,
+    esGestorConocimiento: data.es_gestor_conocimiento ?? false,
     activo: data.activo,
   };
 });
@@ -83,6 +84,11 @@ export async function requireGestorUsuarios(): Promise<AppUser> {
   return user;
 }
 
+/** Quien puede cargar/publicar conocimiento: gestores designados, administradores y desarrolladores. */
+export function puedeGestionarConocimiento(user: Pick<AppUser, "isAdmin" | "esGestorConocimiento">): boolean {
+  return user.isAdmin || user.esGestorConocimiento;
+}
+
 /** Roles que `actor` puede asignar al invitar o editar a otra persona. */
 export function rolesAsignables(actor: Pick<AppUser, "rol">): RolPlataforma[] {
   if (actor.rol === "desarrollador") return ["desarrollador", "administrador", "lider", "usuario_basico"];
@@ -107,7 +113,7 @@ export async function getAppUserById(id: string): Promise<AppUser | null> {
   const admin = createServiceClient();
   const { data, error } = await admin
     .from("app_users")
-    .select("id, nombre_completo, email, is_admin, rol, lider_id, activo")
+    .select("id, nombre_completo, email, is_admin, rol, lider_id, es_gestor_conocimiento, activo")
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
@@ -118,6 +124,7 @@ export async function getAppUserById(id: string): Promise<AppUser | null> {
     isAdmin: data.is_admin,
     rol: (data.rol ?? (data.is_admin ? "administrador" : "usuario_basico")) as RolPlataforma,
     liderId: data.lider_id ?? null,
+    esGestorConocimiento: data.es_gestor_conocimiento ?? false,
     activo: data.activo,
   };
 }

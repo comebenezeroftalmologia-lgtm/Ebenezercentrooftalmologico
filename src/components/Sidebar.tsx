@@ -6,11 +6,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart2,
+  BookOpen,
+  Bug,
   FileSpreadsheet,
+  GraduationCap,
   CalendarClock,
   Folder,
   Home,
   LayoutGrid,
+  LifeBuoy,
   LineChart,
   LogOut,
   PanelLeftClose,
@@ -124,6 +128,7 @@ export function RielGlobal({
   const enWorkCenter = pathname === "/workcenter" || pathname.startsWith("/workcenter/");
   const enUsuarios = pathname === "/usuarios" || pathname.startsWith("/usuarios/");
   const enPerfil = pathname === "/perfil" || pathname.startsWith("/perfil/");
+  const enAyuda = pathname === "/ayuda" || pathname.startsWith("/ayuda/");
   const enAnalytics = pathname === "/analytics" || analyticsAllowed.some((m) => pathname === m.href);
 
   const itemClass = (activo: boolean) =>
@@ -191,6 +196,12 @@ export function RielGlobal({
           </Link>
         )}
 
+        <Link href="/ayuda" className={itemClass(enAyuda)} title="Ayuda">
+          {enAyuda && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
+          <LifeBuoy className="h-[19px] w-[19px]" strokeWidth={1.75} />
+          <span className="text-[10.5px] leading-none tracking-tight">Ayuda</span>
+        </Link>
+
         <Link href="/perfil" className={itemClass(enPerfil)} title="Perfil">
           {enPerfil && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
           <UserCircle className="h-[19px] w-[19px]" strokeWidth={1.75} />
@@ -247,10 +258,13 @@ export function Sidebar({
   const enInicio = pathname === "/";
   const enUsuarios = pathname === "/usuarios" || pathname.startsWith("/usuarios/");
   const enPerfil = pathname === "/perfil" || pathname.startsWith("/perfil/");
+  const enAyuda = pathname === "/ayuda" || pathname.startsWith("/ayuda/");
 
   const tituloBandeja = enInicio
     ? "Inicio · Ebenezer"
-    : enUsuarios
+    : enAyuda
+      ? "Ayuda"
+      : enUsuarios
       ? "Usuarios y Accesos"
       : enPerfil
         ? "Mi Perfil"
@@ -258,7 +272,7 @@ export function Sidebar({
 
   const placeholderBusqueda = enInicio
     ? "Buscar módulo o vista..."
-    : enUsuarios || enPerfil
+    : enUsuarios || enPerfil || enAyuda
       ? "Filtrar opción..."
       : "Filtrar tablero...";
 
@@ -384,6 +398,35 @@ export function Sidebar({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] leading-tight">Mi Perfil</p>
                       <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Datos de cuenta y clave</p>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </>
+          ) : enAyuda ? (
+            <>
+              <div className="mb-4">
+                <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Ayuda</div>
+                <div className="flex flex-col gap-1">
+                  <Link href="/ayuda/conocimiento" className={pill(pathname.startsWith("/ayuda/conocimiento"))}>
+                    <BookOpen className={iconCls(pathname.startsWith("/ayuda/conocimiento"))} strokeWidth={1.85} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] leading-tight">Centro de Conocimiento</p>
+                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Pregunta a la IA de Ebenezer</p>
+                    </div>
+                  </Link>
+                  <Link href="/ayuda/academia" className={pill(pathname.startsWith("/ayuda/academia"))}>
+                    <GraduationCap className={iconCls(pathname.startsWith("/ayuda/academia"))} strokeWidth={1.85} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] leading-tight">Academia</p>
+                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Próximamente</p>
+                    </div>
+                  </Link>
+                  <Link href="/ayuda/fallas" className={pill(pathname.startsWith("/ayuda/fallas"))}>
+                    <Bug className={iconCls(pathname.startsWith("/ayuda/fallas"))} strokeWidth={1.85} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] leading-tight">Reporte de Fallas</p>
+                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Cuéntanos qué no funciona</p>
                     </div>
                   </Link>
                 </div>
