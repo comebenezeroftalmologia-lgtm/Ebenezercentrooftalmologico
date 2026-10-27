@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Expand, RotateCcw, X } from "lucide-react";
@@ -16,6 +17,9 @@ export function BotonFlotanteIA({ nombre }: { nombre?: string }) {
   const [abierto, setAbierto] = useState(false);
   const [montado, setMontado] = useState(false); // el chat se monta al abrir por primera vez y conserva la conversación
   const [version, setVersion] = useState(0); // cambiar la clave reinicia la conversación
+  const [listo, setListo] = useState(false); // el portal necesita document.body
+
+  useEffect(() => setListo(true), []);
 
   useEffect(() => {
     if (!abierto) return;
@@ -27,11 +31,12 @@ export function BotonFlotanteIA({ nombre }: { nombre?: string }) {
   }, [abierto]);
 
   // Ya estás en el Centro de Conocimiento: no hace falta el atajo.
-  if (pathname.startsWith("/ayuda/conocimiento")) return null;
+  if (!listo || pathname.startsWith("/ayuda/conocimiento")) return null;
 
   const primerNombre = (nombre ?? "").trim().split(/\s+/)[0] || "equipo";
 
-  return (
+  // Se pinta en <body> (portal) para quedar por encima de cualquier capa de la página, p. ej. el encabezado fijo.
+  return createPortal(
     <>
       {!abierto && (
         <button
@@ -41,7 +46,7 @@ export function BotonFlotanteIA({ nombre }: { nombre?: string }) {
             setAbierto(true);
           }}
           aria-label="Preguntar a la IA de Ebenezer"
-          className="group fixed bottom-5 right-5 z-40 flex items-center"
+          className="group fixed bottom-5 right-5 z-[90] flex items-center"
         >
           <span className="pointer-events-none mr-2 translate-x-2 whitespace-nowrap rounded-full bg-[#081A3A] px-3 py-1.5 text-[12px] font-medium text-[#CFE3FF] opacity-0 shadow-[0_4px_14px_rgba(8,26,58,0.3)] transition duration-200 group-hover:translate-x-0 group-hover:opacity-100">
             Pregúntale a la IA de Ebenezer
@@ -61,7 +66,7 @@ export function BotonFlotanteIA({ nombre }: { nombre?: string }) {
         role="dialog"
         aria-label="Asistente IA de Ebenezer"
         aria-hidden={!abierto}
-        className={`select-text text-[#0F172A] fixed inset-y-0 right-0 z-50 flex w-full max-w-[430px] flex-col border-l border-[#DCE7F7] bg-[#F8FAFE] shadow-[-12px_0_40px_rgba(8,26,58,0.18)] transition-transform duration-300 ease-out ${
+        className={`select-text text-[#0F172A] fixed inset-y-0 right-0 z-[100] flex w-full max-w-[430px] flex-col border-l border-[#DCE7F7] bg-[#F8FAFE] shadow-[-12px_0_40px_rgba(8,26,58,0.18)] transition-transform duration-300 ease-out ${
           abierto ? "translate-x-0" : "pointer-events-none translate-x-full"
         }`}
       >
@@ -103,6 +108,7 @@ export function BotonFlotanteIA({ nombre }: { nombre?: string }) {
           {montado && <ConocimientoChat key={version} nombre={primerNombre} compacto />}
         </div>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }
