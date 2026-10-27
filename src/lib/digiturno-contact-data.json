@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-27 08:04:36",
+  "updatedAt": "2026-10-27 08:07:09",
   "sources": {
     "digiturno": "http://192.168.200.11:6663/SGTWidgetGestureApi",
     "contactCenter": "https://pbx.itmsas.com/sonata/service/v1/api"
@@ -12,50 +12,50 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 358,
-            "espera": 8.1,
+            "turnos": 3321,
+            "espera": 5.7,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 822,
-            "espera": 36.3,
+            "turnos": 8000,
+            "espera": 26.3,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 358,
+            "turnos": 3321,
             "espera": 0.0,
-            "atencion": 3.3
+            "atencion": 2.4
           },
           "sede2": {
-            "turnos": 822,
+            "turnos": 8000,
             "espera": 0.0,
             "atencion": 0.8
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 2224,
-            "espera": 16.4,
-            "atencion": 8.3
+            "turnos": 1511,
+            "espera": 22.4,
+            "atencion": 10.8
           },
           "sede2": {
-            "turnos": 4196,
-            "espera": 30.1,
-            "atencion": 1.5
+            "turnos": 4360,
+            "espera": 30.8,
+            "atencion": 1.9
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 2764,
-            "espera": 11.4,
-            "atencion": 4.1
+            "turnos": 514,
+            "espera": 35.4,
+            "atencion": 13.2
           },
           "sede2": {
-            "turnos": 9394,
-            "espera": 32.9,
-            "atencion": 2.4
+            "turnos": 2052,
+            "espera": 58.4,
+            "atencion": 7.3
           }
         },
         "step5": {
@@ -72,7 +72,7 @@
         }
       },
       "_extraccion": {
-        "cuando": "2026-10-27 08:04",
+        "cuando": "2026-10-27 08:07",
         "desde": "2026-06-01",
         "hasta": "2026-06-30",
         "registros_leidos": 20220,
@@ -87,50 +87,50 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 378,
-            "espera": 13.0,
+            "turnos": 3803,
+            "espera": 7.8,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 754,
-            "espera": 51.1,
+            "turnos": 6915,
+            "espera": 29.7,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 378,
+            "turnos": 3803,
             "espera": 0.0,
-            "atencion": 3.9
+            "atencion": 2.5
           },
           "sede2": {
-            "turnos": 754,
+            "turnos": 6915,
             "espera": 0.0,
-            "atencion": 0.4
+            "atencion": 0.3
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 2363,
-            "espera": 15.3,
-            "atencion": 9.1
+            "turnos": 1750,
+            "espera": 19.7,
+            "atencion": 11.0
           },
           "sede2": {
-            "turnos": 5076,
-            "espera": 26.0,
-            "atencion": 0.6
+            "turnos": 5094,
+            "espera": 27.0,
+            "atencion": 0.8
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 3479,
-            "espera": 13.2,
-            "atencion": 4.3
+            "turnos": 667,
+            "espera": 34.0,
+            "atencion": 14.3
           },
           "sede2": {
-            "turnos": 8416,
-            "espera": 36.4,
-            "atencion": 1.6
+            "turnos": 2237,
+            "espera": 59.5,
+            "atencion": 4.4
           }
         },
         "step5": {
@@ -147,7 +147,7 @@
         }
       },
       "_extraccion": {
-        "cuando": "2026-10-27 08:04",
+        "cuando": "2026-10-27 08:07",
         "desde": "2026-07-01",
         "hasta": "2026-07-31",
         "registros_leidos": 23047,
@@ -162,50 +162,50 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 395,
-            "espera": 17.1,
+            "turnos": 3729,
+            "espera": 8.0,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 553,
-            "espera": 65.6,
+            "turnos": 5676,
+            "espera": 31.6,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 395,
+            "turnos": 3729,
             "espera": 0.0,
-            "atencion": 3.1
+            "atencion": 2.4
           },
           "sede2": {
-            "turnos": 553,
+            "turnos": 5676,
             "espera": 0.0,
             "atencion": 0.1
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 2159,
-            "espera": 14.1,
-            "atencion": 10.4
+            "turnos": 1755,
+            "espera": 18.4,
+            "atencion": 12.6
           },
           "sede2": {
-            "turnos": 4538,
-            "espera": 27.9,
+            "turnos": 4588,
+            "espera": 29.2,
             "atencion": 0.2
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 3528,
-            "espera": 13.7,
-            "atencion": 4.5
+            "turnos": 598,
+            "espera": 39.1,
+            "atencion": 14.6
           },
           "sede2": {
-            "turnos": 7210,
-            "espera": 37.4,
-            "atencion": 1.5
+            "turnos": 2037,
+            "espera": 58.5,
+            "atencion": 5.0
           }
         },
         "step5": {
@@ -222,7 +222,7 @@
         }
       },
       "_extraccion": {
-        "cuando": "2026-10-27 08:04",
+        "cuando": "2026-10-27 08:07",
         "desde": "2026-08-01",
         "hasta": "2026-08-31",
         "registros_leidos": 20857,
@@ -237,50 +237,50 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 351,
-            "espera": 12.9,
+            "turnos": 3873,
+            "espera": 6.6,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 595,
-            "espera": 66.3,
+            "turnos": 6551,
+            "espera": 31.2,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 351,
+            "turnos": 3873,
             "espera": 0.0,
-            "atencion": 3.3
+            "atencion": 2.3
           },
           "sede2": {
-            "turnos": 595,
+            "turnos": 6551,
             "espera": 0.0,
             "atencion": 0.1
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 2414,
-            "espera": 15.1,
-            "atencion": 9.1
+            "turnos": 1817,
+            "espera": 19.1,
+            "atencion": 11.1
           },
           "sede2": {
-            "turnos": 5032,
-            "espera": 30.9,
+            "turnos": 4960,
+            "espera": 31.2,
             "atencion": 0.1
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 3469,
-            "espera": 10.4,
-            "atencion": 4.2
+            "turnos": 544,
+            "espera": 30.8,
+            "atencion": 15.5
           },
           "sede2": {
-            "turnos": 7936,
-            "espera": 35.1,
-            "atencion": 1.4
+            "turnos": 2052,
+            "espera": 55.5,
+            "atencion": 5.3
           }
         },
         "step5": {
@@ -297,7 +297,7 @@
         }
       },
       "_extraccion": {
-        "cuando": "2026-10-27 08:04",
+        "cuando": "2026-10-27 08:07",
         "desde": "2026-09-01",
         "hasta": "2026-09-30",
         "registros_leidos": 22135,
@@ -312,50 +312,50 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 316,
-            "espera": 16.6,
+            "turnos": 3175,
+            "espera": 9.3,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 393,
-            "espera": 49.9,
+            "turnos": 5263,
+            "espera": 24.4,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 316,
+            "turnos": 3175,
             "espera": 0.0,
-            "atencion": 3.9
+            "atencion": 2.2
           },
           "sede2": {
-            "turnos": 393,
+            "turnos": 5263,
             "espera": 0.0,
             "atencion": 0.1
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 1794,
-            "espera": 14.3,
-            "atencion": 9.2
+            "turnos": 1370,
+            "espera": 18.2,
+            "atencion": 11.6
           },
           "sede2": {
-            "turnos": 3992,
-            "espera": 25.3,
+            "turnos": 4168,
+            "espera": 27.4,
             "atencion": 0.1
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 2919,
-            "espera": 13.5,
-            "atencion": 4.3
+            "turnos": 484,
+            "espera": 32.9,
+            "atencion": 15.7
           },
           "sede2": {
-            "turnos": 6310,
-            "espera": 29.6,
-            "atencion": 1.4
+            "turnos": 1264,
+            "espera": 51.0,
+            "atencion": 6.8
           }
         },
         "step5": {
@@ -372,7 +372,7 @@
         }
       },
       "_extraccion": {
-        "cuando": "2026-10-27 08:04",
+        "cuando": "2026-10-27 08:07",
         "desde": "2026-10-01",
         "hasta": "2026-10-27",
         "registros_leidos": 17455,
