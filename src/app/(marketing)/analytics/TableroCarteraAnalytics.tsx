@@ -238,6 +238,8 @@ export default function TableroCarteraAnalytics() {
 
   const [modalidadSisma, setModalidadSisma] = useState<"TODAS" | "PYP">("TODAS");
   const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(carteraInitialData.sismaBack.cortes.TODAS.length - 1);
+  const [modoTendenciaCartera, setModoTendenciaCartera] = useState<"AMBAS" | "MES" | "CORTES">("AMBAS");
+  const [serieDestacadaTendencia, setSerieDestacadaTendencia] = useState<"TODAS" | "TOTAL" | "REAL" | "VENCIDA">("TODAS");
 
   // Persiana states for the main cards/boxes
   const [persianaResumenAbierta, setPersianaResumenAbierta] = useState<boolean>(true);
@@ -1299,6 +1301,596 @@ export default function TableroCarteraAnalytics() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTarjetaTendenciaTotalCartera = () => {
+    const nombresMesCorto: Record<string, string> = {
+      "01": "Enero",
+      "02": "Febrero",
+      "03": "Marzo",
+      "04": "Abril",
+      "05": "Mayo",
+      "06": "Junio",
+      "07": "Julio",
+      "08": "Agosto",
+      "09": "Septiembre",
+      "10": "Octubre",
+      "11": "Noviembre",
+      "12": "Diciembre",
+    };
+
+    const totalBaseRef =
+      datosSismaCompletaRef.current?.edades?.saldoTotal ||
+      corteBaseSeleccionado?.carteraTotal ||
+      1;
+    const factorFiltro =
+      tieneFiltroEntidadDirecto && modalidadSisma === "TODAS"
+        ? Math.min(1, Math.max(0, corteSeleccionado.carteraTotal / totalBaseRef))
+        : 1;
+
+    type PuntoTendencia = {
+      id: string;
+      idxCorte: number;
+      fechaRaw: string;
+      ddmm: string;
+      mm: string;
+      yyyy: string;
+      nombreMes: string;
+      esVivo: boolean;
+      labelAmbas: string;
+      labelMes: string;
+      labelCortes: string;
+      carteraTotal: number;
+      totalCarteraReal: number;
+      carteraVencida: number;
+    };
+
+    const puntosBase: PuntoTendencia[] = listaCortesActiva.map((c, idx) => {
+      const fClean = String(c.fechaCorte || "").slice(0, 10);
+      const partes = fClean.split("/");
+      const dd = partes[0] || "01";
+      const mm = partes[1] || "09";
+      const yyyy = partes[2] || "2026";
+      const nombreMes = nombresMesCorto[mm] || "Mes";
+      const esVivo =
+        String(c.fechaCorte || "").toUpperCase().includes("VIVO") ||
+        (Boolean(datosSismaVivo) &&
+          idx === listaCortesActiva.length - 1 &&
+          fClean === datosSismaVivo?.fechaCorte.slice(0, 10));
+
+      const usarDirecto =
+        tieneFiltroEntidadDirecto &&
+        modalidadSisma === "TODAS" &&
+        idx === indiceCorteActivo;
+
+      const cTotal = usarDirecto
+        ? corteSeleccionado.carteraTotal
+        : Math.round(c.carteraTotal * factorFiltro);
+      const cReal = usarDirecto
+        ? corteSeleccionado.totalCarteraReal
+        : Math.round(c.totalCarteraReal * factorFiltro);
+      const cVenc = usarDirecto
+        ? corteSeleccionado.carteraVencida
+        : Math.round(c.carteraVencida * factorFiltro);
+
+      return {
+        id: `${fClean}-${idx}`,
+        idxCorte: idx,
+        fechaRaw: fClean,
+        ddmm: `${dd}/${mm}`,
+        mm,
+        yyyy,
+        nombreMes,
+        esVivo,
+        labelAmbas: `${nombreMes} · ${esVivo ? "Corte Vivo" : "Corte"} ${dd}/${mm}`,
+        labelMes: `${nombreMes} ${yyyy} (${dd}/${mm})`,
+        labelCortes: `${esVivo ? "Corte Vivo" : "Corte"} ${dd}/${mm}/${yyyy}`,
+        carteraTotal: cTotal,
+        totalCarteraReal: cReal,
+        carteraVencida: cVenc,
+      };
+    });
+
+    // Si en modo MES agrupamos por mes tomando el último corte de cada mes (más el corte en vivo si difiere)
+    const puntosMostrar: PuntoTendencia[] =
+      modoTendenciaCartera === "MES"
+        ? (() => {
+            const porMesMap = new Map<string, PuntoTendencia>();
+            puntosBase.forEach((pt) => {
+              const key = pt.esVivo ? `${pt.yyyy}-${pt.mm}-vivo` : `${pt.yyyy}-${pt.mm}`;
+              porMesMap.set(key, pt);
+            });
+            return Array.from(porMesMap.values());
+          })()
+        : puntosBase;
+
+    const n = puntosMostrar.length;
+    const svgW = 680;
+    const svgH = 210;
+    const padL = 52;
+    const padR = 52;
+    const padT = 28;
+    const padB = 34;
+    const plotW = svgW - padL - padR;
+    const plotH = svgH - padT - padB;
+
+    const todosValores = puntosMostrar.flatMap((p) => [
+      p.carteraTotal,
+      p.totalCarteraReal,
+      p.carteraVencida,
+    ]);
+    const maxVal = Math.max(...todosValores, 1) * 1.12;
+    const minVal = Math.max(0, Math.min(...todosValores, 0) * 0.85);
+    const rangoVal = Math.max(1, maxVal - minVal);
+
+    const getX = (i: number) =>
+      n <= 1 ? padL + plotW / 2 : padL + (i / (n - 1)) * plotW;
+    const getY = (val: number) =>
+      padT + plotH - ((val - minVal) / rangoVal) * plotH;
+
+    const construirCurvaSuave = (coords: { x: number; y: number }[]) => {
+      if (coords.length === 0) return "";
+      if (coords.length === 1) return `M ${coords[0].x} ${coords[0].y}`;
+      let d = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+      for (let i = 0; i < coords.length - 1; i++) {
+        const p0 = coords[i];
+        const p1 = coords[i + 1];
+        const cx1 = p0.x + (p1.x - p0.x) * 0.42;
+        const cx2 = p1.x - (p1.x - p0.x) * 0.42;
+        d += ` C ${cx1.toFixed(1)} ${p0.y.toFixed(1)}, ${cx2.toFixed(1)} ${p1.y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+      }
+      return d;
+    };
+
+    const coordsTotal = puntosMostrar.map((p, i) => ({
+      x: getX(i),
+      y: getY(p.carteraTotal),
+      val: p.carteraTotal,
+    }));
+    const coordsReal = puntosMostrar.map((p, i) => ({
+      x: getX(i),
+      y: getY(p.totalCarteraReal),
+      val: p.totalCarteraReal,
+    }));
+    const coordsVencida = puntosMostrar.map((p, i) => ({
+      x: getX(i),
+      y: getY(p.carteraVencida),
+      val: p.carteraVencida,
+    }));
+
+    const pathTotal = construirCurvaSuave(coordsTotal);
+    const pathReal = construirCurvaSuave(coordsReal);
+    const pathVencida = construirCurvaSuave(coordsVencida);
+
+    const baseLineY = padT + plotH;
+    const areaTotal =
+      coordsTotal.length > 1
+        ? `${pathTotal} L ${coordsTotal[coordsTotal.length - 1].x.toFixed(1)} ${baseLineY} L ${coordsTotal[0].x.toFixed(1)} ${baseLineY} Z`
+        : "";
+    const areaReal =
+      coordsReal.length > 1
+        ? `${pathReal} L ${coordsReal[coordsReal.length - 1].x.toFixed(1)} ${baseLineY} L ${coordsReal[0].x.toFixed(1)} ${baseLineY} Z`
+        : "";
+
+    const ptInicial = puntosMostrar[0];
+    const ptFinal = puntosMostrar[puntosMostrar.length - 1];
+
+    return (
+      <div
+        className="rounded-xl p-4 sm:p-5 border shadow-2xs space-y-3"
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
+      >
+        {/* ENCABEZADO Y SELECTOR [AMBAS (MES + CORTES) | POR MES | POR CORTES] */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+          <div>
+            <h4
+              className="text-[13.5px] sm:text-[14.5px] font-bold tracking-tight"
+              style={{ color: "#0F172A" }}
+            >
+              Tendencia del Total de Cartera por Mes y Fecha de Corte (Excel / SISMA)
+            </h4>
+            <p className="text-[11.5px]" style={{ color: "#475569" }}>
+              Evolución por corte: Cartera Total vs. Total Cartera Real Neta (descontando Giros por Cruzar)
+            </p>
+          </div>
+
+          <div
+            className="inline-flex items-center rounded-full border px-1 py-0.5 self-start lg:self-auto"
+            style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }}
+          >
+            {(
+              [
+                { id: "AMBAS" as const, label: "Ambas (Mes + Cortes)" },
+                { id: "MES" as const, label: "Por Mes" },
+                { id: "CORTES" as const, label: "Por Cortes" },
+              ] as const
+            ).map((m, idx) => {
+              const activo = modoTendenciaCartera === m.id;
+              return (
+                <React.Fragment key={m.id}>
+                  {idx > 0 && (
+                    <span className="text-[11px] px-1" style={{ color: "#CBD5E1" }}>
+                      |
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setModoTendenciaCartera(m.id)}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer"
+                    style={{
+                      backgroundColor: activo ? "#0E245E" : "transparent",
+                      color: activo ? "#FFFFFF" : "#0F172A",
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* CUERPO: GRÁFICA DE TENDENCIA (IZQUIERDA) + VARIACIÓN ENTRE CORTES (DERECHA) */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-center">
+          <div className="xl:col-span-9">
+            <svg
+              viewBox={`0 0 ${svgW} ${svgH}`}
+              className="w-full h-auto select-none overflow-visible"
+            >
+              <defs>
+                <linearGradient id="gradTendenciaTotal" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1D58D8" stopOpacity="0.16" />
+                  <stop offset="100%" stopColor="#1D58D8" stopOpacity="0.01" />
+                </linearGradient>
+                <linearGradient id="gradTendenciaReal" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#059669" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#059669" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+
+              {/* Línea base del eje X */}
+              <line
+                x1={padL - 20}
+                y1={baseLineY}
+                x2={svgW - padR + 20}
+                y2={baseLineY}
+                stroke="#E2E8F0"
+                strokeWidth="1"
+              />
+
+              {/* Áreas sombreadas suaves */}
+              {(serieDestacadaTendencia === "TODAS" ||
+                serieDestacadaTendencia === "TOTAL") &&
+                areaTotal && <path d={areaTotal} fill="url(#gradTendenciaTotal)" />}
+              {(serieDestacadaTendencia === "TODAS" ||
+                serieDestacadaTendencia === "REAL") &&
+                areaReal && <path d={areaReal} fill="url(#gradTendenciaReal)" />}
+
+              {/* 1. Curva Azul: Cartera Total */}
+              <path
+                d={pathTotal}
+                fill="none"
+                stroke="#1D58D8"
+                strokeWidth="2.4"
+                style={{
+                  opacity:
+                    serieDestacadaTendencia === "TODAS" ||
+                    serieDestacadaTendencia === "TOTAL"
+                      ? 1
+                      : 0.25,
+                }}
+              />
+
+              {/* 2. Curva Verde: Total Cartera Real */}
+              <path
+                d={pathReal}
+                fill="none"
+                stroke="#059669"
+                strokeWidth="2.3"
+                style={{
+                  opacity:
+                    serieDestacadaTendencia === "TODAS" ||
+                    serieDestacadaTendencia === "REAL"
+                      ? 1
+                      : 0.25,
+                }}
+              />
+
+              {/* 3. Curva Roja Punteada: Cartera Vencida (>=60d) */}
+              <path
+                d={pathVencida}
+                fill="none"
+                stroke="#C81E3A"
+                strokeWidth="1.6"
+                strokeDasharray="4 3"
+                style={{
+                  opacity:
+                    serieDestacadaTendencia === "TODAS" ||
+                    serieDestacadaTendencia === "VENCIDA"
+                      ? 1
+                      : 0.25,
+                }}
+              />
+
+              {/* Puntos interactivos y etiquetas sin amontonar */}
+              {puntosMostrar.map((pt, i) => {
+                const x = getX(i);
+                const yTot = coordsTotal[i].y;
+                const yReal = coordsReal[i].y;
+                const yVenc = coordsVencida[i].y;
+                const esCorteSeleccionado = pt.idxCorte === indiceCorteActivo;
+
+                // Evitar cualquier solapamiento vertical entre las 3 etiquetas de un mismo punto
+                const labelTotY = yTot - 8;
+                const labelRealY =
+                  Math.abs(yReal - yTot) < 18 ? yReal + 13 : yReal - 8;
+                const labelVencY =
+                  Math.abs(yVenc - yReal) < 16 ? yVenc + 12 : yVenc - 7;
+
+                const textoEjeX =
+                  modoTendenciaCartera === "AMBAS"
+                    ? pt.labelAmbas
+                    : modoTendenciaCartera === "MES"
+                    ? pt.labelMes
+                    : pt.labelCortes;
+
+                return (
+                  <g
+                    key={pt.id}
+                    className="cursor-pointer"
+                    onClick={() => setIndiceCorteActivo(pt.idxCorte)}
+                  >
+                    {/* Línea guía vertical sutil en el corte activo */}
+                    {esCorteSeleccionado && (
+                      <line
+                        x1={x}
+                        y1={padT}
+                        x2={x}
+                        y2={baseLineY}
+                        stroke="#93C5FD"
+                        strokeWidth="1"
+                        strokeDasharray="2 2"
+                      />
+                    )}
+
+                    {/* Punto y cifra: 1 Cartera Total */}
+                    <circle
+                      cx={x}
+                      cy={yTot}
+                      r={esCorteSeleccionado ? 4.8 : 4}
+                      fill="#1D58D8"
+                      stroke="#FFFFFF"
+                      strokeWidth="1.2"
+                    >
+                      <title>{`${textoEjeX} · Cartera Total: ${formatCOP(pt.carteraTotal)}`}</title>
+                    </circle>
+                    <text
+                      x={x}
+                      y={labelTotY}
+                      textAnchor="middle"
+                      fontSize="9"
+                      fontWeight="700"
+                      fill="#0F172A"
+                    >
+                      {formatMillones(pt.carteraTotal)}
+                    </text>
+
+                    {/* Punto y cifra: 2 Total Cartera Real */}
+                    <circle
+                      cx={x}
+                      cy={yReal}
+                      r={esCorteSeleccionado ? 4.6 : 3.8}
+                      fill="#059669"
+                      stroke="#FFFFFF"
+                      strokeWidth="1.2"
+                    >
+                      <title>{`${textoEjeX} · Total Cartera Real: ${formatCOP(pt.totalCarteraReal)}`}</title>
+                    </circle>
+                    <text
+                      x={x}
+                      y={labelRealY}
+                      textAnchor="middle"
+                      fontSize="8.5"
+                      fontWeight="700"
+                      fill="#0F172A"
+                    >
+                      {formatMillones(pt.totalCarteraReal)}
+                    </text>
+
+                    {/* Punto y cifra: 3 Cartera Vencida (>=60d) */}
+                    <circle
+                      cx={x}
+                      cy={yVenc}
+                      r={esCorteSeleccionado ? 4.2 : 3.5}
+                      fill="#C81E3A"
+                      stroke="#FFFFFF"
+                      strokeWidth="1.1"
+                    >
+                      <title>{`${textoEjeX} · Cartera Vencida (>=60d): ${formatCOP(pt.carteraVencida)}`}</title>
+                    </circle>
+                    <text
+                      x={x}
+                      y={labelVencY}
+                      textAnchor="middle"
+                      fontSize="8.2"
+                      fontWeight="600"
+                      fill="#0F172A"
+                    >
+                      {formatMillones(pt.carteraVencida)}
+                    </text>
+
+                    {/* Etiqueta del Eje X (Mes + Fecha de Corte) */}
+                    <text
+                      x={x}
+                      y={baseLineY + 17}
+                      textAnchor="middle"
+                      fontSize="8.5"
+                      fontWeight={esCorteSeleccionado ? "800" : "600"}
+                      fill={esCorteSeleccionado ? "#1D58D8" : "#0F172A"}
+                    >
+                      {textoEjeX}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* LEYENDA INFERIOR CENTRADA */}
+            <div className="flex flex-wrap items-center justify-center gap-5 pt-1 text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() =>
+                  setSerieDestacadaTendencia((p) => (p === "TOTAL" ? "TODAS" : "TOTAL"))
+                }
+                className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+                style={{ color: "#0F172A" }}
+              >
+                <span
+                  className="w-3 h-1 rounded-full inline-block"
+                  style={{ backgroundColor: "#1D58D8" }}
+                />
+                <span
+                  className="w-2 h-2 rounded-full inline-block -ml-2.5"
+                  style={{ backgroundColor: "#1D58D8" }}
+                />
+                <span>1 Cartera Total</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSerieDestacadaTendencia((p) => (p === "REAL" ? "TODAS" : "REAL"))
+                }
+                className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+                style={{ color: "#0F172A" }}
+              >
+                <span
+                  className="w-3 h-1 rounded-full inline-block"
+                  style={{ backgroundColor: "#059669" }}
+                />
+                <span
+                  className="w-2 h-2 rounded-full inline-block -ml-2.5"
+                  style={{ backgroundColor: "#059669" }}
+                />
+                <span>2 Total Cartera Real</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSerieDestacadaTendencia((p) =>
+                    p === "VENCIDA" ? "TODAS" : "VENCIDA"
+                  )
+                }
+                className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+                style={{ color: "#0F172A" }}
+              >
+                <span
+                  className="w-3.5 border-t-2 border-dashed inline-block"
+                  style={{ borderColor: "#C81E3A" }}
+                />
+                <span>3 Cartera Vencida (&gt;=60d)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* PANEL DERECHO: VARIACIÓN ENTRE CORTES Y FILTRO RÁPIDO DE SERIES */}
+          <div className="xl:col-span-3">
+            <div
+              className="rounded-xl p-3.5 border space-y-3"
+              style={{ backgroundColor: "#F8FAFC", borderColor: "#E2ECF8" }}
+            >
+              <div>
+                <div
+                  className="text-[11.5px] font-bold mb-1.5"
+                  style={{ color: "#0F172A" }}
+                >
+                  Variación entre cortes:
+                </div>
+                {ptInicial && ptFinal && (
+                  <div className="space-y-1 text-[11px] font-mono">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold" style={{ color: "#0F172A" }}>
+                        {formatMillones(ptInicial.carteraTotal)}
+                      </span>
+                      <span style={{ color: "#64748B" }}>→</span>
+                      <span className="font-extrabold" style={{ color: "#1D58D8" }}>
+                        {formatMillones(ptFinal.carteraTotal)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold" style={{ color: "#0F172A" }}>
+                        {formatMillones(ptInicial.totalCarteraReal)}
+                      </span>
+                      <span style={{ color: "#64748B" }}>→</span>
+                      <span className="font-extrabold" style={{ color: "#059669" }}>
+                        {formatMillones(ptFinal.totalCarteraReal)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold" style={{ color: "#0F172A" }}>
+                        {formatMillones(ptInicial.carteraVencida)}
+                      </span>
+                      <span style={{ color: "#64748B" }}>→</span>
+                      <span className="font-extrabold" style={{ color: "#C81E3A" }}>
+                        {formatMillones(ptFinal.carteraVencida)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 border-t space-y-1.5" style={{ borderColor: "#E2ECF8" }}>
+                <div
+                  className="text-[11px] font-bold"
+                  style={{ color: "#0F172A" }}
+                >
+                  Series KPI:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSerieDestacadaTendencia((p) =>
+                        p === "TOTAL" ? "TODAS" : "TOTAL"
+                      )
+                    }
+                    className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold border cursor-pointer transition"
+                    style={{
+                      backgroundColor:
+                        serieDestacadaTendencia === "TOTAL" ? "#DBEAFE" : "#F1F5F9",
+                      borderColor:
+                        serieDestacadaTendencia === "TOTAL" ? "#1D58D8" : "#CBD5E1",
+                      color: "#0F172A",
+                    }}
+                  >
+                    Cartera Total
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSerieDestacadaTendencia((p) =>
+                        p === "VENCIDA" ? "TODAS" : "VENCIDA"
+                      )
+                    }
+                    className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold border cursor-pointer transition"
+                    style={{
+                      backgroundColor:
+                        serieDestacadaTendencia === "VENCIDA" ? "#FFE4E6" : "#F1F5F9",
+                      borderColor:
+                        serieDestacadaTendencia === "VENCIDA" ? "#C81E3A" : "#CBD5E1",
+                      color: "#0F172A",
+                    }}
+                  >
+                    Cartera Vencida (&gt;=60d)
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3444,6 +4036,9 @@ export default function TableroCarteraAnalytics() {
                 donutCarteraVencida
               )}
             </div>
+
+            {/* TARJETA ÚNICA DE TENDENCIA DEL TOTAL DE CARTERA POR MES Y FECHA DE CORTE (EXCEL / SISMA) */}
+            {renderTarjetaTendenciaTotalCartera()}
 
             {/* CORTINA DESPLEGABLE: DESGLOSE EN VIVO POR EDADES Y ENTIDADES (API SISMA CONTABILIDAD) */}
             {datosSismaVivo && (
