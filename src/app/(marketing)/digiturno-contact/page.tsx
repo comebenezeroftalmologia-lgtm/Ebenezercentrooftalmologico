@@ -64,7 +64,7 @@ const STEP_META: Record<
   step1: { id: 'step1', label: '1. Digiturno → Admisiones', metaMin: 15.0 },
   step2: { id: 'step2', label: '2. Proceso en Admisiones', metaMin: 5.0 },
   step3: { id: 'step3', label: '3. Preconsulta y Estudios', metaMin: 20.0 },
-  step4: { id: 'step4', label: 'Consulta Oftalmólogo', metaMin: 35.0 },
+  step4: { id: 'step4', label: '4. Consulta Oftalmólogo', metaMin: 35.0 },
   step5: { id: 'step5', label: '5. Orientación: HC, Órdenes y Cita', metaMin: 15.0 },
 };
 
@@ -304,8 +304,10 @@ export default function DigiturnoContactPage() {
       const totS1 = wS1 + aS1;
       const totS2 = wS2 + aS2;
 
-      totalTurnosS1 += tS1;
-      totalTurnosS2 += tS2;
+      if (k !== 'step2') {
+        totalTurnosS1 += tS1;
+        totalTurnosS2 += tS2;
+      }
       sumEsperaS1 += wS1;
       sumAtencionS1 += aS1;
       sumEsperaS2 += wS2;
@@ -324,7 +326,7 @@ export default function DigiturnoContactPage() {
         espera = wS2;
         atencion = aS2;
       }
-      const total = espera + atencion;
+      const total = Math.round((espera + atencion) * 10) / 10;
       const cumpl = Math.min(100, Math.round((meta.metaMin / Math.max(0.1, total)) * 1000) / 10);
       const cumplS1 = Math.min(100, Math.round((meta.metaMin / Math.max(0.1, totS1)) * 1000) / 10);
       const cumplS2 = Math.min(100, Math.round((meta.metaMin / Math.max(0.1, totS2)) * 1000) / 10);
@@ -366,21 +368,9 @@ export default function DigiturnoContactPage() {
         ? totalTurnosS2
         : totalTurnosS1 + totalTurnosS2;
 
-    const totalEspera =
-      selectedSede === 'Sede 1'
-        ? sumEsperaS1
-        : selectedSede === 'Sede 2'
-        ? sumEsperaS2
-        : Math.round(((sumEsperaS1 * totalTurnosS1 + sumEsperaS2 * totalTurnosS2) / totalTurnosBoth) * 10) / 10;
-
-    const totalAtencion =
-      selectedSede === 'Sede 1'
-        ? sumAtencionS1
-        : selectedSede === 'Sede 2'
-        ? sumAtencionS2
-        : Math.round(((sumAtencionS1 * totalTurnosS1 + sumAtencionS2 * totalTurnosS2) / totalTurnosBoth) * 10) / 10;
-
-    const totalCiclo = totalEspera + totalAtencion;
+    const totalEspera = Math.round(rows.reduce((acc, r) => acc + r.espera, 0) * 10) / 10;
+    const totalAtencion = Math.round(rows.reduce((acc, r) => acc + r.atencion, 0) * 10) / 10;
+    const totalCiclo = Math.round((totalEspera + totalAtencion) * 10) / 10;
     const cumplGlobal = Math.min(100, Math.round((90.0 / Math.max(1, totalCiclo)) * 1000) / 10);
 
     return {
