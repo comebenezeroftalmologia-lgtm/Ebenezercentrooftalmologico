@@ -14,7 +14,7 @@ export default async function ProyectosLayout({ children }: { children: React.Re
   return (
     <ProyectosShell
       arbol={arbol}
-      usuario={{ id: user.id, nombre: user.nombreCompleto, esAdmin: user.isAdmin }}
+      usuario={{ id: user.id, nombre: user.nombreCompleto, esAdmin: user.isAdmin, esLider: user.rol === "lider" }}
       modulos={Array.from(modulos)}
     >
       {children}

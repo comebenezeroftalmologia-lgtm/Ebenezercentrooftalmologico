@@ -37,7 +37,7 @@ export function ProyectosShell({
   children,
 }: {
   arbol: EspacioArbol[];
-  usuario: { id: string; nombre: string; esAdmin: boolean };
+  usuario: { id: string; nombre: string; esAdmin: boolean; esLider?: boolean };
   modulos?: Modulo[];
   children: React.ReactNode;
 }) {
@@ -91,6 +91,7 @@ export function ProyectosShell({
             <RielGlobal
               modulos={modulos}
               isAdmin={usuario.esAdmin}
+              puedeUsuarios={usuario.esAdmin || !!usuario.esLider}
               onToggleBandeja={() => setAbierto((v) => !v)} onOpenBandeja={() => setAbierto(true)}
             />
 

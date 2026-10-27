@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
-import { requireAdmin, requireAppUser } from "@/lib/auth";
+import {
+  getAppUserById,
+  getMisModulos,
+  puedeAdministrarA,
+  requireAdmin,
+  requireAppUser,
+  requireGestorUsuarios,
+  rolesAsignables,
+} from "@/lib/auth";
+import type { RolPlataforma } from "@/lib/procesos/types";
 import type { Modulo } from "@/lib/modulos";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -98,17 +107,37 @@ export async function invitarUsuarioAction(
   _prevState: { error: string | null; ok?: boolean },
   formData: FormData
 ): Promise<{ error: string | null; ok?: boolean }> {
-  await requireAdmin();
+  const actor = await requireGestorUsuarios();
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const nombreCompleto = String(formData.get("nombreCompleto") ?? "").trim();
-  const isAdmin = formData.get("isAdmin") === "on";
+  const rol = String(formData.get("rol") ?? "usuario_basico") as RolPlataforma;
   // Set: en MODULOS hay slugs repetidos (p. ej. "Cartera y Radicación" comparte
   // "frecuencias"), y un duplicado viola unique (user_id, modulo).
   const modulos = Array.from(new Set(formData.getAll("modulos").map(String))) as Modulo[];
 
-  if (!EMAIL_PATTERN.test(email)) return { error: "Correo invÃ¡lido." };
+  if (!EMAIL_PATTERN.test(email)) return { error: "Correo inválido." };
   if (!nombreCompleto) return { error: "Falta el nombre completo." };
+  if (!rolesAsignables(actor).includes(rol)) {
+    return { error: "No tienes permiso para crear usuarios con ese rol." };
+  }
+
+  let liderId: string | null = null;
+  if (rol === "usuario_basico") {
+    liderId = actor.rol === "lider" ? actor.id : String(formData.get("liderId") ?? "").trim();
+    if (!liderId) return { error: "Selecciona el líder de este usuario básico." };
+    const lider = await getAppUserById(liderId);
+    if (!lider || !lider.activo || lider.rol !== "lider") {
+      return { error: "El líder seleccionado no es válido." };
+    }
+  }
+
+  if (!actor.isAdmin) {
+    const permitidos = await getMisModulos(actor.id, false);
+    if (modulos.some((m) => !permitidos.has(m))) {
+      return { error: "Solo puedes dar acceso a módulos que tú mismo tienes." };
+    }
+  }
 
   const admin = createServiceClient();
 
@@ -124,11 +153,12 @@ export async function invitarUsuarioAction(
     id: invited.user.id,
     nombre_completo: nombreCompleto,
     email,
-    is_admin: isAdmin,
+    rol,
+    lider_id: liderId,
   });
 
   if (profileError) {
-    return { error: `InvitaciÃ³n enviada pero fallÃ³ el perfil: ${profileError.message}` };
+    return { error: `Invitación enviada pero falló el perfil: ${profileError.message}` };
   }
 
   if (modulos.length > 0) {
@@ -136,7 +166,7 @@ export async function invitarUsuarioAction(
       .from("modulo_accesos")
       .insert(modulos.map((modulo) => ({ user_id: invited.user!.id, modulo })));
     if (modulosError) {
-      return { error: `InvitaciÃ³n enviada pero fallÃ³ el acceso a mÃ³dulos: ${modulosError.message}` };
+      return { error: `Invitación enviada pero falló el acceso a módulos: ${modulosError.message}` };
     }
   }
 
@@ -146,23 +176,59 @@ export async function invitarUsuarioAction(
 
 export async function actualizarAccesoUsuarioAction(
   userId: string,
-  isAdmin: boolean,
+  rol: RolPlataforma,
+  liderId: string | null,
   modulos: Modulo[]
 ) {
-  await requireAdmin();
+  const actor = await requireGestorUsuarios();
+  const objetivo = await getAppUserById(userId);
+  if (!objetivo) throw new Error("Usuario no encontrado.");
+  if (!puedeAdministrarA(actor, objetivo)) throw new Error("No tienes permiso para editar a esta persona.");
+
+  if (rol !== objetivo.rol) {
+    if (userId === actor.id) throw new Error("No puedes cambiar tu propio rol.");
+    if (!rolesAsignables(actor).includes(rol)) throw new Error("No tienes permiso para asignar ese rol.");
+  }
+
+  let nuevoLider: string | null = null;
+  if (rol === "usuario_basico") {
+    nuevoLider = actor.rol === "lider" ? actor.id : liderId;
+    if (!nuevoLider) throw new Error("Selecciona el líder de este usuario básico.");
+    const lider = await getAppUserById(nuevoLider);
+    if (!lider || !lider.activo || lider.rol !== "lider") throw new Error("El líder seleccionado no es válido.");
+  }
+
   const admin = createServiceClient();
 
-  const { error: updateError } = await admin.from("app_users").update({ is_admin: isAdmin }).eq("id", userId);
+  const { error: updateError } = await admin
+    .from("app_users")
+    .update({ rol, lider_id: nuevoLider })
+    .eq("id", userId);
   if (updateError) throw new Error(updateError.message);
+
+  // Si alguien deja de ser líder, su equipo queda sin líder hasta que se reasigne.
+  if (objetivo.rol === "lider" && rol !== "lider") {
+    await admin.from("app_users").update({ lider_id: null }).eq("lider_id", userId);
+  }
+
+  // Un actor sin acceso total solo toca los módulos que él mismo tiene: los demás
+  // módulos de la persona se conservan tal cual.
+  const pedidos = Array.from(new Set(modulos));
+  let finales = pedidos;
+  if (!actor.isAdmin) {
+    const permitidos = await getMisModulos(actor.id, false);
+    const { data: actuales } = await admin.from("modulo_accesos").select("modulo").eq("user_id", userId);
+    const conservar = (actuales ?? []).map((r) => r.modulo as Modulo).filter((m) => !permitidos.has(m));
+    finales = Array.from(new Set([...pedidos.filter((m) => permitidos.has(m)), ...conservar]));
+  }
 
   const { error: deleteError } = await admin.from("modulo_accesos").delete().eq("user_id", userId);
   if (deleteError) throw new Error(deleteError.message);
 
-  const modulosUnicos = Array.from(new Set(modulos));
-  if (modulosUnicos.length > 0) {
+  if (finales.length > 0) {
     const { error: insertError } = await admin
       .from("modulo_accesos")
-      .insert(modulosUnicos.map((modulo) => ({ user_id: userId, modulo })));
+      .insert(finales.map((modulo) => ({ user_id: userId, modulo })));
     if (insertError) throw new Error(insertError.message);
   }
 
@@ -170,7 +236,11 @@ export async function actualizarAccesoUsuarioAction(
 }
 
 export async function toggleActivoUsuarioAction(userId: string, activo: boolean) {
-  await requireAdmin();
+  const actor = await requireGestorUsuarios();
+  const objetivo = await getAppUserById(userId);
+  if (!objetivo) throw new Error("Usuario no encontrado.");
+  if (userId === actor.id) throw new Error("No puedes desactivar tu propia cuenta.");
+  if (!puedeAdministrarA(actor, objetivo)) throw new Error("No tienes permiso sobre esta persona.");
   const admin = createServiceClient();
   const { error } = await admin.from("app_users").update({ activo }).eq("id", userId);
   if (error) throw new Error(error.message);
@@ -180,6 +250,9 @@ export async function toggleActivoUsuarioAction(userId: string, activo: boolean)
 export async function eliminarUsuarioAction(userId: string) {
   const yo = await requireAdmin();
   if (userId === yo.id) throw new Error("No puedes eliminar tu propia cuenta.");
+  const objetivo = await getAppUserById(userId);
+  if (!objetivo) throw new Error("Usuario no encontrado.");
+  if (!puedeAdministrarA(yo, objetivo)) throw new Error("No tienes permiso para eliminar a esta persona.");
   const admin = createServiceClient();
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) throw new Error(error.message);
@@ -191,9 +264,14 @@ export async function restablecerPasswordAction(
   _prevState: { error: string | null; ok?: boolean },
   formData: FormData
 ): Promise<{ error: string | null; ok?: boolean }> {
-  await requireAdmin();
+  const actor = await requireGestorUsuarios();
+  const objetivo = await getAppUserById(userId);
+  if (!objetivo) return { error: "Usuario no encontrado." };
+  if (userId !== actor.id && !puedeAdministrarA(actor, objetivo)) {
+    return { error: "No tienes permiso sobre esta persona." };
+  }
   const password = String(formData.get("password") ?? "");
-  if (password.length < 8) return { error: "La contraseÃ±a debe tener al menos 8 caracteres." };
+  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
 
   const admin = createServiceClient();
   const { error } = await admin.auth.admin.updateUserById(userId, {

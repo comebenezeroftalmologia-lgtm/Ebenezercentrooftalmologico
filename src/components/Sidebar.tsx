@@ -99,15 +99,19 @@ export function TramaArquitectonicaBandeja() {
 export function RielGlobal({
   modulos,
   isAdmin,
+  puedeUsuarios,
   onToggleBandeja,
   onOpenBandeja,
 }: {
   modulos: Modulo[];
   isAdmin: boolean;
+  /** Dev, administrador y líder ven el acceso a Usuarios. Por defecto, igual que isAdmin. */
+  puedeUsuarios?: boolean;
   onToggleBandeja?: () => void;
   onOpenBandeja?: () => void;
 }) {
   const allowed = new Set(modulos);
+  const verUsuarios = puedeUsuarios ?? isAdmin;
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug));
   const procesosPermitido = allowed.has("procesos") || isAdmin;
   const proyectosPermitido = allowed.has("proyectos") || isAdmin;
@@ -179,7 +183,7 @@ export function RielGlobal({
 
         <div className="my-1.5 h-px w-9 bg-white/12" />
 
-        {isAdmin && (
+        {verUsuarios && (
           <Link href="/usuarios" className={itemClass(enUsuarios)} title="Usuarios">
             {enUsuarios && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <Users className="h-[19px] w-[19px]" strokeWidth={1.75} />
@@ -206,7 +210,16 @@ export function RielGlobal({
   );
 }
 
-export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: boolean }) {
+export function Sidebar({
+  modulos,
+  isAdmin,
+  puedeUsuarios,
+}: {
+  modulos: Modulo[];
+  isAdmin: boolean;
+  puedeUsuarios?: boolean;
+}) {
+  const verUsuarios = puedeUsuarios ?? isAdmin;
   const allowed = new Set(modulos);
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug) || isAdmin);
   const procesosPermitido = allowed.has("procesos") || isAdmin;
@@ -268,7 +281,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
 
   return (
     <div className="relative flex h-full shrink-0">
-      <RielGlobal modulos={modulos} isAdmin={isAdmin} onToggleBandeja={alternar} onOpenBandeja={() => { setAbierto(true); try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} }} />
+      <RielGlobal modulos={modulos} isAdmin={isAdmin} puedeUsuarios={verUsuarios} onToggleBandeja={alternar} onOpenBandeja={() => { setAbierto(true); try { window.localStorage.setItem("eb_bandeja_abierta", "1"); } catch {} }} />
 
       <aside style={BANDEJA_BLANCA_STYLE} className={`relative hidden h-full shrink-0 flex-col overflow-hidden border-r border-[#DCE7F7] bg-[#FAFBFD] shadow-[4px_0_16px_rgba(14,36,94,0.035)] transition-all duration-200 ease-eb-out md:flex ${abierto ? "w-[236px]" : "w-0 overflow-hidden border-r-0"}`}><TramaArquitectonicaBandeja />
         <div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-2.5">
@@ -388,7 +401,7 @@ export function Sidebar({ modulos, isAdmin }: { modulos: Modulo[]; isAdmin: bool
                       <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Tu cuenta y contraseña</p>
                     </div>
                   </Link>
-                  {isAdmin && (
+                  {verUsuarios && (
                     <Link href="/usuarios" className={pill(false)}>
                       <ShieldCheck className={iconCls(false)} strokeWidth={1.85} />
                       <div className="min-w-0 flex-1">

@@ -51,6 +51,7 @@ export function ProcesosNav({
       <RielGlobal
         modulos={modulos}
         isAdmin={user.isAdmin}
+        puedeUsuarios={user.isAdmin || user.rol === "lider"}
         onToggleBandeja={() => setIsOpen((v) => !v)} onOpenBandeja={() => setIsOpen(true)}
       />
 

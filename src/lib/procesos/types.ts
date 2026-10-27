@@ -1,11 +1,41 @@
 export type Rol = "lider" | "colaborador";
 export type EstadoTarea = "pendiente" | "en_progreso" | "completada" | "rechazada";
 
+/** Rol global de plataforma (distinto de `Rol`, que es el rol dentro de un área). */
+export type RolPlataforma = "desarrollador" | "administrador" | "lider" | "usuario_basico";
+
+export const ROLES_PLATAFORMA: { valor: RolPlataforma; label: string; descripcion: string }[] = [
+  {
+    valor: "desarrollador",
+    label: "Desarrollador",
+    descripcion: "Todos los permisos, cambia roles de administradores y ve la bandeja de fallas.",
+  },
+  { valor: "administrador", label: "Administrador", descripcion: "Todos los permisos operativos." },
+  {
+    valor: "lider",
+    label: "Líder",
+    descripcion: "Ve sus áreas o módulos asignados, invita personas y autoriza eliminaciones de su equipo.",
+  },
+  {
+    valor: "usuario_basico",
+    label: "Usuario Básico",
+    descripcion: "Ve sus áreas o módulos asignados. Para eliminar necesita la autorización de su líder.",
+  },
+];
+
+export function rolLabel(rol: RolPlataforma): string {
+  return ROLES_PLATAFORMA.find((r) => r.valor === rol)?.label ?? rol;
+}
+
 export interface AppUser {
   id: string;
   nombreCompleto: string;
   email: string;
+  /** Derivado del rol: true para desarrollador y administrador. */
   isAdmin: boolean;
+  rol: RolPlataforma;
+  /** Líder directo (solo usuarios básicos). */
+  liderId: string | null;
   activo: boolean;
 }
 

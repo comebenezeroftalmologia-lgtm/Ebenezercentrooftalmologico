@@ -9,6 +9,7 @@ import type {
   EstadoAcceso,
   KpisTareas,
   Proceso,
+  RolPlataforma,
   Tarea,
   TareaRelacionada,
 } from "@/lib/procesos/types";
@@ -95,6 +96,8 @@ function mapAppUser(row: any): AppUser {
     nombreCompleto: row.nombre_completo,
     email: row.email,
     isAdmin: row.is_admin,
+    rol: (row.rol ?? (row.is_admin ? "administrador" : "usuario_basico")) as RolPlataforma,
+    liderId: row.lider_id ?? null,
     activo: row.activo,
   };
 }
@@ -121,7 +124,7 @@ export async function listAppUsers(): Promise<AppUser[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("app_users")
-    .select("id, nombre_completo, email, is_admin, activo")
+    .select("id, nombre_completo, email, is_admin, rol, lider_id, activo")
     .order("nombre_completo");
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAppUser);
