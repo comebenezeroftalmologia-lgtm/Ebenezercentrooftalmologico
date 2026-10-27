@@ -38,10 +38,13 @@ function Texto({ texto }: { texto: string }) {
 
 export function ConocimientoChat({
   nombre,
-  formatos,
+  formatos = [],
+  compacto = false,
 }: {
   nombre: string;
-  formatos: { id: string; titulo: string; codigo: string | null; proceso: string | null }[];
+  formatos?: { id: string; titulo: string; codigo: string | null; proceso: string | null }[];
+  /** Modo panel lateral: ocupa el alto del contenedor y desplaza solo los mensajes. */
+  compacto?: boolean;
 }) {
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
@@ -125,11 +128,11 @@ export function ConocimientoChat({
 
   if (vacio) {
     return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center">
+      <div className={`flex flex-col items-center justify-center ${compacto ? "h-full px-4" : "min-h-[70vh]"}`}>
         <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-aqua-20 text-navy">
           <Sparkles className="h-6 w-6" strokeWidth={1.5} />
         </span>
-        <h1 className="mb-1 text-center text-[26px] font-semibold text-navy">Hola, {nombre}</h1>
+        <h1 className={`mb-1 text-center font-semibold text-navy ${compacto ? "text-[21px]" : "text-[26px]"}`}>Hola, {nombre}</h1>
         <p className="mb-7 text-center text-sm text-ink-3">¿Qué quieres saber sobre Ebenezer?</p>
         <div className="w-full">{caja}</div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -171,8 +174,8 @@ export function ConocimientoChat({
   }
 
   return (
-    <div className="flex min-h-[78vh] flex-col">
-      <div className="flex-1 space-y-6 pb-6 pt-2">
+    <div className={`flex flex-col ${compacto ? "h-full min-h-0" : "min-h-[78vh]"}`}>
+      <div className={`flex-1 space-y-6 pb-6 pt-2 ${compacto ? "min-h-0 overflow-y-auto px-4" : ""}`}>
         {mensajes.map((m, i) =>
           m.rol === "usuario" ? (
             <div key={i} className="flex justify-end">
@@ -227,7 +230,7 @@ export function ConocimientoChat({
         {aviso && <p className="text-xs text-[#B3261E]">{aviso}</p>}
         <div ref={finRef} />
       </div>
-      <div className="sticky bottom-0 bg-gradient-to-t from-[#F8FAFE] via-[#F8FAFE] to-transparent pb-3 pt-2">
+      <div className={`sticky bottom-0 bg-gradient-to-t from-[#F8FAFE] via-[#F8FAFE] to-transparent pb-3 pt-2 ${compacto ? "px-4" : ""}`}>
         {caja}
         <p className="mt-2 text-center text-[11px] text-ink-3">
           Las respuestas se basan solo en los documentos publicados por Calidad. Verifica lo importante en el documento original.

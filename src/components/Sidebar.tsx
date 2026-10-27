@@ -283,7 +283,7 @@ export function RielGlobal({
           </button>
         </form>
       </div>
-      <BotonFlotanteIA />
+      <BotonFlotanteIA nombre={yo?.nombre} />
     </aside>
   );
 }
