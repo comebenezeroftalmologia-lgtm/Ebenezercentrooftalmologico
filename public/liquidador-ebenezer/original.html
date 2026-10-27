@@ -5142,7 +5142,7 @@ const REGLAS_DOC = {
     // ficha E26: fotobiomodulación (luz modulada) particulares $300.000 · E24/E25: luz pulsada (IURPL) particulares $400.000 · prepagadas $320.000
     // prepagadas: la ficha no trae la fotobiomodulación; se sigue pagando $320.000 como antes
     {re:/FOTOBIOMOD|LUZ MODULADA/, PART:300000, P:320000},
-    {re:/LUZ PULSADA|IURPL|\bIPL\b/, PART:400000, P:320000},{re:/TOPOGRAFIA/, P:25000, S:15000}] },
+    {re:/LUZ PULSADA|IURPL|\bIPL\b/, PART:133333, P:320000},{re:/TOPOGRAFIA|SIRIUS/, P:25000, S:15000}] },
  'MONICA MUÑOZ': { consP:{t:'fijo',v:50000}, cirPct:0.7, cirFijas:[
     // ficha: pterigión PyP $250.000 · Sura $102.057 · tumor de párpado $200.000 · capsulotomía-iridotomía $200.000 · Sura $55.000
     //        Mutual: ciclocrio $150.000 · recubrimiento de córnea $165.100
@@ -5700,6 +5700,61 @@ function liquidarV4(recs, actos, actosAll){
   }
   // --- 3. SEDE (informe no-quirófanos) ---
   // pre-escaneo: valor de la fila HONORARIOS por (médico|ced|fecha|grupo) para médicos porcentuales
+  // Pre-escaneo 0: homologación de servicios cobrables que vienen en $0 por pendiente de facturación
+  // (misma empresa y misma condición: ej. Consulta Control con Consulta Control, Consulta 1ra Vez con 1ra Vez)
+  function _condServicioKey(rx){
+    const d0 = mNorm((rx.d||'')+' '+(rx.sv||'')+' '+(rx.as||''));
+    if(d0.includes('CONSULTA')){
+      if(/NEURO/.test(d0)) return 'CONS_NEURO';
+      if(/JORNADA/.test(d0)) return 'CONS_JORNADA';
+      if(/CONTROL|SEGUIMIENTO/.test(d0)) return 'CONS_CONTROL';
+      if(/PRIMERA VEZ|1RA VEZ|1A VEZ/.test(d0)) return 'CONS_1RA_VEZ';
+      return 'CONS_GEN';
+    }
+    const tag = (typeof sismaSrvTag==='function') ? sismaSrvTag(rx.d||'') : 'OTRO';
+    if(tag && tag!=='OTRO') return 'TAG:'+tag;
+    if(rx.cg) return 'COD:'+String(rx.cg).trim();
+    return 'DET:'+mNorm(rx.d||'');
+  }
+  const _tarifaEmpresaCond = {};
+  for(const rx of recs){
+    if(esCirUf(rx) || !(rx.t > 0)) continue;
+    const empK = mNorm(rx.e||'');
+    if(!empK || (/CORTESIA/.test(empK) && !/EBENEZER/.test(empK))) continue;
+    const vu = Math.round(rx.t / ((rx.q && rx.q > 0) ? rx.q : 1));
+    if(!(vu > 0)) continue;
+    const ck = _condServicioKey(rx);
+    if(!_tarifaEmpresaCond[empK+'|'+ck]) _tarifaEmpresaCond[empK+'|'+ck] = vu;
+    if(rx.cg){
+      const kCod = empK+'|COD:'+String(rx.cg).trim();
+      if(!_tarifaEmpresaCond[kCod]) _tarifaEmpresaCond[kCod] = vu;
+    }
+    const kDet = empK+'|DET:'+mNorm(rx.d||'');
+    if(!_tarifaEmpresaCond[kDet]) _tarifaEmpresaCond[kDet] = vu;
+  }
+  for(const rx of recs){
+    if(esCirUf(rx) || (rx.t > 0)) continue;
+    const g0 = v4EmpG((rx.e||'')+' '+(rx.ct||''));
+    if(g0 === 'M') continue;
+    const empK = mNorm(rx.e||'');
+    const ctK = mNorm((rx.ct||'')+' '+(rx.e||''));
+    if(!empK || (/CORTESIA/.test(ctK) && !/EBENEZER/.test(ctK))) continue;
+    const txtEst = mNorm((rx.as||'')+' '+(rx.sv||'')+' '+(rx.tp||'')+' '+(rx.d||''));
+    if(esUsoEquipo(rx) || esPosQx(rx) || /^SNC/i.test(rx.cg||'') || /NO\s*COBRO|CORTESIA|SIN COBRO|ANULAD|INCUMPLID|GRATIS/.test(txtEst)) continue;
+    if(/LUZ PULSADA|IURPL|\bIPL\b/.test(mNorm(rx.d||'')) && !v4EsParticular((rx.e||'')+' '+(rx.ct||''))) continue;
+    const h0 = mHojaDe(rx.m);
+    const ced0 = ((rx.p||'').match(/(\d{5,12})/)||[])[1];
+    if(txtEst.includes('CONSULTA') && /CONTROL|SEGUIMIENTO/.test(txtEst) && ced0 && cirFecha[ced0] && h0 && cirFecha[ced0][h0] && rx.f.slice(0,10)>=cirFecha[ced0][h0]) continue;
+    const tieneSoporteCobro = !!(String(rx.fa||'').trim() || String(rx.tp||'').trim() || g0==='P' || g0==='S');
+    if(!tieneSoporteCobro) continue;
+    const ck = _condServicioKey(rx);
+    const vuHom = _tarifaEmpresaCond[empK+'|'+ck] || (rx.cg ? _tarifaEmpresaCond[empK+'|COD:'+String(rx.cg).trim()] : 0) || _tarifaEmpresaCond[empK+'|DET:'+mNorm(rx.d||'')];
+    if(vuHom > 0){
+      const qEff = (rx.q && rx.q > 0) ? rx.q : 1;
+      rx.t = vuHom * qEff;
+      rx._homologado = rx.t;
+    }
+  }
   const gruposHon={}, gruposQ={};
   // días de jornada de consulta Mutual (médicos que la ficha paga por jornada): día de la semana pactado
   // con al menos «min» consultas Mutual de su especialidad atendidas ese día
@@ -5858,33 +5913,51 @@ function liquidarV4(recs, actos, actosAll){
       else {
         M._dedup[k]=true; if(kMes) M._dedup[kMes]=true;
         const esHon=/HONORARIO/i.test(r.d);
-        if(!esHon && !(r.t>0) && !gruposHon[k]){ pago=0; regla='Sesión/procedimiento sin facturación: no se liquida';
-          M[g==='M'?'M':'P']+=0; M.filas.push({fuente:'sede',fecha:r.f,pac:r.p,det:r.d,emp:r.e,t:r.t,fa:r.fa,pago,regla}); continue; }
-        const fj=v4CirFija(cfg, r.d, r.e+' '+r.ct, Math.max(gruposQ[k]||0, r.q||1));
-        const cpS = cfg.cirPct && !cfg.cirPctSoloQx;
-        if(fj && !(cpS && esHon && fj.v===undefined)){ pago=fj.v; regla=fj.nota+v4Lado(fj); }
-        else if(cpS){
-          const tieneHon = (grupo && grupo.hon!==undefined) || esHon;
-          const base = grupo && grupo.hon!==undefined ? grupo.hon : (r.t||0);
-          pago=Math.round(cfg.cirPct*base);
-          if(tieneHon) regla=(cfg.cirPct*100)+'% del rubro honorarios del acto ('+money(base)+')';
-          else { regla=(cfg.cirPct*100)+'% del TOTAL facturado ('+money(base)+') — revisar: la factura no separa honorarios';
-            if(pago>0){
-              M.hallazgos.add((g==='M'?'[S2]':'[S1]')+'REVISAR — '+(r.d||'').slice(0,44)+' ('+(r.e||'')+'): se pagó el '+(cfg.cirPct*100)+'% sobre el TOTAL facturado porque la factura no separa el rubro de honorarios del cirujano. Puede incluir sala, insumos o lente: pedir la factura discriminada.');
-              // queda en la lista de actos por revisar: quien liquida aprueba o cambia el valor
-              const aS={fecha:r.f.slice(0,10), ced, pac:r.p, proc:r.d};
-              const decS=actoDecision(h,aS);
-              pagoSistS=Math.round(pago);
-              if(decS && (decS.estado==='valor' || (decS.estado==='ok' && decS.v!=null))){
-                pago=Math.round(decS.v||0); regla='Valor aprobado por '+(decS.usuario||'quien liquidó')+': '+String(decS.motivo||'').slice(0,60); }
-              decSede=decS||null;
-              (NOTAS_CIR[h]=NOTAS_CIR[h]||[]).push({amb:(g==='M'?'Sede 2':'Sede Principal'), med:h, fecha:aS.fecha, pac:r.p, ced, proc:r.d, emp:r.e,
-                obs:'La factura no separa los honorarios del cirujano: el sistema calculó el '+Math.round(cfg.cirPct*100)+'% sobre el TOTAL facturado ('+money(r.t||0)+'). Confirme el valor.',
-                tipo:'Factura sin honorarios separados', peso:1, pago:Math.round(pago), regla, vFicha:null, dec:decS||null, k:actoKey(h,aS)});
-            } }
+        const esIplJennifer = (h==='JENNIFER CORREDOR' && /LUZ PULSADA|IURPL|\bIPL\b/.test(D));
+        if(esIplJennifer){
+          const qSes = (r.q && r.q > 0) ? r.q : 1;
+          if(v4EsParticular(r.e+' '+r.ct)){
+            pago = 133333 * qSes;
+            regla = 'Terapia de luz pulsada particular: $133.333 por sesión cumplida' + (qSes>1 ? ' ('+qSes+' sesiones)' : '');
+          } else {
+            const baseIpl = (grupo && grupo.hon!==undefined && grupo.hon>0) ? grupo.hon : (r.t||0);
+            if(!(baseIpl > 0)){
+              pago = 0;
+              regla = 'Terapia de luz pulsada prepagada sin facturación en este cargo: se liquida según lo facturado';
+            } else if(baseIpl >= 900000 || qSes >= 3 || /3 SESION|3 SECION|PAQUETE/.test(D)){
+              pago = 320000;
+              regla = 'Terapia de luz pulsada prepagada: $320.000 (paquete facturado)';
+            } else {
+              pago = Math.round(320000 / 3) * qSes;
+              regla = 'Terapia de luz pulsada prepagada: $' + Math.round(320000/3).toLocaleString() + ' por sesión facturada';
+            }
+          }
+        } else {
+          if(!esHon && !(r.t>0) && !gruposHon[k]){ pago=0; regla='Sesión/procedimiento sin facturación: no se liquida';
+            M[g==='M'?'M':'P']+=0; M.filas.push({fuente:'sede',fecha:r.f,pac:r.p,det:r.d,emp:r.e,t:r.t,fa:r.fa,pago,regla}); continue; }
+          const fj=v4CirFija(cfg, r.d, r.e+' '+r.ct, Math.max(gruposQ[k]||0, r.q||1));
+          const cpS = cfg.cirPct && !cfg.cirPctSoloQx;
+          if(fj && !(cpS && esHon && fj.v===undefined)){ pago=fj.v; regla=fj.nota+v4Lado(fj); }
+          else if(cpS){
+            const tieneHon = (grupo && grupo.hon!==undefined) || esHon;
+            const base = grupo && grupo.hon!==undefined ? grupo.hon : (r.t||0);
+            pago=Math.round(cfg.cirPct*base);
+            if(tieneHon) regla=(cfg.cirPct*100)+'% del rubro honorarios del acto ('+money(base)+')';
+            else { regla=(cfg.cirPct*100)+'% del TOTAL facturado ('+money(base)+') — revisar: la factura no separa honorarios';
+              if(pago>0){
+                M.hallazgos.add((g==='M'?'[S2]':'[S1]')+'REVISAR — '+(r.d||'').slice(0,44)+' ('+(r.e||'')+'): se pagó el '+(cfg.cirPct*100)+'% sobre el TOTAL facturado porque la factura no separa el rubro de honorarios del cirujano. Puede incluir sala, insumos o lente: pedir la factura discriminada.');
+                const aS={fecha:r.f.slice(0,10), ced, pac:r.p, proc:r.d};
+                const decS=actoDecision(h,aS);
+                pagoSistS=Math.round(pago);
+                if(decS && (decS.estado==='valor' || (decS.estado==='ok' && decS.v!=null))){
+                  pago=Math.round(decS.v||0); regla='Valor aprobado por '+(decS.usuario||'quien liquidó')+': '+String(decS.motivo||'').slice(0,60); }
+                decSede=decS||null;
+              } }
+          }
+          else { const [v,rg]=mPredecir(r.m,r.d,r.sv,r.e+' '+r.ct,1,r.t||null,true); pago=v||0; regla=rg||''; if(v>0 && /% de lo facturado en esta línea/.test(rg||'') && !/HONORARIO/i.test(r.d)) M._dedup[k]={pct:true, t:r.t||0, d:mNorm(r.d||'')}; if(v===null&&rg!=='porcentual') M.hallazgos.add((v4EmpG(r.e+' '+r.ct)==='M'?'[S2]':'[S1]')+'Sin regla: '+(r.d||'').slice(0,38)); }
         }
-        else { const [v,rg]=mPredecir(r.m,r.d,r.sv,r.e+' '+r.ct,1,r.t||null,true); pago=v||0; regla=rg||''; if(v>0 && /% de lo facturado en esta línea/.test(rg||'') && !/HONORARIO/i.test(r.d)) M._dedup[k]={pct:true, t:r.t||0, d:mNorm(r.d||'')}; if(v===null&&rg!=='porcentual') M.hallazgos.add((v4EmpG(r.e+' '+r.ct)==='M'?'[S2]':'[S1]')+'Sin regla: '+(r.d||'').slice(0,38)); }
       }
+      if(r._homologado && pago > 0) regla += ' · valor homologado de misma empresa y condición ('+money(r._homologado)+', pendiente facturación)';
       M[g==='M'?'M':'P']+=pago;
       M.filas.push({fuente:'sede',fecha:r.f,pac:r.p,det:r.d,emp:r.e,t:r.t,fa:r.fa,pago,regla, pagoSist:pagoSistS, decision:decSede}); continue;
     }
@@ -5927,8 +6000,58 @@ function liquidarV4(recs, actos, actosAll){
         if(c.jornada){ const d=r.f.slice(0,10); M.jornCons[d]=(M.jornCons[d]||0)+1; }
       } else { const [v,rg]=mPredecir(r.m,r.d,r.sv,r.e+' '+r.ct,r.q,r.t,false); pago=v||0; regla=rg; if(v===null&&rg!=='porcentual') M.hallazgos.add((v4EmpG(r.e+' '+r.ct)==='M'?'[S2]':'[S1]')+'Sin regla: '+r.d.slice(0,38)); }
     }
+    else if(h==='JENNIFER CORREDOR' && /TOPOGRAFIA|SIRIUS/.test(D)){
+      const _kTopo = (((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10);
+      if((M._uppTopo=M._uppTopo||new Set()).has(_kTopo)){
+        pago=0; regla='Segunda topografía – Sirius / Ojo Seco del mismo paciente ese día: se paga por paciente';
+      } else {
+        M._uppTopo.add(_kTopo);
+        pago = (g==='S') ? 15000 : 25000;
+        regla = 'Lectura de topografía – Sirius / Ojo Seco a $'+pago.toLocaleString()+(g==='S'?' (EPS Sura, por paciente)':' (ficha técnica, por paciente)');
+      }
+    }
+    else if(/ECOGRAF/.test(D)){
+      const _kEco = (((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10);
+      if(g!=='M'){
+        if(!(r.t>0)){
+          pago=0; regla='Ecografía en Sede 1 sin valor facturado: no se liquida';
+        } else if((M._uppEcoS1=M._uppEcoS1||new Set()).has(_kEco)){
+          pago=0; regla='Segundo ojo/cargo de ecografía A y B del mismo paciente ese día: en Sede 1 se paga por paciente';
+        } else {
+          const [vE, rgE] = mPredecir(r.m, r.d, r.sv, r.e+' '+r.ct, 1, r.t, false);
+          if(vE && vE > 0){
+            M._uppEcoS1.add(_kEco);
+            pago = vE;
+            regla = (rgE || 'Ecografía A y B') + ' (por paciente en Sede 1)';
+          } else if(cfg.ayudasPct){
+            M._uppEcoS1.add(_kEco);
+            pago = Math.round(cfg.ayudasPct*(r.t||0));
+            regla = (cfg.ayudasPct*100)+'% de lo facturado (por paciente en Sede 1)';
+          } else {
+            pago = 0; regla = rgE || 'sin regla';
+          }
+        }
+      } else {
+        const nOjos = ((r.q && r.q >= 2) || /BILATERAL|AMBOS OJOS|\bAO\b/.test(mNorm((r.d||'')+' '+(r.as||'')))) ? Math.max(2, r.q||2) : 1;
+        const [vE1, rgE1] = mPredecir(r.m, r.d, r.sv, r.e+' '+r.ct, 1, r.t, false);
+        if(vE1 && vE1 > 0){
+          pago = vE1 * nOjos;
+          regla = (rgE1 || 'Ecografía A y B') + ' (' + (nOjos>=2 ? nOjos+' ojos' : 'por ojo') + ' en Sede 2)';
+        } else {
+          pago = 0; regla = rgE1 || 'sin regla';
+        }
+      }
+    }
     else if(g!=='M' && cfg.camposPct && D.includes('CAMPO VISUAL')){ pago=Math.round(cfg.camposPct*(r.t||0)); regla='15% del campo visual facturado'; }
-    else if(g!=='M' && cfg.octFlat && /TOMOGRAF|OCT /.test(D)){ pago=cfg.octFlat; regla='Tomografía/OCT a $'+cfg.octFlat.toLocaleString(); }
+    else if(g!=='M' && cfg.octFlat && /TOMOGRAF|OCT /.test(D)){
+      const _kOctS1 = (((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10);
+      if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (M._uppS1=M._uppS1||new Set()).has(_kOctS1)){
+        pago=0; regla='Lectura OCT del mismo paciente ese día: en Sede 1 se paga por paciente ($'+cfg.octFlat.toLocaleString()+')';
+      } else {
+        if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)) (M._uppS1=M._uppS1||new Set()).add(_kOctS1);
+        pago=cfg.octFlat; regla='Tomografía/OCT a $'+cfg.octFlat.toLocaleString()+' (por paciente en Sede 1)';
+      }
+    }
     else if(g!=='M' && cfg.angioPct && /ANGIOGRAF|FOTOGRAF/.test(D)){ pago=Math.round(cfg.angioPct*(r.t||0)); regla=Math.round(cfg.angioPct*100)+'% de lo facturado (angiografías y fotografías, ficha)'; }
     else if(g!=='M' && cfg.ayudasPct){ pago=Math.round(cfg.ayudasPct*(r.t||0)); regla=(cfg.ayudasPct*100)+'% de lo facturado'; }
     else if(g==='M' && esCons && RM.consJornM){
@@ -5977,6 +6100,7 @@ function liquidarV4(recs, actos, actosAll){
       pago=v||0; regla=rg||'';
       if(v===null && rg!=='porcentual' && (r.t||0)>0) M.hallazgos.add((v4EmpG(r.e+' '+r.ct)==='M'?'[S2]':'[S1]')+'Sin regla: '+(r.d||'').slice(0,38));
     }
+    if(r._homologado && pago > 0) regla += ' · valor homologado de misma empresa y condición ('+money(r._homologado)+', pendiente facturación)';
     M[g==='M'?'M':'P']+=pago;
     M.filas.push({fuente:'sede',fecha:r.f,pac:r.p,det:r.d,emp:r.e,t:r.t,fa:r.fa,pago,regla});
   }
@@ -7281,7 +7405,13 @@ function semAbrir(m){
 // ============ CIRUGÍAS CON NOTA EN LA AGENDA ============
 // Se le muestran a quien liquida tal como están escritas, con lo que se paga hoy, para que
 // apruebe el valor o lo cambie. Mientras no decida, el acto cuenta como pendiente.
-function notasDe(med){ try{ const L=(RESULT._notas||{})[med]||[], sc=RESULT._notasAmb||''; return sc? L.filter(n=>!n.amb||n.amb===sc) : L; }catch(e){ return []; } }
+function esSoloSedeActiva(){
+  try{
+    const sc = (typeof RESULT!=='undefined' && RESULT && RESULT._notasAmb) || (document.getElementById('sede') && document.getElementById('sede').value) || '';
+    return sc === 'Sede Principal' || sc === 'Sede 2';
+  }catch(e){ return false; }
+}
+function notasDe(med){ try{ if(esSoloSedeActiva()) return []; const L=(RESULT._notas||{})[med]||[], sc=RESULT._notasAmb||''; return sc? L.filter(n=>(n.amb||'Cirugía')===sc) : L; }catch(e){ return []; } }
 function notasPendientes(med){ return notasDe(med).filter(n=>!n.dec).length; }
 // Lo que está sin decidir YA está sumando en el total, con el valor que calculó el
 // tablero. Saber cuánto es permite decirlo con el número al frente, sin rodeos.
@@ -7696,7 +7826,8 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
     // pero la LECTURA la hace y la cobra el médico. Regla de Faber: «las lecturas son de los médicos».
     if(!mHojaDe(_m)){
       const _d = (r.detalle||'')+' '+(r.servicio||'');
-      if(/CAMPO VISUAL/i.test(_d)){ _m = 'ANA ALVAREZ'; _lect = true; }                     // ficha: Lectura de Campo Visual
+      if(/CAMPO VISUAL/i.test(_d)){ _m = 'ANA ALVAREZ'; _lect = true; }
+      else if(/TOPOGRAFIA.*(SIRIUS|OJO SECO)|SIRIUS|OJO SECO.*TOPOGRAFIA/i.test(_d+' '+(r.asunto||''))){ _m = 'JENNIFER CORREDOR'; _lect = true; }
       else if(/TOMOGRAFIA OPTICA|ANGIOTOMOGRAFIA/i.test(_d)){
         const _gR = v4EmpG((r.empresa||'')+' '+(r.contrato||''));
         const _cR = ((r.paciente||'').match(/(\d{5,12})/)||[])[1] || mNorm(r.paciente||'');
@@ -7871,7 +8002,57 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
           fx.regla = (fx.regla||'');   // se agrupa donde estaba; el cambio se ve en el detalle
         }
       }
-      const reglaBase = ((fx.regla||'').replace(/\([^)]*\d[^)]*\)|#\d+|\d+\s*de\s*\d+/g,'').replace(/\s\s+/g,' ').replace(/\s·\s*$/,'').trim() || 'Otros conceptos') + (fx._lado? ' ('+fx._lado+')' : '');
+      const _rgClean = ((fx.regla||'').replace(/\([^)]*\d[^)]*\)|#\d+|\d+\s*de\s*\d+/g,'').replace(/\s\s+/g,' ').replace(/\s·\s*$/,'').trim() || 'Otros conceptos');
+      const _esJorORubro = fx.fuente==='mes' || fx.fuente==='anestesia' || /CUBIERT[AO] POR (EL |LA )?(RUBRO|JORNADA|BASICO)|PAQUETE MENSUAL|CUBIERTO POR EL RUBRO FIJO|INCLUID[AO] EN LA JORNADA|JORNADA/i.test(mNorm((fx.regla||'')+' '+(fx.det||'')));
+      const _clasificarTipoSrv = (f) => {
+        if(_esJorORubro) return _rgClean;
+        const d = mNorm((f.det||'')+' '+(f.regla||''));
+        if(/BONIFICACION|LENTE INTRAOCULAR|\bLIO\b|PANOPTIX|VIVITY|EYECRYL|OPTIFLEX/.test(d) && !/FACO|CATARATA|EXTRACAPSULAR/.test(mNorm(f.det||''))) return 'Bonificación de lentes intraoculares';
+        if(/CONSULTA|VALORACION/.test(mNorm(f.det||''))){
+          if(/PREANEST|ANESTESIOLOG/.test(d)) return 'Consultas preanestésicas';
+          if(/POSQX|POSQUIRURGIC|POSTQUIRURGIC|POSTOPERATOR/.test(d)) return 'Control posquirúrgico';
+          if(/NEURO/.test(d)) return 'Consulta neuroftalmología';
+          if(/CONTROL|SEGUIMIENTO/.test(mNorm(f.det||''))) return 'Consulta de control';
+          if(/PRIMERA VEZ|1RA VEZ|1A VEZ/.test(mNorm(f.det||''))) return 'Consulta primera vez';
+          return 'Consulta especializada';
+        }
+        if(/TOPOGRAFIA|SIRIUS/.test(d)) return 'Lectura de topografía – Sirius / Ojo Seco';
+        if(/ANGIOTOMOGRAF|TOMOGRAF|\bOCT\b/.test(d)) return 'Lectura de tomografías (OCT)';
+        if(/CAMPO VISUAL|CAMPIMETRIA/.test(d)) return 'Campos visuales';
+        if(/ECOGRAF/.test(d)) return 'Ecografías A y B';
+        if(/ANGIOGRAF/.test(d)) return 'Angiografías';
+        if(/FOTOGRAF|FOTODISCO/.test(d)) return 'Fotografías a color de segmento posterior';
+        if(/BIOMETR/.test(d)) return 'Biometría ocular';
+        if(/PAQUIMETR/.test(d)) return 'Paquimetría';
+        if(/ENDOTELIAL/.test(d)) return 'Recuento endotelial';
+        if(/LUZ PULSADA|IURPL|\bIPL\b/.test(d)) return 'Terapia de luz pulsada (IPL)';
+        if(/LUZ MODULADA|FOTOBIOMOD/.test(d)) return 'Fotobiomodulación (luz modulada)';
+        if(/CAPSULOTOMIA/.test(d)) return 'Capsulotomía con láser';
+        if(/IRIDOTOMIA|IRIDOPLAST/.test(d)) return 'Iridotomía con láser';
+        if(/TRABECULOPLASTIA/.test(d)) return 'Trabeculoplastia con láser';
+        if(/CICLOFOTOCOAGULA|CICLOCRIO/.test(d)) return 'Ciclofotocoagulación / Ciclocrioterapia';
+        if(/PANFOTOCOAGULA|FOTOCOAGULA|ABLACION/.test(d)) return 'Fotocoagulación con láser';
+        if(/INTRAVITR|AFLIBERCEPT|FARICIMAB|RANIBIZUMAB|BEVACIZUMAB|OZURDEX/.test(d)) return 'Terapia intravítrea';
+        if(/PLASTIA.*(CANALICUL|PUNTO)|PUNTOPLASTIA/.test(d)) return 'Plastia de canalículos / punto lagrimal';
+        if(/TAPON|PLUG/.test(d)) return 'Inserción de tapones lagrimales (plugs)';
+        if(/SONDEO/.test(d)) return 'Sondeo de vías lagrimales';
+        if(/TONOGRAFIA/.test(d)) return 'Tonografía';
+        if(/QUERATOPLASTIA/.test(d)) return 'Queratoplastia';
+        if(/ANILLO/.test(d)) return 'Implante de anillos intraestromales';
+        if(/EXTRACAPSULAR|FACO|CATARATA|EXTRACCION DE LENTE/.test(d)) return 'FACO + Implante de LIO';
+        if(/QUERATECTOMIA|PRK|LASEK|LASIK|REFRACTIVA|FAQUICO/.test(d)) return 'Cirugía refractiva';
+        if(/PTERIGION/.test(d)) return 'Resección de pterigión';
+        if(/CHALAZION/.test(d)) return 'Resección de chalazión';
+        if(/BLEFARO|PTOSIS|ORBITOTOMIA|TUMOR.*PARPADO|PARPADO.*TUMOR/.test(d)) return 'Blefaroplastia / Cirugía oculoplástica';
+        if(/ESTRABISMO|REINSERCION|RETROINSERCION|RETROCESO|RESECCION DE MUSCULO/.test(d)) return 'Cirugía de estrabismo';
+        if(/VITRECTOMIA|RETINOPEXIA/.test(d)) return 'Vitrectomía / Cirugía de retina';
+        if(/TRABECULECTOMIA|DISPOSITIVO|VALVULA/.test(d)) return 'Trabeculectomía / Implante de válvula';
+        if(/TOXINA/.test(d)) return 'Aplicación de toxina botulínica';
+        const detLimpio = String(f.det||'').trim();
+        return detLimpio ? (detLimpio.charAt(0).toUpperCase() + detLimpio.slice(1).toLowerCase()) : _rgClean;
+      };
+      const _tipoSrvBase = _clasificarTipoSrv(fx);
+      const reglaBase = (_esJorORubro ? _rgClean : ((fx.pago > 0) ? _tipoSrvBase : (_tipoSrvBase + ' — ' + _rgClean))) + (fx._lado? ' ('+fx._lado+')' : '');
       const bloque = (fx.fuente==='cirugia'||fx.fuente==='anestesia') ? med.cir : med.sede;
       const g = bloque[reglaBase] = bloque[reglaBase]||{servicio:reglaBase, tipo:'', uf:({cirugia:'Quirófano',anestesia:'Anestesia',mes:'Mes completo',sede:'Sede'})[fx.fuente]||'Sede', unit:fx.pago, uniforme:true, esPct:false, obs:'', cant:0, fact:0, pago:0, pagoM:0, dets:new Set(), recs:[]};
       if(/\(revisar/i.test(fx.regla||'')) g.rev=true;
@@ -10053,8 +10234,8 @@ function fraseConcepto0(s){
 // De dónde sale el total de ESTE médico: en una línea, para que cuadre sin buscar.
 function resumenMedico(d, med){
   try{
-    const nCir = Object.values(d.cir||{}).reduce((s,g)=>s+(g.cant||0),0);
-    const vCir = Object.values(d.cir||{}).reduce((s,g)=>s+(g.pago||0),0);
+    const nCir = esSoloSedeActiva() ? 0 : Object.values(d.cir||{}).reduce((s,g)=>s+(g.cant||0),0);
+    const vCir = esSoloSedeActiva() ? 0 : Object.values(d.cir||{}).reduce((s,g)=>s+(g.pago||0),0);
     const nSed = Object.values(d.sede||{}).reduce((s,g)=>s+(g.cant||0),0);
     const vSed = Object.values(d.sede||{}).reduce((s,g)=>s+(g.pago||0),0);
     const st = Object.values(d.sinTarifa||{});
@@ -10221,7 +10402,7 @@ function ladoPares(med){
 // ¿El acto dice otro ojo que el del valor pagado? Solo con lo que dice el texto del acto (agenda o informe).
 function ladoCorregir(h, fx){
   const v=Math.round(fx.pago||0); if(!(v>0)) return null;
-  if(/%|rubro|paquete|jornada|acuerdo|valor aprobado|cambiado/i.test(fx.regla||'')) return null;
+  if(/%|rubro|paquete|jornada|acuerdo|valor aprobado|cambiado|por paciente en Sede 1|en Sede 2/i.test(fx.regla||'')) return null;
   const D=mNorm((fx.det||'')+' '+(fx.as||'')); if(!D) return null;
   let dice = /AMBOS OJOS|\bBILATERAL\b/.test(D) ? 'ambos' : /\(OJO (DERECHO|IZQUIERDO)\)|\bUNILATERAL\b|UN SOLO OJO/.test(D) ? 'un' : null;
   let desdeHC = false;
@@ -10344,7 +10525,7 @@ function detalleHTML(d, med, f){
     }
     out.push(hh);
   };
-  if(f.bloque!=='sede'){ seccion('Cirugía y anestesia', d.cir);
+  if(f.bloque!=='sede' && !esSoloSedeActiva()){ seccion('Cirugía y anestesia', d.cir);
     try{ const nh=notasHTML(med); if(nh) out.push(nh); }catch(e){ console.error('notas', e); } }
   if(f.bloque!=='cir') seccion('Consulta y apoyos — sede', d.sede);
   const st = Object.values(d.sinTarifa);
