@@ -90,10 +90,103 @@ const formatCOP = (val: number | undefined) => {
   return "$" + Math.round(val).toLocaleString("es-CO");
 };
 
+const formatMillones = (val: number | undefined) => {
+  const n = Number(val || 0);
+  if (!n || isNaN(n)) return "$0M";
+  const m = n / 1_000_000;
+  if (Math.abs(m) >= 10) {
+    return "$" + Math.round(m).toLocaleString("es-CO") + "M";
+  }
+  return "$" + m.toFixed(1).replace(".", ",") + "M";
+};
+
 const normalizarEtiquetaTipo = (tipoRaw: string | undefined): string => {
   const t = String(tipoRaw || "").toUpperCase().trim();
   if (t.includes("DEVOL")) return "DEVOL.";
   return "GLOSA";
+};
+
+const normalizarEmpresaCorta = (razonSocialRaw: string | undefined): string => {
+  const r = String(razonSocialRaw || "").toUpperCase().trim();
+  if (r.includes("MUTUAL SER")) return "MUTUAL SER";
+  if (r.includes("ECOPETROL")) return "ECOPETROL";
+  if (r.includes("SEGUROS DE VIDA SURAMERICANA") || r.includes("SURA POLIZA")) return "SURA POLIZA";
+  if (r.includes("SURAMERICANA") || r.includes("EPS SURA")) return "EPS SURA";
+  if (r.includes("MEDPLUS")) return "MEDPLUS";
+  if (r.includes("MEDISANITAS")) return "MEDISANITAS";
+  if (r.includes("COLSANITAS")) return "COLSANITAS";
+  if (r.includes("SANITAS")) return "SANITAS EPS";
+  if (r.includes("COLMEDICA")) return "COLMEDICA";
+  if (r.includes("COOMEVA")) return "COOMEVA";
+  if (r.includes("BOLIVAR")) return "SEGUROS BOLIVAR";
+  if (r.includes("ALLIANZ")) return "ALLIANZ";
+  if (r.includes("COLPATRIA") || r.includes("AXA")) return "COLPATRIA";
+  if (r.includes("HDI")) return "HDI SEGUROS";
+  if (r.includes("COMFENALCO")) return "COMFENALCO CARTAGENA";
+  if (r.includes("SALUD TOTAL")) return "SALUD TOTAL";
+  if (r.includes("PAN AMERICAN")) return "PAN AMERICAN LIFE";
+  if (r.includes("MEXICHEM")) return "MEXICHEM";
+  if (r.includes("ISLAS")) return "HOTEL LAS ISLAS";
+  if (r.includes("PROGEMA")) return "PROGEMA";
+  if (r.includes("MILENA ROMERO")) return "CONVENIO DRA MILENA ROMERO";
+  if (r.includes("PARTICULAR")) return "PARTICULAR";
+  return r || "SIN ENTIDAD";
+};
+
+const formatearNombreEmpresaLista = (empCorta: string): string => {
+  const mapa: Record<string, string> = {
+    "MUTUAL SER": "Mutual Ser EPS",
+    "EPS SURA": "Eps Suramericana",
+    "ECOPETROL": "Ecopetrol S.A.",
+    "MEDPLUS": "Medplus",
+    "COLSANITAS": "Colsanitas S.A.",
+    "COLMEDICA": "Colmédica",
+    "SURA POLIZA": "Sura Póliza",
+    "COOMEVA": "Coomeva",
+    "SEGUROS BOLIVAR": "Seguros Bolívar",
+    "ALLIANZ": "Allianz",
+    "COLPATRIA": "Axa Colpatria",
+    "HDI SEGUROS": "HDI Seguros",
+    "SANITAS EPS": "Sanitas EPS",
+    "COMFENALCO CARTAGENA": "Comfenalco",
+    "SALUD TOTAL": "Salud Total",
+    "MEDISANITAS": "Medisanitas",
+    "PAN AMERICAN LIFE": "Pan American Life",
+    "MEXICHEM": "Mexichem",
+    "HOTEL LAS ISLAS": "Hotel Las Islas",
+    "PROGEMA": "Progema",
+    "CONVENIO DRA MILENA ROMERO": "Dra. Milena Romero",
+    "PARTICULAR": "Particular",
+    "OTRAS": "Otras Entidades",
+  };
+  if (mapa[empCorta]) return mapa[empCorta];
+  return empCorta
+    .toLowerCase()
+    .replace(/\b\w/g, (l) => l.toUpperCase())
+    .slice(0, 22);
+};
+
+const formatearNombreCortoAnillo = (empCorta: string): string => {
+  const mapa: Record<string, string> = {
+    "MUTUAL SER": "Mutual",
+    "EPS SURA": "Sura",
+    "ECOPETROL": "Ecopetrol",
+    "MEDPLUS": "Medplus",
+    "COLSANITAS": "Colsanitas",
+    "COLMEDICA": "Colmédica",
+    "SURA POLIZA": "Sura Pól.",
+    "COOMEVA": "Coomeva",
+    "SEGUROS BOLIVAR": "Bolívar",
+    "ALLIANZ": "Allianz",
+    "COLPATRIA": "Colpatria",
+    "HDI SEGUROS": "HDI",
+    "SANITAS EPS": "Sanitas",
+    "COMFENALCO CARTAGENA": "Comfenalco",
+    "SALUD TOTAL": "Salud Total",
+    "MEDISANITAS": "Medisanitas",
+    "OTRAS": "Otras",
+  };
+  return mapa[empCorta] || empCorta.slice(0, 10);
 };
 
 const normalizarResponsableReal = (respRaw: string | undefined, empresaRaw: string | undefined): string => {
@@ -350,11 +443,68 @@ export default function TableroCarteraAnalytics() {
     setTimeout(() => setNotificacion(""), 4000);
   };
 
-  const sincronizarConSismaVivo = async (fechaISO?: string, silencioso?: boolean) => {
+  const datosSismaCompletaRef = useRef(carteraInitialData.sismaBack.datosSismaVivo);
+
+  const sincronizarConSismaVivo = async (
+    fechaISO?: string,
+    silencioso?: boolean,
+    filtrosCustom?: {
+      anios?: string[];
+      meses?: string[];
+      desde?: string;
+      hasta?: string;
+      diasSem?: number[];
+      diasActivo?: boolean;
+      empresas?: string[];
+      responsables?: string[];
+      mutual?: boolean;
+    }
+  ) => {
     const corteConsulta = fechaISO || fechaCorteVivo || "2026-10-20";
+    const aniosAct = filtrosCustom?.anios ?? aniosFrecSel;
+    const mesesAct = filtrosCustom?.meses ?? mesesFrecSel;
+    const diasAct = filtrosCustom?.diasActivo ?? diasFiltroActivo;
+    const desdeAct = filtrosCustom?.desde ?? diasDesde;
+    const hastaAct = filtrosCustom?.hasta ?? diasHasta;
+    const semAct = filtrosCustom?.diasSem ?? diasSemanaSel;
+    const empAct = filtrosCustom?.empresas ?? empresasFrecSel;
+    const respAct = filtrosCustom?.responsables ?? responsablesFrecSel;
+    const mutAct = filtrosCustom?.mutual ?? incluirMutual;
+
+    const params = new URLSearchParams();
+    params.set("corte", corteConsulta);
+    if (aniosAct.length > 0 && aniosAct.length < carteraInitialData.aniosDisponibles.length) {
+      params.set("anios", aniosAct.join(","));
+    }
+    if (mesesAct.length > 0) {
+      params.set("meses", mesesAct.join(","));
+    }
+    if (diasAct) {
+      if (desdeAct) params.set("desde", desdeAct);
+      if (hastaAct) params.set("hasta", hastaAct);
+      if (semAct.length > 0) params.set("diasSem", semAct.join(","));
+    }
+    if (empAct.length > 0) {
+      params.set("empresas", empAct.join(","));
+    }
+    if (respAct.length > 0) {
+      params.set("responsables", respAct.join(","));
+    }
+    if (!mutAct) {
+      params.set("mutual", "0");
+    }
+
+    const esSinFiltro =
+      mutAct &&
+      (aniosAct.length === 0 || aniosAct.length >= carteraInitialData.aniosDisponibles.length) &&
+      mesesAct.length === 0 &&
+      !diasAct &&
+      empAct.length === 0 &&
+      respAct.length === 0;
+
     setCargandoSismaVivo(true);
     try {
-      const res = await fetch(`/api/cartera/sisma?corte=${encodeURIComponent(corteConsulta)}`, {
+      const res = await fetch(`/api/cartera/sisma?${params.toString()}`, {
         cache: "no-store",
       });
       const json = await res.json();
@@ -363,6 +513,9 @@ export default function TableroCarteraAnalytics() {
           mostrarMensaje(`No se pudo sincronizar con SISMA: ${json.error || res.statusText}`);
         }
         return;
+      }
+      if (esSinFiltro) {
+        datosSismaCompletaRef.current = json;
       }
       setDatosSismaVivo(json);
       if (json.resumenCorte) {
@@ -449,7 +602,6 @@ export default function TableroCarteraAnalytics() {
     );
 
     if (idxExistente !== -1) {
-      // Si ya estaba marcada y hay más de 1 fecha, desmarcarla; si no era la activa, activarla
       if (indiceCorteActivo !== idxExistente) {
         setIndiceCorteActivo(idxExistente);
         setFechaCorteVivo(isoFecha);
@@ -472,7 +624,6 @@ export default function TableroCarteraAnalytics() {
         }
       }
     } else {
-      // Si no estaba marcada, consultarla en vivo en SISMA y agregarla
       setFechaCorteVivo(isoFecha);
       if (modalidadSisma === "TODAS") {
         sincronizarConSismaVivo(isoFecha, false);
@@ -554,6 +705,12 @@ export default function TableroCarteraAnalytics() {
     if (!tieneRango && !tieneSem) {
       setDiasFiltroActivo(false);
       setDiasEtiqueta("📅 Todos los días");
+      sincronizarConSismaVivo(fechaCorteVivo, false, {
+        diasActivo: false,
+        desde: "",
+        hasta: "",
+        diasSem: [],
+      });
     } else {
       setDiasFiltroActivo(true);
       const partes: string[] = [];
@@ -571,10 +728,19 @@ export default function TableroCarteraAnalytics() {
         partes.push(nombres.join(", "));
       }
       setDiasEtiqueta(`📅 ${partes.join(" · ")}`);
+      const corteTarget =
+        diasHasta && /^\d{4}-\d{2}-\d{2}$/.test(diasHasta)
+          ? diasHasta
+          : fechaCorteVivo;
       if (diasHasta && /^\d{4}-\d{2}-\d{2}$/.test(diasHasta)) {
         setFechaCorteVivo(diasHasta);
-        sincronizarConSismaVivo(diasHasta, false);
       }
+      sincronizarConSismaVivo(corteTarget, false, {
+        diasActivo: true,
+        desde: diasDesde,
+        hasta: diasHasta,
+        diasSem: diasSemanaSel,
+      });
     }
     setDdFrecAbierto(null);
     setPaginaActual(1);
@@ -588,6 +754,12 @@ export default function TableroCarteraAnalytics() {
     setDiasEtiqueta("📅 Todos los días");
     setDdFrecAbierto(null);
     setPaginaActual(1);
+    sincronizarConSismaVivo(fechaCorteVivo, true, {
+      diasActivo: false,
+      desde: "",
+      hasta: "",
+      diasSem: [],
+    });
   };
 
   const cumpleFiltrosFrecuencias = (
@@ -634,13 +806,14 @@ export default function TableroCarteraAnalytics() {
   };
 
   const limpiarTodosLosFiltros = () => {
+    const todosAnios = [...carteraInitialData.aniosDisponibles];
     setFiltroAnio("TODOS");
     setFiltroEmpresa("TODAS");
     setFiltroTipo("TODOS");
     setFiltroEstado("TODOS");
     setFiltroResponsable("TODAS");
     setBusqueda("");
-    setAniosFrecSel([...carteraInitialData.aniosDisponibles]);
+    setAniosFrecSel(todosAnios);
     setMesesFrecSel([]);
     setEmpresasFrecSel([]);
     setResponsablesFrecSel([]);
@@ -656,6 +829,17 @@ export default function TableroCarteraAnalytics() {
     setOrdenColumna(null);
     setColMenuAbierto(null);
     setPaginaActual(1);
+    sincronizarConSismaVivo(fechaCorteVivo, true, {
+      anios: todosAnios,
+      meses: [],
+      diasActivo: false,
+      desde: "",
+      hasta: "",
+      diasSem: [],
+      empresas: [],
+      responsables: [],
+      mutual: true,
+    });
   };
 
   const hayFiltrosActivos =
@@ -677,9 +861,449 @@ export default function TableroCarteraAnalytics() {
     ordenColumna !== null;
 
   const listaCortesActiva = modalidadSisma === "TODAS" ? cortesTodas : cortesPyp;
-  const corteSeleccionado =
+  const corteBaseSeleccionado =
     listaCortesActiva[Math.min(indiceCorteActivo, listaCortesActiva.length - 1)] ||
     listaCortesActiva[listaCortesActiva.length - 1];
+
+  // Filtrado reactivo instantáneo sobre las empresas de SISMA en vivo
+  const empresasSismaFiltradas = useMemo(() => {
+    const origen =
+      datosSismaCompletaRef.current?.topEmpresas ||
+      datosSismaVivo?.topEmpresas ||
+      carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
+      [];
+    return origen.filter((emp) => {
+      const empCorta = normalizarEmpresaCorta(emp.razonSocial);
+      const resp = normalizarResponsableReal("", empCorta);
+      if (
+        !incluirMutual &&
+        (empCorta.includes("MUTUAL") ||
+          String(emp.razonSocial || "").toUpperCase().includes("MUTUAL"))
+      ) {
+        return false;
+      }
+      if (empresasFrecSel.length > 0 && !empresasFrecSel.includes(empCorta)) {
+        return false;
+      }
+      if (filtroEmpresa !== "TODAS" && empCorta !== filtroEmpresa) {
+        return false;
+      }
+      if (responsablesFrecSel.length > 0 && !responsablesFrecSel.includes(resp)) {
+        return false;
+      }
+      if (filtroResponsable !== "TODAS" && resp !== filtroResponsable) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    datosSismaVivo,
+    incluirMutual,
+    empresasFrecSel,
+    filtroEmpresa,
+    responsablesFrecSel,
+    filtroResponsable,
+  ]);
+
+  const tieneFiltroEntidadDirecto =
+    !incluirMutual ||
+    empresasFrecSel.length > 0 ||
+    filtroEmpresa !== "TODAS" ||
+    responsablesFrecSel.length > 0 ||
+    filtroResponsable !== "TODAS";
+
+  const corteSeleccionado = useMemo<CorteSismaBack>(() => {
+    if (!tieneFiltroEntidadDirecto || modalidadSisma === "PYP") {
+      return corteBaseSeleccionado;
+    }
+    const corr = empresasSismaFiltradas.reduce((acc, e) => acc + (e.corriente || 0), 0);
+    const venc = empresasSismaFiltradas.reduce((acc, e) => acc + (e.vencida || 0), 0);
+    const tot = empresasSismaFiltradas.reduce((acc, e) => acc + (e.total || 0), 0);
+    const pend = empresasSismaFiltradas.reduce(
+      (acc, e) => acc + (e.pendienteRadicar || 0),
+      0
+    );
+    const totalBaseSinFiltro =
+      (datosSismaCompletaRef.current?.edades?.saldoTotal ||
+        corteBaseSeleccionado.carteraTotal) ||
+      1;
+    const proporcion = Math.min(1, Math.max(0, tot / totalBaseSinFiltro));
+    const giros =
+      datosSismaVivo && datosSismaVivo.topEmpresas.length === empresasSismaFiltradas.length
+        ? corteBaseSeleccionado.anticiposPorCruzar
+        : Math.round(corteBaseSeleccionado.anticiposPorCruzar * proporcion);
+    return {
+      ...corteBaseSeleccionado,
+      carteraCorriente: Math.round(corr),
+      carteraVencida: Math.round(venc),
+      carteraTotal: Math.round(tot),
+      facturasPendientesRadicar: Math.round(pend),
+      anticiposPorCruzar: giros,
+      totalCarteraReal: Math.round(tot - giros),
+    };
+  }, [
+    tieneFiltroEntidadDirecto,
+    modalidadSisma,
+    corteBaseSeleccionado,
+    empresasSismaFiltradas,
+    datosSismaVivo,
+  ]);
+
+  // Agrupación real por empresa para las 2 Tortas Ejecutivas (Cartera Total y Cartera Vencida)
+  const construirItemsDonut = (campo: "total" | "vencida", paleta: string[]) => {
+    const agrupado = new Map<string, number>();
+    for (const emp of empresasSismaFiltradas) {
+      const clave = normalizarEmpresaCorta(emp.razonSocial);
+      const val = Math.max(0, Number(emp[campo] || 0));
+      if (val <= 0) continue;
+      agrupado.set(clave, (agrupado.get(clave) || 0) + val);
+    }
+    const ordenadas = Array.from(agrupado.entries())
+      .map(([empCorta, valor]) => ({ empCorta, valor }))
+      .sort((a, b) => b.valor - a.valor);
+
+    const sumaTotal = ordenadas.reduce((acc, x) => acc + x.valor, 0);
+    if (sumaTotal <= 0) return { sumaTotal: 0, items: [] };
+
+    const top5 = ordenadas.slice(0, 5);
+    const resto = ordenadas.slice(5);
+    const valorResto = resto.reduce((acc, x) => acc + x.valor, 0);
+
+    const listaFinal = [...top5];
+    if (valorResto > 0) {
+      listaFinal.push({ empCorta: "OTRAS", valor: valorResto });
+    }
+
+    return {
+      sumaTotal,
+      items: listaFinal.map((it, idx) => ({
+        empCorta: it.empCorta,
+        nombreLista: formatearNombreEmpresaLista(it.empCorta),
+        nombreAnillo: formatearNombreCortoAnillo(it.empCorta),
+        valor: it.valor,
+        pct: (it.valor / sumaTotal) * 100,
+        color: paleta[idx % paleta.length],
+      })),
+    };
+  };
+
+  const PALETA_DONUT_TOTAL = [
+    "#1D58D8", // Azul rey
+    "#C81E3A", // Rojo carmesí
+    "#0D8A47", // Verde esmeralda
+    "#6B3FA0", // Morado ciruela
+    "#EA6A15", // Naranja ámbar
+    "#5B6B7C", // Gris pizarra
+  ];
+
+  const PALETA_DONUT_VENCIDA = [
+    "#1D58D8", // Azul rey
+    "#C81E3A", // Rojo carmesí
+    "#0D8A47", // Verde esmeralda
+    "#6B3FA0", // Morado ciruela
+    "#EA6A15", // Naranja ámbar
+    "#EAB308", // Dorado
+  ];
+
+  const donutCarteraTotal = useMemo(
+    () => construirItemsDonut("total", PALETA_DONUT_TOTAL),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [empresasSismaFiltradas]
+  );
+
+  const donutCarteraVencida = useMemo(
+    () => construirItemsDonut("vencida", PALETA_DONUT_VENCIDA),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [empresasSismaFiltradas]
+  );
+
+  const toggleFiltroEmpresaDesdeTorta = (empCorta: string) => {
+    if (empCorta === "OTRAS") return;
+    let nuevaLista: string[];
+    if (empresasFrecSel.length === 1 && empresasFrecSel[0] === empCorta) {
+      nuevaLista = [];
+      setFiltroEmpresa("TODAS");
+    } else {
+      nuevaLista = [empCorta];
+      setFiltroEmpresa(empCorta);
+    }
+    setEmpresasFrecSel(nuevaLista);
+    setPaginaActual(1);
+    sincronizarConSismaVivo(fechaCorteVivo, true, { empresas: nuevaLista });
+  };
+
+  const renderTarjetaTortaEmpresa = (
+    titulo: string,
+    etiquetaCentro: string,
+    datosDonut: {
+      sumaTotal: number;
+      items: {
+        empCorta: string;
+        nombreLista: string;
+        nombreAnillo: string;
+        valor: number;
+        pct: number;
+        color: string;
+      }[];
+    }
+  ) => {
+    const cx = 165;
+    const cy = 93;
+    const rOuter = 56;
+    const rInner = 35;
+
+    // Construir segmentos y líneas guía horizontales alineadas a izquierda y derecha sin montarse
+    let anguloAcum = -Math.PI / 2;
+    const segmentos = datosDonut.items.map((it) => {
+      const barrido = Math.max(0.02, (it.pct / 100) * Math.PI * 2);
+      const startAngle = anguloAcum;
+      const endAngle = anguloAcum + barrido;
+      const midAngle = startAngle + barrido / 2;
+      anguloAcum = endAngle;
+      return { ...it, startAngle, endAngle, midAngle };
+    });
+
+    type CalloutSlot = (typeof segmentos)[number] & {
+      lado: "izq" | "der";
+      anchorX: number;
+      anchorY: number;
+      elbowX: number;
+      labelY: number;
+      lineEndX: number;
+      textX: number;
+    };
+
+    const izqRaw: CalloutSlot[] = [];
+    const derRaw: CalloutSlot[] = [];
+
+    segmentos.forEach((seg) => {
+      if (seg.pct < 1.2) return;
+      const cos = Math.cos(seg.midAngle);
+      const sin = Math.sin(seg.midAngle);
+      const anchorX = cx + (rOuter + 1) * cos;
+      const anchorY = cy + (rOuter + 1) * sin;
+      const lado: "izq" | "der" = cos >= 0 ? "der" : "izq";
+      const slot: CalloutSlot = {
+        ...seg,
+        lado,
+        anchorX,
+        anchorY,
+        elbowX: lado === "der" ? cx + rOuter + 12 : cx - rOuter - 12,
+        labelY: cy + (rOuter + 10) * sin,
+        lineEndX: lado === "der" ? 322 : 8,
+        textX: lado === "der" ? 322 : 8,
+      };
+      if (lado === "der") derRaw.push(slot);
+      else izqRaw.push(slot);
+    });
+
+    const distribuirSinMontar = (lista: CalloutSlot[]) => {
+      lista.sort((a, b) => a.anchorY - b.anchorY);
+      const minGap = 28;
+      const minY = 22;
+      const maxY = 166;
+      for (let i = 0; i < lista.length; i++) {
+        lista[i].labelY = Math.max(minY, Math.min(maxY, lista[i].labelY));
+        if (i > 0 && lista[i].labelY - lista[i - 1].labelY < minGap) {
+          lista[i].labelY = lista[i - 1].labelY + minGap;
+        }
+      }
+      for (let i = lista.length - 1; i >= 0; i--) {
+        if (lista[i].labelY > maxY) {
+          lista[i].labelY = maxY;
+        }
+        if (i > 0 && lista[i].labelY - lista[i - 1].labelY < minGap) {
+          lista[i - 1].labelY = Math.max(minY, lista[i].labelY - minGap);
+        }
+      }
+    };
+
+    distribuirSinMontar(izqRaw);
+    distribuirSinMontar(derRaw);
+    const callouts = [...izqRaw, ...derRaw];
+
+    const crearArcoDonutPath = (start: number, end: number) => {
+      const delta = Math.min(Math.PI * 2 - 0.001, Math.max(0.01, end - start));
+      const e = start + delta;
+      const x1 = cx + rOuter * Math.cos(start);
+      const y1 = cy + rOuter * Math.sin(start);
+      const x2 = cx + rOuter * Math.cos(e);
+      const y2 = cy + rOuter * Math.sin(e);
+      const x3 = cx + rInner * Math.cos(e);
+      const y3 = cy + rInner * Math.sin(e);
+      const x4 = cx + rInner * Math.cos(start);
+      const y4 = cy + rInner * Math.sin(start);
+      const largeArc = delta > Math.PI ? 1 : 0;
+      return [
+        `M ${x1.toFixed(2)} ${y1.toFixed(2)}`,
+        `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
+        `L ${x3.toFixed(2)} ${y3.toFixed(2)}`,
+        `A ${rInner} ${rInner} 0 ${largeArc} 0 ${x4.toFixed(2)} ${y4.toFixed(2)}`,
+        "Z",
+      ].join(" ");
+    };
+
+    return (
+      <div
+        className="rounded-xl p-4 border shadow-2xs flex flex-col justify-between"
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
+      >
+        <h4
+          className="text-[13.5px] sm:text-[14px] font-bold tracking-tight mb-1"
+          style={{ color: "#0F172A" }}
+        >
+          {titulo}
+        </h4>
+
+        <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+          {/* ANILLO CON LÍNEAS GUÍA HORIZONTALES ALINEADAS */}
+          <div className="sm:col-span-7 flex items-center justify-center">
+            <svg
+              viewBox="0 0 330 186"
+              className="w-full max-w-[340px] h-auto select-none overflow-visible"
+            >
+              {segmentos.length === 0 ? (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={(rOuter + rInner) / 2}
+                  fill="none"
+                  stroke="#E2E8F0"
+                  strokeWidth={rOuter - rInner}
+                />
+              ) : (
+                segmentos.map((seg) => {
+                  const activa =
+                    empresasFrecSel.length === 1 &&
+                    empresasFrecSel[0] === seg.empCorta;
+                  return (
+                    <path
+                      key={seg.empCorta}
+                      d={crearArcoDonutPath(seg.startAngle, seg.endAngle)}
+                      fill={seg.color}
+                      stroke="#FFFFFF"
+                      strokeWidth="1.2"
+                      className="cursor-pointer transition-opacity hover:opacity-90"
+                      style={{
+                        opacity:
+                          empresasFrecSel.length === 1 && !activa ? 0.55 : 1,
+                      }}
+                      onClick={() => toggleFiltroEmpresaDesdeTorta(seg.empCorta)}
+                    >
+                      <title>{`${seg.nombreLista}: ${formatCOP(seg.valor)} (${seg.pct.toFixed(1)}%)`}</title>
+                    </path>
+                  );
+                })
+              )}
+
+              {/* Agujero blanco central y cifra ejecutiva */}
+              <circle cx={cx} cy={cy} r={rInner - 1} fill="#FFFFFF" />
+              <text
+                x={cx}
+                y={cy - 1}
+                textAnchor="middle"
+                fontSize="13.5"
+                fontWeight="800"
+                fill="#0F172A"
+              >
+                {formatMillones(datosDonut.sumaTotal)}
+              </text>
+              <text
+                x={cx}
+                y={cy + 12}
+                textAnchor="middle"
+                fontSize="9"
+                fontWeight="600"
+                fill="#475569"
+              >
+                {etiquetaCentro}
+              </text>
+
+              {/* Líneas guía horizontales alineadas a izquierda y derecha */}
+              {callouts.map((c) => (
+                <g
+                  key={`callout-${c.empCorta}`}
+                  className="cursor-pointer"
+                  onClick={() => toggleFiltroEmpresaDesdeTorta(c.empCorta)}
+                >
+                  <polyline
+                    points={`${c.anchorX.toFixed(1)},${c.anchorY.toFixed(1)} ${c.elbowX.toFixed(1)},${c.labelY.toFixed(1)} ${c.lineEndX},${c.labelY.toFixed(1)}`}
+                    fill="none"
+                    stroke="#64748B"
+                    strokeWidth="0.75"
+                  />
+                  <text
+                    x={c.textX}
+                    y={c.labelY - 3}
+                    textAnchor={c.lado === "der" ? "end" : "start"}
+                    fontSize="8.5"
+                    fontWeight="600"
+                    fill="#0F172A"
+                  >
+                    {c.nombreAnillo}
+                  </text>
+                  <text
+                    x={c.textX}
+                    y={c.labelY + 8.5}
+                    textAnchor={c.lado === "der" ? "end" : "start"}
+                    fontSize="8"
+                    fontWeight="500"
+                    fill="#475569"
+                  >
+                    {c.pct.toFixed(1)}%
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {/* LISTADO LATERAL LIMPIO SIN BARRAS GRISES */}
+          <div className="sm:col-span-5 space-y-1.5 pl-1">
+            {datosDonut.items.map((it) => {
+              const sel =
+                empresasFrecSel.length === 1 &&
+                empresasFrecSel[0] === it.empCorta;
+              return (
+                <div
+                  key={`leg-${it.empCorta}`}
+                  onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
+                  title={`${it.nombreLista}: ${formatCOP(it.valor)} (${it.pct.toFixed(1)}%) — Clic para filtrar`}
+                  className="flex items-center justify-between gap-2 px-1.5 py-0.5 rounded-md cursor-pointer transition hover:bg-slate-50"
+                  style={{
+                    backgroundColor: sel ? "#EFF6FF" : "transparent",
+                  }}
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: it.color }}
+                    />
+                    <span
+                      className="text-[10.5px] font-semibold truncate"
+                      style={{ color: "#0F172A" }}
+                    >
+                      {it.nombreLista}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 text-[10.5px] font-mono">
+                    <span className="font-bold" style={{ color: "#0F172A" }}>
+                      {formatMillones(it.valor)}
+                    </span>
+                    <span
+                      className="w-10 text-right font-semibold"
+                      style={{ color: "#334155" }}
+                    >
+                      {it.pct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Helper to get display value of a cell for column filter menu
   const obtenerValorCelda = (row: Record<string, unknown>, colKey: string): string => {
@@ -1671,7 +2295,7 @@ export default function TableroCarteraAnalytics() {
       {/* BARRA DE FILTROS SUPERIOR ESTILO TABLERO DE FRECUENCIAS (.period-bar) */}
       {/* ===================================================================== */}
       <div
-        className="rounded-xl px-4 py-3 border shadow-2xs flex flex-wrap items-center gap-2 relative"
+        className="rounded-xl px-3.5 py-2.5 border shadow-2xs flex flex-wrap xl:flex-nowrap items-center gap-1.5 relative"
         style={{
           background: "linear-gradient(90deg, #F4F8FE 0%, #E7F0FD 58%, #D4E5FA 100%)",
           borderColor: "#D5E3F7",
@@ -2289,8 +2913,9 @@ export default function TableroCarteraAnalytics() {
           onClick={() => {
             setDdFrecAbierto(null);
             setPaginaActual(1);
+            sincronizarConSismaVivo(fechaCorteVivo, false);
           }}
-          className="px-4 py-1.5 rounded-full text-[11.5px] font-bold uppercase tracking-wider text-white cursor-pointer transition shrink-0"
+          className="px-3.5 py-1.5 rounded-full text-[11.5px] font-bold uppercase tracking-wider text-white cursor-pointer transition shrink-0"
           style={{
             backgroundColor: "#0F2FF3",
             boxShadow: "0 4px 10px rgba(15,47,243,0.22)",
@@ -2302,16 +2927,16 @@ export default function TableroCarteraAnalytics() {
         <button
           type="button"
           onClick={limpiarTodosLosFiltros}
-          className="px-3.5 py-1.5 rounded-full text-[11.5px] font-bold uppercase tracking-wider border bg-white cursor-pointer transition shrink-0"
+          className="px-3 py-1.5 rounded-full text-[11.5px] font-bold uppercase tracking-wider border bg-white cursor-pointer transition shrink-0"
           style={{ borderColor: "#C7CDE0", color: "#1A3174" }}
         >
           Limpiar
         </button>
 
         {/* 7. INTERRUPTOR MUTUAL: INCLUIR | EXCLUIR (ALINEADO A LA DERECHA) */}
-        <div className="flex items-center gap-2 ml-auto shrink-0">
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
           <span
-            className="text-[10.5px] font-bold uppercase tracking-wider"
+            className="text-[10px] font-bold uppercase tracking-wider"
             style={{ color: "#5B6483" }}
           >
             MUTUAL
@@ -2325,8 +2950,9 @@ export default function TableroCarteraAnalytics() {
               onClick={() => {
                 setIncluirMutual(true);
                 setPaginaActual(1);
+                sincronizarConSismaVivo(fechaCorteVivo, true, { mutual: true });
               }}
-              className="px-2.5 py-1 rounded-[7px] text-[11.5px] font-bold transition cursor-pointer"
+              className="px-2 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
               style={{
                 backgroundColor: incluirMutual ? "#FFFFFF" : "transparent",
                 color: incluirMutual ? "#0E245E" : "#5B6483",
@@ -2342,8 +2968,9 @@ export default function TableroCarteraAnalytics() {
               onClick={() => {
                 setIncluirMutual(false);
                 setPaginaActual(1);
+                sincronizarConSismaVivo(fechaCorteVivo, true, { mutual: false });
               }}
-              className="px-2.5 py-1 rounded-[7px] text-[11.5px] font-bold transition cursor-pointer"
+              className="px-2 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
               style={{
                 backgroundColor: !incluirMutual ? "#FFFFFF" : "transparent",
                 color: !incluirMutual ? "#0E245E" : "#5B6483",
@@ -2804,6 +3431,20 @@ export default function TableroCarteraAnalytics() {
               </div>
             </div>
 
+            {/* 2 TORTAS EJECUTIVAS POR EMPRESA (CARTERA TOTAL Y CARTERA VENCIDA > 60 DÍAS) */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {renderTarjetaTortaEmpresa(
+                "Distribución de Cartera Total por Empresa (SISMA)",
+                "Total",
+                donutCarteraTotal
+              )}
+              {renderTarjetaTortaEmpresa(
+                "Concentración de Cartera Vencida (> 60 días) por Empresa",
+                "Vencida",
+                donutCarteraVencida
+              )}
+            </div>
+
             {/* CORTINA DESPLEGABLE: DESGLOSE EN VIVO POR EDADES Y ENTIDADES (API SISMA CONTABILIDAD) */}
             {datosSismaVivo && (
               <div
@@ -2906,7 +3547,7 @@ export default function TableroCarteraAnalytics() {
                           </tr>
                         </thead>
                         <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                          {datosSismaVivo.topEmpresas.map((emp) => (
+                          {empresasSismaFiltradas.map((emp) => (
                             <tr key={emp.nit + emp.razonSocial} className="hover:bg-slate-50">
                               <td className="p-2.5 font-mono" style={{ color: "#475569" }}>
                                 {emp.nit}

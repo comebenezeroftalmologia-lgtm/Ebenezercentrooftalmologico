@@ -92,6 +92,42 @@ function hoyColombia(): string {
   return new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+function normalizarEmpresaSisma(razonSocialRaw: string): string {
+  const r = String(razonSocialRaw || "").toUpperCase().trim();
+  if (r.includes("MUTUAL SER")) return "MUTUAL SER";
+  if (r.includes("ECOPETROL")) return "ECOPETROL";
+  if (r.includes("SEGUROS DE VIDA SURAMERICANA") || r.includes("SURA POLIZA")) return "SURA POLIZA";
+  if (r.includes("SURAMERICANA") || r.includes("EPS SURA")) return "EPS SURA";
+  if (r.includes("MEDPLUS")) return "MEDPLUS";
+  if (r.includes("MEDISANITAS")) return "MEDISANITAS";
+  if (r.includes("COLSANITAS")) return "COLSANITAS";
+  if (r.includes("SANITAS")) return "SANITAS EPS";
+  if (r.includes("COLMEDICA")) return "COLMEDICA";
+  if (r.includes("COOMEVA")) return "COOMEVA";
+  if (r.includes("BOLIVAR")) return "SEGUROS BOLIVAR";
+  if (r.includes("ALLIANZ")) return "ALLIANZ";
+  if (r.includes("COLPATRIA") || r.includes("AXA")) return "COLPATRIA";
+  if (r.includes("HDI")) return "HDI SEGUROS";
+  if (r.includes("COMFENALCO")) return "COMFENALCO CARTAGENA";
+  if (r.includes("SALUD TOTAL")) return "SALUD TOTAL";
+  if (r.includes("PAN AMERICAN")) return "PAN AMERICAN LIFE";
+  if (r.includes("MEXICHEM")) return "MEXICHEM";
+  if (r.includes("ISLAS")) return "HOTEL LAS ISLAS";
+  if (r.includes("PROGEMA")) return "PROGEMA";
+  if (r.includes("MILENA ROMERO")) return "CONVENIO DRA MILENA ROMERO";
+  if (r.includes("PARTICULAR")) return "PARTICULAR";
+  return r || "SIN ENTIDAD";
+}
+
+function normalizarResponsableSisma(empresaCorta: string, razonSocialRaw: string): string {
+  const emp = `${empresaCorta} ${razonSocialRaw}`.toUpperCase();
+  if (emp.includes("SURA")) return "MARIA ALEJANDRA";
+  if (emp.includes("MUTUAL")) return "ERIKA ALZATE";
+  if (emp.includes("COLSANITAS") || emp.includes("SANITAS")) return "MARIA PAOLA";
+  if (emp.includes("MEDPLUS") || emp.includes("ALLIANZ")) return "MARIA JOSE";
+  return "YULEIBIS";
+}
+
 async function fetchSismaJson<T>(path: string): Promise<T> {
   const res = await fetch(`${SISMA_BASE_URL}${path}`, {
     headers: {
@@ -118,6 +154,44 @@ export async function GET(req: NextRequest) {
     const anio = corte.slice(0, 4);
     const desde = `${anio}-01-01`;
 
+    // Parámetros opcionales de filtrado en vivo (Barra de Frecuencias)
+    const aniosParam = (searchParams.get("anios") || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const mesesParam = (searchParams.get("meses") || "")
+      .split(",")
+      .map((s) => s.trim().padStart(2, "0"))
+      .filter(Boolean);
+    const empresasParam = (searchParams.get("empresas") || "")
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    const responsablesParam = (searchParams.get("responsables") || "")
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    const mutualParam = searchParams.get("mutual");
+    const incluirMutual = mutualParam !== "0" && mutualParam !== "false";
+    const diasDesde = (searchParams.get("desde") || "").trim();
+    const diasHasta = (searchParams.get("hasta") || "").trim();
+    const diasSemParam = (searchParams.get("diasSem") || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== "")
+      .map((s) => Number(s))
+      .filter((n) => !isNaN(n));
+
+    const hayFiltroActivo =
+      !incluirMutual ||
+      (aniosParam.length > 0 && aniosParam.length < 6) ||
+      mesesParam.length > 0 ||
+      empresasParam.length > 0 ||
+      responsablesParam.length > 0 ||
+      Boolean(diasDesde) ||
+      Boolean(diasHasta) ||
+      diasSemParam.length > 0;
+
     // Consultamos en paralelo cartera-edades y las cuentas de giros por cruzar en auxiliar-abierto
     const [edadesData, aux1301, aux2501] = await Promise.all([
       fetchSismaJson<CarteraEdadesResponse>(
@@ -131,7 +205,58 @@ export async function GET(req: NextRequest) {
       ).catch(() => null),
     ]);
 
-    const t = edadesData.totales || {
+    const cumpleFiltroEntidad = (razonSocial: string): boolean => {
+      const empCorta = normalizarEmpresaSisma(razonSocial);
+      const resp = normalizarResponsableSisma(empCorta, razonSocial);
+      if (
+        !incluirMutual &&
+        (empCorta.includes("MUTUAL") ||
+          String(razonSocial || "").toUpperCase().includes("MUTUAL"))
+      ) {
+        return false;
+      }
+      if (empresasParam.length > 0) {
+        const rsUp = String(razonSocial || "").toUpperCase();
+        const coincide = empresasParam.some(
+          (e) => empCorta === e || rsUp.includes(e)
+        );
+        if (!coincide) return false;
+      }
+      if (responsablesParam.length > 0 && !responsablesParam.includes(resp)) {
+        return false;
+      }
+      return true;
+    };
+
+    const cumpleFiltroFecha = (fechaStr: string | null | undefined): boolean => {
+      const f = String(fechaStr || "").trim().slice(0, 10);
+      if (aniosParam.length > 0 && aniosParam.length < 6) {
+        if (/^\d{4}/.test(f) && !aniosParam.includes(f.slice(0, 4))) {
+          return false;
+        }
+      }
+      if (mesesParam.length > 0) {
+        if (!/^\d{4}-\d{2}/.test(f)) return false;
+        if (!mesesParam.includes(f.slice(5, 7))) return false;
+      }
+      if (diasDesde || diasHasta || diasSemParam.length > 0) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return false;
+        if (diasDesde && f < diasDesde) return false;
+        if (diasHasta && f > diasHasta) return false;
+        if (diasSemParam.length > 0) {
+          const dt = new Date(`${f}T12:00:00`);
+          if (!diasSemParam.includes(dt.getDay())) return false;
+        }
+      }
+      return true;
+    };
+
+    // Desglose por cuenta contable (Pendiente por radicar vs Radicada) y por EPS
+    let facturasPendientesRadicar = 0;
+    let carteraRadicada = 0;
+    let filasFiltradas = 0;
+
+    const edadesAcum = {
       saldo: 0,
       porVencer: 0,
       d30: 0,
@@ -143,26 +268,13 @@ export async function GET(req: NextRequest) {
       mas360: 0,
     };
 
-    const carteraCorriente = Math.round(
-      (t.porVencer || 0) + (t.d30 || 0) + (t.d60 || 0)
-    );
-    const carteraVencida = Math.round(
-      (t.d90 || 0) +
-        (t.d120 || 0) +
-        (t.d180 || 0) +
-        (t.d360 || 0) +
-        (t.mas360 || 0)
-    );
-    const carteraTotal = Math.round(t.saldo || carteraCorriente + carteraVencida);
-
-    // Desglose por cuenta contable (Pendiente por radicar vs Radicada) y por EPS
-    let facturasPendientesRadicar = 0;
-    let carteraRadicada = 0;
     const mapaEmpresas = new Map<
       string,
       {
         nit: string;
         razonSocial: string;
+        empresaCorta: string;
+        responsable: string;
         facturasCount: number;
         corriente: number;
         vencida: number;
@@ -172,7 +284,31 @@ export async function GET(req: NextRequest) {
     >();
 
     for (const item of edadesData.cartera || []) {
+      const razonSocial = item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
+      if (!cumpleFiltroEntidad(razonSocial)) continue;
+      if (!cumpleFiltroFecha(item.fechaRadicacion || item.fechaFactura)) continue;
+
+      filasFiltradas += 1;
       const saldoItem = Number(item.saldo || 0);
+      const pv = Number(item.porVencer || 0);
+      const d30 = Number(item.d30 || 0);
+      const d60 = Number(item.d60 || 0);
+      const d90 = Number(item.d90 || 0);
+      const d120 = Number(item.d120 || 0);
+      const d180 = Number(item.d180 || 0);
+      const d360 = Number(item.d360 || 0);
+      const mas360 = Number(item.mas360 || 0);
+
+      edadesAcum.saldo += saldoItem;
+      edadesAcum.porVencer += pv;
+      edadesAcum.d30 += d30;
+      edadesAcum.d60 += d60;
+      edadesAcum.d90 += d90;
+      edadesAcum.d120 += d120;
+      edadesAcum.d180 += d180;
+      edadesAcum.d360 += d360;
+      edadesAcum.mas360 += mas360;
+
       const esPendienteRad =
         item.cuenta === "1301250601" ||
         String(item.descripcion || "").toUpperCase().includes("PEND");
@@ -182,21 +318,16 @@ export async function GET(req: NextRequest) {
         carteraRadicada += saldoItem;
       }
 
-      const corrItem =
-        Number(item.porVencer || 0) +
-        Number(item.d30 || 0) +
-        Number(item.d60 || 0);
-      const vencItem =
-        Number(item.d90 || 0) +
-        Number(item.d120 || 0) +
-        Number(item.d180 || 0) +
-        Number(item.d360 || 0) +
-        Number(item.mas360 || 0);
+      const corrItem = pv + d30 + d60;
+      const vencItem = d90 + d120 + d180 + d360 + mas360;
+      const empCorta = normalizarEmpresaSisma(razonSocial);
+      const resp = normalizarResponsableSisma(empCorta, razonSocial);
 
-      const key = item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
-      const actual = mapaEmpresas.get(key) || {
+      const actual = mapaEmpresas.get(razonSocial) || {
         nit: item.numeroIdentificacion || "",
-        razonSocial: key,
+        razonSocial,
+        empresaCorta: empCorta,
+        responsable: resp,
         facturasCount: 0,
         corriente: 0,
         vencida: 0,
@@ -208,8 +339,26 @@ export async function GET(req: NextRequest) {
       actual.vencida += vencItem;
       if (esPendienteRad) actual.pendienteRadicar += saldoItem;
       actual.total += saldoItem;
-      mapaEmpresas.set(key, actual);
+      mapaEmpresas.set(razonSocial, actual);
     }
+
+    const t = hayFiltroActivo
+      ? edadesAcum
+      : edadesData.totales || edadesAcum;
+
+    const carteraCorriente = Math.round(
+      (t.porVencer || 0) + (t.d30 || 0) + (t.d60 || 0)
+    );
+    const carteraVencida = Math.round(
+      (t.d90 || 0) +
+        (t.d120 || 0) +
+        (t.d180 || 0) +
+        (t.d360 || 0) +
+        (t.mas360 || 0)
+    );
+    const carteraTotal = Math.round(
+      t.saldo || carteraCorriente + carteraVencida
+    );
 
     // Cálculo de Giros por Cruzar en las 3 cuentas oficiales (1301250602, 2501010602, 2501010607)
     const cuentasGirosMap: Record<
@@ -239,8 +388,10 @@ export async function GET(req: NextRequest) {
     const procesarAuxiliar = (aux: AuxiliarAbiertoResponse | null) => {
       if (!aux || !Array.isArray(aux.terceros)) return;
       for (const terc of aux.terceros) {
+        if (!cumpleFiltroEntidad(terc.razonSocial || "")) continue;
         for (const a of terc.auxiliares || []) {
           for (const doc of a.documentos || []) {
+            if (!cumpleFiltroFecha(doc.fecha)) continue;
             if (cuentasGirosMap[doc.cuenta]) {
               cuentasGirosMap[doc.cuenta].saldo += Number(doc.valor || 0);
               cuentasGirosMap[doc.cuenta].documentos += 1;
@@ -275,7 +426,7 @@ export async function GET(req: NextRequest) {
         total: Math.round(e.total),
       }))
       .sort((a, b) => b.total - a.total)
-      .slice(0, 15);
+      .slice(0, 30);
 
     const [yyyy, mm, dd] = corte.split("-");
     const fechaCorteLabel = `${dd}/${mm}/${yyyy}`;
@@ -285,7 +436,7 @@ export async function GET(req: NextRequest) {
       fuente: "API SISMA Contabilidad en Vivo",
       corteISO: corte,
       fechaCorte: fechaCorteLabel,
-      filasFacturas: edadesData.filas || 0,
+      filasFacturas: hayFiltroActivo ? filasFiltradas : edadesData.filas || filasFiltradas,
       resumenCorte: {
         fechaCorte: fechaCorteLabel,
         modalidad: "Todas las Empresas",
