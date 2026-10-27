@@ -5,15 +5,19 @@ import { getPreferencias } from "@/lib/notificaciones/queries";
 import { CambiarPasswordForm } from "./CambiarPasswordForm";
 import { EditarPerfilForm } from "./EditarPerfilForm";
 import { PreferenciasNotificaciones } from "./PreferenciasNotificaciones";
+import { rolLabel } from "@/lib/procesos/types";
+import { FotoPerfil } from "./FotoPerfil";
+import { getAvatarVersion } from "@/lib/perfil/avatar";
 
 export const dynamic = "force-dynamic";
 
 export default async function PerfilPage() {
   const user = await requireAppUser();
-  const [modulos, asignaciones, preferencias] = await Promise.all([
+  const [modulos, asignaciones, preferencias, avatarVersion] = await Promise.all([
     getMisModulos(user.id, user.isAdmin),
     getMisAsignaciones(user.id),
     getPreferencias(user.id),
+    getAvatarVersion(user.id).catch(() => null),
   ]);
 
   const partes = user.nombreCompleto.trim().split(/\s+/);
@@ -43,11 +47,9 @@ export default async function PerfilPage() {
           </h2>
 
           <div className="my-5 flex flex-col items-center justify-center">
-            <div className="flex h-[76px] w-[76px] items-center justify-center rounded-full bg-[#E2E8F0] font-display text-[26px] font-bold text-[#0F172A] shadow-inner">
-              {iniciales}
-            </div>
+            <FotoPerfil userId={user.id} iniciales={iniciales} versionInicial={avatarVersion} />
             <span className="mt-2.5 inline-flex items-center rounded-full bg-[#DBEAFE] px-3.5 py-1 text-[12px] font-semibold text-[#1E3A8A]">
-              {user.isAdmin ? "Administrador" : "Usuario"}
+              {rolLabel(user.rol)}
             </span>
           </div>
 

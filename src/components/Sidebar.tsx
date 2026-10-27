@@ -101,6 +101,16 @@ export function TramaArquitectonicaBandeja() {
     </div>
   );
 }
+/** Globito rojo tipo iPhone con el número de pendientes. */
+function GloboRojo({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className="absolute -right-2.5 -top-2 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#EF4444] px-1 text-[9.5px] font-bold leading-none text-white shadow-[0_0_0_2px_#081A3A]">
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
 export function RielGlobal({
   modulos,
   isAdmin,
@@ -124,15 +134,21 @@ export function RielGlobal({
   const pathname = usePathname();
   const router = useRouter();
   const [sinLeer, setSinLeer] = useState(0);
+  const [ayudaNuevas, setAyudaNuevas] = useState(0);
+  const [yo, setYo] = useState<{ id: string; nombre: string; avatar: string | null } | null>(null);
 
-  // Contador de avisos sin leer: al cargar, cada minuto y cuando se marca algo como leído.
+  // Contadores del riel (avisos sin leer, novedades de Ayuda) y foto de perfil:
+  // al cargar, cada minuto y cuando algo cambia (leer avisos, abrir Ayuda, subir foto).
   useEffect(() => {
     let activo = true;
     const cargar = () => {
       fetch("/api/notificaciones/conteo", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
         .then((j) => {
-          if (activo && j && typeof j.sinLeer === "number") setSinLeer(j.sinLeer);
+          if (!activo || !j || typeof j.sinLeer !== "number") return;
+          setSinLeer(j.sinLeer);
+          setAyudaNuevas(typeof j.ayudaNuevas === "number" ? j.ayudaNuevas : 0);
+          if (j.userId) setYo({ id: j.userId, nombre: j.nombre ?? "", avatar: j.avatar ?? null });
         })
         .catch(() => {});
     };
@@ -220,34 +236,44 @@ export function RielGlobal({
             <span className="text-[10.5px] leading-none tracking-tight">Usuarios</span>
           </Link>
         )}
+      </nav>
+
+      <div className="relative z-10 mt-auto flex flex-col items-center gap-1.5 pt-2">
+        <div className="mb-0.5 h-px w-9 bg-white/12" />
 
         <Link href="/notificaciones" className={itemClass(enNotificaciones)} title="Notificaciones">
           {enNotificaciones && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
           <span className="relative">
             <Bell className="h-[19px] w-[19px]" strokeWidth={1.75} />
-            {sinLeer > 0 && (
-              <span className="absolute -right-2 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#EF4444] px-1 text-[9px] font-bold leading-none text-white">
-                {sinLeer > 99 ? "99+" : sinLeer}
-              </span>
-            )}
+            <GloboRojo n={sinLeer} />
           </span>
           <span className="text-[10.5px] leading-none tracking-tight">Avisos</span>
         </Link>
 
         <Link href="/ayuda" className={itemClass(enAyuda)} title="Ayuda">
           {enAyuda && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
-          <LifeBuoy className="h-[19px] w-[19px]" strokeWidth={1.75} />
+          <span className="relative">
+            <LifeBuoy className="h-[19px] w-[19px]" strokeWidth={1.75} />
+            <GloboRojo n={ayudaNuevas} />
+          </span>
           <span className="text-[10.5px] leading-none tracking-tight">Ayuda</span>
         </Link>
 
         <Link href="/perfil" className={itemClass(enPerfil)} title="Perfil">
           {enPerfil && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
-          <UserCircle className="h-[19px] w-[19px]" strokeWidth={1.75} />
+          {yo?.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/avatar/${yo.id}?v=${yo.avatar}`}
+              alt=""
+              className="h-[24px] w-[24px] rounded-full object-cover ring-1 ring-white/40"
+            />
+          ) : (
+            <UserCircle className="h-[19px] w-[19px]" strokeWidth={1.75} />
+          )}
           <span className="text-[10.5px] leading-none tracking-tight">Perfil</span>
         </Link>
-      </nav>
 
-      <div className="relative z-10 mt-auto pt-2">
         <form action={logoutAction}>
           <button type="submit" title="Cerrar sesión" className="flex w-[64px] flex-col items-center justify-center gap-1.5 rounded-[12px] py-2 text-white/70 transition-colors duration-150 hover:bg-white/10 hover:text-white">
             <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />

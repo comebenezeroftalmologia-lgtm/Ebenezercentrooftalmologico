@@ -3,6 +3,7 @@ import { Settings2 } from "lucide-react";
 import { puedeGestionarConocimiento, requireAppUser } from "@/lib/auth";
 import { listFormatosPublicados } from "@/lib/ayuda/queries";
 import { ConocimientoChat } from "./ConocimientoChat";
+import { MarcarVisto } from "./MarcarVisto";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function ConocimientoPage() {
   const formatos = await listFormatosPublicados();
   return (
     <div className="mx-auto max-w-3xl">
+      <MarcarVisto />
       {puedeGestionarConocimiento(user) && (
         <div className="mb-2 flex justify-end">
           <Link

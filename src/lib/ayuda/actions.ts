@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { marcarAyudaVista } from "@/lib/perfil/avatar";
 import { puedeGestionarConocimiento, requireAdmin, requireAppUser, requireDesarrollador } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { registrarHistorial } from "@/lib/ayuda/historial";
@@ -123,6 +124,7 @@ export async function registrarDocumentoAction(input: {
     return { ok: false, error: "No se pudo registrar el cambio en el historial, así que no se cargó el documento: " + errHist };
   }
 
+  await marcarAyudaVista(user.id); // los cambios propios no cuentan como novedad para quien los hace
   revalidatePath("/ayuda/conocimiento/gestionar");
   return { ok: true, id: doc.id, fragmentos: fragmentos.length };
 }
@@ -189,6 +191,7 @@ export async function cambiarEstadoDocumentoAction(
     }
   }
 
+  await marcarAyudaVista(user.id); // los cambios propios no cuentan como novedad para quien los hace
   revalidatePath("/ayuda/conocimiento/gestionar");
   if (errores.length > 0) {
     return { ok: false, error: "El cambio se aplicó, pero no se pudo registrar en el historial. Avisa al equipo de desarrollo: " + errores[0] };
@@ -247,6 +250,7 @@ export async function editarDocumentoAction(
     documento: { id, titulo: nuevo.titulo, codigo: nuevo.codigo, version: nuevo.version },
     detalle: { cambios },
   });
+  await marcarAyudaVista(user.id); // los cambios propios no cuentan como novedad para quien los hace
   revalidatePath("/ayuda/conocimiento/gestionar");
   if (errHist) {
     return { ok: false, error: "El cambio se aplicó, pero no se pudo registrar en el historial. Avisa al equipo de desarrollo: " + errHist };
