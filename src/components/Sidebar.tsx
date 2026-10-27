@@ -31,6 +31,7 @@ import {
 import { MODULOS, type Modulo } from "@/lib/modulos";
 import { logoutAction } from "@/lib/procesos/actions";
 import { IconoIA } from "@/components/IconoIA";
+import { BotonFlotanteIA } from "@/components/BotonFlotanteIA";
 
 const ANALYTICS_ITEMS = MODULOS.filter((m) => m.grupo === "Analytics");
 const OPERACION_ORDER: Modulo[] = ["frecuencias", "venta_del_dia"];
@@ -282,6 +283,7 @@ export function RielGlobal({
           </button>
         </form>
       </div>
+      <BotonFlotanteIA />
     </aside>
   );
 }
