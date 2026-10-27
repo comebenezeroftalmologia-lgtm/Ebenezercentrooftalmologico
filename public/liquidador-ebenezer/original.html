@@ -5951,8 +5951,7 @@ function liquidarV4(recs, actos, actosAll){
     else if(g==='M' && esCons && cfg.consM){ M.consM++; pago=cfg.consM; regla='Consulta Mutual a $'+cfg.consM.toLocaleString(); }
     else if(g==='M' && esCons && RM.rubroCons){ M.consM++; if(/NEURO/.test(D)){ pago=66000; regla='Consulta neuroftalmología Mutual a $66.000'; } else { pago=0; regla='Cubierta por rubro de consultas Mutual'; } }
     else if(g==='M' && !esCons && cfg.sinLecturaIV && cfg.sinLecturaIV.test(D) && (pacIV.has(((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||'')) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(D+' '+(r.as||'')))){
-      marcar(r._src,'no_cobro'); continue; })/)||[])[1])){
-      pago=0; regla='Paciente de intravítrea en este corte: su lectura no se le paga'; }
+      marcar(r._src,'no_cobro'); continue; }
     else if(g==='M' && !esCons && cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (M._upp=M._upp||new Set()).has(((r.p||'').match(/(\d{5,12})/)||[])[1]+'|'+r.f.slice(0,10))){
       pago=0; regla='Lectura del mismo paciente ese día: la ficha la paga por paciente, no por estudio';
     }
