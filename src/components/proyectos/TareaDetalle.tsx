@@ -138,6 +138,11 @@ export function TareaDetalleView({ datos, yoId, esAdmin = false }: { datos: Dato
       setBorrando(false);
       return aviso(r.error);
     }
+    if (r.solicitada) {
+      setBorrando(false);
+      setConfirmarBorrar(false);
+      return aviso("Solicitud enviada a tu líder. La tarea se eliminará cuando la autorice.", "ok");
+    }
     router.push(padre ? `/proyectos/tarea/${padre.id}` : `/proyectos/lista/${lista.id}`);
   }
 

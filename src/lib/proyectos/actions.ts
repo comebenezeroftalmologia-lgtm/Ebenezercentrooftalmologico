@@ -6,6 +6,7 @@ import { createServiceClient, createSessionServerClient } from "@/lib/supabase/s
 import { requireModuloAccess } from "@/lib/auth";
 import { BUCKET_ADJUNTOS, getMiembros } from "@/lib/proyectos/queries";
 import { mensajeError } from "@/lib/proyectos/utils";
+import { solicitarEliminacion } from "@/lib/solicitudes-eliminacion";
 import type { EnlaceTarea, Etiqueta, Miembro, Prioridad, Resultado, RolEspacio, TipoEstado } from "@/lib/proyectos/types";
 
 // Todas las acciones corren con la sesión del usuario (llave anon + RLS):
@@ -99,9 +100,10 @@ export async function actualizarEspacioAction(
   return { ok: true };
 }
 
-export async function eliminarEspacioAction(id: string): Promise<Resultado> {
-  const { sb } = await contexto();
+export async function eliminarEspacioAction(id: string): Promise<Resultado<{ solicitada?: boolean }>> {
+  const { sb, user } = await contexto();
   if (!UUID.test(id)) return invalido("Espacio no válido.");
+  if (user.rol === "usuario_basico") return solicitarEliminacion(user, sb, "espacio", id);
   const { data, error } = await sb.from("proy_espacios").delete().eq("id", id).select("id");
   if (error) return fallo(error);
   if (!data || data.length === 0) return invalido("Solo un propietario puede eliminar el espacio.");
@@ -236,9 +238,15 @@ export async function renombrarAction(
   return { ok: true };
 }
 
-export async function eliminarElementoAction(tipo: "carpeta" | "lista" | "doc", id: string): Promise<Resultado> {
-  const { sb } = await contexto();
+export async function eliminarElementoAction(
+  tipo: "carpeta" | "lista" | "doc",
+  id: string
+): Promise<Resultado<{ solicitada?: boolean }>> {
+  const { sb, user } = await contexto();
   if (!UUID.test(id)) return invalido("Elemento no válido.");
+  if (user.rol === "usuario_basico" && ["carpeta", "lista", "doc"].includes(tipo)) {
+    return solicitarEliminacion(user, sb, tipo, id);
+  }
   const tabla = { carpeta: "proy_carpetas", lista: "proy_listas", doc: "proy_docs" }[tipo];
   if (!tabla) return invalido("Tipo no válido.");
   const { data, error } = await sb.from(tabla).delete().eq("id", id).select("id");
@@ -642,9 +650,10 @@ export async function moverTareaAction(id: string, estadoId: string, orden: numb
   return { ok: true };
 }
 
-export async function eliminarTareaAction(id: string): Promise<Resultado> {
-  const { sb } = await contexto();
+export async function eliminarTareaAction(id: string): Promise<Resultado<{ solicitada?: boolean }>> {
+  const { sb, user } = await contexto();
   if (!UUID.test(id)) return invalido("Tarea no válida.");
+  if (user.rol === "usuario_basico") return solicitarEliminacion(user, sb, "tarea", id);
 
   // Borra primero los archivos del almacenamiento (la tarea y sus subtareas).
   const { data: subs } = await sb.from("proy_tareas").select("id").eq("parent_id", id);

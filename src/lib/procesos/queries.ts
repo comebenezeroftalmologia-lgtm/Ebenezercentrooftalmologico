@@ -522,3 +522,35 @@ export async function getKpisPorTodasLasAreas(): Promise<Map<string, KpisTareas>
   }
   return resultado;
 }
+export interface SolicitudEliminacion {
+  id: string;
+  tipo: string;
+  entidadNombre: string;
+  motivo: string | null;
+  solicitanteNombre: string;
+  createdAt: string;
+}
+
+/** Solicitudes pendientes que `user` puede resolver: todas para administradores;
+ * para un líder, las de su equipo. */
+export async function listSolicitudesEliminacionPendientes(user: AppUser): Promise<SolicitudEliminacion[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("solicitudes_eliminacion")
+    .select("id, tipo, entidad_nombre, motivo, autorizador_id, created_at, solicitante:app_users!solicitudes_eliminacion_solicitante_id_fkey(nombre_completo, lider_id)")
+    .eq("estado", "pendiente")
+    .order("created_at", { ascending: true });
+  // Si la migración 019 aún no corrió, la tabla no existe: no tumbar /usuarios.
+  if (error || !data) return [];
+
+  return (data as any[])
+    .filter((r) => user.isAdmin || r.autorizador_id === user.id || r.solicitante?.lider_id === user.id)
+    .map((r) => ({
+      id: r.id,
+      tipo: r.tipo,
+      entidadNombre: r.entidad_nombre,
+      motivo: r.motivo,
+      solicitanteNombre: r.solicitante?.nombre_completo ?? "Alguien",
+      createdAt: r.created_at,
+    }));
+}

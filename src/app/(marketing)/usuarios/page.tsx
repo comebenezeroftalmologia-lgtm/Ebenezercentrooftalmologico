@@ -1,21 +1,23 @@
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { getMisModulos, puedeAdministrarA, requireGestorUsuarios, rolesAsignables } from "@/lib/auth";
 import { MODULOS } from "@/lib/modulos";
-import { getEstadoAccesoPorUsuario, listAppUsers, listModuloAccesosPorUsuario } from "@/lib/procesos/queries";
+import { getEstadoAccesoPorUsuario, listAppUsers, listModuloAccesosPorUsuario, listSolicitudesEliminacionPendientes } from "@/lib/procesos/queries";
 import type { EstadoAcceso } from "@/lib/procesos/types";
 import { InvitarUsuarioForm } from "./InvitarUsuarioForm";
+import { SolicitudesEliminacion } from "./SolicitudesEliminacion";
 import { UsuarioCard } from "./UsuarioCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function UsuariosPage() {
   const yo = await requireGestorUsuarios();
-  const [todos, accesos, estados, misModulos] = await Promise.all([
+  const [todos, accesos, estados, misModulos, solicitudes] = await Promise.all([
     listAppUsers(),
     listModuloAccesosPorUsuario(),
     // Si Auth no responde, la página sigue funcionando sin el detalle de ingreso.
     getEstadoAccesoPorUsuario().catch((): Record<string, EstadoAcceso> => ({})),
     getMisModulos(yo.id, yo.isAdmin),
+    listSolicitudesEliminacionPendientes(yo),
   ]);
 
   // Un líder solo ve (y administra) a las personas de su equipo.
@@ -37,6 +39,8 @@ export default async function UsuariosPage() {
           ? "Invita a las personas de tu equipo y dales acceso a los módulos que tú tienes. Tú autorizas sus solicitudes de eliminación."
           : "Invita a cada persona por correo, elige su rol (Desarrollador, Administrador, Líder o Usuario Básico) y dale acceso a los módulos que necesita. Cada Usuario Básico tiene un líder que autoriza sus eliminaciones."}
       </p>
+
+      <SolicitudesEliminacion solicitudes={solicitudes} />
 
       <div className="mb-8 rounded-[16px] border border-[#E6EEF8] bg-white p-6 shadow-[0_2px_12px_rgba(14,36,94,0.04)]">
         <h2 className="mb-4 text-base font-semibold text-navy">Invitar usuario</h2>

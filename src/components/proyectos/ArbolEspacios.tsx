@@ -198,6 +198,7 @@ export function ArbolEspacios({
       const res = e.tipo === "espacio" ? await eliminarEspacioAction(e.id) : await eliminarElementoAction(e.tipo, e.id);
       if (!res.ok) return aviso(res.error);
       setEliminando(null);
+      if (res.solicitada) return aviso("Solicitud enviada a tu líder. Se eliminará cuando la autorice.", "ok");
       const url = pathname;
       if (url.includes(e.id) || e.tipo === "espacio" || e.tipo === "carpeta") router.push("/proyectos");
     });
