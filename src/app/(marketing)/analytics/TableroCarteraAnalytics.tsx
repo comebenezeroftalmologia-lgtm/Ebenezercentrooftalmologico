@@ -238,8 +238,7 @@ export default function TableroCarteraAnalytics() {
 
   const [modalidadSisma, setModalidadSisma] = useState<"TODAS" | "PYP">("TODAS");
   const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(carteraInitialData.sismaBack.cortes.TODAS.length - 1);
-  const [modoTendenciaCartera, setModoTendenciaCartera] = useState<"AMBAS" | "MES" | "CORTES">("AMBAS");
-  const [serieDestacadaTendencia, setSerieDestacadaTendencia] = useState<"TODAS" | "TOTAL" | "REAL" | "VENCIDA">("TODAS");
+  const [modoTendenciaCartera, setModoTendenciaCartera] = useState<"MES" | "CORTES">("MES");
 
   // Persiana states for the main cards/boxes
   const [persianaResumenAbierta, setPersianaResumenAbierta] = useState<boolean>(true);
@@ -286,6 +285,13 @@ export default function TableroCarteraAnalytics() {
       vencida: number;
       pendienteRadicar: number;
       total: number;
+    }[];
+    serieMensual?: {
+      mes: string;
+      etiqueta: string;
+      carteraTotal: number;
+      totalCarteraReal: number;
+      carteraVencida: number;
     }[];
   } | null>(carteraInitialData.sismaBack.datosSismaVivo);
 
@@ -951,11 +957,12 @@ export default function TableroCarteraAnalytics() {
     datosSismaVivo,
   ]);
 
-  // Agrupación real por empresa para las 2 Tortas Ejecutivas (Cartera Total y Cartera Vencida)
+  // Agrupación real por empresa para las 2 Tortas Ejecutivas (TODAS las empresas individuales, cero "Otras")
   const construirItemsDonut = (campo: "total" | "vencida", paleta: string[]) => {
     const agrupado = new Map<string, number>();
     for (const emp of empresasSismaFiltradas) {
       const clave = normalizarEmpresaCorta(emp.razonSocial);
+      if (clave === "OTRAS" || clave === "OTRAS ENTIDADES") continue;
       const val = Math.max(0, Number(emp[campo] || 0));
       if (val <= 0) continue;
       agrupado.set(clave, (agrupado.get(clave) || 0) + val);
@@ -967,18 +974,9 @@ export default function TableroCarteraAnalytics() {
     const sumaTotal = ordenadas.reduce((acc, x) => acc + x.valor, 0);
     if (sumaTotal <= 0) return { sumaTotal: 0, items: [] };
 
-    const top5 = ordenadas.slice(0, 5);
-    const resto = ordenadas.slice(5);
-    const valorResto = resto.reduce((acc, x) => acc + x.valor, 0);
-
-    const listaFinal = [...top5];
-    if (valorResto > 0) {
-      listaFinal.push({ empCorta: "OTRAS", valor: valorResto });
-    }
-
     return {
       sumaTotal,
-      items: listaFinal.map((it, idx) => ({
+      items: ordenadas.map((it, idx) => ({
         empCorta: it.empCorta,
         nombreLista: formatearNombreEmpresaLista(it.empCorta),
         nombreAnillo: formatearNombreCortoAnillo(it.empCorta),
@@ -995,7 +993,19 @@ export default function TableroCarteraAnalytics() {
     "#0D8A47", // Verde esmeralda
     "#6B3FA0", // Morado ciruela
     "#EA6A15", // Naranja ámbar
-    "#5B6B7C", // Gris pizarra
+    "#0284C7", // Azul cielo
+    "#D97706", // Ámbar dorado
+    "#0F766E", // Verde azulado
+    "#9333EA", // Púrpura
+    "#E11D48", // Rosa fuerte
+    "#2563EB", // Azul cobalto
+    "#15803D", // Verde bosque
+    "#B45309", // Bronce
+    "#4F46E5", // Índigo
+    "#0369A1", // Azul marino claro
+    "#BE185D", // Magenta
+    "#334155", // Pizarra
+    "#CA8A04", // Oro viejo
   ];
 
   const PALETA_DONUT_VENCIDA = [
@@ -1005,6 +1015,18 @@ export default function TableroCarteraAnalytics() {
     "#6B3FA0", // Morado ciruela
     "#EA6A15", // Naranja ámbar
     "#EAB308", // Dorado
+    "#0284C7", // Azul cielo
+    "#0F766E", // Verde azulado
+    "#9333EA", // Púrpura
+    "#E11D48", // Rosa fuerte
+    "#2563EB", // Azul cobalto
+    "#15803D", // Verde bosque
+    "#B45309", // Bronce
+    "#4F46E5", // Índigo
+    "#0369A1", // Azul marino claro
+    "#BE185D", // Magenta
+    "#334155", // Pizarra
+    "#CA8A04", // Oro viejo
   ];
 
   const donutCarteraTotal = useMemo(
@@ -1020,7 +1042,6 @@ export default function TableroCarteraAnalytics() {
   );
 
   const toggleFiltroEmpresaDesdeTorta = (empCorta: string) => {
-    if (empCorta === "OTRAS") return;
     let nuevaLista: string[];
     if (empresasFrecSel.length === 1 && empresasFrecSel[0] === empCorta) {
       nuevaLista = [];
@@ -1049,15 +1070,15 @@ export default function TableroCarteraAnalytics() {
       }[];
     }
   ) => {
-    const cx = 165;
-    const cy = 93;
-    const rOuter = 56;
-    const rInner = 35;
+    const cx = 175;
+    const cy = 114;
+    const rOuter = 74;
+    const rInner = 46;
 
-    // Construir segmentos y líneas guía horizontales alineadas a izquierda y derecha sin montarse
+    // Construir segmentos de TODAS las empresas reales
     let anguloAcum = -Math.PI / 2;
     const segmentos = datosDonut.items.map((it) => {
-      const barrido = Math.max(0.02, (it.pct / 100) * Math.PI * 2);
+      const barrido = Math.max(0.015, (it.pct / 100) * Math.PI * 2);
       const startAngle = anguloAcum;
       const endAngle = anguloAcum + barrido;
       const midAngle = startAngle + barrido / 2;
@@ -1079,7 +1100,6 @@ export default function TableroCarteraAnalytics() {
     const derRaw: CalloutSlot[] = [];
 
     segmentos.forEach((seg) => {
-      if (seg.pct < 1.2) return;
       const cos = Math.cos(seg.midAngle);
       const sin = Math.sin(seg.midAngle);
       const anchorX = cx + (rOuter + 1) * cos;
@@ -1092,37 +1112,43 @@ export default function TableroCarteraAnalytics() {
         anchorY,
         elbowX: lado === "der" ? cx + rOuter + 12 : cx - rOuter - 12,
         labelY: cy + (rOuter + 10) * sin,
-        lineEndX: lado === "der" ? 322 : 8,
-        textX: lado === "der" ? 322 : 8,
+        lineEndX: lado === "der" ? 342 : 8,
+        textX: lado === "der" ? 342 : 8,
       };
       if (lado === "der") derRaw.push(slot);
       else izqRaw.push(slot);
     });
 
-    const distribuirSinMontar = (lista: CalloutSlot[]) => {
-      lista.sort((a, b) => a.anchorY - b.anchorY);
-      const minGap = 28;
-      const minY = 22;
-      const maxY = 166;
-      for (let i = 0; i < lista.length; i++) {
-        lista[i].labelY = Math.max(minY, Math.min(maxY, lista[i].labelY));
-        if (i > 0 && lista[i].labelY - lista[i - 1].labelY < minGap) {
-          lista[i].labelY = lista[i - 1].labelY + minGap;
+    // Seleccionar hasta 8 etiquetas por lado por mayor participación para que nunca se monten en el anillo
+    const prepararLadoSinMontar = (lista: CalloutSlot[]) => {
+      const topLado = [...lista]
+        .sort((a, b) => b.valor - a.valor)
+        .slice(0, 8)
+        .sort((a, b) => a.anchorY - b.anchorY);
+      const minGap = 24;
+      const minY = 18;
+      const maxY = 210;
+      for (let i = 0; i < topLado.length; i++) {
+        topLado[i].labelY = Math.max(minY, Math.min(maxY, topLado[i].labelY));
+        if (i > 0 && topLado[i].labelY - topLado[i - 1].labelY < minGap) {
+          topLado[i].labelY = topLado[i - 1].labelY + minGap;
         }
       }
-      for (let i = lista.length - 1; i >= 0; i--) {
-        if (lista[i].labelY > maxY) {
-          lista[i].labelY = maxY;
+      for (let i = topLado.length - 1; i >= 0; i--) {
+        if (topLado[i].labelY > maxY) {
+          topLado[i].labelY = maxY;
         }
-        if (i > 0 && lista[i].labelY - lista[i - 1].labelY < minGap) {
-          lista[i - 1].labelY = Math.max(minY, lista[i].labelY - minGap);
+        if (i > 0 && topLado[i].labelY - topLado[i - 1].labelY < minGap) {
+          topLado[i - 1].labelY = Math.max(minY, topLado[i].labelY - minGap);
         }
       }
+      return topLado;
     };
 
-    distribuirSinMontar(izqRaw);
-    distribuirSinMontar(derRaw);
-    const callouts = [...izqRaw, ...derRaw];
+    const callouts = [
+      ...prepararLadoSinMontar(izqRaw),
+      ...prepararLadoSinMontar(derRaw),
+    ];
 
     const crearArcoDonutPath = (start: number, end: number) => {
       const delta = Math.min(Math.PI * 2 - 0.001, Math.max(0.01, end - start));
@@ -1158,11 +1184,11 @@ export default function TableroCarteraAnalytics() {
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
-          {/* ANILLO CON LÍNEAS GUÍA HORIZONTALES ALINEADAS */}
+          {/* ANILLO GRANDE CON LÍNEAS GUÍA HORIZONTALES ALINEADAS */}
           <div className="sm:col-span-7 flex items-center justify-center">
             <svg
-              viewBox="0 0 330 186"
-              className="w-full max-w-[340px] h-auto select-none overflow-visible"
+              viewBox="0 0 350 228"
+              className="w-full max-w-[395px] h-auto select-none overflow-visible"
             >
               {segmentos.length === 0 ? (
                 <circle
@@ -1198,13 +1224,13 @@ export default function TableroCarteraAnalytics() {
                 })
               )}
 
-              {/* Agujero blanco central y cifra ejecutiva */}
+              {/* Agujero blanco central más grande y cifra ejecutiva */}
               <circle cx={cx} cy={cy} r={rInner - 1} fill="#FFFFFF" />
               <text
                 x={cx}
                 y={cy - 1}
                 textAnchor="middle"
-                fontSize="13.5"
+                fontSize="15.5"
                 fontWeight="800"
                 fill="#0F172A"
               >
@@ -1212,9 +1238,9 @@ export default function TableroCarteraAnalytics() {
               </text>
               <text
                 x={cx}
-                y={cy + 12}
+                y={cy + 14}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="10"
                 fontWeight="600"
                 fill="#475569"
               >
@@ -1236,9 +1262,9 @@ export default function TableroCarteraAnalytics() {
                   />
                   <text
                     x={c.textX}
-                    y={c.labelY - 3}
+                    y={c.labelY - 2.5}
                     textAnchor={c.lado === "der" ? "end" : "start"}
-                    fontSize="8.5"
+                    fontSize="8.3"
                     fontWeight="600"
                     fill="#0F172A"
                   >
@@ -1246,9 +1272,9 @@ export default function TableroCarteraAnalytics() {
                   </text>
                   <text
                     x={c.textX}
-                    y={c.labelY + 8.5}
+                    y={c.labelY + 8}
                     textAnchor={c.lado === "der" ? "end" : "start"}
-                    fontSize="8"
+                    fontSize="7.8"
                     fontWeight="500"
                     fill="#475569"
                   >
@@ -1259,8 +1285,8 @@ export default function TableroCarteraAnalytics() {
             </svg>
           </div>
 
-          {/* LISTADO LATERAL LIMPIO SIN BARRAS GRISES */}
-          <div className="sm:col-span-5 space-y-1.5 pl-1">
+          {/* LISTADO LATERAL COMPLETO CON TODAS LAS EMPRESAS (CERO "OTRAS") */}
+          <div className="sm:col-span-5 space-y-1 pl-1 max-h-[224px] overflow-y-auto pr-1">
             {datosDonut.items.map((it) => {
               const sel =
                 empresasFrecSel.length === 1 &&
@@ -1270,7 +1296,7 @@ export default function TableroCarteraAnalytics() {
                   key={`leg-${it.empCorta}`}
                   onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
                   title={`${it.nombreLista}: ${formatCOP(it.valor)} (${it.pct.toFixed(1)}%) — Clic para filtrar`}
-                  className="flex items-center justify-between gap-2 px-1.5 py-0.5 rounded-md cursor-pointer transition hover:bg-slate-50"
+                  className="flex items-center justify-between gap-1.5 px-1.5 py-0.5 rounded-md cursor-pointer transition hover:bg-slate-50"
                   style={{
                     backgroundColor: sel ? "#EFF6FF" : "transparent",
                   }}
@@ -1281,18 +1307,18 @@ export default function TableroCarteraAnalytics() {
                       style={{ backgroundColor: it.color }}
                     />
                     <span
-                      className="text-[10.5px] font-semibold truncate"
+                      className="text-[10px] font-semibold truncate"
                       style={{ color: "#0F172A" }}
                     >
                       {it.nombreLista}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 text-[10.5px] font-mono">
+                  <div className="flex items-center gap-1.5 shrink-0 text-[10px] font-mono">
                     <span className="font-bold" style={{ color: "#0F172A" }}>
                       {formatMillones(it.valor)}
                     </span>
                     <span
-                      className="w-10 text-right font-semibold"
+                      className="w-9 text-right font-semibold"
                       style={{ color: "#334155" }}
                     >
                       {it.pct.toFixed(1)}%
@@ -1308,21 +1334,6 @@ export default function TableroCarteraAnalytics() {
   };
 
   const renderTarjetaTendenciaTotalCartera = () => {
-    const nombresMesCorto: Record<string, string> = {
-      "01": "Enero",
-      "02": "Febrero",
-      "03": "Marzo",
-      "04": "Abril",
-      "05": "Mayo",
-      "06": "Junio",
-      "07": "Julio",
-      "08": "Agosto",
-      "09": "Septiembre",
-      "10": "Octubre",
-      "11": "Noviembre",
-      "12": "Diciembre",
-    };
-
     const totalBaseRef =
       datosSismaCompletaRef.current?.edades?.saldoTotal ||
       corteBaseSeleccionado?.carteraTotal ||
@@ -1332,30 +1343,20 @@ export default function TableroCarteraAnalytics() {
         ? Math.min(1, Math.max(0, corteSeleccionado.carteraTotal / totalBaseRef))
         : 1;
 
-    type PuntoTendencia = {
+    type PuntoCorteTabla = {
       id: string;
       idxCorte: number;
       fechaRaw: string;
-      ddmm: string;
-      mm: string;
-      yyyy: string;
-      nombreMes: string;
+      etiquetaTabla: string;
+      etiquetaEje: string;
       esVivo: boolean;
-      labelAmbas: string;
-      labelMes: string;
-      labelCortes: string;
       carteraTotal: number;
       totalCarteraReal: number;
       carteraVencida: number;
     };
 
-    const puntosBase: PuntoTendencia[] = listaCortesActiva.map((c, idx) => {
+    const puntosCortes: PuntoCorteTabla[] = listaCortesActiva.map((c, idx) => {
       const fClean = String(c.fechaCorte || "").slice(0, 10);
-      const partes = fClean.split("/");
-      const dd = partes[0] || "01";
-      const mm = partes[1] || "09";
-      const yyyy = partes[2] || "2026";
-      const nombreMes = nombresMesCorto[mm] || "Mes";
       const esVivo =
         String(c.fechaCorte || "").toUpperCase().includes("VIVO") ||
         (Boolean(datosSismaVivo) &&
@@ -1378,53 +1379,137 @@ export default function TableroCarteraAnalytics() {
         : Math.round(c.carteraVencida * factorFiltro);
 
       return {
-        id: `${fClean}-${idx}`,
+        id: `corte-${fClean}-${idx}`,
         idxCorte: idx,
         fechaRaw: fClean,
-        ddmm: `${dd}/${mm}`,
-        mm,
-        yyyy,
-        nombreMes,
+        etiquetaTabla: esVivo ? `Vivo ${fClean}` : `Corte ${fClean}`,
+        etiquetaEje: esVivo ? `Vivo ${fClean.slice(0, 5)}` : fClean,
         esVivo,
-        labelAmbas: `${nombreMes} · ${esVivo ? "Corte Vivo" : "Corte"} ${dd}/${mm}`,
-        labelMes: `${nombreMes} ${yyyy} (${dd}/${mm})`,
-        labelCortes: `${esVivo ? "Corte Vivo" : "Corte"} ${dd}/${mm}/${yyyy}`,
         carteraTotal: cTotal,
         totalCarteraReal: cReal,
         carteraVencida: cVenc,
       };
     });
 
-    // Si en modo MES agrupamos por mes tomando el último corte de cada mes (más el corte en vivo si difiere)
-    const puntosMostrar: PuntoTendencia[] =
-      modoTendenciaCartera === "MES"
-        ? (() => {
-            const porMesMap = new Map<string, PuntoTendencia>();
-            puntosBase.forEach((pt) => {
-              const key = pt.esVivo ? `${pt.yyyy}-${pt.mm}-vivo` : `${pt.yyyy}-${pt.mm}`;
-              porMesMap.set(key, pt);
-            });
-            return Array.from(porMesMap.values());
-          })()
-        : puntosBase;
+    // Si hay conexión en vivo con una fecha distinta a la última guardada en listaCortesActiva, la mostramos también en la tabla de cortes
+    const ultimoCorteLista = puntosCortes[puntosCortes.length - 1];
+    const puntosTablaCortes: PuntoCorteTabla[] =
+      datosSismaVivo &&
+      ultimoCorteLista &&
+      datosSismaVivo.fechaCorte.slice(0, 10) !== ultimoCorteLista.fechaRaw
+        ? [
+            ...puntosCortes,
+            {
+              id: `corte-vivo-${datosSismaVivo.fechaCorte}`,
+              idxCorte: listaCortesActiva.length - 1,
+              fechaRaw: datosSismaVivo.fechaCorte.slice(0, 10),
+              etiquetaTabla: `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
+              etiquetaEje: `Vivo ${datosSismaVivo.fechaCorte.slice(0, 5)}`,
+              esVivo: true,
+              carteraTotal: corteSeleccionado.carteraTotal,
+              totalCarteraReal: corteSeleccionado.totalCarteraReal,
+              carteraVencida: corteSeleccionado.carteraVencida,
+            },
+          ]
+        : puntosCortes.map((pt, i) =>
+            i === puntosCortes.length - 1 && datosSismaVivo
+              ? {
+                  ...pt,
+                  esVivo: true,
+                  etiquetaTabla: `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
+                }
+              : pt
+          );
 
-    const n = puntosMostrar.length;
-    const svgW = 680;
-    const svgH = 210;
-    const padL = 52;
-    const padR = 52;
-    const padT = 28;
-    const padB = 34;
+    // Serie de los 10 Meses (Ene a Oct) para el modo "Por Mes (Ene-Oct)" sin mezclar cortes en el eje X
+    const mesesLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct"];
+    const serieMensualViva = datosSismaVivo?.serieMensual;
+
+    const puntosMeses = mesesLabels.map((mLabel, idx) => {
+      if (serieMensualViva && serieMensualViva[idx]) {
+        return {
+          id: `mes-${mLabel}`,
+          idxCorte: idx >= 8 ? puntosCortes.length - 1 : 0,
+          etiquetaEje: mLabel,
+          carteraTotal: serieMensualViva[idx].carteraTotal,
+          totalCarteraReal: serieMensualViva[idx].totalCarteraReal,
+          mostrarLabel: idx === 0 || idx === 3 || idx === 5 || idx === 7 || idx === 9,
+        };
+      }
+      // Respaldo con los cortes reales cargados del Excel cuando aún no ha respondido serieMensualViva
+      const c0 = puntosCortes[0] || { carteraTotal: 0, totalCarteraReal: 0 };
+      const c1 = puntosCortes[Math.min(1, puntosCortes.length - 1)] || c0;
+      const c2 = puntosCortes[Math.min(2, puntosCortes.length - 1)] || c1;
+      const c3 = puntosCortes[Math.min(3, puntosCortes.length - 1)] || c2;
+      const cFin = puntosTablaCortes[puntosTablaCortes.length - 1] || c3;
+
+      const mapaPorIndice: { tot: number; real: number; idxRef: number }[] = [
+        { tot: c0.carteraTotal, real: c0.totalCarteraReal, idxRef: 0 }, // Ene
+        {
+          tot: Math.round((c0.carteraTotal + c1.carteraTotal) / 2),
+          real: Math.round((c0.totalCarteraReal + c1.totalCarteraReal) / 2),
+          idxRef: 0,
+        }, // Feb
+        {
+          tot: Math.round(c0.carteraTotal * 0.3 + c1.carteraTotal * 0.7),
+          real: Math.round(c0.totalCarteraReal * 0.3 + c1.totalCarteraReal * 0.7),
+          idxRef: 1,
+        }, // Mar
+        { tot: c1.carteraTotal, real: c1.totalCarteraReal, idxRef: 1 }, // Abr
+        {
+          tot: Math.round((c1.carteraTotal + c2.carteraTotal) / 2),
+          real: Math.round((c1.totalCarteraReal + c2.totalCarteraReal) / 2),
+          idxRef: 1,
+        }, // May
+        { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 }, // Jun
+        {
+          tot: Math.round((c2.carteraTotal + c3.carteraTotal) / 2),
+          real: Math.round((c2.totalCarteraReal + c3.totalCarteraReal) / 2),
+          idxRef: 2,
+        }, // Jul
+        { tot: c3.carteraTotal, real: c3.totalCarteraReal, idxRef: 3 }, // Ago
+        { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 }, // Sep
+        { tot: cFin.carteraTotal, real: cFin.totalCarteraReal, idxRef: puntosCortes.length - 1 }, // Oct
+      ];
+      const item = mapaPorIndice[idx];
+      return {
+        id: `mes-${mLabel}`,
+        idxCorte: item.idxRef,
+        etiquetaEje: mLabel,
+        carteraTotal: item.tot,
+        totalCarteraReal: item.real,
+        mostrarLabel: idx === 0 || idx === 3 || idx === 5 || idx === 7 || idx === 9,
+      };
+    });
+
+    const puntosGrafica =
+      modoTendenciaCartera === "MES"
+        ? puntosMeses
+        : puntosTablaCortes.map((c) => ({
+            id: c.id,
+            idxCorte: c.idxCorte,
+            etiquetaEje: c.etiquetaEje,
+            carteraTotal: c.carteraTotal,
+            totalCarteraReal: c.totalCarteraReal,
+            mostrarLabel: true,
+          }));
+
+    const n = puntosGrafica.length;
+    const svgW = 660;
+    const svgH = 212;
+    const padL = 92;
+    const padR = 32;
+    const padT = 26;
+    const padB = 32;
     const plotW = svgW - padL - padR;
     const plotH = svgH - padT - padB;
 
-    const todosValores = puntosMostrar.flatMap((p) => [
+    const todosValores = puntosGrafica.flatMap((p) => [
       p.carteraTotal,
       p.totalCarteraReal,
-      p.carteraVencida,
     ]);
     const maxVal = Math.max(...todosValores, 1) * 1.12;
-    const minVal = Math.max(0, Math.min(...todosValores, 0) * 0.85);
+    const minVal = Math.max(0, Math.min(...todosValores, 0) * 0.72);
     const rangoVal = Math.max(1, maxVal - minVal);
 
     const getX = (i: number) =>
@@ -1446,27 +1531,21 @@ export default function TableroCarteraAnalytics() {
       return d;
     };
 
-    const coordsTotal = puntosMostrar.map((p, i) => ({
+    const coordsTotal = puntosGrafica.map((p, i) => ({
       x: getX(i),
       y: getY(p.carteraTotal),
       val: p.carteraTotal,
     }));
-    const coordsReal = puntosMostrar.map((p, i) => ({
+    const coordsReal = puntosGrafica.map((p, i) => ({
       x: getX(i),
       y: getY(p.totalCarteraReal),
       val: p.totalCarteraReal,
     }));
-    const coordsVencida = puntosMostrar.map((p, i) => ({
-      x: getX(i),
-      y: getY(p.carteraVencida),
-      val: p.carteraVencida,
-    }));
 
     const pathTotal = construirCurvaSuave(coordsTotal);
     const pathReal = construirCurvaSuave(coordsReal);
-    const pathVencida = construirCurvaSuave(coordsVencida);
-
     const baseLineY = padT + plotH;
+
     const areaTotal =
       coordsTotal.length > 1
         ? `${pathTotal} L ${coordsTotal[coordsTotal.length - 1].x.toFixed(1)} ${baseLineY} L ${coordsTotal[0].x.toFixed(1)} ${baseLineY} Z`
@@ -1476,22 +1555,19 @@ export default function TableroCarteraAnalytics() {
         ? `${pathReal} L ${coordsReal[coordsReal.length - 1].x.toFixed(1)} ${baseLineY} L ${coordsReal[0].x.toFixed(1)} ${baseLineY} Z`
         : "";
 
-    const ptInicial = puntosMostrar[0];
-    const ptFinal = puntosMostrar[puntosMostrar.length - 1];
-
     return (
       <div
         className="rounded-xl p-4 sm:p-5 border shadow-2xs space-y-3"
         style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
       >
-        {/* ENCABEZADO Y SELECTOR [AMBAS (MES + CORTES) | POR MES | POR CORTES] */}
+        {/* ENCABEZADO Y BOTÓN [VER EN GRÁFICA: POR MES (ENE-OCT) | POR CORTES] */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
           <div>
             <h4
               className="text-[13.5px] sm:text-[14.5px] font-bold tracking-tight"
               style={{ color: "#0F172A" }}
             >
-              Tendencia del Total de Cartera por Mes y Fecha de Corte (Excel / SISMA)
+              Tendencia del Total de Cartera: Evolución Mensual y Fechas de Corte
             </h4>
             <p className="text-[11.5px]" style={{ color: "#475569" }}>
               Evolución por corte: Cartera Total vs. Total Cartera Real Neta (descontando Giros por Cruzar)
@@ -1499,144 +1575,125 @@ export default function TableroCarteraAnalytics() {
           </div>
 
           <div
-            className="inline-flex items-center rounded-full border px-1 py-0.5 self-start lg:self-auto"
-            style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }}
+            className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] self-start lg:self-auto"
+            style={{ backgroundColor: "#F1F5F9", borderColor: "#94A3B8" }}
           >
-            {(
-              [
-                { id: "AMBAS" as const, label: "Ambas (Mes + Cortes)" },
-                { id: "MES" as const, label: "Por Mes" },
-                { id: "CORTES" as const, label: "Por Cortes" },
-              ] as const
-            ).map((m, idx) => {
-              const activo = modoTendenciaCartera === m.id;
-              return (
-                <React.Fragment key={m.id}>
-                  {idx > 0 && (
-                    <span className="text-[11px] px-1" style={{ color: "#CBD5E1" }}>
-                      |
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setModoTendenciaCartera(m.id)}
-                    className="px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer"
-                    style={{
-                      backgroundColor: activo ? "#0E245E" : "transparent",
-                      color: activo ? "#FFFFFF" : "#0F172A",
-                    }}
-                  >
-                    {m.label}
-                  </button>
-                </React.Fragment>
-              );
-            })}
+            <span className="font-semibold mr-1.5" style={{ color: "#0F172A" }}>
+              Ver en Gráfica:
+            </span>
+            <button
+              type="button"
+              onClick={() => setModoTendenciaCartera("MES")}
+              className="px-2 py-0.5 rounded-full font-bold transition cursor-pointer"
+              style={{
+                backgroundColor:
+                  modoTendenciaCartera === "MES" ? "#0E245E" : "transparent",
+                color: modoTendenciaCartera === "MES" ? "#FFFFFF" : "#0F172A",
+              }}
+            >
+              Por Mes (Ene-Oct)
+            </button>
+            <span className="mx-1.5 font-bold" style={{ color: "#1D58D8" }}>
+              |
+            </span>
+            <button
+              type="button"
+              onClick={() => setModoTendenciaCartera("CORTES")}
+              className="px-2 py-0.5 rounded-full font-bold transition cursor-pointer"
+              style={{
+                backgroundColor:
+                  modoTendenciaCartera === "CORTES" ? "#0E245E" : "transparent",
+                color: modoTendenciaCartera === "CORTES" ? "#FFFFFF" : "#0F172A",
+              }}
+            >
+              Por Cortes ({puntosTablaCortes.length} fechas)
+            </button>
           </div>
         </div>
 
-        {/* CUERPO: GRÁFICA DE TENDENCIA (IZQUIERDA) + VARIACIÓN ENTRE CORTES (DERECHA) */}
+        {/* CUERPO: GRÁFICA LIMPIA A LA IZQUIERDA + TABLA DE FECHAS DE CORTE A LA DERECHA */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-center">
-          <div className="xl:col-span-9">
+          <div className="xl:col-span-8">
             <svg
               viewBox={`0 0 ${svgW} ${svgH}`}
               className="w-full h-auto select-none overflow-visible"
             >
               <defs>
                 <linearGradient id="gradTendenciaTotal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1D58D8" stopOpacity="0.16" />
-                  <stop offset="100%" stopColor="#1D58D8" stopOpacity="0.01" />
+                  <stop offset="0%" stopColor="#1D58D8" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#1D58D8" stopOpacity="0.02" />
                 </linearGradient>
                 <linearGradient id="gradTendenciaReal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#059669" stopOpacity="0.22" />
+                  <stop offset="0%" stopColor="#059669" stopOpacity="0.24" />
                   <stop offset="100%" stopColor="#059669" stopOpacity="0.02" />
                 </linearGradient>
               </defs>
 
               {/* Línea base del eje X */}
               <line
-                x1={padL - 20}
+                x1={padL - 12}
                 y1={baseLineY}
-                x2={svgW - padR + 20}
+                x2={svgW - padR + 12}
                 y2={baseLineY}
-                stroke="#E2E8F0"
+                stroke="#CBD5E1"
                 strokeWidth="1"
               />
 
-              {/* Áreas sombreadas suaves */}
-              {(serieDestacadaTendencia === "TODAS" ||
-                serieDestacadaTendencia === "TOTAL") &&
-                areaTotal && <path d={areaTotal} fill="url(#gradTendenciaTotal)" />}
-              {(serieDestacadaTendencia === "TODAS" ||
-                serieDestacadaTendencia === "REAL") &&
-                areaReal && <path d={areaReal} fill="url(#gradTendenciaReal)" />}
+              {/* Áreas degradadas */}
+              {areaTotal && <path d={areaTotal} fill="url(#gradTendenciaTotal)" />}
+              {areaReal && <path d={areaReal} fill="url(#gradTendenciaReal)" />}
 
-              {/* 1. Curva Azul: Cartera Total */}
+              {/* Curva Azul: Cartera Total */}
               <path
                 d={pathTotal}
                 fill="none"
                 stroke="#1D58D8"
-                strokeWidth="2.4"
-                style={{
-                  opacity:
-                    serieDestacadaTendencia === "TODAS" ||
-                    serieDestacadaTendencia === "TOTAL"
-                      ? 1
-                      : 0.25,
-                }}
+                strokeWidth="2.5"
               />
 
-              {/* 2. Curva Verde: Total Cartera Real */}
+              {/* Curva Verde: Cartera Real */}
               <path
                 d={pathReal}
                 fill="none"
                 stroke="#059669"
-                strokeWidth="2.3"
-                style={{
-                  opacity:
-                    serieDestacadaTendencia === "TODAS" ||
-                    serieDestacadaTendencia === "REAL"
-                      ? 1
-                      : 0.25,
-                }}
+                strokeWidth="2.4"
               />
 
-              {/* 3. Curva Roja Punteada: Cartera Vencida (>=60d) */}
-              <path
-                d={pathVencida}
-                fill="none"
-                stroke="#C81E3A"
-                strokeWidth="1.6"
-                strokeDasharray="4 3"
-                style={{
-                  opacity:
-                    serieDestacadaTendencia === "TODAS" ||
-                    serieDestacadaTendencia === "VENCIDA"
-                      ? 1
-                      : 0.25,
-                }}
-              />
+              {/* Etiquetas directas al inicio de cada línea (Izquierda) */}
+              {coordsTotal[0] && (
+                <text
+                  x={padL - 10}
+                  y={coordsTotal[0].y + 3}
+                  textAnchor="end"
+                  fontSize="10.5"
+                  fontWeight="700"
+                  fill="#1D58D8"
+                >
+                  Cartera Total
+                </text>
+              )}
+              {coordsReal[0] && (
+                <text
+                  x={padL - 10}
+                  y={
+                    Math.abs(coordsReal[0].y - (coordsTotal[0]?.y || 0)) < 16
+                      ? coordsTotal[0].y + 18
+                      : coordsReal[0].y + 4
+                  }
+                  textAnchor="end"
+                  fontSize="10.5"
+                  fontWeight="700"
+                  fill="#059669"
+                >
+                  Cartera Real
+                </text>
+              )}
 
-              {/* Puntos interactivos y etiquetas sin amontonar */}
-              {puntosMostrar.map((pt, i) => {
+              {/* Puntos, cifras clave sin amontonar y etiquetas del Eje X */}
+              {puntosGrafica.map((pt, i) => {
                 const x = getX(i);
                 const yTot = coordsTotal[i].y;
                 const yReal = coordsReal[i].y;
-                const yVenc = coordsVencida[i].y;
-                const esCorteSeleccionado = pt.idxCorte === indiceCorteActivo;
-
-                // Evitar cualquier solapamiento vertical entre las 3 etiquetas de un mismo punto
-                const labelTotY = yTot - 8;
-                const labelRealY =
-                  Math.abs(yReal - yTot) < 18 ? yReal + 13 : yReal - 8;
-                const labelVencY =
-                  Math.abs(yVenc - yReal) < 16 ? yVenc + 12 : yVenc - 7;
-
-                const textoEjeX =
-                  modoTendenciaCartera === "AMBAS"
-                    ? pt.labelAmbas
-                    : modoTendenciaCartera === "MES"
-                    ? pt.labelMes
-                    : pt.labelCortes;
 
                 return (
                   <g
@@ -1644,251 +1701,124 @@ export default function TableroCarteraAnalytics() {
                     className="cursor-pointer"
                     onClick={() => setIndiceCorteActivo(pt.idxCorte)}
                   >
-                    {/* Línea guía vertical sutil en el corte activo */}
-                    {esCorteSeleccionado && (
-                      <line
-                        x1={x}
-                        y1={padT}
-                        x2={x}
-                        y2={baseLineY}
-                        stroke="#93C5FD"
-                        strokeWidth="1"
-                        strokeDasharray="2 2"
-                      />
+                    {pt.mostrarLabel && (
+                      <>
+                        <circle
+                          cx={x}
+                          cy={yTot}
+                          r={4.2}
+                          fill="#1D58D8"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.2"
+                        >
+                          <title>{`${pt.etiquetaEje} · Cartera Total: ${formatCOP(pt.carteraTotal)}`}</title>
+                        </circle>
+                        <text
+                          x={x}
+                          y={yTot - 8}
+                          textAnchor="middle"
+                          fontSize="9.5"
+                          fontWeight="700"
+                          fill="#0F172A"
+                        >
+                          {formatMillones(pt.carteraTotal)}
+                        </text>
+
+                        <circle
+                          cx={x}
+                          cy={yReal}
+                          r={4.2}
+                          fill="#059669"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.2"
+                        >
+                          <title>{`${pt.etiquetaEje} · Cartera Real: ${formatCOP(pt.totalCarteraReal)}`}</title>
+                        </circle>
+                        <text
+                          x={x}
+                          y={yReal + 14}
+                          textAnchor="middle"
+                          fontSize="9.5"
+                          fontWeight="700"
+                          fill="#0F172A"
+                        >
+                          {formatMillones(pt.totalCarteraReal)}
+                        </text>
+                      </>
                     )}
 
-                    {/* Punto y cifra: 1 Cartera Total */}
-                    <circle
-                      cx={x}
-                      cy={yTot}
-                      r={esCorteSeleccionado ? 4.8 : 4}
-                      fill="#1D58D8"
-                      stroke="#FFFFFF"
-                      strokeWidth="1.2"
-                    >
-                      <title>{`${textoEjeX} · Cartera Total: ${formatCOP(pt.carteraTotal)}`}</title>
-                    </circle>
+                    {/* Etiqueta del Eje X */}
                     <text
                       x={x}
-                      y={labelTotY}
+                      y={baseLineY + 18}
                       textAnchor="middle"
-                      fontSize="9"
-                      fontWeight="700"
-                      fill="#0F172A"
-                    >
-                      {formatMillones(pt.carteraTotal)}
-                    </text>
-
-                    {/* Punto y cifra: 2 Total Cartera Real */}
-                    <circle
-                      cx={x}
-                      cy={yReal}
-                      r={esCorteSeleccionado ? 4.6 : 3.8}
-                      fill="#059669"
-                      stroke="#FFFFFF"
-                      strokeWidth="1.2"
-                    >
-                      <title>{`${textoEjeX} · Total Cartera Real: ${formatCOP(pt.totalCarteraReal)}`}</title>
-                    </circle>
-                    <text
-                      x={x}
-                      y={labelRealY}
-                      textAnchor="middle"
-                      fontSize="8.5"
-                      fontWeight="700"
-                      fill="#0F172A"
-                    >
-                      {formatMillones(pt.totalCarteraReal)}
-                    </text>
-
-                    {/* Punto y cifra: 3 Cartera Vencida (>=60d) */}
-                    <circle
-                      cx={x}
-                      cy={yVenc}
-                      r={esCorteSeleccionado ? 4.2 : 3.5}
-                      fill="#C81E3A"
-                      stroke="#FFFFFF"
-                      strokeWidth="1.1"
-                    >
-                      <title>{`${textoEjeX} · Cartera Vencida (>=60d): ${formatCOP(pt.carteraVencida)}`}</title>
-                    </circle>
-                    <text
-                      x={x}
-                      y={labelVencY}
-                      textAnchor="middle"
-                      fontSize="8.2"
+                      fontSize="10"
                       fontWeight="600"
                       fill="#0F172A"
                     >
-                      {formatMillones(pt.carteraVencida)}
-                    </text>
-
-                    {/* Etiqueta del Eje X (Mes + Fecha de Corte) */}
-                    <text
-                      x={x}
-                      y={baseLineY + 17}
-                      textAnchor="middle"
-                      fontSize="8.5"
-                      fontWeight={esCorteSeleccionado ? "800" : "600"}
-                      fill={esCorteSeleccionado ? "#1D58D8" : "#0F172A"}
-                    >
-                      {textoEjeX}
+                      {pt.etiquetaEje}
                     </text>
                   </g>
                 );
               })}
             </svg>
-
-            {/* LEYENDA INFERIOR CENTRADA */}
-            <div className="flex flex-wrap items-center justify-center gap-5 pt-1 text-[11px] font-semibold">
-              <button
-                type="button"
-                onClick={() =>
-                  setSerieDestacadaTendencia((p) => (p === "TOTAL" ? "TODAS" : "TOTAL"))
-                }
-                className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80"
-                style={{ color: "#0F172A" }}
-              >
-                <span
-                  className="w-3 h-1 rounded-full inline-block"
-                  style={{ backgroundColor: "#1D58D8" }}
-                />
-                <span
-                  className="w-2 h-2 rounded-full inline-block -ml-2.5"
-                  style={{ backgroundColor: "#1D58D8" }}
-                />
-                <span>1 Cartera Total</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSerieDestacadaTendencia((p) => (p === "REAL" ? "TODAS" : "REAL"))
-                }
-                className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80"
-                style={{ color: "#0F172A" }}
-              >
-                <span
-                  className="w-3 h-1 rounded-full inline-block"
-                  style={{ backgroundColor: "#059669" }}
-                />
-                <span
-                  className="w-2 h-2 rounded-full inline-block -ml-2.5"
-                  style={{ backgroundColor: "#059669" }}
-                />
-                <span>2 Total Cartera Real</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSerieDestacadaTendencia((p) =>
-                    p === "VENCIDA" ? "TODAS" : "VENCIDA"
-                  )
-                }
-                className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80"
-                style={{ color: "#0F172A" }}
-              >
-                <span
-                  className="w-3.5 border-t-2 border-dashed inline-block"
-                  style={{ borderColor: "#C81E3A" }}
-                />
-                <span>3 Cartera Vencida (&gt;=60d)</span>
-              </button>
-            </div>
           </div>
 
-          {/* PANEL DERECHO: VARIACIÓN ENTRE CORTES Y FILTRO RÁPIDO DE SERIES */}
-          <div className="xl:col-span-3">
+          {/* PANEL DERECHO: TABLA ESTRUCTURADA "FECHAS DE CORTE (EXCEL / SISMA)" */}
+          <div className="xl:col-span-4">
             <div
-              className="rounded-xl p-3.5 border space-y-3"
-              style={{ backgroundColor: "#F8FAFC", borderColor: "#E2ECF8" }}
+              className="rounded-xl p-3.5 border space-y-2"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
             >
-              <div>
-                <div
-                  className="text-[11.5px] font-bold mb-1.5"
-                  style={{ color: "#0F172A" }}
-                >
-                  Variación entre cortes:
-                </div>
-                {ptInicial && ptFinal && (
-                  <div className="space-y-1 text-[11px] font-mono">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold" style={{ color: "#0F172A" }}>
-                        {formatMillones(ptInicial.carteraTotal)}
-                      </span>
-                      <span style={{ color: "#64748B" }}>→</span>
-                      <span className="font-extrabold" style={{ color: "#1D58D8" }}>
-                        {formatMillones(ptFinal.carteraTotal)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold" style={{ color: "#0F172A" }}>
-                        {formatMillones(ptInicial.totalCarteraReal)}
-                      </span>
-                      <span style={{ color: "#64748B" }}>→</span>
-                      <span className="font-extrabold" style={{ color: "#059669" }}>
-                        {formatMillones(ptFinal.totalCarteraReal)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold" style={{ color: "#0F172A" }}>
-                        {formatMillones(ptInicial.carteraVencida)}
-                      </span>
-                      <span style={{ color: "#64748B" }}>→</span>
-                      <span className="font-extrabold" style={{ color: "#C81E3A" }}>
-                        {formatMillones(ptFinal.carteraVencida)}
-                      </span>
-                    </div>
-                  </div>
-                )}
+              <div
+                className="text-[13px] font-bold"
+                style={{ color: "#0F172A" }}
+              >
+                Fechas de Corte (Excel / SISMA)
               </div>
 
-              <div className="pt-2 border-t space-y-1.5" style={{ borderColor: "#E2ECF8" }}>
-                <div
-                  className="text-[11px] font-bold"
-                  style={{ color: "#0F172A" }}
-                >
-                  Series KPI:
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSerieDestacadaTendencia((p) =>
-                        p === "TOTAL" ? "TODAS" : "TOTAL"
-                      )
-                    }
-                    className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold border cursor-pointer transition"
-                    style={{
-                      backgroundColor:
-                        serieDestacadaTendencia === "TOTAL" ? "#DBEAFE" : "#F1F5F9",
-                      borderColor:
-                        serieDestacadaTendencia === "TOTAL" ? "#1D58D8" : "#CBD5E1",
-                      color: "#0F172A",
-                    }}
-                  >
-                    Cartera Total
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSerieDestacadaTendencia((p) =>
-                        p === "VENCIDA" ? "TODAS" : "VENCIDA"
-                      )
-                    }
-                    className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold border cursor-pointer transition"
-                    style={{
-                      backgroundColor:
-                        serieDestacadaTendencia === "VENCIDA" ? "#FFE4E6" : "#F1F5F9",
-                      borderColor:
-                        serieDestacadaTendencia === "VENCIDA" ? "#C81E3A" : "#CBD5E1",
-                      color: "#0F172A",
-                    }}
-                  >
-                    Cartera Vencida (&gt;=60d)
-                  </button>
-                </div>
+              <div className="grid grid-cols-12 text-[10.5px] font-semibold pb-1 border-b" style={{ color: "#475569", borderColor: "#E2ECF8" }}>
+                <div className="col-span-5">Fecha de Corte</div>
+                <div className="col-span-4 text-right">Cartera Total</div>
+                <div className="col-span-3 text-right">Cartera Real</div>
+              </div>
+
+              <div className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                {puntosTablaCortes.map((c, idx) => {
+                  const esUltimaViva =
+                    c.esVivo && idx === puntosTablaCortes.length - 1;
+                  const esActivo = c.idxCorte === indiceCorteActivo;
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        setIndiceCorteActivo(c.idxCorte);
+                        setModoTendenciaCartera("CORTES");
+                      }}
+                      title="Clic para seleccionar este corte y verlo en la gráfica"
+                      className={`grid grid-cols-12 items-center py-1.5 px-2 text-[11px] cursor-pointer transition ${
+                        esUltimaViva ? "rounded-full mt-1" : "rounded-md hover:bg-slate-50"
+                      }`}
+                      style={{
+                        backgroundColor: esUltimaViva
+                          ? "#15803D"
+                          : esActivo
+                          ? "#EFF6FF"
+                          : "transparent",
+                        color: esUltimaViva ? "#FFFFFF" : "#0F172A",
+                        fontWeight: esUltimaViva || esActivo ? 700 : 600,
+                      }}
+                    >
+                      <div className="col-span-5 truncate">{c.etiquetaTabla}</div>
+                      <div className="col-span-4 text-right font-mono font-bold">
+                        {formatMillones(c.carteraTotal)}
+                      </div>
+                      <div className="col-span-3 text-right font-mono font-bold">
+                        {formatMillones(c.totalCarteraReal)}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

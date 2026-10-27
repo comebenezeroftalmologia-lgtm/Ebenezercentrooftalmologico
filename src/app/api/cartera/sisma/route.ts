@@ -428,6 +428,68 @@ export async function GET(req: NextRequest) {
     const anticiposPorCruzar = sumaGirosCuentas;
     const totalCarteraReal = Math.round(carteraTotal - anticiposPorCruzar);
 
+    // Acumulación mensual real (Ene al mes de corte) para la gráfica de Tendencia por Mes
+    const mesMaxCorte = Math.max(1, Math.min(12, Number(corte.slice(5, 7)) || 10));
+    const nombresMesesCortos = [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic",
+    ];
+    const acumuladoPorMesFacturas = new Array<number>(12).fill(0);
+    const vencidaPorMesFacturas = new Array<number>(12).fill(0);
+
+    for (const item of edadesData.cartera || []) {
+      const razonSocial =
+        item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
+      if (!cumpleFiltroEntidad(razonSocial)) continue;
+      if (!cumpleFiltroFecha(item.fechaRadicacion || item.fechaFactura)) continue;
+
+      const fIso = normalizarFechaISO(item.fechaRadicacion || item.fechaFactura);
+      const yyyyItem = Number(fIso.slice(0, 4));
+      const mmItem = Number(fIso.slice(5, 7));
+      const anioCorteNum = Number(anio) || 2026;
+      const saldoItem = Number(item.saldo || 0);
+      const vencItem =
+        Number(item.d90 || 0) +
+        Number(item.d120 || 0) +
+        Number(item.d180 || 0) +
+        Number(item.d360 || 0) +
+        Number(item.mas360 || 0);
+
+      const idxInicio =
+        !yyyyItem || yyyyItem < anioCorteNum
+          ? 0
+          : Math.max(0, Math.min(11, (mmItem || 1) - 1));
+      for (let m = idxInicio; m < mesMaxCorte; m++) {
+        acumuladoPorMesFacturas[m] += saldoItem;
+        vencidaPorMesFacturas[m] += vencItem;
+      }
+    }
+
+    const serieMensual = Array.from({ length: mesMaxCorte }, (_, idx) => {
+      const mmStr = String(idx + 1).padStart(2, "0");
+      const totMes = Math.round(acumuladoPorMesFacturas[idx]);
+      const propGiros =
+        carteraTotal > 0 ? Math.min(1, totMes / carteraTotal) : 0;
+      const girosMes = Math.round(anticiposPorCruzar * propGiros);
+      return {
+        mes: mmStr,
+        etiqueta: nombresMesesCortos[idx],
+        carteraTotal: totMes,
+        totalCarteraReal: Math.round(totMes - girosMes),
+        carteraVencida: Math.round(vencidaPorMesFacturas[idx]),
+      };
+    });
+
     const topEmpresas = Array.from(mapaEmpresas.values())
       .map((e) => ({
         ...e,
@@ -436,8 +498,7 @@ export async function GET(req: NextRequest) {
         pendienteRadicar: Math.round(e.pendienteRadicar),
         total: Math.round(e.total),
       }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 30);
+      .sort((a, b) => b.total - a.total);
 
     const [yyyy, mm, dd] = corte.split("-");
     const fechaCorteLabel = `${dd}/${mm}/${yyyy}`;
@@ -473,6 +534,7 @@ export async function GET(req: NextRequest) {
       },
       cuentasGirosDetalle,
       topEmpresas,
+      serieMensual,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error desconocido";
