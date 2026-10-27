@@ -332,6 +332,7 @@ export function TareaDetalleView({ datos, yoId, esAdmin = false }: { datos: Dato
           esPropietario={espacio.rol === "propietario"}
           puedeComentar={puedeEditar}
           nombres={nombres}
+          miembros={miembros.map((m) => ({ id: m.userId, nombre: m.nombre }))}
           hoy={hoy}
         />
       </aside>
@@ -838,6 +839,25 @@ function Adjuntos({ datos, puedeEditar, nombreDe }: { datos: DatosTarea; puedeEd
 // ---------------------------------------------------------------------------
 // Actividad y comentarios
 // ---------------------------------------------------------------------------
+/** Pinta en azul los "@Nombre" que coinciden con miembros del espacio. */
+function resaltarMenciones(texto: string, miembros: { id: string; nombre: string }[]): React.ReactNode {
+  if (!texto.includes("@") || miembros.length === 0) return texto;
+  const escapados = miembros
+    .map((m) => m.nombre)
+    .sort((a, b) => b.length - a.length)
+    .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const partes = texto.split(new RegExp(`(@(?:${escapados.join("|")}))`, "g"));
+  return partes.map((p, i) =>
+    p.startsWith("@") && i % 2 === 1 ? (
+      <span key={i} className="rounded bg-[#E6F0FD] px-1 font-medium text-[#1D58D8]">
+        {p}
+      </span>
+    ) : (
+      <span key={i}>{p}</span>
+    )
+  );
+}
+
 type Evento = { tipo: "act"; fecha: string; a: EntradaActividad } | { tipo: "com"; fecha: string; c: Comentario };
 
 function Actividad({
@@ -848,6 +868,7 @@ function Actividad({
   esPropietario,
   puedeComentar,
   nombres,
+  miembros,
   hoy,
 }: {
   tareaId: string;
@@ -857,10 +878,48 @@ function Actividad({
   esPropietario: boolean;
   puedeComentar: boolean;
   nombres: Map<string, string>;
+  miembros: { id: string; nombre: string }[];
   hoy: string;
 }) {
   const aviso = useAviso();
   const [texto, setTexto] = useState("");
+  const areaRef = useRef<HTMLTextAreaElement>(null);
+  // Menciones: al elegir a alguien tras escribir "@" se inserta "@Nombre" y se recuerda su id.
+  const [menciones, setMenciones] = useState<Map<string, string>>(new Map());
+  const [mencion, setMencion] = useState<{ inicio: number; consulta: string } | null>(null);
+  const [mencionIdx, setMencionIdx] = useState(0);
+
+  const sinTildes = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const sugerencias = useMemo(() => {
+    if (!mencion) return [];
+    const q = sinTildes(mencion.consulta);
+    return miembros.filter((m) => m.id !== yoId && sinTildes(m.nombre).includes(q)).slice(0, 6);
+  }, [mencion, miembros, yoId]);
+
+  function detectarMencion(valor: string, cursor: number) {
+    const antes = valor.slice(0, cursor);
+    const m = /(^|\s)@([^\s@]{0,30})$/.exec(antes);
+    if (m) {
+      setMencion({ inicio: cursor - m[2].length - 1, consulta: m[2] });
+      setMencionIdx(0);
+    } else {
+      setMencion(null);
+    }
+  }
+
+  function elegirMencion(m: { id: string; nombre: string }) {
+    if (!mencion) return;
+    const cursor = areaRef.current?.selectionStart ?? texto.length;
+    const nuevo = texto.slice(0, mencion.inicio) + "@" + m.nombre + " " + texto.slice(cursor);
+    setTexto(nuevo);
+    setMenciones((prev) => new Map(prev).set(m.id, m.nombre));
+    setMencion(null);
+    const pos = mencion.inicio + m.nombre.length + 2;
+    requestAnimationFrame(() => {
+      areaRef.current?.focus();
+      areaRef.current?.setSelectionRange(pos, pos);
+    });
+  }
   const [enviando, setEnviando] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [textoEdit, setTextoEdit] = useState("");
@@ -884,10 +943,15 @@ function Actividad({
     const t = texto.trim();
     if (!t || enviando) return;
     setEnviando(true);
-    const r = await crearComentarioAction(tareaId, t);
+    const ids = Array.from(menciones.entries())
+      .filter(([, nombre]) => t.includes("@" + nombre))
+      .map(([id]) => id);
+    const r = await crearComentarioAction(tareaId, t, ids);
     setEnviando(false);
     if (!r.ok) return aviso(r.error);
     setTexto("");
+    setMenciones(new Map());
+    setMencion(null);
   }
 
   const nom = (id: string | null) => (id ? nombres.get(id) ?? "Alguien" : "Alguien");
@@ -996,7 +1060,7 @@ function Actividad({
                   </div>
                 </div>
               ) : (
-                <p className="whitespace-pre-wrap break-words text-sm text-ink">{ev.c.texto}</p>
+                <p className="whitespace-pre-wrap break-words text-sm text-ink">{resaltarMenciones(ev.c.texto, miembros)}</p>
               )}
             </div>
           )
@@ -1007,21 +1071,70 @@ function Actividad({
       <div className="border-t border-line bg-white p-3">
         {puedeComentar ? (
           <>
-            <textarea
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  void enviar();
-                }
-              }}
-              rows={2}
-              maxLength={5000}
-              placeholder="Escribe un comentario…"
-              aria-label="Escribe un comentario"
-              className="w-full resize-none rounded-sm border border-line p-2 text-sm outline-none focus:border-blue focus:shadow-eb-focus"
-            />
+            <div className="relative">
+              {mencion && sugerencias.length > 0 && (
+                <ul
+                  role="listbox"
+                  aria-label="Mencionar a"
+                  className="absolute bottom-full left-0 z-20 mb-1 max-h-48 w-full overflow-auto rounded-md border border-line bg-white py-1 shadow-eb-3"
+                >
+                  {sugerencias.map((m, i) => (
+                    <li key={m.id} role="option" aria-selected={i === mencionIdx}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          elegirMencion(m);
+                        }}
+                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${i === mencionIdx ? "bg-[#E6F0FD] text-navy" : "text-ink-2 hover:bg-[#F3F7FD]"}`}
+                      >
+                        <Avatar id={m.id} nombre={m.nombre} size={20} />
+                        <span className="truncate">{m.nombre}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <textarea
+                ref={areaRef}
+                value={texto}
+                onChange={(e) => {
+                  setTexto(e.target.value);
+                  detectarMencion(e.target.value, e.target.selectionStart);
+                }}
+                onClick={(e) => detectarMencion(texto, e.currentTarget.selectionStart)}
+                onBlur={() => setMencion(null)}
+                onKeyDown={(e) => {
+                  if (mencion && sugerencias.length > 0) {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      return setMencionIdx((i) => (i + 1) % sugerencias.length);
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      return setMencionIdx((i) => (i - 1 + sugerencias.length) % sugerencias.length);
+                    }
+                    if (e.key === "Enter" || e.key === "Tab") {
+                      e.preventDefault();
+                      return elegirMencion(sugerencias[mencionIdx]);
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      return setMencion(null);
+                    }
+                  }
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    void enviar();
+                  }
+                }}
+                rows={2}
+                maxLength={5000}
+                placeholder="Escribe un comentario… usa @ para mencionar a alguien"
+                aria-label="Escribe un comentario"
+                className="w-full resize-none rounded-sm border border-line p-2 text-sm outline-none focus:border-blue focus:shadow-eb-focus"
+              />
+            </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-[11px] text-ink-3">Ctrl + Enter para enviar</span>
               <BotonPrimario onClick={enviar} disabled={!texto.trim() || enviando}>

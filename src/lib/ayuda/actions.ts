@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { puedeGestionarConocimiento, requireAdmin, requireAppUser, requireDesarrollador } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { registrarHistorial } from "@/lib/ayuda/historial";
+import { idsDesarrolladores, notificar } from "@/lib/notificaciones/notificar";
 import { EXTENSIONES_PERMITIDAS, TAMANO_MAXIMO_BYTES, extensionDe, extraerTexto, partirEnFragmentos } from "@/lib/ayuda/extraer";
 
 type Res<T = unknown> = ({ ok: true } & T) | { ok: false; error: string };
@@ -357,6 +358,13 @@ export async function reportarFallaAction(input: {
     gravedad,
   });
   if (error) return { ok: false, error: "No se pudo enviar el reporte: " + error.message };
+  await notificar(await idsDesarrolladores(), {
+    tipo: "falla_nueva",
+    titulo: `Nueva falla (${gravedad}): ${titulo}`,
+    cuerpo: `${user.nombreCompleto}${input.modulo ? " · " + input.modulo : ""}\n${descripcion.slice(0, 300)}`,
+    url: "/ayuda/fallas",
+    actor: { id: user.id, nombre: user.nombreCompleto },
+  });
   revalidatePath("/ayuda/fallas");
   return { ok: true };
 }
@@ -366,13 +374,19 @@ export async function actualizarFallaAction(
   estado: "nuevo" | "en_revision" | "resuelto" | "descartado",
   nota: string
 ): Promise<Res> {
+  let dev;
   try {
-    await requireDesarrollador();
+    dev = await requireDesarrollador();
   } catch {
     return { ok: false, error: "Solo el Desarrollador puede gestionar las fallas." };
   }
   if (!UUID.test(id)) return { ok: false, error: "Reporte no válido." };
   const admin = createServiceClient();
+  const { data: antes } = await admin
+    .from("fallas_reportes")
+    .select("user_id, titulo, estado, nota_desarrollador")
+    .eq("id", id)
+    .maybeSingle();
   const { error } = await admin
     .from("fallas_reportes")
     .update({
@@ -382,6 +396,18 @@ export async function actualizarFallaAction(
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  const notaNueva = limpiar(nota, 1000);
+  if (antes && (antes.estado !== estado || (antes.nota_desarrollador ?? null) !== notaNueva)) {
+    const ETIQUETA: Record<string, string> = { nuevo: "recibido", en_revision: "en revisión", resuelto: "resuelto", descartado: "descartado" };
+    await notificar([antes.user_id], {
+      tipo: "falla_actualizada",
+      titulo: `Tu reporte «${antes.titulo}» está ${ETIQUETA[estado] ?? estado}`,
+      cuerpo: notaNueva ?? undefined,
+      url: "/ayuda/fallas",
+      actor: { id: dev.id, nombre: dev.nombreCompleto },
+    });
+  }
   revalidatePath("/ayuda/fallas");
   return { ok: true };
 }

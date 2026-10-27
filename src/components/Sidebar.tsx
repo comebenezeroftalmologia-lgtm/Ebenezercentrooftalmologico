@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart2,
+  Bell,
   BookOpen,
   Bug,
   FileSpreadsheet,
@@ -122,6 +123,29 @@ export function RielGlobal({
 
   const pathname = usePathname();
   const router = useRouter();
+  const [sinLeer, setSinLeer] = useState(0);
+
+  // Contador de avisos sin leer: al cargar, cada minuto y cuando se marca algo como leído.
+  useEffect(() => {
+    let activo = true;
+    const cargar = () => {
+      fetch("/api/notificaciones/conteo", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (activo && j && typeof j.sinLeer === "number") setSinLeer(j.sinLeer);
+        })
+        .catch(() => {});
+    };
+    cargar();
+    const t = setInterval(cargar, 60_000);
+    window.addEventListener("eb:notificaciones", cargar);
+    return () => {
+      activo = false;
+      clearInterval(t);
+      window.removeEventListener("eb:notificaciones", cargar);
+    };
+  }, [pathname]);
+
   const enInicio = pathname === "/";
   const enProcesos = pathname === "/procesos" || pathname.startsWith("/procesos/");
   const enProyectos = pathname === "/proyectos" || pathname.startsWith("/proyectos/");
@@ -129,6 +153,7 @@ export function RielGlobal({
   const enUsuarios = pathname === "/usuarios" || pathname.startsWith("/usuarios/");
   const enPerfil = pathname === "/perfil" || pathname.startsWith("/perfil/");
   const enAyuda = pathname === "/ayuda" || pathname.startsWith("/ayuda/");
+  const enNotificaciones = pathname === "/notificaciones" || pathname.startsWith("/notificaciones/");
   const enAnalytics = pathname === "/analytics" || analyticsAllowed.some((m) => pathname === m.href);
 
   const itemClass = (activo: boolean) =>
@@ -196,6 +221,19 @@ export function RielGlobal({
           </Link>
         )}
 
+        <Link href="/notificaciones" className={itemClass(enNotificaciones)} title="Notificaciones">
+          {enNotificaciones && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
+          <span className="relative">
+            <Bell className="h-[19px] w-[19px]" strokeWidth={1.75} />
+            {sinLeer > 0 && (
+              <span className="absolute -right-2 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#EF4444] px-1 text-[9px] font-bold leading-none text-white">
+                {sinLeer > 99 ? "99+" : sinLeer}
+              </span>
+            )}
+          </span>
+          <span className="text-[10.5px] leading-none tracking-tight">Avisos</span>
+        </Link>
+
         <Link href="/ayuda" className={itemClass(enAyuda)} title="Ayuda">
           {enAyuda && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
           <LifeBuoy className="h-[19px] w-[19px]" strokeWidth={1.75} />
@@ -259,9 +297,12 @@ export function Sidebar({
   const enUsuarios = pathname === "/usuarios" || pathname.startsWith("/usuarios/");
   const enPerfil = pathname === "/perfil" || pathname.startsWith("/perfil/");
   const enAyuda = pathname === "/ayuda" || pathname.startsWith("/ayuda/");
+  const enNotificaciones = pathname === "/notificaciones" || pathname.startsWith("/notificaciones/");
 
   const tituloBandeja = enInicio
     ? "Inicio · Ebenezer"
+    : enNotificaciones
+      ? "Notificaciones"
     : enAyuda
       ? "Ayuda"
       : enUsuarios
@@ -272,7 +313,7 @@ export function Sidebar({
 
   const placeholderBusqueda = enInicio
     ? "Buscar módulo o vista..."
-    : enUsuarios || enPerfil || enAyuda
+    : enUsuarios || enPerfil || enAyuda || enNotificaciones
       ? "Filtrar opción..."
       : "Filtrar tablero...";
 
@@ -398,6 +439,28 @@ export function Sidebar({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] leading-tight">Mi Perfil</p>
                       <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Datos de cuenta y clave</p>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </>
+          ) : enNotificaciones ? (
+            <>
+              <div className="mb-4">
+                <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Avisos</div>
+                <div className="flex flex-col gap-1">
+                  <Link href="/notificaciones" className={pill(true)}>
+                    <Bell className={iconCls(true)} strokeWidth={1.85} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] leading-tight">Mis notificaciones</p>
+                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Asignaciones, menciones y más</p>
+                    </div>
+                  </Link>
+                  <Link href="/perfil#notificaciones" className={pill(false)}>
+                    <Settings className={iconCls(false)} strokeWidth={1.85} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] leading-tight">Preferencias</p>
+                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Plataforma y correo</p>
                     </div>
                   </Link>
                 </div>

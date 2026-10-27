@@ -1,5 +1,6 @@
 import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
 import { BUCKET_ADJUNTOS } from "@/lib/proyectos/utils";
+import { idsAutorizadores, notificar } from "@/lib/notificaciones/notificar";
 import type { AppUser } from "@/lib/procesos/types";
 
 /** Qué se puede eliminar con autorización del líder, y en qué tabla vive. */
@@ -55,6 +56,14 @@ export async function solicitarEliminacion(
     autorizador_id: user.liderId,
   });
   if (error) return { ok: false, error: "No se pudo enviar la solicitud: " + error.message };
+
+  await notificar(await idsAutorizadores(user.liderId), {
+    tipo: "eliminacion_solicitud",
+    titulo: `${user.nombreCompleto} pidió eliminar ${TIPO_LABEL[tipo]?.toLowerCase() ?? tipo}`,
+    cuerpo: String(entidad.nombre ?? ""),
+    url: "/usuarios",
+    actor: { id: user.id, nombre: user.nombreCompleto },
+  });
   return { ok: true, solicitada: true };
 }
 

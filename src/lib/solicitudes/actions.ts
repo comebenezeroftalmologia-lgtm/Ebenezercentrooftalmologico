@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireGestorUsuarios } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { ejecutarEliminacion, TABLAS_ELIMINABLES, type TipoEliminable } from "@/lib/solicitudes-eliminacion";
+import { notificar } from "@/lib/notificaciones/notificar";
 import type { AppUser } from "@/lib/procesos/types";
 
 type Res = { ok: true } | { ok: false; error: string };
@@ -17,7 +18,7 @@ async function cargarResoluble(user: AppUser, id: string) {
   const admin = createServiceClient();
   const { data: sol } = await admin
     .from("solicitudes_eliminacion")
-    .select("id, tipo, entidad_id, estado, autorizador_id, solicitante_id")
+    .select("id, tipo, entidad_id, entidad_nombre, estado, autorizador_id, solicitante_id")
     .eq("id", id)
     .maybeSingle();
   if (!sol) return { error: "No se encontró la solicitud." as const };
@@ -60,6 +61,14 @@ export async function aprobarSolicitudEliminacionAction(id: string): Promise<Res
     })
     .eq("id", id);
 
+  await notificar([sol.solicitante_id], {
+    tipo: "eliminacion_resuelta",
+    titulo: "Tu solicitud de eliminación fue autorizada",
+    cuerpo: `${sol.entidad_nombre} se eliminó.`,
+    url: "/proyectos",
+    actor: { id: user.id, nombre: user.nombreCompleto },
+  });
+
   revalidatePath("/usuarios");
   revalidatePath("/proyectos", "layout");
   return { ok: true };
@@ -80,6 +89,14 @@ export async function rechazarSolicitudEliminacionAction(id: string, nota: strin
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  await notificar([r.sol.solicitante_id], {
+    tipo: "eliminacion_resuelta",
+    titulo: "Tu solicitud de eliminación fue rechazada",
+    cuerpo: `${r.sol.entidad_nombre} no se eliminó.${nota.trim() ? " Motivo: " + nota.trim().slice(0, 300) : ""}`,
+    url: "/proyectos",
+    actor: { id: user.id, nombre: user.nombreCompleto },
+  });
 
   revalidatePath("/usuarios");
   return { ok: true };

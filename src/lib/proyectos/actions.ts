@@ -7,6 +7,14 @@ import { requireModuloAccess } from "@/lib/auth";
 import { BUCKET_ADJUNTOS, getMiembros } from "@/lib/proyectos/queries";
 import { mensajeError } from "@/lib/proyectos/utils";
 import { solicitarEliminacion } from "@/lib/solicitudes-eliminacion";
+import {
+  avisarAsignacion,
+  avisarCambioTarea,
+  avisarComentario,
+  avisarEspacioCompartido,
+  fechaLegible,
+  nombreEstado,
+} from "@/lib/proyectos/avisos";
 import type { EnlaceTarea, Etiqueta, Miembro, Prioridad, Resultado, RolEspacio, TipoEstado } from "@/lib/proyectos/types";
 
 // Todas las acciones corren con la sesión del usuario (llave anon + RLS):
@@ -162,11 +170,12 @@ export async function listarCandidatosAction(espacioId: string): Promise<Resulta
 }
 
 export async function agregarMiembroAction(espacioId: string, userId: string, rol: RolEspacio): Promise<Resultado> {
-  const { sb } = await contexto();
+  const { sb, user } = await contexto();
   if (!UUID.test(espacioId) || !UUID.test(userId)) return invalido("Datos no válidos.");
   if (!ROLES_VALIDOS.includes(rol)) return invalido("Rol no válido.");
   const { error } = await sb.from("proy_espacio_miembros").insert({ espacio_id: espacioId, user_id: userId, rol });
   if (error) return fallo(error);
+  await avisarEspacioCompartido(user, espacioId, userId);
   refrescar();
   return { ok: true };
 }
@@ -513,6 +522,7 @@ export async function crearTareaAction(input: {
       .from("proy_tarea_asignados")
       .insert(asignados.map((u) => ({ tarea_id: data.id, user_id: u })));
     if (e2) return fallo(e2);
+    await avisarAsignacion(user, data.id, asignados);
   }
   refrescar();
   return { ok: true, id: data.id };
@@ -562,7 +572,7 @@ export async function actualizarTareaAction(
     descripcion?: unknown;
   }
 ): Promise<Resultado> {
-  const { sb } = await contexto();
+  const { sb, user } = await contexto();
   if (!UUID.test(id)) return invalido("Tarea no válida.");
   const cambios: Record<string, unknown> = {};
 
@@ -593,9 +603,33 @@ export async function actualizarTareaAction(
   }
   if (Object.keys(cambios).length === 0) return { ok: true };
 
+  // Para avisar solo de lo que realmente cambió.
+  const { data: antes } = await sb
+    .from("proy_tareas")
+    .select("nombre, estado_id, prioridad, fecha_limite")
+    .eq("id", id)
+    .maybeSingle();
+
   const { data, error } = await sb.from("proy_tareas").update(cambios).eq("id", id).select("id");
   if (error) return fallo(error);
   if (!data || data.length === 0) return invalido("No tienes permiso para editar esta tarea.");
+
+  if (antes) {
+    const partes: string[] = [];
+    if (cambios.estado_id !== undefined && cambios.estado_id !== antes.estado_id) {
+      partes.push(`Estado: ${await nombreEstado(cambios.estado_id as string)}`);
+    }
+    if (cambios.fecha_limite !== undefined && cambios.fecha_limite !== antes.fecha_limite) {
+      partes.push(`Fecha límite: ${fechaLegible(cambios.fecha_limite as string | null)}`);
+    }
+    if (cambios.prioridad !== undefined && cambios.prioridad !== antes.prioridad) {
+      partes.push(`Prioridad: ${(cambios.prioridad as string | null) ?? "ninguna"}`);
+    }
+    if (cambios.nombre !== undefined && cambios.nombre !== antes.nombre) {
+      partes.push(`Nuevo nombre: ${cambios.nombre as string}`);
+    }
+    if (partes.length > 0) await avisarCambioTarea(user, id, partes.join(" · "));
+  }
   // La descripción se guarda mientras se escribe: no refresca.
   if (Object.keys(cambios).some((k) => k !== "descripcion")) refrescar();
   return { ok: true };
@@ -637,8 +671,9 @@ export async function eliminarPostergacionAction(id: string): Promise<Resultado>
 
 /** Cambia de estado (y de posición) — usado al arrastrar en el Tablero. */
 export async function moverTareaAction(id: string, estadoId: string, orden: number): Promise<Resultado> {
-  const { sb } = await contexto();
+  const { sb, user } = await contexto();
   if (!UUID.test(id) || !UUID.test(estadoId) || !Number.isFinite(orden)) return invalido("Datos no válidos.");
+  const { data: antes } = await sb.from("proy_tareas").select("estado_id").eq("id", id).maybeSingle();
   const { data, error } = await sb
     .from("proy_tareas")
     .update({ estado_id: estadoId, orden })
@@ -646,6 +681,10 @@ export async function moverTareaAction(id: string, estadoId: string, orden: numb
     .select("id");
   if (error) return fallo(error);
   if (!data || data.length === 0) return invalido("No tienes permiso para mover esta tarea.");
+  // Reordenar dentro de la misma columna no es un cambio de estado.
+  if (antes && antes.estado_id !== estadoId) {
+    await avisarCambioTarea(user, id, `Estado: ${await nombreEstado(estadoId)}`);
+  }
   refrescar();
   return { ok: true };
 }
@@ -670,7 +709,7 @@ export async function eliminarTareaAction(id: string): Promise<Resultado<{ solic
 }
 
 export async function setAsignadosAction(tareaId: string, userIds: string[]): Promise<Resultado> {
-  const { sb } = await contexto();
+  const { sb, user } = await contexto();
   if (!UUID.test(tareaId) || !userIds.every((u) => UUID.test(u))) return invalido("Datos no válidos.");
   const deseados = new Set(userIds);
 
@@ -686,6 +725,7 @@ export async function setAsignadosAction(tareaId: string, userIds: string[]): Pr
       .from("proy_tarea_asignados")
       .insert(agregar.map((u) => ({ tarea_id: tareaId, user_id: u })));
     if (error) return fallo(error);
+    await avisarAsignacion(user, tareaId, agregar);
   }
   if (quitar.length > 0) {
     const { error } = await sb.from("proy_tarea_asignados").delete().eq("tarea_id", tareaId).in("user_id", quitar);
@@ -829,7 +869,11 @@ export async function eliminarItemChecklistAction(id: string): Promise<Resultado
 // =====================================================================
 // Comentarios
 // =====================================================================
-export async function crearComentarioAction(tareaId: string, textoIn: string): Promise<Resultado<{ id: string }>> {
+export async function crearComentarioAction(
+  tareaId: string,
+  textoIn: string,
+  menciones?: string[]
+): Promise<Resultado<{ id: string }>> {
   const { sb, user } = await contexto();
   const texto = typeof textoIn === "string" ? textoIn.trim() : "";
   if (!UUID.test(tareaId)) return invalido("Tarea no válida.");
@@ -841,6 +885,7 @@ export async function crearComentarioAction(tareaId: string, textoIn: string): P
     .select("id")
     .single();
   if (error) return fallo(error);
+  await avisarComentario(user, tareaId, texto, menciones);
   refrescar();
   return { ok: true, id: data.id };
 }

@@ -4,6 +4,7 @@
     { "path": "/api/sync/clientify?pipeline=generacion_leads", "schedule": "15 8 * * *" },
     { "path": "/api/sync/clientify?pipeline=ordenamientos_qx", "schedule": "20 8 * * *" },
     { "path": "/api/sync/clientify?pipeline=ordenamientos_no_qx", "schedule": "25 8 * * *" },
-    { "path": "/api/sync/social", "schedule": "30 8 * * *" }
+    { "path": "/api/sync/social", "schedule": "30 8 * * *" },
+    { "path": "/api/cron/notificaciones", "schedule": "0 12 * * *" }
   ]
 }

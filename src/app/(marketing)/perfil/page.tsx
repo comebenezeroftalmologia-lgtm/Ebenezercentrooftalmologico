@@ -1,16 +1,19 @@
 import { Lock } from "lucide-react";
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import { getMisAsignaciones, getMisModulos, requireAppUser } from "@/lib/auth";
+import { getPreferencias } from "@/lib/notificaciones/queries";
 import { CambiarPasswordForm } from "./CambiarPasswordForm";
 import { EditarPerfilForm } from "./EditarPerfilForm";
+import { PreferenciasNotificaciones } from "./PreferenciasNotificaciones";
 
 export const dynamic = "force-dynamic";
 
 export default async function PerfilPage() {
   const user = await requireAppUser();
-  const [modulos, asignaciones] = await Promise.all([
+  const [modulos, asignaciones, preferencias] = await Promise.all([
     getMisModulos(user.id, user.isAdmin),
     getMisAsignaciones(user.id),
+    getPreferencias(user.id),
   ]);
 
   const partes = user.nombreCompleto.trim().split(/\s+/);
@@ -80,6 +83,21 @@ export default async function PerfilPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div
+        id="notificaciones"
+        className="mt-6 scroll-mt-6 rounded-[18px] border border-[#E6EEF8] bg-white p-7 shadow-[0_2px_14px_rgba(14,36,94,0.04)]"
+      >
+        <h2 className="font-display text-[19px] font-bold tracking-tight text-[#0F172A]">Notificaciones</h2>
+        <p className="mb-5 mt-1 text-sm text-ink-3">
+          Elige qué avisos quieres recibir dentro de la plataforma y cuáles también por correo.
+        </p>
+        <PreferenciasNotificaciones
+          inicial={preferencias}
+          rol={user.rol}
+          correoActivo={!!process.env.RESEND_API_KEY}
+        />
       </div>
     </div>
   );
