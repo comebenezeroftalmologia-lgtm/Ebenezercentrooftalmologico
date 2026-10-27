@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { MODULOS, type Modulo } from "@/lib/modulos";
 import { logoutAction } from "@/lib/procesos/actions";
+import { IconoIA } from "@/components/IconoIA";
 
 const ANALYTICS_ITEMS = MODULOS.filter((m) => m.grupo === "Analytics");
 const OPERACION_ORDER: Modulo[] = ["frecuencias", "venta_del_dia"];
@@ -497,11 +498,21 @@ export function Sidebar({
               <div className="mb-4">
                 <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Ayuda</div>
                 <div className="flex flex-col gap-1">
-                  <Link href="/ayuda/conocimiento" className={pill(pathname.startsWith("/ayuda/conocimiento"))}>
-                    <BookOpen className={iconCls(pathname.startsWith("/ayuda/conocimiento"))} strokeWidth={1.85} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] leading-tight">Centro de Conocimiento</p>
-                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Pregunta a la IA de Ebenezer</p>
+                  <Link
+                    href="/ayuda/conocimiento"
+                    className={`group relative flex items-center gap-2.5 overflow-hidden rounded-[12px] border px-3 py-2.5 transition duration-200 hover:-translate-y-px ${
+                      pathname.startsWith("/ayuda/conocimiento")
+                        ? "border-[#7DD3FC]/60 shadow-[0_0_16px_rgba(96,165,250,0.45),0_0_26px_rgba(168,85,247,0.25)]"
+                        : "border-[#3B5BA8]/60 shadow-[0_2px_10px_rgba(8,26,58,0.25)] hover:border-[#7DD3FC]/60 hover:shadow-[0_0_16px_rgba(96,165,250,0.4),0_0_24px_rgba(168,85,247,0.22)]"
+                    }`}
+                    style={{ backgroundImage: "linear-gradient(135deg, #081A3A 0%, #0F2A5E 55%, #2A1B5C 100%)" }}
+                  >
+                    <span className="pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full bg-[#A78BFA]/25 blur-xl" />
+                    <span className="pointer-events-none absolute -bottom-6 -left-4 h-14 w-14 rounded-full bg-[#22D3EE]/20 blur-xl" />
+                    <IconoIA size={34} className="relative shrink-0" />
+                    <div className="relative min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold leading-tight text-white">Centro de Conocimiento</p>
+                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#A5C8FF]">Pregunta a la IA de Ebenezer</p>
                     </div>
                   </Link>
                   <Link href="/ayuda/academia" className={pill(pathname.startsWith("/ayuda/academia"))}>
