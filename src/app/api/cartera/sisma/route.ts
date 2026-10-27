@@ -161,8 +161,9 @@ export async function GET(req: NextRequest) {
       .filter(Boolean);
     const mesesParam = (searchParams.get("meses") || "")
       .split(",")
-      .map((s) => s.trim().padStart(2, "0"))
-      .filter(Boolean);
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => s.padStart(2, "0"));
     const empresasParam = (searchParams.get("empresas") || "")
       .split(",")
       .map((s) => s.trim().toUpperCase())
@@ -228,8 +229,18 @@ export async function GET(req: NextRequest) {
       return true;
     };
 
+    const normalizarFechaISO = (raw: string | null | undefined): string => {
+      const s = String(raw || "").trim().slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        const [d, m, y] = s.split("/");
+        return `${y}-${m}-${d}`;
+      }
+      return s;
+    };
+
     const cumpleFiltroFecha = (fechaStr: string | null | undefined): boolean => {
-      const f = String(fechaStr || "").trim().slice(0, 10);
+      const f = normalizarFechaISO(fechaStr);
       if (aniosParam.length > 0 && aniosParam.length < 6) {
         if (/^\d{4}/.test(f) && !aniosParam.includes(f.slice(0, 4))) {
           return false;
