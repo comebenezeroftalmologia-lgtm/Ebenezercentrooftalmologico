@@ -242,7 +242,7 @@ export async function GET(req: NextRequest) {
     const cumpleFiltroFecha = (fechaStr: string | null | undefined): boolean => {
       const f = normalizarFechaISO(fechaStr);
       if (aniosParam.length > 0 && aniosParam.length < 6) {
-        if (/^\d{4}/.test(f) && !aniosParam.includes(f.slice(0, 4))) {
+        if (!/^\d{4}/.test(f) || !aniosParam.includes(f.slice(0, 4))) {
           return false;
         }
       }
@@ -297,7 +297,8 @@ export async function GET(req: NextRequest) {
     for (const item of edadesData.cartera || []) {
       const razonSocial = item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
       if (!cumpleFiltroEntidad(razonSocial)) continue;
-      if (!cumpleFiltroFecha(item.fechaRadicacion || item.fechaFactura)) continue;
+      const fechaItem = item.fechaFactura || item.fechaRadicacion || item.fechaVencimiento;
+      if (!cumpleFiltroFecha(fechaItem)) continue;
 
       filasFiltradas += 1;
       const saldoItem = Number(item.saldo || 0);
@@ -428,8 +429,15 @@ export async function GET(req: NextRequest) {
     const anticiposPorCruzar = sumaGirosCuentas;
     const totalCarteraReal = Math.round(carteraTotal - anticiposPorCruzar);
 
-    // Acumulación mensual real (Ene al mes de corte) para la gráfica de Tendencia por Mes
-    const mesMaxCorte = Math.max(1, Math.min(12, Number(corte.slice(5, 7)) || 10));
+    // Serie mensual real (Ene a Oct/Dic) calculada directamente por el mes real de las facturas filtradas
+    const incluyeAnioActual =
+      aniosParam.length === 0 ||
+      aniosParam.length >= 6 ||
+      aniosParam.includes(anio);
+    const mesMaxCorte = incluyeAnioActual
+      ? Math.max(1, Math.min(12, Number(corte.slice(5, 7)) || 10))
+      : 12;
+
     const nombresMesesCortos = [
       "Ene",
       "Feb",
@@ -451,12 +459,12 @@ export async function GET(req: NextRequest) {
       const razonSocial =
         item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
       if (!cumpleFiltroEntidad(razonSocial)) continue;
-      if (!cumpleFiltroFecha(item.fechaRadicacion || item.fechaFactura)) continue;
+      const fechaItem =
+        item.fechaFactura || item.fechaRadicacion || item.fechaVencimiento;
+      if (!cumpleFiltroFecha(fechaItem)) continue;
 
-      const fIso = normalizarFechaISO(item.fechaRadicacion || item.fechaFactura);
-      const yyyyItem = Number(fIso.slice(0, 4));
+      const fIso = normalizarFechaISO(fechaItem);
       const mmItem = Number(fIso.slice(5, 7));
-      const anioCorteNum = Number(anio) || 2026;
       const saldoItem = Number(item.saldo || 0);
       const vencItem =
         Number(item.d90 || 0) +
@@ -465,17 +473,14 @@ export async function GET(req: NextRequest) {
         Number(item.d360 || 0) +
         Number(item.mas360 || 0);
 
-      const idxInicio =
-        !yyyyItem || yyyyItem < anioCorteNum
-          ? 0
-          : Math.max(0, Math.min(11, (mmItem || 1) - 1));
+      const idxInicio = Math.max(0, Math.min(11, (mmItem || 1) - 1));
       for (let m = idxInicio; m < mesMaxCorte; m++) {
         acumuladoPorMesFacturas[m] += saldoItem;
         vencidaPorMesFacturas[m] += vencItem;
       }
     }
 
-    const serieMensual = Array.from({ length: mesMaxCorte }, (_, idx) => {
+    const serieMensualCompleta = Array.from({ length: mesMaxCorte }, (_, idx) => {
       const mmStr = String(idx + 1).padStart(2, "0");
       const totMes = Math.round(acumuladoPorMesFacturas[idx]);
       const propGiros =
@@ -489,6 +494,11 @@ export async function GET(req: NextRequest) {
         carteraVencida: Math.round(vencidaPorMesFacturas[idx]),
       };
     });
+
+    const serieMensual =
+      mesesParam.length > 0
+        ? serieMensualCompleta.filter((s) => mesesParam.includes(s.mes))
+        : serieMensualCompleta;
 
     const topEmpresas = Array.from(mapaEmpresas.values())
       .map((e) => ({

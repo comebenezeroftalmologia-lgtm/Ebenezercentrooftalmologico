@@ -304,12 +304,14 @@ export default function TableroCarteraAnalytics() {
   const [filtroResponsable, setFiltroResponsable] = useState<string>("TODAS");
   const [busqueda, setBusqueda] = useState<string>("");
 
+  const ANIOS_SISMA_DISPONIBLES = ["2021", "2022", "2023", "2024", "2025", "2026"];
+
   // Barra de filtros superior estilo Tablero de Frecuencias (.period-bar)
   const [ddFrecAbierto, setDdFrecAbierto] = useState<
     "year" | "month" | "dias" | "grp" | "resp" | null
   >(null);
   const [aniosFrecSel, setAniosFrecSel] = useState<string[]>(
-    () => [...carteraInitialData.aniosDisponibles]
+    () => [...ANIOS_SISMA_DISPONIBLES]
   );
   const [mesesFrecSel, setMesesFrecSel] = useState<string[]>([]);
   const [empresasFrecSel, setEmpresasFrecSel] = useState<string[]>([]);
@@ -481,7 +483,7 @@ export default function TableroCarteraAnalytics() {
 
     const params = new URLSearchParams();
     params.set("corte", corteConsulta);
-    if (aniosAct.length > 0 && aniosAct.length < carteraInitialData.aniosDisponibles.length) {
+    if (aniosAct.length > 0 && aniosAct.length < ANIOS_SISMA_DISPONIBLES.length) {
       params.set("anios", aniosAct.join(","));
     }
     if (mesesAct.length > 0) {
@@ -504,7 +506,7 @@ export default function TableroCarteraAnalytics() {
 
     const esSinFiltro =
       mutAct &&
-      (aniosAct.length === 0 || aniosAct.length >= carteraInitialData.aniosDisponibles.length) &&
+      (aniosAct.length === 0 || aniosAct.length >= ANIOS_SISMA_DISPONIBLES.length) &&
       mesesAct.length === 0 &&
       !diasAct &&
       empAct.length === 0 &&
@@ -568,6 +570,26 @@ export default function TableroCarteraAnalytics() {
     sincronizarConSismaVivo(hoyCol, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-sincronizar automáticamente cuando el usuario cambia Año, Mes, Empresa, Responsable o Mutual
+  const primeraCargaRef = useRef<boolean>(true);
+  useEffect(() => {
+    if (primeraCargaRef.current) {
+      primeraCargaRef.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      sincronizarConSismaVivo(fechaCorteVivo, true);
+    }, 150);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    aniosFrecSel,
+    mesesFrecSel,
+    empresasFrecSel,
+    responsablesFrecSel,
+    incluirMutual,
+  ]);
 
   const MESES_NOMBRES = [
     "Enero",
@@ -781,7 +803,7 @@ export default function TableroCarteraAnalytics() {
     }
     if (
       aniosFrecSel.length > 0 &&
-      aniosFrecSel.length < carteraInitialData.aniosDisponibles.length &&
+      aniosFrecSel.length < ANIOS_SISMA_DISPONIBLES.length &&
       !aniosFrecSel.includes(String(anioReg || ""))
     ) {
       return false;
@@ -814,7 +836,7 @@ export default function TableroCarteraAnalytics() {
   };
 
   const limpiarTodosLosFiltros = () => {
-    const todosAnios = [...carteraInitialData.aniosDisponibles];
+    const todosAnios = [...ANIOS_SISMA_DISPONIBLES];
     setFiltroAnio("TODOS");
     setFiltroEmpresa("TODAS");
     setFiltroTipo("TODOS");
@@ -850,20 +872,23 @@ export default function TableroCarteraAnalytics() {
     });
   };
 
+  const tieneFiltroFechaBarra =
+    (aniosFrecSel.length > 0 &&
+      aniosFrecSel.length < ANIOS_SISMA_DISPONIBLES.length) ||
+    mesesFrecSel.length > 0 ||
+    diasFiltroActivo ||
+    filtroAnio !== "TODOS";
+
   const hayFiltrosActivos =
-    filtroAnio !== "TODOS" ||
+    tieneFiltroFechaBarra ||
     filtroEmpresa !== "TODAS" ||
     filtroTipo !== "TODOS" ||
     filtroEstado !== "TODOS" ||
     filtroResponsable !== "TODAS" ||
     busqueda.trim() !== "" ||
     !incluirMutual ||
-    (aniosFrecSel.length > 0 &&
-      aniosFrecSel.length < carteraInitialData.aniosDisponibles.length) ||
-    mesesFrecSel.length > 0 ||
     empresasFrecSel.length > 0 ||
     responsablesFrecSel.length > 0 ||
-    diasFiltroActivo ||
     Object.values(valoresExcluidosPorCol).some((arr) => arr && arr.length > 0) ||
     Object.values(busquedaTextoPorCol).some((txt) => txt && txt.trim() !== "") ||
     ordenColumna !== null;
@@ -873,11 +898,11 @@ export default function TableroCarteraAnalytics() {
     listaCortesActiva[Math.min(indiceCorteActivo, listaCortesActiva.length - 1)] ||
     listaCortesActiva[listaCortesActiva.length - 1];
 
-  // Filtrado reactivo instantáneo sobre las empresas de SISMA en vivo
+  // Filtrado reactivo sobre las empresas de SISMA en vivo (prioriza datosSismaVivo para reflejar filtros de Año, Mes y Días)
   const empresasSismaFiltradas = useMemo(() => {
     const origen =
-      datosSismaCompletaRef.current?.topEmpresas ||
       datosSismaVivo?.topEmpresas ||
+      datosSismaCompletaRef.current?.topEmpresas ||
       carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
       [];
     return origen.filter((emp) => {
@@ -914,6 +939,7 @@ export default function TableroCarteraAnalytics() {
   ]);
 
   const tieneFiltroEntidadDirecto =
+    tieneFiltroFechaBarra ||
     !incluirMutual ||
     empresasFrecSel.length > 0 ||
     filtroEmpresa !== "TODAS" ||
@@ -936,9 +962,17 @@ export default function TableroCarteraAnalytics() {
         corteBaseSeleccionado.carteraTotal) ||
       1;
     const proporcion = Math.min(1, Math.max(0, tot / totalBaseSinFiltro));
+    const girosVivo = datosSismaVivo?.cuentasGirosDetalle
+      ? datosSismaVivo.cuentasGirosDetalle.reduce(
+          (acc, c) => acc + (c.saldoAbsoluto || 0),
+          0
+        )
+      : null;
     const giros =
-      datosSismaVivo && datosSismaVivo.topEmpresas.length === empresasSismaFiltradas.length
-        ? corteBaseSeleccionado.anticiposPorCruzar
+      girosVivo !== null &&
+      datosSismaVivo &&
+      datosSismaVivo.topEmpresas.length === empresasSismaFiltradas.length
+        ? girosVivo
         : Math.round(corteBaseSeleccionado.anticiposPorCruzar * proporcion);
     return {
       ...corteBaseSeleccionado,
@@ -1072,8 +1106,8 @@ export default function TableroCarteraAnalytics() {
   ) => {
     const cx = 175;
     const cy = 114;
-    const rOuter = 74;
-    const rInner = 46;
+    const rOuter = 80;
+    const rInner = 50;
 
     // Construir segmentos de TODAS las empresas reales
     let anguloAcum = -Math.PI / 2;
@@ -1099,7 +1133,9 @@ export default function TableroCarteraAnalytics() {
     const izqRaw: CalloutSlot[] = [];
     const derRaw: CalloutSlot[] = [];
 
+    // Solo mostrar líneas guía en el anillo para empresas con >= 0.45% para no ensuciar con 0.0%
     segmentos.forEach((seg) => {
+      if (seg.pct < 0.45) return;
       const cos = Math.cos(seg.midAngle);
       const sin = Math.sin(seg.midAngle);
       const anchorX = cx + (rOuter + 1) * cos;
@@ -1110,22 +1146,21 @@ export default function TableroCarteraAnalytics() {
         lado,
         anchorX,
         anchorY,
-        elbowX: lado === "der" ? cx + rOuter + 12 : cx - rOuter - 12,
-        labelY: cy + (rOuter + 10) * sin,
-        lineEndX: lado === "der" ? 342 : 8,
-        textX: lado === "der" ? 342 : 8,
+        elbowX: lado === "der" ? cx + rOuter + 10 : cx - rOuter - 10,
+        labelY: cy + (rOuter + 8) * sin,
+        lineEndX: lado === "der" ? 344 : 6,
+        textX: lado === "der" ? 344 : 6,
       };
       if (lado === "der") derRaw.push(slot);
       else izqRaw.push(slot);
     });
 
-    // Seleccionar hasta 8 etiquetas por lado por mayor participación para que nunca se monten en el anillo
     const prepararLadoSinMontar = (lista: CalloutSlot[]) => {
       const topLado = [...lista]
         .sort((a, b) => b.valor - a.valor)
-        .slice(0, 8)
+        .slice(0, 7)
         .sort((a, b) => a.anchorY - b.anchorY);
-      const minGap = 24;
+      const minGap = 25;
       const minY = 18;
       const maxY = 210;
       for (let i = 0; i < topLado.length; i++) {
@@ -1184,11 +1219,11 @@ export default function TableroCarteraAnalytics() {
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
-          {/* ANILLO GRANDE CON LÍNEAS GUÍA HORIZONTALES ALINEADAS */}
+          {/* ANILLO GRANDE Y CENTRADO CON LÍNEAS GUÍA BALANCEADAS */}
           <div className="sm:col-span-7 flex items-center justify-center">
             <svg
               viewBox="0 0 350 228"
-              className="w-full max-w-[395px] h-auto select-none overflow-visible"
+              className="w-full max-w-[405px] h-auto select-none overflow-visible"
             >
               {segmentos.length === 0 ? (
                 <circle
@@ -1224,13 +1259,13 @@ export default function TableroCarteraAnalytics() {
                 })
               )}
 
-              {/* Agujero blanco central más grande y cifra ejecutiva */}
+              {/* Agujero blanco central grande y cifra ejecutiva */}
               <circle cx={cx} cy={cy} r={rInner - 1} fill="#FFFFFF" />
               <text
                 x={cx}
                 y={cy - 1}
                 textAnchor="middle"
-                fontSize="15.5"
+                fontSize="16"
                 fontWeight="800"
                 fill="#0F172A"
               >
@@ -1285,8 +1320,8 @@ export default function TableroCarteraAnalytics() {
             </svg>
           </div>
 
-          {/* LISTADO LATERAL COMPLETO CON TODAS LAS EMPRESAS (CERO "OTRAS") */}
-          <div className="sm:col-span-5 space-y-1 pl-1 max-h-[224px] overflow-y-auto pr-1">
+          {/* LISTADO LATERAL ORGANIZADO Y ALINEADO (TODAS LAS EMPRESAS, CERO "OTRAS", CERO BARRA DE SCROLL) */}
+          <div className="sm:col-span-5 space-y-1 pl-1">
             {datosDonut.items.map((it) => {
               const sel =
                 empresasFrecSel.length === 1 &&
@@ -1391,7 +1426,6 @@ export default function TableroCarteraAnalytics() {
       };
     });
 
-    // Si hay conexión en vivo con una fecha distinta a la última guardada en listaCortesActiva, la mostramos también en la tabla de cortes
     const ultimoCorteLista = puntosCortes[puntosCortes.length - 1];
     const puntosTablaCortes: PuntoCorteTabla[] =
       datosSismaVivo &&
@@ -1421,66 +1455,75 @@ export default function TableroCarteraAnalytics() {
               : pt
           );
 
-    // Serie de los 10 Meses (Ene a Oct) para el modo "Por Mes (Ene-Oct)" sin mezclar cortes en el eje X
-    const mesesLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct"];
+    // Serie mensual dinámica para el modo "Por Mes" (toma serieMensualViva de SISMA para todos los años y meses filtrados)
     const serieMensualViva = datosSismaVivo?.serieMensual;
+    const mesesLabelsFallback = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct"];
 
-    const puntosMeses = mesesLabels.map((mLabel, idx) => {
-      if (serieMensualViva && serieMensualViva[idx]) {
-        return {
-          id: `mes-${mLabel}`,
-          idxCorte: idx >= 8 ? puntosCortes.length - 1 : 0,
-          etiquetaEje: mLabel,
-          carteraTotal: serieMensualViva[idx].carteraTotal,
-          totalCarteraReal: serieMensualViva[idx].totalCarteraReal,
-          mostrarLabel: idx === 0 || idx === 3 || idx === 5 || idx === 7 || idx === 9,
-        };
-      }
-      // Respaldo con los cortes reales cargados del Excel cuando aún no ha respondido serieMensualViva
-      const c0 = puntosCortes[0] || { carteraTotal: 0, totalCarteraReal: 0 };
-      const c1 = puntosCortes[Math.min(1, puntosCortes.length - 1)] || c0;
-      const c2 = puntosCortes[Math.min(2, puntosCortes.length - 1)] || c1;
-      const c3 = puntosCortes[Math.min(3, puntosCortes.length - 1)] || c2;
-      const cFin = puntosTablaCortes[puntosTablaCortes.length - 1] || c3;
+    const puntosMeses =
+      serieMensualViva && serieMensualViva.length > 0
+        ? serieMensualViva.map((sm, idx) => {
+            const totalLen = serieMensualViva.length;
+            const mostrar =
+              totalLen <= 6 ||
+              idx === 0 ||
+              idx === Math.floor(totalLen * 0.3) ||
+              idx === Math.floor(totalLen * 0.55) ||
+              idx === Math.floor(totalLen * 0.78) ||
+              idx === totalLen - 1;
+            return {
+              id: `mes-${sm.mes}`,
+              idxCorte: idx >= totalLen - 2 ? puntosCortes.length - 1 : 0,
+              etiquetaEje: sm.etiqueta,
+              carteraTotal: sm.carteraTotal,
+              totalCarteraReal: sm.totalCarteraReal,
+              mostrarLabel: mostrar,
+            };
+          })
+        : mesesLabelsFallback.map((mLabel, idx) => {
+            const c0 = puntosCortes[0] || { carteraTotal: 0, totalCarteraReal: 0 };
+            const c1 = puntosCortes[Math.min(1, puntosCortes.length - 1)] || c0;
+            const c2 = puntosCortes[Math.min(2, puntosCortes.length - 1)] || c1;
+            const c3 = puntosCortes[Math.min(3, puntosCortes.length - 1)] || c2;
+            const cFin = puntosTablaCortes[puntosTablaCortes.length - 1] || c3;
 
-      const mapaPorIndice: { tot: number; real: number; idxRef: number }[] = [
-        { tot: c0.carteraTotal, real: c0.totalCarteraReal, idxRef: 0 }, // Ene
-        {
-          tot: Math.round((c0.carteraTotal + c1.carteraTotal) / 2),
-          real: Math.round((c0.totalCarteraReal + c1.totalCarteraReal) / 2),
-          idxRef: 0,
-        }, // Feb
-        {
-          tot: Math.round(c0.carteraTotal * 0.3 + c1.carteraTotal * 0.7),
-          real: Math.round(c0.totalCarteraReal * 0.3 + c1.totalCarteraReal * 0.7),
-          idxRef: 1,
-        }, // Mar
-        { tot: c1.carteraTotal, real: c1.totalCarteraReal, idxRef: 1 }, // Abr
-        {
-          tot: Math.round((c1.carteraTotal + c2.carteraTotal) / 2),
-          real: Math.round((c1.totalCarteraReal + c2.totalCarteraReal) / 2),
-          idxRef: 1,
-        }, // May
-        { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 }, // Jun
-        {
-          tot: Math.round((c2.carteraTotal + c3.carteraTotal) / 2),
-          real: Math.round((c2.totalCarteraReal + c3.totalCarteraReal) / 2),
-          idxRef: 2,
-        }, // Jul
-        { tot: c3.carteraTotal, real: c3.totalCarteraReal, idxRef: 3 }, // Ago
-        { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 }, // Sep
-        { tot: cFin.carteraTotal, real: cFin.totalCarteraReal, idxRef: puntosCortes.length - 1 }, // Oct
-      ];
-      const item = mapaPorIndice[idx];
-      return {
-        id: `mes-${mLabel}`,
-        idxCorte: item.idxRef,
-        etiquetaEje: mLabel,
-        carteraTotal: item.tot,
-        totalCarteraReal: item.real,
-        mostrarLabel: idx === 0 || idx === 3 || idx === 5 || idx === 7 || idx === 9,
-      };
-    });
+            const mapaPorIndice: { tot: number; real: number; idxRef: number }[] = [
+              { tot: c0.carteraTotal, real: c0.totalCarteraReal, idxRef: 0 },
+              {
+                tot: Math.round((c0.carteraTotal + c1.carteraTotal) / 2),
+                real: Math.round((c0.totalCarteraReal + c1.totalCarteraReal) / 2),
+                idxRef: 0,
+              },
+              {
+                tot: Math.round(c0.carteraTotal * 0.3 + c1.carteraTotal * 0.7),
+                real: Math.round(c0.totalCarteraReal * 0.3 + c1.totalCarteraReal * 0.7),
+                idxRef: 1,
+              },
+              { tot: c1.carteraTotal, real: c1.totalCarteraReal, idxRef: 1 },
+              {
+                tot: Math.round((c1.carteraTotal + c2.carteraTotal) / 2),
+                real: Math.round((c1.totalCarteraReal + c2.totalCarteraReal) / 2),
+                idxRef: 1,
+              },
+              { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 },
+              {
+                tot: Math.round((c2.carteraTotal + c3.carteraTotal) / 2),
+                real: Math.round((c2.totalCarteraReal + c3.totalCarteraReal) / 2),
+                idxRef: 2,
+              },
+              { tot: c3.carteraTotal, real: c3.totalCarteraReal, idxRef: 3 },
+              { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 },
+              { tot: cFin.carteraTotal, real: cFin.totalCarteraReal, idxRef: puntosCortes.length - 1 },
+            ];
+            const item = mapaPorIndice[idx];
+            return {
+              id: `mes-${mLabel}`,
+              idxCorte: item.idxRef,
+              etiquetaEje: mLabel,
+              carteraTotal: item.tot,
+              totalCarteraReal: item.real,
+              mostrarLabel: idx === 0 || idx === 3 || idx === 5 || idx === 7 || idx === 9,
+            };
+          });
 
     const puntosGrafica =
       modoTendenciaCartera === "MES"
@@ -2875,7 +2918,7 @@ export default function TableroCarteraAnalytics() {
                 <button
                   type="button"
                   onClick={() => {
-                    setAniosFrecSel([...carteraInitialData.aniosDisponibles]);
+                    setAniosFrecSel([...ANIOS_SISMA_DISPONIBLES]);
                     setFiltroAnio("TODOS");
                     setPaginaActual(1);
                   }}
@@ -2906,7 +2949,7 @@ export default function TableroCarteraAnalytics() {
                 </button>
               </div>
               <div className="space-y-0.5">
-                {carteraInitialData.aniosDisponibles.map((yr) => {
+                {ANIOS_SISMA_DISPONIBLES.map((yr) => {
                   const sel = aniosFrecSel.includes(yr);
                   return (
                     <div
