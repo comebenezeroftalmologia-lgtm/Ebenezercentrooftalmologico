@@ -1209,8 +1209,8 @@ export default function TableroCarteraAnalytics() {
         anchorY,
         elbowX: lado === "der" ? cx + rOuter + 10 : cx - rOuter - 10,
         labelY: labelYInicial,
-        lineEndX: lado === "der" ? 374 : 6,
-        textX: lado === "der" ? 374 : 6,
+        lineEndX: lado === "der" ? 390 : -10,
+        textX: lado === "der" ? 390 : -10,
         pasoSuperiorY,
       };
       if (lado === "der") derRaw.push(slot);
@@ -1278,11 +1278,11 @@ export default function TableroCarteraAnalytics() {
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
-          {/* ANILLO GRANDE CON EL 100% DE LAS ENTIDADES SEÑALADAS Y ORGANIZADAS */}
+          {/* ANILLO GRANDE CON EL 100% DE LAS ENTIDADES SEÑALADAS Y PORCENTAJES NÍTIDOS EN UNA SOLA LÍNEA */}
           <div className="sm:col-span-7 flex items-center justify-center">
             <svg
-              viewBox="0 45 380 335"
-              className="w-full max-w-[440px] h-[310px] select-none overflow-visible"
+              viewBox="-14 45 408 335"
+              className="w-full max-w-[455px] h-[310px] select-none overflow-visible"
             >
               {segmentos.length === 0 ? (
                 <circle
@@ -1341,7 +1341,7 @@ export default function TableroCarteraAnalytics() {
                 {etiquetaCentro}
               </text>
 
-              {/* Líneas guía para TODAS las entidades sin cruzarse ni montarse */}
+              {/* Líneas guía con Entidad + % en una sola línea clara sobre cada guía */}
               {callouts.map((c) => {
                 const pts =
                   c.pasoSuperiorY !== undefined
@@ -1357,27 +1357,20 @@ export default function TableroCarteraAnalytics() {
                       points={pts}
                       fill="none"
                       stroke="#64748B"
-                      strokeWidth="0.75"
+                      strokeWidth="0.8"
                     />
                     <text
                       x={c.textX}
-                      y={c.labelY - 2.5}
+                      y={c.labelY - 3.5}
                       textAnchor={c.lado === "der" ? "end" : "start"}
-                      fontSize="8.2"
+                      fontSize="8.8"
                       fontWeight="600"
                       fill="#0F172A"
                     >
-                      {c.nombreAnillo}
-                    </text>
-                    <text
-                      x={c.textX}
-                      y={c.labelY + 7.5}
-                      textAnchor={c.lado === "der" ? "end" : "start"}
-                      fontSize="7.5"
-                      fontWeight="500"
-                      fill="#475569"
-                    >
-                      {c.pct.toFixed(1)}%
+                      {c.nombreAnillo}{" "}
+                      <tspan fontWeight="800" fill="#0E245E">
+                        {c.pct.toFixed(1)}%
+                      </tspan>
                     </text>
                   </g>
                 );
@@ -1396,7 +1389,7 @@ export default function TableroCarteraAnalytics() {
               }}
             >
               <span>$M</span>
-              <span className="w-9 text-right">%</span>
+              <span className="w-10 text-right">%</span>
             </div>
             {datosDonut.items.map((it) => {
               const sel =
@@ -1429,8 +1422,8 @@ export default function TableroCarteraAnalytics() {
                       {formatMillones(it.valor)}
                     </span>
                     <span
-                      className="w-9 text-right font-semibold"
-                      style={{ color: "#334155" }}
+                      className="w-10 text-right font-bold"
+                      style={{ color: "#0E245E" }}
                     >
                       {it.pct.toFixed(1)}%
                     </span>
