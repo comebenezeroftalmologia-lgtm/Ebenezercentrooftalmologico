@@ -5066,7 +5066,8 @@ const REGLAS_DOC = {
     {re:/EXTRACAPSULAR|FACO|CATARATA|EXTRACCION DE LENTE INTRAOCULAR/, P:1000000, S:200000, M:200000},
     {re:/CAPSULOTOMIA/, P:250000, S:150000},
     // ficha: plastia de canalículos $200.000 por ojo · $400.000 bilateral por paciente · Mutual $38.100
-    {re:/PLASTIA (DE|EN) CANALICULO/, P1:200000, P:400000, M:38100}], segundoProc:300000 },
+    {re:/PLASTIA (DE|EN) CANALICULO/, P1:200000, P:400000, M:38100},
+    {re:/ECOGRAF/, M1:35000, M:70000}], segundoProc:300000 },
  'PATRICIA OSORIO': { lente:true, lenteMutual:200000, consP:{t:'fijo',v:50000, tramo:{desde:121, hasta:300, v:30000}}, cirFijas:[
     // ficha: FACO+LIO prepagadas y particulares $900.000 · EPS Sura plan complementario $200.000 · Mutual $200.000
     // ficha Mutual: queratoplastia $400.000 + FACO como segundo procedimiento $150.000 · vitrectomía anterior + FACO $294.000
@@ -7942,7 +7943,7 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
       // Una regla aprendida MANDA sobre el valor de la ficha: es la forma de corregir una
       // tarifa mal pactada sin esperar al cierre. Queda firmada, con motivo, y el acta dice
       // que reemplazó el valor de la ficha para que nadie la aplique sin darse cuenta.
-      if(!/sin regla/i.test(fx.regla||'') && !/norma aprendida/i.test(fx.regla||'') && !/\((un ojo|ambos ojos)\)/i.test(fx.regla||'')){
+      if(!/sin regla/i.test(fx.regla||'') && !/norma aprendida/i.test(fx.regla||'') && !/\((un ojo|ambos ojos)\)/i.test(fx.regla||'') && !ladoDe(h, fx.pago, fx.regla)){
         const nr2 = (typeof normaDe==='function') ? normaDe(h, fx.det, fx.emp) : null;
         if(nr2 && Math.round(nr2.pago)!==Math.round(fx.pago||0)){
           const kA = sc==='Cirugía' ? (esMut?'CIRM':'CIRP') : (sc==='Sede 2'?'S2':'S1');
@@ -9490,7 +9491,31 @@ function toggleDrill(i, tr){
 }
 
 // ===== CAMBIO POR PACIENTE / POR ÍTEM =====
-function itemLeer(){ try{ return JSON.parse(localStorage.getItem('liq_items')||'{}'); }catch(e){ return {}; } }
+function itemEsInvalido(k, v){
+  if(!v) return true;
+  const s = String(k||'') + ' ' + String(v.med||'') + ' ' + String(v.motivo||'');
+  if(/CARLOS GRANADOS/i.test(s) && /ECOGRAF/i.test(s)) return true;
+  return false;
+}
+function itemLeer(){
+  try{
+    const d = JSON.parse(localStorage.getItem('liq_items')||'{}');
+    let limp = false;
+    for(const [k, v] of Object.entries(d)){
+      if(itemEsInvalido(k, v) && (!v || !v.quitado)){
+        if(v){
+          v.quitado = true;
+          v.quitadoPor = 'Sistema (liquidado directamente por ficha técnica)';
+          v.quitadoEl = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
+          try{ if(typeof NUBE_ON!=='undefined' && NUBE_ON && typeof NUBE!=='undefined') NUBE.guardarAjuste(k, v); }catch(e){}
+        } else { delete d[k]; }
+        limp = true;
+      }
+    }
+    if(limp){ try{ localStorage.setItem('liq_items', JSON.stringify(d)); }catch(e){} }
+    return d;
+  }catch(e){ return {}; }
+}
 function itemGuardarLocal(o){ try{ localStorage.setItem('liq_items', JSON.stringify(o)); }catch(e){} }
 function edParesHTML(med, srvTxt, empTxt){
   try{
@@ -11072,7 +11097,30 @@ function cmpEjecutar(){
 // decide (y el tablero aprende): «tiene razón el tablero», «pagar según la liquidación manual», «pagar siempre así»,
 // «reasignar a este médico». Todo queda firmado y en la nube, para todo el equipo.
 var MANO = {cache:{}};
-function cmpdLeer(){ try{ return JSON.parse(localStorage.getItem('liq_cmpdec')||'{}'); }catch(e){ return {}; } }
+function cmpdEsInvalido(k, v){
+  if(!v) return true;
+  const s = String(k||'') + ' ' + String(v.med||'') + ' ' + String(v.clave||'') + ' ' + String(v.titulo||'') + ' ' + String(v.motivo||'');
+  if(/CARLOS GRANADOS/i.test(s) && /ECOGRAF/i.test(s)) return true;
+  return false;
+}
+function cmpdLeer(){
+  try{
+    const d = JSON.parse(localStorage.getItem('liq_cmpdec')||'{}');
+    let limp = false;
+    for(const [k, v] of Object.entries(d)){
+      if(cmpdEsInvalido(k, v) && (!v || !v.borrado)){
+        if(v){
+          v.borrado = true;
+          v.t = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
+          try{ if(typeof NUBE_ON!=='undefined' && NUBE_ON && typeof NUBE!=='undefined') NUBE.guardarAjuste(k, v); }catch(e){}
+        } else { delete d[k]; }
+        limp = true;
+      }
+    }
+    if(limp){ try{ localStorage.setItem('liq_cmpdec', JSON.stringify(d)); }catch(e){} }
+    return d;
+  }catch(e){ return {}; }
+}
 function cmpdGuardarLocal(o){ try{ localStorage.setItem('liq_cmpdec', JSON.stringify(o)); }catch(e){} }
 function cmpdKey(med, id){ return 'CMPD|'+(RESULT?RESULT.periodoInicio:'')+'|'+med+'|'+id; }
 function manoQuien(){ return (typeof USUARIO!=='undefined' && USUARIO && USUARIO.nombre) || '?'; }
@@ -12488,8 +12536,8 @@ async function nubeTraerTodo(){
     }
     if(cambio) guardarLocal('liq_manual', man);
     try{ await manDrenar(); }catch(e){}
-    if(cambioAc) acGuardarLocal(acs);
-    if(cambioNor){ norGuardarLocal(nor); try{ norPintar(); }catch(e){} }
+    if(cambioAc){ acGuardarLocal(acs); try{ acLeer(); itemLeer(); cmpdLeer(); }catch(e){} }
+    if(cambioNor){ norGuardarLocal(nor); try{ norLeer(); norPintar(); }catch(e){} }
     if(cambioRev){ try{ localStorage.setItem('liq_revision', JSON.stringify(rev)); }catch(e){} }
     if(cambioFir){ firGuardarLocal(); try{ firPintar(); }catch(e){} }
   }catch(e){ console.warn('ajustes nube', e); }
@@ -13693,7 +13741,8 @@ function norLeer(){
     const d = JSON.parse(localStorage.getItem('liq_normas')||'{}');
     let limp = false;
     for(const [k, n] of Object.entries(d)){
-      if(n && !n.quitada && NOR_COMPLEJA.test(String(n.motivo||''))){
+      const sNor = String(k||'') + ' ' + String((n&&n.med)||'') + ' ' + String((n&&n.serv)||'') + ' ' + String((n&&n.servTexto)||'');
+      if(n && !n.quitada && (NOR_COMPLEJA.test(String(n.motivo||'')) || (/CARLOS GRANADOS/i.test(sNor) && /ECOGRAF/i.test(sNor)))){
         n.quitada = true;
         n.quitadaPor = 'Sistema (regla con condición de lateralidad)';
         n.quitadaEl = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
@@ -15168,9 +15217,11 @@ function pdfCuadre(){
 function acEsNotaInvalida(a){
   if(!a) return true;
   const txt = String(a.texto||'') + ' ' + String(a.servicio||'') + ' ' + String(a.id||'');
+  const medTxt = String(a.med||'') + ' ' + txt;
   if(/APLICA PARA LOS PACIENTE/i.test(txt)) return true;
   if(/norma aprendida.*reemplaza el valor de la ficha/i.test(txt)) return true;
   if(/Son Bilateral y se estan cobran unilateral/i.test(txt)) return true;
+  if(/CARLOS GRANADOS/i.test(medTxt) && /ECOGRAF/i.test(medTxt)) return true;
   return false;
 }
 function acLeer(){
