@@ -1859,27 +1859,44 @@ export default function TableroCarteraAnalytics() {
           }));
 
     const n = puntosGrafica.length;
-    const svgW = 660;
-    const svgH = 212;
-    const padL = 92;
-    const padR = 32;
-    const padT = 26;
-    const padB = 32;
+    const svgW = 680;
+    const svgH = 258;
+    const padL = 44;
+    const padR = 44;
+    const padT = 36;
+    const baseLineY = 226;
+    const yFloor = 188; // Piso de la curva 38px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
     const plotW = svgW - padL - padR;
-    const plotH = svgH - padT - padB;
+    const plotH = yFloor - padT;
 
     const todosValores = puntosGrafica.flatMap((p) => [
       p.carteraTotal,
       p.totalCarteraReal,
     ]);
-    const maxVal = Math.max(...todosValores, 1) * 1.12;
-    const minVal = Math.max(0, Math.min(...todosValores, 0) * 0.72);
+    const maxVal = Math.max(...todosValores, 1) * 1.06;
+    const minVal = Math.max(0, Math.min(...todosValores, 0) * 0.85);
     const rangoVal = Math.max(1, maxVal - minVal);
 
     const getX = (i: number) =>
       n <= 1 ? padL + plotW / 2 : padL + (i / (n - 1)) * plotW;
-    const getY = (val: number) =>
-      padT + plotH - ((val - minVal) / rangoVal) * plotH;
+    const getYRaw = (val: number) =>
+      yFloor - ((val - minVal) / rangoVal) * plotH;
+
+    // Garantizar separación mínima vertical de 15px entre el punto azul (Total) y el verde (Real) incluso en Ene
+    const coordsReal = puntosGrafica.map((p, i) => ({
+      x: getX(i),
+      y: getYRaw(p.totalCarteraReal),
+      val: p.totalCarteraReal,
+    }));
+    const coordsTotal = puntosGrafica.map((p, i) => {
+      const yR = coordsReal[i].y;
+      const yT = getYRaw(p.carteraTotal);
+      return {
+        x: getX(i),
+        y: Math.min(yT, yR - 15),
+        val: p.carteraTotal,
+      };
+    });
 
     const construirCurvaSuave = (coords: { x: number; y: number }[]) => {
       if (coords.length === 0) return "";
@@ -1895,20 +1912,8 @@ export default function TableroCarteraAnalytics() {
       return d;
     };
 
-    const coordsTotal = puntosGrafica.map((p, i) => ({
-      x: getX(i),
-      y: getY(p.carteraTotal),
-      val: p.carteraTotal,
-    }));
-    const coordsReal = puntosGrafica.map((p, i) => ({
-      x: getX(i),
-      y: getY(p.totalCarteraReal),
-      val: p.totalCarteraReal,
-    }));
-
     const pathTotal = construirCurvaSuave(coordsTotal);
     const pathReal = construirCurvaSuave(coordsReal);
-    const baseLineY = padT + plotH;
 
     const areaTotal =
       coordsTotal.length > 1
@@ -1919,13 +1924,20 @@ export default function TableroCarteraAnalytics() {
         ? `${pathReal} L ${coordsReal[coordsReal.length - 1].x.toFixed(1)} ${baseLineY} L ${coordsReal[0].x.toFixed(1)} ${baseLineY} Z`
         : "";
 
+    const lineasGuiaY = [
+      padT + plotH * 0.05,
+      padT + plotH * 0.38,
+      padT + plotH * 0.71,
+      yFloor,
+    ];
+
     return (
       <div
         className="rounded-xl p-4 sm:p-5 border shadow-2xs space-y-3"
         style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
       >
-        {/* ENCABEZADO Y BOTÓN [VER EN GRÁFICA: POR MES (ENE-OCT) | POR CORTES] */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+        {/* ENCABEZADO, LEYENDAS EN CÁPSULAS Y BOTÓN [VER EN GRÁFICA: POR MES (ENE-OCT) | POR CORTES] */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
           <div>
             <h4
               className="text-[13.5px] sm:text-[14.5px] font-bold tracking-tight"
@@ -1938,40 +1950,72 @@ export default function TableroCarteraAnalytics() {
             </p>
           </div>
 
-          <div
-            className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] self-start lg:self-auto"
-            style={{ backgroundColor: "#F1F5F9", borderColor: "#94A3B8" }}
-          >
-            <span className="font-semibold mr-1.5" style={{ color: "#0F172A" }}>
-              Ver en Gráfica:
-            </span>
-            <button
-              type="button"
-              onClick={() => setModoTendenciaCartera("MES")}
-              className="px-2 py-0.5 rounded-full font-bold transition cursor-pointer"
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+            {/* Pastillas de leyenda limpias (evitan cualquier choque con Ene) */}
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold shadow-2xs"
               style={{
-                backgroundColor:
-                  modoTendenciaCartera === "MES" ? "#0E245E" : "transparent",
-                color: modoTendenciaCartera === "MES" ? "#FFFFFF" : "#0F172A",
+                backgroundColor: "#FFFFFF",
+                borderColor: "#DCE6F5",
+                color: "#0F172A",
               }}
             >
-              Por Mes (Ene-Oct)
-            </button>
-            <span className="mx-1.5 font-bold" style={{ color: "#1D58D8" }}>
-              |
-            </span>
-            <button
-              type="button"
-              onClick={() => setModoTendenciaCartera("CORTES")}
-              className="px-2 py-0.5 rounded-full font-bold transition cursor-pointer"
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: "#1D58D8" }}
+              />
+              <span>Cartera Total</span>
+            </div>
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold shadow-2xs"
               style={{
-                backgroundColor:
-                  modoTendenciaCartera === "CORTES" ? "#0E245E" : "transparent",
-                color: modoTendenciaCartera === "CORTES" ? "#FFFFFF" : "#0F172A",
+                backgroundColor: "#FFFFFF",
+                borderColor: "#DCE6F5",
+                color: "#0F172A",
               }}
             >
-              Por Cortes ({puntosTablaCortes.length} fechas)
-            </button>
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: "#059669" }}
+              />
+              <span>Cartera Real</span>
+            </div>
+
+            <div
+              className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px]"
+              style={{ backgroundColor: "#F1F5F9", borderColor: "#94A3B8" }}
+            >
+              <span className="font-semibold mr-1.5" style={{ color: "#0F172A" }}>
+                Ver en Gráfica:
+              </span>
+              <button
+                type="button"
+                onClick={() => setModoTendenciaCartera("MES")}
+                className="px-2 py-0.5 rounded-full font-bold transition cursor-pointer"
+                style={{
+                  backgroundColor:
+                    modoTendenciaCartera === "MES" ? "#0E245E" : "transparent",
+                  color: modoTendenciaCartera === "MES" ? "#FFFFFF" : "#0F172A",
+                }}
+              >
+                Por Mes (Ene-Oct)
+              </button>
+              <span className="mx-1.5 font-bold" style={{ color: "#1D58D8" }}>
+                |
+              </span>
+              <button
+                type="button"
+                onClick={() => setModoTendenciaCartera("CORTES")}
+                className="px-2 py-0.5 rounded-full font-bold transition cursor-pointer"
+                style={{
+                  backgroundColor:
+                    modoTendenciaCartera === "CORTES" ? "#0E245E" : "transparent",
+                  color: modoTendenciaCartera === "CORTES" ? "#FFFFFF" : "#0F172A",
+                }}
+              >
+                Por Cortes ({puntosTablaCortes.length} fechas)
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1984,35 +2028,52 @@ export default function TableroCarteraAnalytics() {
             >
               <defs>
                 <linearGradient id="gradTendenciaTotal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1D58D8" stopOpacity="0.18" />
+                  <stop offset="0%" stopColor="#1D58D8" stopOpacity="0.22" />
                   <stop offset="100%" stopColor="#1D58D8" stopOpacity="0.02" />
                 </linearGradient>
                 <linearGradient id="gradTendenciaReal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#059669" stopOpacity="0.24" />
+                  <stop offset="0%" stopColor="#059669" stopOpacity="0.26" />
                   <stop offset="100%" stopColor="#059669" stopOpacity="0.02" />
                 </linearGradient>
+                <filter id="sombraCapsulaTendencia" x="-15%" y="-20%" width="130%" height="145%">
+                  <feDropShadow dx="0" dy="1" stdDeviation="1.4" floodColor="#0F172A" floodOpacity="0.09" />
+                </filter>
               </defs>
 
-              {/* Línea base del eje X */}
-              <line
-                x1={padL - 12}
-                y1={baseLineY}
-                x2={svgW - padR + 12}
-                y2={baseLineY}
-                stroke="#CBD5E1"
-                strokeWidth="1"
-              />
+              {/* Líneas guía horizontales punteadas suaves */}
+              {lineasGuiaY.map((gy, idx) => (
+                <line
+                  key={`grid-tend-${idx}`}
+                  x1={padL - 18}
+                  y1={gy}
+                  x2={svgW - padR + 18}
+                  y2={gy}
+                  stroke="#E2E8F0"
+                  strokeWidth="1"
+                  strokeDasharray="3.5 3.5"
+                />
+              ))}
 
               {/* Áreas degradadas */}
               {areaTotal && <path d={areaTotal} fill="url(#gradTendenciaTotal)" />}
               {areaReal && <path d={areaReal} fill="url(#gradTendenciaReal)" />}
+
+              {/* Línea base del eje X (bien separada por debajo de las cápsulas inferiores) */}
+              <line
+                x1={padL - 20}
+                y1={baseLineY}
+                x2={svgW - padR + 20}
+                y2={baseLineY}
+                stroke="#334155"
+                strokeWidth="1.2"
+              />
 
               {/* Curva Azul: Cartera Total */}
               <path
                 d={pathTotal}
                 fill="none"
                 stroke="#1D58D8"
-                strokeWidth="2.5"
+                strokeWidth="2.6"
               />
 
               {/* Curva Verde: Cartera Real */}
@@ -2020,44 +2081,20 @@ export default function TableroCarteraAnalytics() {
                 d={pathReal}
                 fill="none"
                 stroke="#059669"
-                strokeWidth="2.4"
+                strokeWidth="2.5"
               />
 
-              {/* Etiquetas directas al inicio de cada línea (Izquierda) */}
-              {coordsTotal[0] && (
-                <text
-                  x={padL - 10}
-                  y={coordsTotal[0].y + 3}
-                  textAnchor="end"
-                  fontSize="10.5"
-                  fontWeight="700"
-                  fill="#1D58D8"
-                >
-                  Cartera Total
-                </text>
-              )}
-              {coordsReal[0] && (
-                <text
-                  x={padL - 10}
-                  y={
-                    Math.abs(coordsReal[0].y - (coordsTotal[0]?.y || 0)) < 16
-                      ? coordsTotal[0].y + 18
-                      : coordsReal[0].y + 4
-                  }
-                  textAnchor="end"
-                  fontSize="10.5"
-                  fontWeight="700"
-                  fill="#059669"
-                >
-                  Cartera Real
-                </text>
-              )}
-
-              {/* Puntos, cifras clave sin amontonar y etiquetas del Eje X */}
+              {/* Puntos, cápsulas de cifras por encima de las curvas y etiquetas del Eje X */}
               {puntosGrafica.map((pt, i) => {
                 const x = getX(i);
                 const yTot = coordsTotal[i].y;
                 const yReal = coordsReal[i].y;
+                const txtTotal = formatMillones(pt.carteraTotal);
+                const txtReal = formatMillones(pt.totalCarteraReal);
+                const wPillTot = Math.max(46, txtTotal.length * 6.5 + 14);
+                const wPillReal = Math.max(46, txtReal.length * 6.5 + 14);
+                const yPillTotCenter = yTot - 19;
+                const yPillRealCenter = Math.min(baseLineY - 12, yReal + 19);
 
                 return (
                   <g
@@ -2067,56 +2104,91 @@ export default function TableroCarteraAnalytics() {
                   >
                     {pt.mostrarLabel && (
                       <>
+                        {/* Conector sutil cuando los dos puntos están cercanos */}
+                        <line
+                          x1={x}
+                          y1={yTot + 4}
+                          x2={x}
+                          y2={yReal - 4}
+                          stroke="#94A3B8"
+                          strokeWidth="1"
+                          strokeDasharray="2 2"
+                        />
+
+                        {/* Nodo y cápsula superior: Cartera Total */}
                         <circle
                           cx={x}
                           cy={yTot}
-                          r={4.2}
+                          r={4.8}
                           fill="#1D58D8"
                           stroke="#FFFFFF"
-                          strokeWidth="1.2"
+                          strokeWidth="1.6"
                         >
                           <title>{`${pt.etiquetaEje} · Cartera Total: ${formatCOP(pt.carteraTotal)}`}</title>
                         </circle>
+                        <rect
+                          x={x - wPillTot / 2}
+                          y={yPillTotCenter - 10}
+                          width={wPillTot}
+                          height={20}
+                          rx={10}
+                          fill="#FFFFFF"
+                          stroke="#DBEAFE"
+                          strokeWidth="1"
+                          filter="url(#sombraCapsulaTendencia)"
+                        />
                         <text
                           x={x}
-                          y={yTot - 8}
+                          y={yPillTotCenter + 3.6}
                           textAnchor="middle"
-                          fontSize="9.5"
-                          fontWeight="700"
-                          fill="#0F172A"
+                          fontSize="10"
+                          fontWeight="800"
+                          fill="#0E245E"
                         >
-                          {formatMillones(pt.carteraTotal)}
+                          {txtTotal}
                         </text>
 
+                        {/* Nodo y cápsula inferior: Cartera Real */}
                         <circle
                           cx={x}
                           cy={yReal}
-                          r={4.2}
+                          r={4.8}
                           fill="#059669"
                           stroke="#FFFFFF"
-                          strokeWidth="1.2"
+                          strokeWidth="1.6"
                         >
                           <title>{`${pt.etiquetaEje} · Cartera Real: ${formatCOP(pt.totalCarteraReal)}`}</title>
                         </circle>
+                        <rect
+                          x={x - wPillReal / 2}
+                          y={yPillRealCenter - 10}
+                          width={wPillReal}
+                          height={20}
+                          rx={10}
+                          fill="#FFFFFF"
+                          stroke="#D1FAE5"
+                          strokeWidth="1"
+                          filter="url(#sombraCapsulaTendencia)"
+                        />
                         <text
                           x={x}
-                          y={yReal + 14}
+                          y={yPillRealCenter + 3.6}
                           textAnchor="middle"
-                          fontSize="9.5"
-                          fontWeight="700"
-                          fill="#0F172A"
+                          fontSize="10"
+                          fontWeight="800"
+                          fill="#065F46"
                         >
-                          {formatMillones(pt.totalCarteraReal)}
+                          {txtReal}
                         </text>
                       </>
                     )}
 
-                    {/* Etiqueta del Eje X */}
+                    {/* Etiqueta del Eje X (debajo de la línea divisoria con aire amplio) */}
                     <text
                       x={x}
-                      y={baseLineY + 18}
+                      y={baseLineY + 20}
                       textAnchor="middle"
-                      fontSize="10"
+                      fontSize="10.5"
                       fontWeight="600"
                       fill="#0F172A"
                     >
