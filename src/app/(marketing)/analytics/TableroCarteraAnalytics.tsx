@@ -111,6 +111,7 @@ const normalizarEmpresaCorta = (razonSocialRaw: string | undefined): string => {
   if (r.includes("MUTUAL SER")) return "MUTUAL SER";
   if (r.includes("ECOPETROL")) return "ECOPETROL";
   if (r.includes("SEGUROS DE VIDA SURAMERICANA") || r.includes("SURA POLIZA")) return "SURA POLIZA";
+  if (r.includes("SUSALUD")) return "SUSALUD PREPAGADA";
   if (r.includes("SURAMERICANA") || r.includes("EPS SURA")) return "EPS SURA";
   if (r.includes("MEDPLUS")) return "MEDPLUS";
   if (r.includes("MEDISANITAS")) return "MEDISANITAS";
@@ -120,12 +121,19 @@ const normalizarEmpresaCorta = (razonSocialRaw: string | undefined): string => {
   if (r.includes("COOMEVA")) return "COOMEVA";
   if (r.includes("BOLIVAR")) return "SEGUROS BOLIVAR";
   if (r.includes("ALLIANZ")) return "ALLIANZ";
-  if (r.includes("COLPATRIA") || r.includes("AXA")) return "COLPATRIA";
+  if ((r.includes("COLPATRIA") || r.includes("AXA")) && r.includes("PREPAGADA")) return "AXA COLPATRIA PREPAGADA";
+  if (r.includes("COLPATRIA") || r.includes("AXA")) return "AXA COLPATRIA SEGUROS";
   if (r.includes("HDI")) return "HDI SEGUROS";
   if (r.includes("COMFENALCO")) return "COMFENALCO CARTAGENA";
   if (r.includes("SALUD TOTAL")) return "SALUD TOTAL";
   if (r.includes("PAN AMERICAN")) return "PAN AMERICAN LIFE";
   if (r.includes("MEXICHEM")) return "MEXICHEM";
+  if (r.includes("CENTRO DE ATENCION")) return "CENTRO ATENCION VISUAL";
+  if (r.includes("INVERSIONES MAR")) return "INVERSIONES MAR";
+  if (r.includes("AGENCIA DE ADUANAS")) return "AGENCIA ADUANAS";
+  if (r.includes("BMI COLOMBIA")) return "BMI COLOMBIA";
+  if (r.includes("SERVICIO NACIONAL") || r.includes("SENA")) return "SENA";
+  if (r.includes("MUNDIAL DE SEGUROS")) return "MUNDIAL SEGUROS";
   if (r.includes("ISLAS")) return "HOTEL LAS ISLAS";
   if (r.includes("PROGEMA")) return "PROGEMA";
   if (r.includes("MILENA ROMERO")) return "CONVENIO DRA MILENA ROMERO";
@@ -137,6 +145,7 @@ const formatearNombreEmpresaLista = (empCorta: string): string => {
   const mapa: Record<string, string> = {
     "MUTUAL SER": "Mutual Ser EPS",
     "EPS SURA": "Eps Suramericana",
+    "SUSALUD PREPAGADA": "Susalud Prepagada",
     "ECOPETROL": "Ecopetrol S.A.",
     "MEDPLUS": "Medplus",
     "COLSANITAS": "Colsanitas S.A.",
@@ -145,9 +154,17 @@ const formatearNombreEmpresaLista = (empCorta: string): string => {
     "COOMEVA": "Coomeva",
     "SEGUROS BOLIVAR": "Seguros Bolívar",
     "ALLIANZ": "Allianz",
+    "AXA COLPATRIA PREPAGADA": "Axa Colpatria Prepagada",
+    "AXA COLPATRIA SEGUROS": "Axa Colpatria Seguros",
     "COLPATRIA": "Axa Colpatria",
     "HDI SEGUROS": "HDI Seguros",
     "SANITAS EPS": "Sanitas EPS",
+    "CENTRO ATENCION VISUAL": "Centro Atención Vis.",
+    "INVERSIONES MAR": "Inversiones Mar & Cia",
+    "AGENCIA ADUANAS": "Agencia Aduanas",
+    "BMI COLOMBIA": "Bmi Colombia",
+    "SENA": "SENA",
+    "MUNDIAL SEGUROS": "Mundial Seguros",
     "COMFENALCO CARTAGENA": "Comfenalco",
     "SALUD TOTAL": "Salud Total",
     "MEDISANITAS": "Medisanitas",
@@ -157,7 +174,6 @@ const formatearNombreEmpresaLista = (empCorta: string): string => {
     "PROGEMA": "Progema",
     "CONVENIO DRA MILENA ROMERO": "Dra. Milena Romero",
     "PARTICULAR": "Particular",
-    "OTRAS": "Otras Entidades",
   };
   if (mapa[empCorta]) return mapa[empCorta];
   return empCorta
@@ -170,6 +186,7 @@ const formatearNombreCortoAnillo = (empCorta: string): string => {
   const mapa: Record<string, string> = {
     "MUTUAL SER": "Mutual",
     "EPS SURA": "Sura",
+    "SUSALUD PREPAGADA": "Susalud",
     "ECOPETROL": "Ecopetrol",
     "MEDPLUS": "Medplus",
     "COLSANITAS": "Colsanitas",
@@ -178,15 +195,24 @@ const formatearNombreCortoAnillo = (empCorta: string): string => {
     "COOMEVA": "Coomeva",
     "SEGUROS BOLIVAR": "Bolívar",
     "ALLIANZ": "Allianz",
+    "AXA COLPATRIA PREPAGADA": "Colpatria Prep.",
+    "AXA COLPATRIA SEGUROS": "Colpatria Seg.",
     "COLPATRIA": "Colpatria",
     "HDI SEGUROS": "HDI",
     "SANITAS EPS": "Sanitas",
+    "CENTRO ATENCION VISUAL": "C. Atención Vis.",
+    "INVERSIONES MAR": "Inversiones Mar",
+    "AGENCIA ADUANAS": "Agencia Aduanas",
+    "BMI COLOMBIA": "Bmi Colombia",
+    "SENA": "SENA",
+    "MUNDIAL SEGUROS": "Mundial Seg.",
     "COMFENALCO CARTAGENA": "Comfenalco",
     "SALUD TOTAL": "Salud Total",
     "MEDISANITAS": "Medisanitas",
-    "OTRAS": "Otras",
+    "MEXICHEM": "Mexichem",
+    "PARTICULAR": "Particular",
   };
-  return mapa[empCorta] || empCorta.slice(0, 10);
+  return mapa[empCorta] || empCorta.slice(0, 14);
 };
 
 const normalizarResponsableReal = (respRaw: string | undefined, empresaRaw: string | undefined): string => {
@@ -993,20 +1019,29 @@ export default function TableroCarteraAnalytics() {
 
   // Agrupación real por empresa para las 2 Tortas Ejecutivas (TODAS las empresas individuales, cero "Otras")
   const construirItemsDonut = (campo: "total" | "vencida", paleta: string[]) => {
-    const agrupado = new Map<string, number>();
+    const agrupado = new Map<string, { val: number; totalRef: number }>();
     for (const emp of empresasSismaFiltradas) {
       const clave = normalizarEmpresaCorta(emp.razonSocial);
       if (clave === "OTRAS" || clave === "OTRAS ENTIDADES") continue;
       const val = Math.max(0, Number(emp[campo] || 0));
-      if (val <= 0) continue;
-      agrupado.set(clave, (agrupado.get(clave) || 0) + val);
+      const tot = Math.max(0, Number(emp.total || 0));
+      if (tot <= 0 && val <= 0) continue;
+      const prev = agrupado.get(clave) || { val: 0, totalRef: 0 };
+      agrupado.set(clave, {
+        val: prev.val + val,
+        totalRef: prev.totalRef + tot,
+      });
     }
     const ordenadas = Array.from(agrupado.entries())
-      .map(([empCorta, valor]) => ({ empCorta, valor }))
-      .sort((a, b) => b.valor - a.valor);
+      .map(([empCorta, d]) => ({
+        empCorta,
+        valor: d.val,
+        totalRef: d.totalRef,
+      }))
+      .sort((a, b) => b.valor - a.valor || b.totalRef - a.totalRef);
 
     const sumaTotal = ordenadas.reduce((acc, x) => acc + x.valor, 0);
-    if (sumaTotal <= 0) return { sumaTotal: 0, items: [] };
+    if (ordenadas.length === 0) return { sumaTotal: 0, items: [] };
 
     return {
       sumaTotal,
@@ -1015,7 +1050,7 @@ export default function TableroCarteraAnalytics() {
         nombreLista: formatearNombreEmpresaLista(it.empCorta),
         nombreAnillo: formatearNombreCortoAnillo(it.empCorta),
         valor: it.valor,
-        pct: (it.valor / sumaTotal) * 100,
+        pct: sumaTotal > 0 ? (it.valor / sumaTotal) * 100 : 0,
         color: paleta[idx % paleta.length],
       })),
     };
@@ -1104,20 +1139,27 @@ export default function TableroCarteraAnalytics() {
       }[];
     }
   ) => {
-    const cx = 180;
-    const cy = 110;
-    const rOuter = 96;
-    const rInner = 60;
+    const cx = 190;
+    const cy = 240;
+    const rOuter = 112;
+    const rInner = 68;
 
-    // Construir segmentos de TODAS las empresas reales
+    // Construir segmentos normalizados para que TODAS las entidades tengan su parte visible en el anillo
+    const barridosRaw = datosDonut.items.map((it) =>
+      Math.max(0.018, (it.pct / 100) * Math.PI * 2)
+    );
+    const sumaBarridos =
+      barridosRaw.reduce((acc, b) => acc + b, 0) || Math.PI * 2;
+    const factorEscala = (Math.PI * 2) / sumaBarridos;
+
     let anguloAcum = -Math.PI / 2;
-    const segmentos = datosDonut.items.map((it) => {
-      const barrido = Math.max(0.015, (it.pct / 100) * Math.PI * 2);
+    const segmentos = datosDonut.items.map((it, idx) => {
+      const barrido = barridosRaw[idx] * factorEscala;
       const startAngle = anguloAcum;
       const endAngle = anguloAcum + barrido;
       const midAngle = startAngle + barrido / 2;
       anguloAcum = endAngle;
-      return { ...it, startAngle, endAngle, midAngle };
+      return { ...it, idx, startAngle, endAngle, midAngle };
     });
 
     type CalloutSlot = (typeof segmentos)[number] & {
@@ -1128,56 +1170,73 @@ export default function TableroCarteraAnalytics() {
       labelY: number;
       lineEndX: number;
       textX: number;
+      pasoSuperiorY?: number;
     };
 
     const izqRaw: CalloutSlot[] = [];
     const derRaw: CalloutSlot[] = [];
 
-    // Solo mostrar líneas guía en el anillo para empresas con >= 0.45% para no ensuciar con 0.0%
-    segmentos.forEach((seg) => {
-      if (seg.pct < 0.45) return;
+    // Repartir TODAS las entidades (0 recortes) entre izquierda y derecha del anillo sin cruzar el círculo
+    const corteIzqMax = Math.ceil((segmentos.length - 1) / 2);
+    segmentos.forEach((seg, idx) => {
       const cos = Math.cos(seg.midAngle);
       const sin = Math.sin(seg.midAngle);
       const anchorX = cx + (rOuter + 1) * cos;
       const anchorY = cy + (rOuter + 1) * sin;
-      const lado: "izq" | "der" = cos >= 0 ? "der" : "izq";
+
+      // Segmento 0 (mayor, ej. Mutual) y el bloque superior cercano a las 12 en punto van a la derecha; el resto a la izquierda
+      const vaDerecha = idx === 0 || (cos >= 0 && idx <= 2) || idx > corteIzqMax;
+      const lado: "izq" | "der" = vaDerecha ? "der" : "izq";
+
+      // Si está en el cuadrante superior izquierdo y sale hacia la derecha, sube por encima del borde superior del anillo
+      const requierePasoSuperior = lado === "der" && anchorX < cx - 2;
+      const ordenSuperior = Math.max(0, idx - (corteIzqMax + 1));
+      const pasoSuperiorY = requierePasoSuperior
+        ? Math.max(12, cy - rOuter - 10 - ordenSuperior * 6.5)
+        : undefined;
+
+      const labelYInicial =
+        idx === 0
+          ? cy + 85
+          : requierePasoSuperior && pasoSuperiorY !== undefined
+          ? pasoSuperiorY
+          : cy + (rOuter + 6) * sin;
+
       const slot: CalloutSlot = {
         ...seg,
         lado,
         anchorX,
         anchorY,
-        elbowX: lado === "der" ? cx + rOuter + 8 : cx - rOuter - 8,
-        labelY: cy + (rOuter + 4) * sin,
-        lineEndX: lado === "der" ? 354 : 6,
-        textX: lado === "der" ? 354 : 6,
+        elbowX: lado === "der" ? cx + rOuter + 10 : cx - rOuter - 10,
+        labelY: labelYInicial,
+        lineEndX: lado === "der" ? 374 : 6,
+        textX: lado === "der" ? 374 : 6,
+        pasoSuperiorY,
       };
       if (lado === "der") derRaw.push(slot);
       else izqRaw.push(slot);
     });
 
     const prepararLadoSinMontar = (lista: CalloutSlot[]) => {
-      const topLado = [...lista]
-        .sort((a, b) => b.valor - a.valor)
-        .slice(0, 7)
-        .sort((a, b) => a.anchorY - b.anchorY);
-      const minGap = 24;
+      const ordenados = [...lista].sort((a, b) => a.labelY - b.labelY);
+      const minGap = 20.5;
       const minY = 16;
-      const maxY = 204;
-      for (let i = 0; i < topLado.length; i++) {
-        topLado[i].labelY = Math.max(minY, Math.min(maxY, topLado[i].labelY));
-        if (i > 0 && topLado[i].labelY - topLado[i - 1].labelY < minGap) {
-          topLado[i].labelY = topLado[i - 1].labelY + minGap;
+      const maxY = 464;
+      for (let i = 0; i < ordenados.length; i++) {
+        ordenados[i].labelY = Math.max(minY, Math.min(maxY, ordenados[i].labelY));
+        if (i > 0 && ordenados[i].labelY - ordenados[i - 1].labelY < minGap) {
+          ordenados[i].labelY = ordenados[i - 1].labelY + minGap;
         }
       }
-      for (let i = topLado.length - 1; i >= 0; i--) {
-        if (topLado[i].labelY > maxY) {
-          topLado[i].labelY = maxY;
+      for (let i = ordenados.length - 1; i >= 0; i--) {
+        if (ordenados[i].labelY > maxY) {
+          ordenados[i].labelY = maxY;
         }
-        if (i > 0 && topLado[i].labelY - topLado[i - 1].labelY < minGap) {
-          topLado[i - 1].labelY = Math.max(minY, topLado[i].labelY - minGap);
+        if (i > 0 && ordenados[i].labelY - ordenados[i - 1].labelY < minGap) {
+          ordenados[i - 1].labelY = Math.max(minY, ordenados[i].labelY - minGap);
         }
       }
-      return topLado;
+      return ordenados;
     };
 
     const callouts = [
@@ -1208,22 +1267,22 @@ export default function TableroCarteraAnalytics() {
 
     return (
       <div
-        className="rounded-xl p-4 border shadow-2xs flex flex-col"
+        className="rounded-xl p-4 sm:p-5 border shadow-2xs flex flex-col"
         style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
       >
         <h4
-          className="text-[13.5px] sm:text-[14px] font-bold tracking-tight mb-1.5"
+          className="text-[13.5px] sm:text-[14.5px] font-bold tracking-tight mb-2"
           style={{ color: "#0F172A" }}
         >
           {titulo}
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
-          {/* ANILLO GRANDE Y CENTRADO OCUPANDO TODO EL ALTO DEL CONTENEDOR (220px) */}
+          {/* ANILLO GRANDE CON EL 100% DE LAS ENTIDADES SEÑALADAS Y ORGANIZADAS */}
           <div className="sm:col-span-7 flex items-center justify-center">
             <svg
-              viewBox="0 0 360 220"
-              className="w-full max-w-[430px] h-[220px] select-none overflow-visible"
+              viewBox="0 0 380 480"
+              className="w-full max-w-[440px] h-[480px] select-none overflow-visible"
             >
               {segmentos.length === 0 ? (
                 <circle
@@ -1245,7 +1304,7 @@ export default function TableroCarteraAnalytics() {
                       d={crearArcoDonutPath(seg.startAngle, seg.endAngle)}
                       fill={seg.color}
                       stroke="#FFFFFF"
-                      strokeWidth="1.2"
+                      strokeWidth="1.1"
                       className="cursor-pointer transition-opacity hover:opacity-90"
                       style={{
                         opacity:
@@ -1263,9 +1322,9 @@ export default function TableroCarteraAnalytics() {
               <circle cx={cx} cy={cy} r={rInner - 1} fill="#FFFFFF" />
               <text
                 x={cx}
-                y={cy - 1}
+                y={cy - 2}
                 textAnchor="middle"
-                fontSize="17.5"
+                fontSize="20"
                 fontWeight="800"
                 fill="#0F172A"
               >
@@ -1273,55 +1332,68 @@ export default function TableroCarteraAnalytics() {
               </text>
               <text
                 x={cx}
-                y={cy + 15}
+                y={cy + 16}
                 textAnchor="middle"
-                fontSize="10.5"
+                fontSize="11.5"
                 fontWeight="600"
                 fill="#475569"
               >
                 {etiquetaCentro}
               </text>
 
-              {/* Líneas guía horizontales alineadas a izquierda y derecha */}
-              {callouts.map((c) => (
-                <g
-                  key={`callout-${c.empCorta}`}
-                  className="cursor-pointer"
-                  onClick={() => toggleFiltroEmpresaDesdeTorta(c.empCorta)}
-                >
-                  <polyline
-                    points={`${c.anchorX.toFixed(1)},${c.anchorY.toFixed(1)} ${c.elbowX.toFixed(1)},${c.labelY.toFixed(1)} ${c.lineEndX},${c.labelY.toFixed(1)}`}
-                    fill="none"
-                    stroke="#64748B"
-                    strokeWidth="0.75"
-                  />
-                  <text
-                    x={c.textX}
-                    y={c.labelY - 2.5}
-                    textAnchor={c.lado === "der" ? "end" : "start"}
-                    fontSize="8.4"
-                    fontWeight="600"
-                    fill="#0F172A"
+              {/* Líneas guía para TODAS las entidades sin cruzarse ni montarse */}
+              {callouts.map((c) => {
+                const pts =
+                  c.pasoSuperiorY !== undefined
+                    ? `${c.anchorX.toFixed(1)},${c.anchorY.toFixed(1)} ${c.anchorX.toFixed(1)},${c.pasoSuperiorY.toFixed(1)} ${c.elbowX.toFixed(1)},${c.labelY.toFixed(1)} ${c.lineEndX},${c.labelY.toFixed(1)}`
+                    : `${c.anchorX.toFixed(1)},${c.anchorY.toFixed(1)} ${c.elbowX.toFixed(1)},${c.labelY.toFixed(1)} ${c.lineEndX},${c.labelY.toFixed(1)}`;
+                return (
+                  <g
+                    key={`callout-${c.empCorta}`}
+                    className="cursor-pointer"
+                    onClick={() => toggleFiltroEmpresaDesdeTorta(c.empCorta)}
                   >
-                    {c.nombreAnillo}
-                  </text>
-                  <text
-                    x={c.textX}
-                    y={c.labelY + 8}
-                    textAnchor={c.lado === "der" ? "end" : "start"}
-                    fontSize="7.8"
-                    fontWeight="500"
-                    fill="#475569"
-                  >
-                    {c.pct.toFixed(1)}%
-                  </text>
-                </g>
-              ))}
+                    <polyline
+                      points={pts}
+                      fill="none"
+                      stroke="#64748B"
+                      strokeWidth="0.75"
+                    />
+                    <text
+                      x={c.textX}
+                      y={c.labelY - 2.5}
+                      textAnchor={c.lado === "der" ? "end" : "start"}
+                      fontSize="8.2"
+                      fontWeight="600"
+                      fill="#0F172A"
+                    >
+                      {c.nombreAnillo}
+                    </text>
+                    <text
+                      x={c.textX}
+                      y={c.labelY + 7.5}
+                      textAnchor={c.lado === "der" ? "end" : "start"}
+                      fontSize="7.5"
+                      fontWeight="500"
+                      fill="#475569"
+                    >
+                      {c.pct.toFixed(1)}%
+                    </text>
+                  </g>
+                );
+              })}
             </svg>
           </div>
 
-          {/* LISTADO LATERAL DEL MISMO ALTO QUE LA DONA (220px), TODAS LAS EMPRESAS SIN "OTRAS" */}
-          <div className="sm:col-span-5 max-h-[220px] overflow-y-auto space-y-1 pl-1 pr-1">
+          {/* LISTADO COMPLETO DE TODAS LAS ENTIDADES CON ENCABEZADOS $M Y % (CERO SCROLL, CERO "OTRAS") */}
+          <div className="sm:col-span-5 space-y-0.5 pl-1">
+            <div
+              className="flex items-center justify-end gap-2 px-1.5 pb-1 text-[10px] font-bold border-b mb-1"
+              style={{ color: "#475569", borderColor: "#E2ECF8" }}
+            >
+              <span>$M</span>
+              <span className="w-9 text-right">%</span>
+            </div>
             {datosDonut.items.map((it) => {
               const sel =
                 empresasFrecSel.length === 1 &&
@@ -1331,14 +1403,14 @@ export default function TableroCarteraAnalytics() {
                   key={`leg-${it.empCorta}`}
                   onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
                   title={`${it.nombreLista}: ${formatCOP(it.valor)} (${it.pct.toFixed(1)}%) — Clic para filtrar`}
-                  className="flex items-center justify-between gap-1.5 px-1.5 py-0.5 rounded-md cursor-pointer transition hover:bg-slate-50"
+                  className="flex items-center justify-between gap-1.5 px-1.5 py-[2.5px] rounded-md cursor-pointer transition hover:bg-slate-50"
                   style={{
                     backgroundColor: sel ? "#EFF6FF" : "transparent",
                   }}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span
-                      className="w-2 h-2 rounded-full shrink-0"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: it.color }}
                     />
                     <span
@@ -1348,7 +1420,7 @@ export default function TableroCarteraAnalytics() {
                       {it.nombreLista}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0 text-[10px] font-mono">
+                  <div className="flex items-center gap-1.5 shrink-0 text-[10.5px] font-mono">
                     <span className="font-bold" style={{ color: "#0F172A" }}>
                       {formatMillones(it.valor)}
                     </span>
