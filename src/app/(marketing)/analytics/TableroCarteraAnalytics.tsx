@@ -1104,10 +1104,10 @@ export default function TableroCarteraAnalytics() {
       }[];
     }
   ) => {
-    const cx = 175;
-    const cy = 114;
-    const rOuter = 80;
-    const rInner = 50;
+    const cx = 180;
+    const cy = 110;
+    const rOuter = 96;
+    const rInner = 60;
 
     // Construir segmentos de TODAS las empresas reales
     let anguloAcum = -Math.PI / 2;
@@ -1146,10 +1146,10 @@ export default function TableroCarteraAnalytics() {
         lado,
         anchorX,
         anchorY,
-        elbowX: lado === "der" ? cx + rOuter + 10 : cx - rOuter - 10,
-        labelY: cy + (rOuter + 8) * sin,
-        lineEndX: lado === "der" ? 344 : 6,
-        textX: lado === "der" ? 344 : 6,
+        elbowX: lado === "der" ? cx + rOuter + 8 : cx - rOuter - 8,
+        labelY: cy + (rOuter + 4) * sin,
+        lineEndX: lado === "der" ? 354 : 6,
+        textX: lado === "der" ? 354 : 6,
       };
       if (lado === "der") derRaw.push(slot);
       else izqRaw.push(slot);
@@ -1160,9 +1160,9 @@ export default function TableroCarteraAnalytics() {
         .sort((a, b) => b.valor - a.valor)
         .slice(0, 7)
         .sort((a, b) => a.anchorY - b.anchorY);
-      const minGap = 25;
-      const minY = 18;
-      const maxY = 210;
+      const minGap = 24;
+      const minY = 16;
+      const maxY = 204;
       for (let i = 0; i < topLado.length; i++) {
         topLado[i].labelY = Math.max(minY, Math.min(maxY, topLado[i].labelY));
         if (i > 0 && topLado[i].labelY - topLado[i - 1].labelY < minGap) {
@@ -1208,22 +1208,22 @@ export default function TableroCarteraAnalytics() {
 
     return (
       <div
-        className="rounded-xl p-4 border shadow-2xs flex flex-col justify-between"
+        className="rounded-xl p-4 border shadow-2xs flex flex-col"
         style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
       >
         <h4
-          className="text-[13.5px] sm:text-[14px] font-bold tracking-tight mb-1"
+          className="text-[13.5px] sm:text-[14px] font-bold tracking-tight mb-1.5"
           style={{ color: "#0F172A" }}
         >
           {titulo}
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
-          {/* ANILLO GRANDE Y CENTRADO CON LÍNEAS GUÍA BALANCEADAS */}
+          {/* ANILLO GRANDE Y CENTRADO OCUPANDO TODO EL ALTO DEL CONTENEDOR (220px) */}
           <div className="sm:col-span-7 flex items-center justify-center">
             <svg
-              viewBox="0 0 350 228"
-              className="w-full max-w-[405px] h-auto select-none overflow-visible"
+              viewBox="0 0 360 220"
+              className="w-full max-w-[430px] h-[220px] select-none overflow-visible"
             >
               {segmentos.length === 0 ? (
                 <circle
@@ -1265,7 +1265,7 @@ export default function TableroCarteraAnalytics() {
                 x={cx}
                 y={cy - 1}
                 textAnchor="middle"
-                fontSize="16"
+                fontSize="17.5"
                 fontWeight="800"
                 fill="#0F172A"
               >
@@ -1273,9 +1273,9 @@ export default function TableroCarteraAnalytics() {
               </text>
               <text
                 x={cx}
-                y={cy + 14}
+                y={cy + 15}
                 textAnchor="middle"
-                fontSize="10"
+                fontSize="10.5"
                 fontWeight="600"
                 fill="#475569"
               >
@@ -1299,7 +1299,7 @@ export default function TableroCarteraAnalytics() {
                     x={c.textX}
                     y={c.labelY - 2.5}
                     textAnchor={c.lado === "der" ? "end" : "start"}
-                    fontSize="8.3"
+                    fontSize="8.4"
                     fontWeight="600"
                     fill="#0F172A"
                   >
@@ -1320,8 +1320,8 @@ export default function TableroCarteraAnalytics() {
             </svg>
           </div>
 
-          {/* LISTADO LATERAL ORGANIZADO Y ALINEADO (TODAS LAS EMPRESAS, CERO "OTRAS", CERO BARRA DE SCROLL) */}
-          <div className="sm:col-span-5 space-y-1 pl-1">
+          {/* LISTADO LATERAL DEL MISMO ALTO QUE LA DONA (220px), TODAS LAS EMPRESAS SIN "OTRAS" */}
+          <div className="sm:col-span-5 max-h-[220px] overflow-y-auto space-y-1 pl-1 pr-1">
             {datosDonut.items.map((it) => {
               const sel =
                 empresasFrecSel.length === 1 &&
@@ -1342,7 +1342,7 @@ export default function TableroCarteraAnalytics() {
                       style={{ backgroundColor: it.color }}
                     />
                     <span
-                      className="text-[10px] font-semibold truncate"
+                      className="text-[10.5px] font-semibold truncate"
                       style={{ color: "#0F172A" }}
                     >
                       {it.nombreLista}
