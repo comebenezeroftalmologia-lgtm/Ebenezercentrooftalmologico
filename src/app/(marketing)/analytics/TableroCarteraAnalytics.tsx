@@ -312,6 +312,17 @@ export default function TableroCarteraAnalytics() {
       pendienteRadicar: number;
       total: number;
     }[];
+    catalogoEmpresasPeriodo?: {
+      nit: string;
+      razonSocial: string;
+      empresaCorta?: string;
+      responsable?: string;
+      facturasCount: number;
+      corriente: number;
+      vencida: number;
+      pendienteRadicar: number;
+      total: number;
+    }[];
     serieMensual?: {
       mes: string;
       etiqueta: string;
@@ -478,6 +489,7 @@ export default function TableroCarteraAnalytics() {
   };
 
   const datosSismaCompletaRef = useRef(carteraInitialData.sismaBack.datosSismaVivo);
+  const requestIdSismaRef = useRef<number>(0);
 
   const sincronizarConSismaVivo = async (
     fechaISO?: string,
@@ -509,14 +521,15 @@ export default function TableroCarteraAnalytics() {
     const semAct = filtrosCustom?.diasSem ?? diasSemanaSel;
     const empBase = filtrosCustom?.empresas ?? empresasFrecSel;
     const empAct =
-      empBase.length > 0
+      empBase.length > 0 && empBase.length < todasLasEmpresasDisponibles.length
         ? empBase
         : filtroEmpresa !== "TODAS"
         ? [filtroEmpresa]
         : [];
     const respBase = filtrosCustom?.responsables ?? responsablesFrecSel;
     const respAct =
-      respBase.length > 0
+      respBase.length > 0 &&
+      respBase.length < carteraInitialData.responsablesDisponibles.length
         ? respBase
         : filtroResponsable !== "TODAS"
         ? [filtroResponsable]
@@ -554,12 +567,14 @@ export default function TableroCarteraAnalytics() {
       empAct.length === 0 &&
       respAct.length === 0;
 
+    const currentReqId = ++requestIdSismaRef.current;
     setCargandoSismaVivo(true);
     try {
       const res = await fetch(`/api/cartera/sisma?${params.toString()}`, {
         cache: "no-store",
       });
       const json = await res.json();
+      if (currentReqId !== requestIdSismaRef.current) return;
       if (!res.ok || !json.ok) {
         if (!silencioso) {
           mostrarMensaje(`No se pudo sincronizar con SISMA: ${json.error || res.statusText}`);
@@ -570,24 +585,33 @@ export default function TableroCarteraAnalytics() {
         datosSismaCompletaRef.current = json;
       }
       setDatosSismaVivo(json);
-      if (json.resumenCorte) {
-        const aClaveOrden = (f: string) => {
-          const p = f.slice(0, 10).split("/");
-          return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : f;
-        };
-        const sinDuplicado = cortesTodas.filter(
-          (c) =>
-            !c.fechaCorte.includes("SISMA Vivo") &&
-            c.fechaCorte.slice(0, 10) !== json.fechaCorte.slice(0, 10)
-        );
-        const nuevaLista = [...sinDuplicado, json.resumenCorte].sort((a, b) =>
-          aClaveOrden(a.fechaCorte).localeCompare(aClaveOrden(b.fechaCorte))
-        );
-        const nuevoIdx = nuevaLista.findIndex(
-          (c) => c.fechaCorte.slice(0, 10) === json.fechaCorte.slice(0, 10)
-        );
-        setCortesTodas(nuevaLista);
-        setIndiceCorteActivo(nuevoIdx !== -1 ? nuevoIdx : nuevaLista.length - 1);
+      if (json.resumenCorte && esSinFiltro) {
+        const CORTES_EXCEL_FIJOS = new Set([
+          "09/09/2026",
+          "23/09/2026",
+          "30/09/2026",
+          "20/10/2026",
+        ]);
+        const fechaRes = String(json.fechaCorte || "").slice(0, 10);
+        if (!CORTES_EXCEL_FIJOS.has(fechaRes)) {
+          const aClaveOrden = (f: string) => {
+            const p = f.slice(0, 10).split("/");
+            return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : f;
+          };
+          const sinDuplicado = cortesTodas.filter(
+            (c) =>
+              !c.fechaCorte.includes("SISMA Vivo") &&
+              c.fechaCorte.slice(0, 10) !== fechaRes
+          );
+          const nuevaLista = [...sinDuplicado, json.resumenCorte].sort((a, b) =>
+            aClaveOrden(a.fechaCorte).localeCompare(aClaveOrden(b.fechaCorte))
+          );
+          const nuevoIdx = nuevaLista.findIndex(
+            (c) => c.fechaCorte.slice(0, 10) === fechaRes
+          );
+          setCortesTodas(nuevaLista);
+          setIndiceCorteActivo(nuevoIdx !== -1 ? nuevoIdx : nuevaLista.length - 1);
+        }
         setModalidadSisma("TODAS");
       }
       if (!silencioso) {
@@ -596,11 +620,13 @@ export default function TableroCarteraAnalytics() {
         );
       }
     } catch {
-      if (!silencioso) {
+      if (!silencioso && currentReqId === requestIdSismaRef.current) {
         mostrarMensaje("Error de red al conectar con el API de SISMA Contabilidad.");
       }
     } finally {
-      setCargandoSismaVivo(false);
+      if (currentReqId === requestIdSismaRef.current) {
+        setCargandoSismaVivo(false);
+      }
     }
   };
 
@@ -840,13 +866,46 @@ export default function TableroCarteraAnalytics() {
     });
   };
 
+  const coincideEmpresaSeleccionada = (
+    empCortaReg: string,
+    empRawReg: string,
+    listaSeleccionadas: string[]
+  ): boolean => {
+    if (
+      listaSeleccionadas.length === 0 ||
+      listaSeleccionadas.length >= todasLasEmpresasDisponibles.length
+    ) {
+      return true;
+    }
+    const c = normalizarEmpresaCorta(empRawReg || empCortaReg);
+    const rUp = String(empRawReg || empCortaReg || "").toUpperCase();
+    return listaSeleccionadas.some((sel) => {
+      if (sel === c || sel === empCortaReg) return true;
+      if (
+        (sel === "AXA COLPATRIA PREPAGADA" || sel === "AXA COLPATRIA SEGUROS") &&
+        (empCortaReg === "COLPATRIA" || rUp === "COLPATRIA")
+      ) {
+        return true;
+      }
+      if (
+        sel === "COLPATRIA" &&
+        (c === "AXA COLPATRIA PREPAGADA" || c === "AXA COLPATRIA SEGUROS")
+      ) {
+        return true;
+      }
+      return false;
+    });
+  };
+
   const cumpleFiltrosFrecuencias = (
     anioReg: string,
     empresaReg: string,
     responsableReg: string,
-    fechaISO?: string
+    fechaISO?: string,
+    empresaOrig?: string
   ): boolean => {
-    if (!incluirMutual && String(empresaReg || "").toUpperCase().includes("MUTUAL")) {
+    const textoEmp = `${empresaReg || ""} ${empresaOrig || ""}`.toUpperCase();
+    if (!incluirMutual && textoEmp.includes("MUTUAL")) {
       return false;
     }
     if (
@@ -856,17 +915,24 @@ export default function TableroCarteraAnalytics() {
     ) {
       return false;
     }
-    if (empresasFrecSel.length > 0 && !empresasFrecSel.includes(String(empresaReg || ""))) {
+    if (
+      !coincideEmpresaSeleccionada(
+        String(empresaReg || ""),
+        String(empresaOrig || empresaReg || ""),
+        empresasFrecSel
+      )
+    ) {
       return false;
     }
     if (
       responsablesFrecSel.length > 0 &&
+      responsablesFrecSel.length < carteraInitialData.responsablesDisponibles.length &&
       !responsablesFrecSel.includes(String(responsableReg || ""))
     ) {
       return false;
     }
     const fStr = String(fechaISO || "").trim().slice(0, 10);
-    if (mesesFrecSel.length > 0) {
+    if (mesesFrecSel.length > 0 && mesesFrecSel.length < 12) {
       if (!/^\d{4}-\d{2}/.test(fStr)) return false;
       const mm = fStr.slice(5, 7);
       if (!mesesFrecSel.includes(mm)) return false;
@@ -941,15 +1007,18 @@ export default function TableroCarteraAnalytics() {
 
   const todasLasEmpresasDisponibles = useMemo(() => {
     const setEmp = new Set<string>(carteraInitialData.empresasDisponibles);
-    const baseSisma =
-      datosSismaCompletaRef.current?.topEmpresas ||
-      datosSismaVivo?.topEmpresas ||
-      carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
-      [];
-    for (const e of baseSisma) {
-      const c = normalizarEmpresaCorta(e.razonSocial);
-      if (c && c !== "OTRAS" && c !== "OTRAS ENTIDADES" && c !== "SIN ENTIDAD") {
-        setEmp.add(c);
+    const listasSisma = [
+      datosSismaCompletaRef.current?.topEmpresas || [],
+      datosSismaVivo?.catalogoEmpresasPeriodo || [],
+      datosSismaVivo?.topEmpresas || [],
+      carteraInitialData.sismaBack.datosSismaVivo.topEmpresas || [],
+    ];
+    for (const lista of listasSisma) {
+      for (const e of lista) {
+        const c = normalizarEmpresaCorta(e.razonSocial);
+        if (c && c !== "OTRAS" && c !== "OTRAS ENTIDADES" && c !== "SIN ENTIDAD") {
+          setEmp.add(c);
+        }
       }
     }
     return Array.from(setEmp).sort((a, b) => a.localeCompare(b));
@@ -958,7 +1027,7 @@ export default function TableroCarteraAnalytics() {
   const tieneFiltroFechaBarra =
     (aniosFrecSel.length > 0 &&
       aniosFrecSel.length < ANIOS_SISMA_DISPONIBLES.length) ||
-    mesesFrecSel.length > 0 ||
+    (mesesFrecSel.length > 0 && mesesFrecSel.length < 12) ||
     diasFiltroActivo ||
     filtroAnio !== "TODOS";
 
@@ -970,8 +1039,11 @@ export default function TableroCarteraAnalytics() {
     filtroResponsable !== "TODAS" ||
     busqueda.trim() !== "" ||
     !incluirMutual ||
-    empresasFrecSel.length > 0 ||
-    responsablesFrecSel.length > 0 ||
+    (empresasFrecSel.length > 0 &&
+      empresasFrecSel.length < todasLasEmpresasDisponibles.length) ||
+    (responsablesFrecSel.length > 0 &&
+      responsablesFrecSel.length <
+        carteraInitialData.responsablesDisponibles.length) ||
     Object.values(valoresExcluidosPorCol).some((arr) => arr && arr.length > 0) ||
     Object.values(busquedaTextoPorCol).some((txt) => txt && txt.trim() !== "") ||
     ordenColumna !== null;
@@ -981,10 +1053,13 @@ export default function TableroCarteraAnalytics() {
     listaCortesActiva[Math.min(indiceCorteActivo, listaCortesActiva.length - 1)] ||
     listaCortesActiva[listaCortesActiva.length - 1];
 
-  // Filtrado reactivo sobre las empresas de SISMA en vivo (prioriza datosSismaVivo para reflejar filtros de Año, Mes y Días)
+  // Filtrado reactivo sobre el catálogo completo del período activo en SISMA (para que seleccionar 1, 2, 3 o más empresas nunca pierda ninguna entidad)
   const empresasSismaFiltradas = useMemo(() => {
     const origen =
-      datosSismaVivo?.topEmpresas ||
+      datosSismaVivo?.catalogoEmpresasPeriodo ||
+      (tieneFiltroFechaBarra
+        ? datosSismaVivo?.topEmpresas
+        : datosSismaCompletaRef.current?.topEmpresas) ||
       datosSismaCompletaRef.current?.topEmpresas ||
       carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
       [];
@@ -998,24 +1073,37 @@ export default function TableroCarteraAnalytics() {
       ) {
         return false;
       }
-      if (empresasFrecSel.length > 0 && !empresasFrecSel.includes(empCorta)) {
-        return false;
+      if (
+        empresasFrecSel.length > 0 &&
+        empresasFrecSel.length < todasLasEmpresasDisponibles.length
+      ) {
+        if (!coincideEmpresaSeleccionada(empCorta, emp.razonSocial, empresasFrecSel)) {
+          return false;
+        }
+      } else if (filtroEmpresa !== "TODAS") {
+        if (!coincideEmpresaSeleccionada(empCorta, emp.razonSocial, [filtroEmpresa])) {
+          return false;
+        }
       }
-      if (filtroEmpresa !== "TODAS" && empCorta !== filtroEmpresa) {
-        return false;
-      }
-      if (responsablesFrecSel.length > 0 && !responsablesFrecSel.includes(resp)) {
-        return false;
-      }
-      if (filtroResponsable !== "TODAS" && resp !== filtroResponsable) {
+      if (
+        responsablesFrecSel.length > 0 &&
+        responsablesFrecSel.length <
+          carteraInitialData.responsablesDisponibles.length
+      ) {
+        if (!responsablesFrecSel.includes(resp)) {
+          return false;
+        }
+      } else if (filtroResponsable !== "TODAS" && resp !== filtroResponsable) {
         return false;
       }
       return true;
     });
   }, [
     datosSismaVivo,
+    tieneFiltroFechaBarra,
     incluirMutual,
     empresasFrecSel,
+    todasLasEmpresasDisponibles.length,
     filtroEmpresa,
     responsablesFrecSel,
     filtroResponsable,
@@ -1024,9 +1112,12 @@ export default function TableroCarteraAnalytics() {
   const tieneFiltroEntidadDirecto =
     tieneFiltroFechaBarra ||
     !incluirMutual ||
-    empresasFrecSel.length > 0 ||
+    (empresasFrecSel.length > 0 &&
+      empresasFrecSel.length < todasLasEmpresasDisponibles.length) ||
     filtroEmpresa !== "TODAS" ||
-    responsablesFrecSel.length > 0 ||
+    (responsablesFrecSel.length > 0 &&
+      responsablesFrecSel.length <
+        carteraInitialData.responsablesDisponibles.length) ||
     filtroResponsable !== "TODAS";
 
   const corteSeleccionado = useMemo<CorteSismaBack>(() => {
@@ -1074,7 +1165,7 @@ export default function TableroCarteraAnalytics() {
     datosSismaVivo,
   ]);
 
-  // Agrupación real por empresa para las 2 Tortas Ejecutivas (TODAS las empresas individuales, cero "Otras")
+  // Agrupación real por empresa para las 2 Tortas Ejecutivas (TODAS las empresas con saldo > 0 en ese indicador, cero "Otras" y cero tajadas falsas en $0)
   const construirItemsDonut = (campo: "total" | "vencida", paleta: string[]) => {
     const agrupado = new Map<string, { val: number; totalRef: number }>();
     for (const emp of empresasSismaFiltradas) {
@@ -1082,7 +1173,7 @@ export default function TableroCarteraAnalytics() {
       if (clave === "OTRAS" || clave === "OTRAS ENTIDADES") continue;
       const val = Math.max(0, Number(emp[campo] || 0));
       const tot = Math.max(0, Number(emp.total || 0));
-      if (tot <= 0 && val <= 0) continue;
+      if (val <= 0) continue;
       const prev = agrupado.get(clave) || { val: 0, totalRef: 0 };
       agrupado.set(clave, {
         val: prev.val + val,
@@ -1098,7 +1189,9 @@ export default function TableroCarteraAnalytics() {
       .sort((a, b) => b.valor - a.valor || b.totalRef - a.totalRef);
 
     const sumaTotal = ordenadas.reduce((acc, x) => acc + x.valor, 0);
-    if (ordenadas.length === 0) return { sumaTotal: 0, items: [] };
+    if (ordenadas.length === 0 || sumaTotal <= 0) {
+      return { sumaTotal: 0, items: [] };
+    }
 
     return {
       sumaTotal,
@@ -1171,11 +1264,10 @@ export default function TableroCarteraAnalytics() {
     let nuevaLista: string[];
     if (empresasFrecSel.length === 1 && empresasFrecSel[0] === empCorta) {
       nuevaLista = [];
-      setFiltroEmpresa("TODAS");
     } else {
       nuevaLista = [empCorta];
-      setFiltroEmpresa(empCorta);
     }
+    setFiltroEmpresa("TODAS");
     setEmpresasFrecSel(nuevaLista);
     setPaginaActual(1);
     sincronizarConSismaVivo(fechaCorteVivo, true, { empresas: nuevaLista });
@@ -1352,9 +1444,7 @@ export default function TableroCarteraAnalytics() {
                 />
               ) : (
                 segmentos.map((seg) => {
-                  const activa =
-                    empresasFrecSel.length === 1 &&
-                    empresasFrecSel[0] === seg.empCorta;
+                  const activa = empresasFrecSel.includes(seg.empCorta);
                   return (
                     <path
                       key={seg.empCorta}
@@ -1365,7 +1455,7 @@ export default function TableroCarteraAnalytics() {
                       className="cursor-pointer transition-opacity hover:opacity-90"
                       style={{
                         opacity:
-                          empresasFrecSel.length === 1 && !activa ? 0.55 : 1,
+                          empresasFrecSel.length > 0 && !activa ? 0.55 : 1,
                       }}
                       onClick={() => toggleFiltroEmpresaDesdeTorta(seg.empCorta)}
                     >
@@ -1448,46 +1538,53 @@ export default function TableroCarteraAnalytics() {
               <span>$M</span>
               <span className="w-10 text-right">%</span>
             </div>
-            {datosDonut.items.map((it) => {
-              const sel =
-                empresasFrecSel.length === 1 &&
-                empresasFrecSel[0] === it.empCorta;
-              return (
-                <div
-                  key={`leg-${it.empCorta}`}
-                  onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
-                  title={`${it.nombreLista}: ${formatCOP(it.valor)} (${it.pct.toFixed(1)}%) — Clic para filtrar`}
-                  className="flex items-center justify-between gap-1.5 px-1.5 py-[2.5px] rounded-md cursor-pointer transition hover:bg-slate-50"
-                  style={{
-                    backgroundColor: sel ? "#EFF6FF" : "transparent",
-                  }}
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: it.color }}
-                    />
-                    <span
-                      className="text-[10.5px] font-semibold truncate"
-                      style={{ color: "#0F172A" }}
-                    >
-                      {it.nombreLista}
-                    </span>
+            {datosDonut.items.length === 0 ? (
+              <div
+                className="py-8 px-2 text-center text-xs font-medium"
+                style={{ color: "#64748B" }}
+              >
+                Sin saldo en este concepto para la selección actual ($0)
+              </div>
+            ) : (
+              datosDonut.items.map((it) => {
+                const sel = empresasFrecSel.includes(it.empCorta);
+                return (
+                  <div
+                    key={`leg-${it.empCorta}`}
+                    onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
+                    title={`${it.nombreLista}: ${formatCOP(it.valor)} (${it.pct.toFixed(1)}%) — Clic para filtrar`}
+                    className="flex items-center justify-between gap-1.5 px-1.5 py-[2.5px] rounded-md cursor-pointer transition hover:bg-slate-50"
+                    style={{
+                      backgroundColor: sel ? "#EFF6FF" : "transparent",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: it.color }}
+                      />
+                      <span
+                        className="text-[10.5px] font-semibold truncate"
+                        style={{ color: "#0F172A" }}
+                      >
+                        {it.nombreLista}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 text-[10.5px] font-mono">
+                      <span className="font-bold" style={{ color: "#0F172A" }}>
+                        {formatMillones(it.valor)}
+                      </span>
+                      <span
+                        className="w-10 text-right font-bold"
+                        style={{ color: "#0E245E" }}
+                      >
+                        {it.pct.toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0 text-[10.5px] font-mono">
-                    <span className="font-bold" style={{ color: "#0F172A" }}>
-                      {formatMillones(it.valor)}
-                    </span>
-                    <span
-                      className="w-10 text-right font-bold"
-                      style={{ color: "#0E245E" }}
-                    >
-                      {it.pct.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -2072,20 +2169,37 @@ export default function TableroCarteraAnalytics() {
           r.anio,
           r.empresa,
           respReal,
-          r.fechaRadicacion || r.fechaFactura
+          r.fechaRadicacion || r.fechaFactura,
+          r.empresaOriginal
         )
       ) {
         return false;
       }
-      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
-      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
+      if (aniosFrecSel.length === 0 && filtroAnio !== "TODOS" && r.anio !== filtroAnio) {
+        return false;
+      }
+      if (
+        empresasFrecSel.length === 0 &&
+        filtroEmpresa !== "TODAS" &&
+        !coincideEmpresaSeleccionada(r.empresa, r.empresaOriginal || r.empresa, [
+          filtroEmpresa,
+        ])
+      ) {
+        return false;
+      }
       if (filtroTipo !== "TODOS" && !normalizarEtiquetaTipo(r.tipo).includes(filtroTipo)) return false;
       if (filtroEstado !== "TODOS") {
         const tieneReemplazo = Boolean(r.facturaReemplaza && r.facturaReemplaza.trim() !== "");
         if (filtroEstado === "REEMPLAZADA" && !tieneReemplazo) return false;
         if (filtroEstado === "PENDIENTE" && tieneReemplazo) return false;
       }
-      if (filtroResponsable !== "TODAS" && respReal !== filtroResponsable) return false;
+      if (
+        responsablesFrecSel.length === 0 &&
+        filtroResponsable !== "TODAS" &&
+        respReal !== filtroResponsable
+      ) {
+        return false;
+      }
       if (q) {
         const texto = `${r.factura} ${r.empresa} ${r.motivo} ${r.facturaReemplaza} ${respReal} ${r.revisionFinanciera} ${r.rips}`.toLowerCase();
         if (!texto.includes(q)) return false;
@@ -2149,12 +2263,36 @@ export default function TableroCarteraAnalytics() {
     const q = busqueda.toLowerCase().trim();
     const base = glosas.filter((r) => {
       const facReal = normalizarResponsableReal(r.facturador, r.empresa);
-      if (!cumpleFiltrosFrecuencias(r.anio, r.empresa, facReal, "")) {
+      if (
+        !cumpleFiltrosFrecuencias(
+          r.anio,
+          r.empresa,
+          facReal,
+          r.fechaRadicacion || r.fechaFactura,
+          r.empresaOriginal
+        )
+      ) {
         return false;
       }
-      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
-      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && facReal !== filtroResponsable) return false;
+      if (aniosFrecSel.length === 0 && filtroAnio !== "TODOS" && r.anio !== filtroAnio) {
+        return false;
+      }
+      if (
+        empresasFrecSel.length === 0 &&
+        filtroEmpresa !== "TODAS" &&
+        !coincideEmpresaSeleccionada(r.empresa, r.empresaOriginal || r.empresa, [
+          filtroEmpresa,
+        ])
+      ) {
+        return false;
+      }
+      if (
+        responsablesFrecSel.length === 0 &&
+        filtroResponsable !== "TODAS" &&
+        facReal !== filtroResponsable
+      ) {
+        return false;
+      }
       if (filtroEstado !== "TODOS") {
         if (filtroEstado === "REEMPLAZADA" && r.subtabla !== "RESPONDIDA_NO_ACEPTADA") return false;
         if (filtroEstado === "PENDIENTE" && r.subtabla === "RESPONDIDA_NO_ACEPTADA") return false;
@@ -2191,12 +2329,36 @@ export default function TableroCarteraAnalytics() {
     const q = busqueda.toLowerCase().trim();
     const base = pendientes.filter((r) => {
       const respReal = normalizarResponsableReal(r.responsable, r.empresa);
-      if (!cumpleFiltrosFrecuencias(r.anio, r.empresa, respReal, r.fechaServicio)) {
+      if (
+        !cumpleFiltrosFrecuencias(
+          r.anio,
+          r.empresa,
+          respReal,
+          r.fechaServicio,
+          r.empresaOriginal
+        )
+      ) {
         return false;
       }
-      if (filtroAnio !== "TODOS" && r.anio !== filtroAnio) return false;
-      if (filtroEmpresa !== "TODAS" && r.empresa !== filtroEmpresa) return false;
-      if (filtroResponsable !== "TODAS" && respReal !== filtroResponsable) return false;
+      if (aniosFrecSel.length === 0 && filtroAnio !== "TODOS" && r.anio !== filtroAnio) {
+        return false;
+      }
+      if (
+        empresasFrecSel.length === 0 &&
+        filtroEmpresa !== "TODAS" &&
+        !coincideEmpresaSeleccionada(r.empresa, r.empresaOriginal || r.empresa, [
+          filtroEmpresa,
+        ])
+      ) {
+        return false;
+      }
+      if (
+        responsablesFrecSel.length === 0 &&
+        filtroResponsable !== "TODAS" &&
+        respReal !== filtroResponsable
+      ) {
+        return false;
+      }
       if (filtroEstado !== "TODOS") {
         if (filtroEstado === "REEMPLAZADA" && r.estado !== "FACTURADO") return false;
         if (filtroEstado === "PENDIENTE" && r.estado === "FACTURADO") return false;
@@ -3082,6 +3244,7 @@ export default function TableroCarteraAnalytics() {
                     <div
                       key={yr}
                       onClick={() => {
+                        setFiltroAnio("TODOS");
                         if (
                           aniosFrecSel.length === ANIOS_SISMA_DISPONIBLES.length
                         ) {
@@ -3126,19 +3289,22 @@ export default function TableroCarteraAnalytics() {
             className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
             style={{
               backgroundColor:
-                mesesFrecSel.length > 0 ? "#E7ECFE" : "#FFFFFF",
+                mesesFrecSel.length > 0 && mesesFrecSel.length < 12
+                  ? "#E7ECFE"
+                  : "#FFFFFF",
               borderColor:
                 ddFrecAbierto === "month"
                   ? "#1A3174"
-                  : mesesFrecSel.length > 0
+                  : mesesFrecSel.length > 0 && mesesFrecSel.length < 12
                   ? "#0F2FF3"
                   : "#E1E4EC",
               color: "#0E245E",
-              fontWeight: mesesFrecSel.length > 0 ? 600 : 500,
+              fontWeight:
+                mesesFrecSel.length > 0 && mesesFrecSel.length < 12 ? 600 : 500,
             }}
           >
             <span>
-              {mesesFrecSel.length === 0
+              {mesesFrecSel.length === 0 || mesesFrecSel.length === 12
                 ? "Todos los meses"
                 : mesesFrecSel.length === 1
                 ? MESES_FREC.find((m) => m.id === mesesFrecSel[0])?.label ||
@@ -3162,7 +3328,7 @@ export default function TableroCarteraAnalytics() {
                 <button
                   type="button"
                   onClick={() => {
-                    setMesesFrecSel(MESES_FREC.map((m) => m.id));
+                    setMesesFrecSel([]);
                     setPaginaActual(1);
                   }}
                   className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border transition cursor-pointer hover:bg-[#1A3174] hover:text-white"
@@ -3196,9 +3362,14 @@ export default function TableroCarteraAnalytics() {
                   return (
                     <div
                       key={m.id}
-                      onClick={() =>
-                        toggleItemEnLista(mesesFrecSel, m.id, setMesesFrecSel)
-                      }
+                      onClick={() => {
+                        if (mesesFrecSel.length === 12) {
+                          setMesesFrecSel([m.id]);
+                          setPaginaActual(1);
+                        } else {
+                          toggleItemEnLista(mesesFrecSel, m.id, setMesesFrecSel);
+                        }
+                      }}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] cursor-pointer transition"
                       style={{
                         backgroundColor: sel ? "#E7ECFE" : "transparent",
@@ -3386,15 +3557,23 @@ export default function TableroCarteraAnalytics() {
             className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
             style={{
               backgroundColor:
-                empresasFrecSel.length > 0 ? "#E7ECFE" : "#FFFFFF",
+                empresasFrecSel.length > 0 &&
+                empresasFrecSel.length < todasLasEmpresasDisponibles.length
+                  ? "#E7ECFE"
+                  : "#FFFFFF",
               borderColor:
                 ddFrecAbierto === "grp"
                   ? "#1A3174"
-                  : empresasFrecSel.length > 0
+                  : empresasFrecSel.length > 0 &&
+                    empresasFrecSel.length < todasLasEmpresasDisponibles.length
                   ? "#0F2FF3"
                   : "#E1E4EC",
               color: "#0E245E",
-              fontWeight: empresasFrecSel.length > 0 ? 600 : 500,
+              fontWeight:
+                empresasFrecSel.length > 0 &&
+                empresasFrecSel.length < todasLasEmpresasDisponibles.length
+                  ? 600
+                  : 500,
             }}
           >
             <span>
@@ -3412,7 +3591,7 @@ export default function TableroCarteraAnalytics() {
 
           {ddFrecAbierto === "grp" && (
             <div
-              className="absolute left-0 top-full mt-1.5 w-64 rounded-xl border bg-white p-2 shadow-2xl z-50 max-h-72 overflow-y-auto"
+              className="absolute left-0 top-full mt-1.5 w-80 sm:w-[340px] rounded-xl border bg-white p-2 shadow-2xl z-50 max-h-80 overflow-y-auto"
               style={{ borderColor: "#E1E4EC" }}
             >
               <div
@@ -3458,13 +3637,22 @@ export default function TableroCarteraAnalytics() {
                   return (
                     <div
                       key={emp}
-                      onClick={() =>
-                        toggleItemEnLista(
-                          empresasFrecSel,
-                          emp,
-                          setEmpresasFrecSel
-                        )
-                      }
+                      onClick={() => {
+                        setFiltroEmpresa("TODAS");
+                        if (
+                          empresasFrecSel.length ===
+                          todasLasEmpresasDisponibles.length
+                        ) {
+                          setEmpresasFrecSel([emp]);
+                          setPaginaActual(1);
+                        } else {
+                          toggleItemEnLista(
+                            empresasFrecSel,
+                            emp,
+                            setEmpresasFrecSel
+                          );
+                        }
+                      }}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] cursor-pointer transition"
                       style={{
                         backgroundColor: sel ? "#E7ECFE" : "transparent",
@@ -3481,7 +3669,7 @@ export default function TableroCarteraAnalytics() {
                       >
                         {sel ? "✓" : ""}
                       </span>
-                      <span className="truncate">{emp}</span>
+                      <span className="leading-tight">{emp}</span>
                     </div>
                   );
                 })}
@@ -3500,19 +3688,32 @@ export default function TableroCarteraAnalytics() {
             className="inline-flex items-center justify-between gap-2 rounded-[9px] px-3 py-1.5 text-[12.5px] transition cursor-pointer border whitespace-nowrap"
             style={{
               backgroundColor:
-                responsablesFrecSel.length > 0 ? "#E7ECFE" : "#FFFFFF",
+                responsablesFrecSel.length > 0 &&
+                responsablesFrecSel.length <
+                  carteraInitialData.responsablesDisponibles.length
+                  ? "#E7ECFE"
+                  : "#FFFFFF",
               borderColor:
                 ddFrecAbierto === "resp"
                   ? "#1A3174"
-                  : responsablesFrecSel.length > 0
+                  : responsablesFrecSel.length > 0 &&
+                    responsablesFrecSel.length <
+                      carteraInitialData.responsablesDisponibles.length
                   ? "#0F2FF3"
                   : "#E1E4EC",
               color: "#0E245E",
-              fontWeight: responsablesFrecSel.length > 0 ? 600 : 500,
+              fontWeight:
+                responsablesFrecSel.length > 0 &&
+                responsablesFrecSel.length <
+                  carteraInitialData.responsablesDisponibles.length
+                  ? 600
+                  : 500,
             }}
           >
             <span>
-              {responsablesFrecSel.length === 0
+              {responsablesFrecSel.length === 0 ||
+              responsablesFrecSel.length ===
+                carteraInitialData.responsablesDisponibles.length
                 ? "Todas las responsables"
                 : responsablesFrecSel.length === 1
                 ? responsablesFrecSel[0]
@@ -3535,9 +3736,7 @@ export default function TableroCarteraAnalytics() {
                 <button
                   type="button"
                   onClick={() => {
-                    setResponsablesFrecSel([
-                      ...carteraInitialData.responsablesDisponibles,
-                    ]);
+                    setResponsablesFrecSel([]);
                     setFiltroResponsable("TODAS");
                     setPaginaActual(1);
                   }}
@@ -3573,13 +3772,22 @@ export default function TableroCarteraAnalytics() {
                   return (
                     <div
                       key={resp}
-                      onClick={() =>
-                        toggleItemEnLista(
-                          responsablesFrecSel,
-                          resp,
-                          setResponsablesFrecSel
-                        )
-                      }
+                      onClick={() => {
+                        setFiltroResponsable("TODAS");
+                        if (
+                          responsablesFrecSel.length ===
+                          carteraInitialData.responsablesDisponibles.length
+                        ) {
+                          setResponsablesFrecSel([resp]);
+                          setPaginaActual(1);
+                        } else {
+                          toggleItemEnLista(
+                            responsablesFrecSel,
+                            resp,
+                            setResponsablesFrecSel
+                          );
+                        }
+                      }}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] cursor-pointer transition"
                       style={{
                         backgroundColor: sel ? "#E7ECFE" : "transparent",
@@ -4604,7 +4812,9 @@ export default function TableroCarteraAnalytics() {
                 <select
                   value={filtroAnio}
                   onChange={(e) => {
-                    setFiltroAnio(e.target.value);
+                    const val = e.target.value;
+                    setFiltroAnio(val);
+                    setAniosFrecSel(val === "TODOS" ? [] : [val]);
                     setPaginaActual(1);
                   }}
                   className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
@@ -4626,7 +4836,9 @@ export default function TableroCarteraAnalytics() {
                 <select
                   value={filtroEmpresa}
                   onChange={(e) => {
-                    setFiltroEmpresa(e.target.value);
+                    const val = e.target.value;
+                    setFiltroEmpresa(val);
+                    setEmpresasFrecSel(val === "TODAS" ? [] : [val]);
                     setPaginaActual(1);
                   }}
                   className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
@@ -4686,7 +4898,9 @@ export default function TableroCarteraAnalytics() {
                 <select
                   value={filtroResponsable}
                   onChange={(e) => {
-                    setFiltroResponsable(e.target.value);
+                    const val = e.target.value;
+                    setFiltroResponsable(val);
+                    setResponsablesFrecSel(val === "TODAS" ? [] : [val]);
                     setPaginaActual(1);
                   }}
                   className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"

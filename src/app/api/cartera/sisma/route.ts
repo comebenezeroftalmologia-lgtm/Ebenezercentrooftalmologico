@@ -287,28 +287,26 @@ export async function GET(req: NextRequest) {
       mas360: 0,
     };
 
-    const mapaEmpresas = new Map<
-      string,
-      {
-        nit: string;
-        razonSocial: string;
-        empresaCorta: string;
-        responsable: string;
-        facturasCount: number;
-        corriente: number;
-        vencida: number;
-        pendienteRadicar: number;
-        total: number;
-      }
-    >();
+    type ResumenEmpresaSisma = {
+      nit: string;
+      razonSocial: string;
+      empresaCorta: string;
+      responsable: string;
+      facturasCount: number;
+      corriente: number;
+      vencida: number;
+      pendienteRadicar: number;
+      total: number;
+    };
+
+    const mapaEmpresas = new Map<string, ResumenEmpresaSisma>();
+    const mapaCatalogoPeriodo = new Map<string, ResumenEmpresaSisma>();
 
     for (const item of edadesData.cartera || []) {
       const razonSocial = item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
-      if (!cumpleFiltroEntidad(razonSocial)) continue;
       const fechaItem = item.fechaFactura || item.fechaRadicacion || item.fechaVencimiento;
       if (!cumpleFiltroFecha(fechaItem)) continue;
 
-      filasFiltradas += 1;
       const saldoItem = Number(item.saldo || 0);
       const pv = Number(item.porVencer || 0);
       const d30 = Number(item.d30 || 0);
@@ -319,6 +317,35 @@ export async function GET(req: NextRequest) {
       const d360 = Number(item.d360 || 0);
       const mas360 = Number(item.mas360 || 0);
 
+      const esPendienteRad =
+        item.cuenta === "1301250601" ||
+        String(item.descripcion || "").toUpperCase().includes("PEND");
+      const corrItem = pv + d30 + d60;
+      const vencItem = d90 + d120 + d180 + d360 + mas360;
+      const empCorta = normalizarEmpresaSisma(razonSocial);
+      const resp = normalizarResponsableSisma(empCorta, razonSocial);
+
+      const catActual = mapaCatalogoPeriodo.get(razonSocial) || {
+        nit: item.numeroIdentificacion || "",
+        razonSocial,
+        empresaCorta: empCorta,
+        responsable: resp,
+        facturasCount: 0,
+        corriente: 0,
+        vencida: 0,
+        pendienteRadicar: 0,
+        total: 0,
+      };
+      catActual.facturasCount += 1;
+      catActual.corriente += corrItem;
+      catActual.vencida += vencItem;
+      if (esPendienteRad) catActual.pendienteRadicar += saldoItem;
+      catActual.total += saldoItem;
+      mapaCatalogoPeriodo.set(razonSocial, catActual);
+
+      if (!cumpleFiltroEntidad(razonSocial)) continue;
+
+      filasFiltradas += 1;
       edadesAcum.saldo += saldoItem;
       edadesAcum.porVencer += pv;
       edadesAcum.d30 += d30;
@@ -329,19 +356,11 @@ export async function GET(req: NextRequest) {
       edadesAcum.d360 += d360;
       edadesAcum.mas360 += mas360;
 
-      const esPendienteRad =
-        item.cuenta === "1301250601" ||
-        String(item.descripcion || "").toUpperCase().includes("PEND");
       if (esPendienteRad) {
         facturasPendientesRadicar += saldoItem;
       } else {
         carteraRadicada += saldoItem;
       }
-
-      const corrItem = pv + d30 + d60;
-      const vencItem = d90 + d120 + d180 + d360 + mas360;
-      const empCorta = normalizarEmpresaSisma(razonSocial);
-      const resp = normalizarResponsableSisma(empCorta, razonSocial);
 
       const actual = mapaEmpresas.get(razonSocial) || {
         nit: item.numeroIdentificacion || "",
@@ -518,6 +537,16 @@ export async function GET(req: NextRequest) {
       }))
       .sort((a, b) => b.total - a.total);
 
+    const catalogoEmpresasPeriodo = Array.from(mapaCatalogoPeriodo.values())
+      .map((e) => ({
+        ...e,
+        corriente: Math.round(e.corriente),
+        vencida: Math.round(e.vencida),
+        pendienteRadicar: Math.round(e.pendienteRadicar),
+        total: Math.round(e.total),
+      }))
+      .sort((a, b) => b.total - a.total);
+
     const [yyyy, mm, dd] = corte.split("-");
     const fechaCorteLabel = `${dd}/${mm}/${yyyy}`;
 
@@ -552,6 +581,7 @@ export async function GET(req: NextRequest) {
       },
       cuentasGirosDetalle,
       topEmpresas,
+      catalogoEmpresasPeriodo,
       serieMensual,
     });
   } catch (err: unknown) {
