@@ -6012,9 +6012,7 @@ function liquidarV4(recs, actos, actosAll){
     }
     else if(g!=='M' && /ECOGRAF/.test(D)){
       const _kEco = (((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10);
-      if(!(r.t>0)){
-        pago=0; regla='Ecografía en Sede 1 sin valor facturado: no se liquida';
-      } else if((M._uppEcoS1=M._uppEcoS1||new Set()).has(_kEco)){
+      if((M._uppEcoS1=M._uppEcoS1||new Set()).has(_kEco)){
         pago=0; regla='Segundo ojo/cargo de ecografía A y B del mismo paciente ese día: en Sede 1 se paga por paciente';
       } else {
         const [vE, rgE] = mPredecir(r.m, r.d, r.sv, r.e+' '+r.ct, 1, r.t, false);
@@ -6022,12 +6020,12 @@ function liquidarV4(recs, actos, actosAll){
           M._uppEcoS1.add(_kEco);
           pago = vE;
           regla = (rgE || 'Ecografía A y B') + ' (por paciente en Sede 1)';
-        } else if(cfg.ayudasPct){
+        } else if(cfg.ayudasPct && r.t > 0){
           M._uppEcoS1.add(_kEco);
           pago = Math.round(cfg.ayudasPct*(r.t||0));
           regla = (cfg.ayudasPct*100)+'% de lo facturado (por paciente en Sede 1)';
         } else {
-          pago = 0; regla = rgE || 'sin regla';
+          pago = 0; regla = !(r.t>0) ? 'Ecografía en Sede 1 sin valor facturado: no se liquida' : (rgE || 'sin regla');
         }
       }
     }
@@ -8040,10 +8038,22 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
         const detLimpio = String(f.det||'').trim();
         return detLimpio ? (detLimpio.charAt(0).toUpperCase() + detLimpio.slice(1).toLowerCase()) : _rgClean;
       };
+      const _mLadoRg = String(fx.regla||'').match(/\((un ojo|ambos ojos)\)/i);
+      const _ladoEf = fx._lado || (_mLadoRg ? _mLadoRg[1].toLowerCase() : '');
+      const _reglaOrigBase = _rgClean + (fx._lado? ' ('+fx._lado+')' : '');
       const _tipoSrvBase = _clasificarTipoSrv(fx);
-      const reglaBase = (_esJorORubro ? _rgClean : ((fx.pago > 0) ? _tipoSrvBase : (_tipoSrvBase + ' — ' + _rgClean))) + (fx._lado? ' ('+fx._lado+')' : '');
+      const _baseConTipo = _esJorORubro ? _rgClean : ((fx.pago > 0) ? _tipoSrvBase : (_tipoSrvBase + ' — ' + _rgClean));
+      const reglaBase = _baseConTipo + (_ladoEf && !/\((un ojo|ambos ojos)\)/i.test(_baseConTipo) ? ' ('+_ladoEf+')' : '');
       const bloque = (fx.fuente==='cirugia'||fx.fuente==='anestesia') ? med.cir : med.sede;
-      const g = bloque[reglaBase] = bloque[reglaBase]||{servicio:reglaBase, tipo:'', uf:({cirugia:'Quirófano',anestesia:'Anestesia',mes:'Mes completo',sede:'Sede'})[fx.fuente]||'Sede', unit:fx.pago, uniforme:true, esPct:false, obs:'', cant:0, fact:0, pago:0, pagoM:0, dets:new Set(), recs:[]};
+      const g = bloque[reglaBase] = bloque[reglaBase]||{servicio:reglaBase, tipo:'', uf:({cirugia:'Quirófano',anestesia:'Anestesia',mes:'Mes completo',sede:'Sede'})[fx.fuente]||'Sede', unit:fx.pago, uniforme:true, esPct:false, obs:'', cant:0, fact:0, pago:0, pagoM:0, dets:new Set(), recs:[], _reglasOrig:new Set(), _porReglaOrig:{}};
+      if(g._reglasOrig){
+        g._reglasOrig.add(_reglaOrigBase);
+        if(fx.regla) g._reglasOrig.add(String(fx.regla));
+      }
+      if(g._porReglaOrig){
+        const _ro = g._porReglaOrig[_reglaOrigBase] = g._porReglaOrig[_reglaOrigBase] || {cant:0, pago:0, pagoM:0};
+        _ro.cant++; _ro.pago += fx.pago; if(esM) _ro.pagoM += fx.pago;
+      }
       if(/\(revisar/i.test(fx.regla||'')) g.rev=true;
       if(g.recs.length && fx.pago!==g.unit) g.uniforme=false;
       g.cant++; g.fact += (fx.t||0); g.pago += fx.pago; if(esM) g.pagoM += fx.pago;
@@ -15175,7 +15185,9 @@ function acVigentes(med, periodo){
 async function acQuitarDeFila(med, servicio, uf, idMed){
   if(typeof puede==='function' && !puede('valores')){ alert('Su perfil no cambia valores. Avísele al administrador.'); return; }
   const todos = acLeer();
-  const kR = 'ACU|'+med+'|R|'+servicio+'|'+uf;
+  const gFila = typeof edGrupo==='function' ? edGrupo(med, servicio, uf) : null;
+  const srvAcu = (gFila && gFila.acuerdo && gFila.acuerdo.servicio) ? gFila.acuerdo.servicio : servicio;
+  const kR = 'ACU|'+med+'|R|'+srvAcu+'|'+uf;
   const kM = idMed ? ('ACU|'+med+'|M|'+idMed) : null;
   let mKey = (kM && todos[kM]) ? kM : null;
   if(!mKey && servicio.startsWith('Acuerdo: ')){
@@ -15213,15 +15225,30 @@ function aplicarAcuerdos(porMedico, periodo){
     for(const a of vigentes){
       if(a.tipo==='renglon'){
         const bl = (a.uf==='Quirófano'||a.uf==='Anestesia'||a.uf==='Mes completo') ? d.cir : d.sede;
-        const g = Object.values(bl).find(g=>g.servicio===a.servicio && g.uf===a.uf) || Object.values(d.cir).concat(Object.values(d.sede)).find(g=>g.servicio===a.servicio);
+        const allG = Object.values(d.cir).concat(Object.values(d.sede));
+        let g = Object.values(bl).find(g=>g.servicio===a.servicio && g.uf===a.uf) || allG.find(g=>g.servicio===a.servicio);
+        let esMatchOrig = false;
         if(!g){
-          const partes = Object.values(bl).filter(x=>x.servicio===a.servicio+' (un ojo)' || x.servicio===a.servicio+' (ambos ojos)');
+          g = Object.values(bl).find(g=>g.uf===a.uf && g._reglasOrig && g._reglasOrig.has(a.servicio))
+            || allG.find(g=>g._reglasOrig && g._reglasOrig.has(a.servicio));
+          if(g) esMatchOrig = true;
+        }
+        if(!g){
+          const partes = Object.values(bl).filter(x=>x.servicio===a.servicio+' (un ojo)' || x.servicio===a.servicio+' (ambos ojos)' || (x._reglasOrig && (x._reglasOrig.has(a.servicio+' (un ojo)') || x._reglasOrig.has(a.servicio+' (ambos ojos)'))));
           if(partes.length) (d._avisos=d._avisos||[]).push('<b>'+fraseConcepto(a.servicio)+'</b>: el '+(a.fecha||'')+' '+(a.usuario||'')+' lo había dejado en '+money(a.valor)+' («'+(a.texto||'')+'»). Ahora ese renglón está separado en <b>unilateral</b> y <b>bilateral</b>: vuelva a poner el valor en el que corresponda.');
           continue; }
         const esM = g.pago>0 ? (g.pagoM||0)>=g.pago-1 : /MUTUAL/i.test(((g.recs||[])[0]||{}).emp||'');
         if(g._pagoSist===undefined) g._pagoSist = g.pago;
-        g.pago = a.valor; g.pagoM = esM ? a.valor : 0;
-        g.unit = g.cant ? a.valor/g.cant : a.valor; g.uniforme=false; g.acuerdo=a;
+        if(esMatchOrig && g._porReglaOrig && g._porReglaOrig[a.servicio] && Object.keys(g._porReglaOrig).length > 1){
+          const sub = g._porReglaOrig[a.servicio];
+          const delta = a.valor - sub.pago;
+          g.pago += delta;
+          if(esM) g.pagoM += (a.valor - sub.pagoM);
+          sub.pago = a.valor; if(esM) sub.pagoM = a.valor;
+        } else {
+          g.pago = a.valor; g.pagoM = esM ? a.valor : 0;
+        }
+        g.unit = g.cant ? g.pago/g.cant : g.pago; g.uniforme=false; g.acuerdo=a;
       } else if(a.tipo==='medico'){
         const scopeAcu = a.bloque==='cir' ? 'Cirugía' : (a.mutual ? 'Sede 2' : 'Sede Principal');
         if(sedeSel && scopeAcu !== sedeSel && a.tipoSv !== 'descuento') continue;
@@ -15242,7 +15269,11 @@ function acNota(a){
 function edGrupo(med, servicio, uf){
   const d = RESULT && RESULT.porMedico && RESULT.porMedico[med]; if(!d) return null;
   const bl = (uf==='Quirófano'||uf==='Anestesia'||uf==='Mes completo') ? d.cir : d.sede;
-  return Object.values(bl).find(g=>g.servicio===servicio && g.uf===uf) || Object.values(d.cir).concat(Object.values(d.sede)).find(g=>g.servicio===servicio) || null;
+  const allG = Object.values(d.cir).concat(Object.values(d.sede));
+  return Object.values(bl).find(g=>g.servicio===servicio && g.uf===uf)
+    || allG.find(g=>g.servicio===servicio)
+    || Object.values(bl).find(g=>g.uf===uf && g._reglasOrig && g._reglasOrig.has(servicio))
+    || allG.find(g=>g._reglasOrig && g._reglasOrig.has(servicio)) || null;
 }
 function edRenglon(el, med, servicio, uf, pagoActual){
   if(!RESULT){ alert('Primero liquide.'); return; }
