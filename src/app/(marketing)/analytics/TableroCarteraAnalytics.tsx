@@ -1165,21 +1165,60 @@ export default function TableroCarteraAnalytics() {
     datosSismaVivo,
   ]);
 
-  // Agrupación real por empresa para las 2 Tortas Ejecutivas (TODAS las empresas con saldo > 0 en ese indicador, cero "Otras" y cero tajadas falsas en $0)
+  const formatearPctDonut = (pct: number): string => {
+    if (pct <= 0) return "0.0%";
+    if (pct < 1) return `${pct.toFixed(2)}%`;
+    return `${pct.toFixed(1)}%`;
+  };
+
+  // Agrupación real por empresa para las 2 Tortas Ejecutivas: divide SIEMPRE entre la totalidad de la cartera del período (totalUniverso)
   const construirItemsDonut = (campo: "total" | "vencida", paleta: string[]) => {
+    const origenCatalogo =
+      datosSismaVivo?.catalogoEmpresasPeriodo ||
+      (tieneFiltroFechaBarra
+        ? datosSismaVivo?.topEmpresas
+        : datosSismaCompletaRef.current?.topEmpresas) ||
+      datosSismaCompletaRef.current?.topEmpresas ||
+      carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
+      [];
+
+    let totalUniverso = 0;
+    for (const emp of origenCatalogo) {
+      const clave = normalizarEmpresaCorta(emp.razonSocial);
+      if (clave === "OTRAS" || clave === "OTRAS ENTIDADES") continue;
+      if (
+        !incluirMutual &&
+        (clave.includes("MUTUAL") ||
+          String(emp.razonSocial || "").toUpperCase().includes("MUTUAL"))
+      ) {
+        continue;
+      }
+      totalUniverso += Math.max(0, Number(emp[campo] || 0));
+    }
+
+    const hayFiltroSubconjunto =
+      (empresasFrecSel.length > 0 &&
+        empresasFrecSel.length < todasLasEmpresasDisponibles.length) ||
+      filtroEmpresa !== "TODAS" ||
+      (responsablesFrecSel.length > 0 &&
+        responsablesFrecSel.length <
+          carteraInitialData.responsablesDisponibles.length) ||
+      filtroResponsable !== "TODAS";
+
     const agrupado = new Map<string, { val: number; totalRef: number }>();
     for (const emp of empresasSismaFiltradas) {
       const clave = normalizarEmpresaCorta(emp.razonSocial);
       if (clave === "OTRAS" || clave === "OTRAS ENTIDADES") continue;
       const val = Math.max(0, Number(emp[campo] || 0));
       const tot = Math.max(0, Number(emp.total || 0));
-      if (val <= 0) continue;
+      if (val <= 0 && (!hayFiltroSubconjunto || tot <= 0)) continue;
       const prev = agrupado.get(clave) || { val: 0, totalRef: 0 };
       agrupado.set(clave, {
         val: prev.val + val,
         totalRef: prev.totalRef + tot,
       });
     }
+
     const ordenadas = Array.from(agrupado.entries())
       .map(([empCorta, d]) => ({
         empCorta,
@@ -1189,19 +1228,28 @@ export default function TableroCarteraAnalytics() {
       .sort((a, b) => b.valor - a.valor || b.totalRef - a.totalRef);
 
     const sumaTotal = ordenadas.reduce((acc, x) => acc + x.valor, 0);
-    if (ordenadas.length === 0 || sumaTotal <= 0) {
-      return { sumaTotal: 0, items: [] };
+    const denominadorTotal = Math.max(totalUniverso, sumaTotal);
+
+    if (ordenadas.length === 0 || denominadorTotal <= 0) {
+      return {
+        sumaTotal: 0,
+        totalUniverso: Math.max(0, totalUniverso),
+        hayFiltroSubconjunto,
+        items: [],
+      };
     }
 
     return {
       sumaTotal,
+      totalUniverso: denominadorTotal,
+      hayFiltroSubconjunto,
       items: ordenadas.map((it, idx) => ({
         empCorta: it.empCorta,
         nombreLista: formatearNombreEmpresaLista(it.empCorta),
         nombreAnillo: formatearNombreCortoAnillo(it.empCorta),
         valor: it.valor,
-        pct: sumaTotal > 0 ? (it.valor / sumaTotal) * 100 : 0,
-        color: paleta[idx % paleta.length],
+        pct: denominadorTotal > 0 ? (it.valor / denominadorTotal) * 100 : 0,
+        color: it.valor > 0 ? paleta[idx % paleta.length] : "#CBD5E1",
       })),
     };
   };
@@ -1251,13 +1299,13 @@ export default function TableroCarteraAnalytics() {
   const donutCarteraTotal = useMemo(
     () => construirItemsDonut("total", PALETA_DONUT_TOTAL),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [empresasSismaFiltradas]
+    [empresasSismaFiltradas, datosSismaVivo, incluirMutual]
   );
 
   const donutCarteraVencida = useMemo(
     () => construirItemsDonut("vencida", PALETA_DONUT_VENCIDA),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [empresasSismaFiltradas]
+    [empresasSismaFiltradas, datosSismaVivo, incluirMutual]
   );
 
   const toggleFiltroEmpresaDesdeTorta = (empCorta: string) => {
@@ -1278,6 +1326,8 @@ export default function TableroCarteraAnalytics() {
     etiquetaCentro: string,
     datosDonut: {
       sumaTotal: number;
+      totalUniverso: number;
+      hayFiltroSubconjunto: boolean;
       items: {
         empCorta: string;
         nombreLista: string;
@@ -1293,16 +1343,36 @@ export default function TableroCarteraAnalytics() {
     const rOuter = 112;
     const rInner = 68;
 
-    // Construir segmentos normalizados para que TODAS las entidades tengan su parte visible en el anillo
-    const barridosRaw = datosDonut.items.map((it) =>
-      Math.max(0.018, (it.pct / 100) * Math.PI * 2)
+    // Solo las entidades con valor > 0 dibujan tajada y línea guía en el anillo
+    const itemsConSaldo = datosDonut.items.filter((it) => it.valor > 0);
+    const restoUniverso = Math.max(0, datosDonut.totalUniverso - datosDonut.sumaTotal);
+    const pctSeleccionTotal =
+      datosDonut.totalUniverso > 0
+        ? (datosDonut.sumaTotal / datosDonut.totalUniverso) * 100
+        : 0;
+    const mostrarRestoEnAnillo =
+      datosDonut.hayFiltroSubconjunto && restoUniverso > 1;
+
+    // Si hay filtro de subconjunto, cada empresa ocupa su proporción frente al Total General (con mínimo visual de 0.055 rad para que sea visible y señalable sin repartir 100% entre las filtradas)
+    const barridosRaw = itemsConSaldo.map((it) =>
+      Math.max(
+        mostrarRestoEnAnillo ? 0.055 : 0.018,
+        (it.pct / 100) * Math.PI * 2
+      )
     );
     const sumaBarridos =
       barridosRaw.reduce((acc, b) => acc + b, 0) || Math.PI * 2;
-    const factorEscala = (Math.PI * 2) / sumaBarridos;
+    const maxCirculoPermitido = mostrarRestoEnAnillo
+      ? Math.PI * 2 * 0.92
+      : Math.PI * 2;
+    const factorEscala = mostrarRestoEnAnillo
+      ? sumaBarridos > maxCirculoPermitido
+        ? maxCirculoPermitido / sumaBarridos
+        : 1
+      : (Math.PI * 2) / sumaBarridos;
 
     let anguloAcum = -Math.PI / 2;
-    const segmentos = datosDonut.items.map((it, idx) => {
+    const segmentos = itemsConSaldo.map((it, idx) => {
       const barrido = barridosRaw[idx] * factorEscala;
       const startAngle = anguloAcum;
       const endAngle = anguloAcum + barrido;
@@ -1325,7 +1395,7 @@ export default function TableroCarteraAnalytics() {
     const izqRaw: CalloutSlot[] = [];
     const derRaw: CalloutSlot[] = [];
 
-    // Repartir TODAS las entidades (0 recortes) entre izquierda y derecha del anillo sin cruzar el círculo
+    // Repartir TODAS las entidades con saldo entre izquierda y derecha del anillo sin cruzar el círculo
     const corteIzqMax = Math.ceil((segmentos.length - 1) / 2);
     segmentos.forEach((seg, idx) => {
       const cos = Math.cos(seg.midAngle);
@@ -1333,11 +1403,11 @@ export default function TableroCarteraAnalytics() {
       const anchorX = cx + (rOuter + 1) * cos;
       const anchorY = cy + (rOuter + 1) * sin;
 
-      // Segmento 0 (mayor, ej. Mutual) y el bloque superior cercano a las 12 en punto van a la derecha; el resto a la izquierda
-      const vaDerecha = idx === 0 || (cos >= 0 && idx <= 2) || idx > corteIzqMax;
+      const vaDerecha = mostrarRestoEnAnillo
+        ? idx % 2 === 0
+        : idx === 0 || (cos >= 0 && idx <= 2) || idx > corteIzqMax;
       const lado: "izq" | "der" = vaDerecha ? "der" : "izq";
 
-      // Si está en el cuadrante superior izquierdo y sale hacia la derecha, sube por encima del borde superior del anillo
       const requierePasoSuperior = lado === "der" && anchorX < cx - 2;
       const ordenSuperior = Math.max(0, idx - (corteIzqMax + 1));
       const pasoSuperiorY = requierePasoSuperior
@@ -1345,7 +1415,7 @@ export default function TableroCarteraAnalytics() {
         : undefined;
 
       const labelYInicial =
-        idx === 0
+        !mostrarRestoEnAnillo && idx === 0
           ? cy + 85
           : requierePasoSuperior && pasoSuperiorY !== undefined
           ? pasoSuperiorY
@@ -1427,51 +1497,54 @@ export default function TableroCarteraAnalytics() {
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
-          {/* ANILLO GRANDE CON EL 100% DE LAS ENTIDADES SEÑALADAS Y PORCENTAJES NÍTIDOS EN UNA SOLA LÍNEA */}
+          {/* ANILLO GRANDE CON PROPORCIÓN REAL SOBRE EL TOTAL GENERAL DE LA CARTERA */}
           <div className="sm:col-span-7 flex items-center justify-center">
             <svg
               viewBox="-14 45 408 335"
               className="w-full max-w-[455px] h-[310px] select-none overflow-visible"
             >
-              {segmentos.length === 0 ? (
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={(rOuter + rInner) / 2}
-                  fill="none"
-                  stroke="#E2E8F0"
-                  strokeWidth={rOuter - rInner}
-                />
-              ) : (
-                segmentos.map((seg) => {
-                  const activa = empresasFrecSel.includes(seg.empCorta);
-                  return (
-                    <path
-                      key={seg.empCorta}
-                      d={crearArcoDonutPath(seg.startAngle, seg.endAngle)}
-                      fill={seg.color}
-                      stroke="#FFFFFF"
-                      strokeWidth="1.1"
-                      className="cursor-pointer transition-opacity hover:opacity-90"
-                      style={{
-                        opacity:
-                          empresasFrecSel.length > 0 && !activa ? 0.55 : 1,
-                      }}
-                      onClick={() => toggleFiltroEmpresaDesdeTorta(seg.empCorta)}
-                    >
-                      <title>{`${seg.nombreLista}: ${formatCOP(seg.valor)} (${seg.pct.toFixed(1)}%)`}</title>
-                    </path>
-                  );
-                })
-              )}
+              {/* Aro base del Total General de la Cartera (visible cuando hay filtro o saldo $0) */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={(rOuter + rInner) / 2}
+                fill="none"
+                stroke="#E2E8F0"
+                strokeWidth={rOuter - rInner}
+              >
+                {mostrarRestoEnAnillo && (
+                  <title>{`Resto de la cartera (${etiquetaCentro}): ${formatCOP(restoUniverso)} (${formatearPctDonut(Math.max(0, 100 - pctSeleccionTotal))} de ${formatCOP(datosDonut.totalUniverso)})`}</title>
+                )}
+              </circle>
+
+              {segmentos.map((seg) => {
+                const activa = empresasFrecSel.includes(seg.empCorta);
+                return (
+                  <path
+                    key={seg.empCorta}
+                    d={crearArcoDonutPath(seg.startAngle, seg.endAngle)}
+                    fill={seg.color}
+                    stroke="#FFFFFF"
+                    strokeWidth="1.1"
+                    className="cursor-pointer transition-opacity hover:opacity-90"
+                    style={{
+                      opacity:
+                        empresasFrecSel.length > 0 && !activa ? 0.55 : 1,
+                    }}
+                    onClick={() => toggleFiltroEmpresaDesdeTorta(seg.empCorta)}
+                  >
+                    <title>{`${seg.nombreLista}: ${formatCOP(seg.valor)} (${formatearPctDonut(seg.pct)} del total general ${formatCOP(datosDonut.totalUniverso)})`}</title>
+                  </path>
+                );
+              })}
 
               {/* Agujero blanco central grande y cifra ejecutiva */}
               <circle cx={cx} cy={cy} r={rInner - 1} fill="#FFFFFF" />
               <text
                 x={cx}
-                y={cy - 2}
+                y={mostrarRestoEnAnillo ? cy - 8 : cy - 2}
                 textAnchor="middle"
-                fontSize="20"
+                fontSize="19.5"
                 fontWeight="800"
                 fill="#0F172A"
               >
@@ -1479,16 +1552,28 @@ export default function TableroCarteraAnalytics() {
               </text>
               <text
                 x={cx}
-                y={cy + 16}
+                y={mostrarRestoEnAnillo ? cy + 8 : cy + 16}
                 textAnchor="middle"
-                fontSize="11.5"
+                fontSize="11"
                 fontWeight="600"
                 fill="#475569"
               >
                 {etiquetaCentro}
               </text>
+              {mostrarRestoEnAnillo && (
+                <text
+                  x={cx}
+                  y={cy + 23}
+                  textAnchor="middle"
+                  fontSize="9.5"
+                  fontWeight="700"
+                  fill="#1D58D8"
+                >
+                  {`${formatearPctDonut(pctSeleccionTotal)} de ${formatMillones(datosDonut.totalUniverso)}`}
+                </text>
+              )}
 
-              {/* Líneas guía con Entidad + % en una sola línea clara sobre cada guía */}
+              {/* Líneas guía con Entidad + % sobre el Total General en una sola línea clara */}
               {callouts.map((c) => {
                 const pts =
                   c.pasoSuperiorY !== undefined
@@ -1516,7 +1601,7 @@ export default function TableroCarteraAnalytics() {
                     >
                       {c.nombreAnillo}{" "}
                       <tspan fontWeight="800" fill="#0E245E">
-                        {c.pct.toFixed(1)}%
+                        {formatearPctDonut(c.pct)}
                       </tspan>
                     </text>
                   </g>
@@ -1525,7 +1610,7 @@ export default function TableroCarteraAnalytics() {
             </svg>
           </div>
 
-          {/* LEYENDA CON BARRA DE SCROLL VERTICAL Y ENCABEZADO FIJO $M | % */}
+          {/* LEYENDA CON BARRA DE SCROLL VERTICAL Y ENCABEZADO FIJO $M | % TOTAL */}
           <div className="sm:col-span-5 max-h-[310px] overflow-y-auto space-y-0.5 pl-1 pr-1.5">
             <div
               className="sticky top-0 z-10 flex items-center justify-end gap-2 px-1.5 py-1 text-[10px] font-bold border-b mb-1"
@@ -1536,7 +1621,7 @@ export default function TableroCarteraAnalytics() {
               }}
             >
               <span>$M</span>
-              <span className="w-10 text-right">%</span>
+              <span className="w-11 text-right">% Total</span>
             </div>
             {datosDonut.items.length === 0 ? (
               <div
@@ -1546,44 +1631,57 @@ export default function TableroCarteraAnalytics() {
                 Sin saldo en este concepto para la selección actual ($0)
               </div>
             ) : (
-              datosDonut.items.map((it) => {
-                const sel = empresasFrecSel.includes(it.empCorta);
-                return (
+              <>
+                {datosDonut.items.map((it) => {
+                  const sel = empresasFrecSel.includes(it.empCorta);
+                  return (
+                    <div
+                      key={`leg-${it.empCorta}`}
+                      onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
+                      title={`${it.nombreLista}: ${formatCOP(it.valor)} (${formatearPctDonut(it.pct)} del total general ${formatCOP(datosDonut.totalUniverso)}) — Clic para filtrar`}
+                      className="flex items-center justify-between gap-1.5 px-1.5 py-[2.5px] rounded-md cursor-pointer transition hover:bg-slate-50"
+                      style={{
+                        backgroundColor: sel ? "#EFF6FF" : "transparent",
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: it.color }}
+                        />
+                        <span
+                          className="text-[10.5px] font-semibold truncate"
+                          style={{ color: "#0F172A" }}
+                        >
+                          {it.nombreLista}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 text-[10.5px] font-mono">
+                        <span className="font-bold" style={{ color: "#0F172A" }}>
+                          {formatMillones(it.valor)}
+                        </span>
+                        <span
+                          className="w-11 text-right font-bold"
+                          style={{ color: "#0E245E" }}
+                        >
+                          {formatearPctDonut(it.pct)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {mostrarRestoEnAnillo && (
                   <div
-                    key={`leg-${it.empCorta}`}
-                    onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
-                    title={`${it.nombreLista}: ${formatCOP(it.valor)} (${it.pct.toFixed(1)}%) — Clic para filtrar`}
-                    className="flex items-center justify-between gap-1.5 px-1.5 py-[2.5px] rounded-md cursor-pointer transition hover:bg-slate-50"
-                    style={{
-                      backgroundColor: sel ? "#EFF6FF" : "transparent",
-                    }}
+                    className="mt-1.5 pt-1.5 px-1.5 border-t flex items-center justify-between text-[10px] font-semibold"
+                    style={{ borderColor: "#E2ECF8", color: "#475569" }}
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: it.color }}
-                      />
-                      <span
-                        className="text-[10.5px] font-semibold truncate"
-                        style={{ color: "#0F172A" }}
-                      >
-                        {it.nombreLista}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0 text-[10.5px] font-mono">
-                      <span className="font-bold" style={{ color: "#0F172A" }}>
-                        {formatMillones(it.valor)}
-                      </span>
-                      <span
-                        className="w-10 text-right font-bold"
-                        style={{ color: "#0E245E" }}
-                      >
-                        {it.pct.toFixed(1)}%
-                      </span>
-                    </div>
+                    <span>Total general período</span>
+                    <span className="font-mono font-bold" style={{ color: "#0F172A" }}>
+                      {formatMillones(datosDonut.totalUniverso)} (100%)
+                    </span>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </div>
         </div>
