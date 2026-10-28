@@ -10463,11 +10463,36 @@ function ladoDe(med, valor, regla){
         for(const [v,l] of arr) (_LADOV[hh]=_LADOV[hh]||{})[v]=l; } } }
   const L=_LADOV[med]; return (L && L[Math.round(valor||0)]) || '';
 }
-// «113 × varias tarifas» no dice nada: se abre en cuántos van a cada valor (y de qué ojo)
+// Desglose limpio por renglón: cantidad × tarifa unitaria a la izquierda y subtotal a la derecha
 function desgloseTarifas(med, g){
-  const c={}; for(const r of (g.recs||[])){ const v=Math.round(r.total||0); const k=v+'|'+ladoDe(med, r.total, r.regla); c[k]=(c[k]||0)+1; }
-  const ks=Object.keys(c).sort((a,b)=>parseInt(b)-parseInt(a)); if(!ks.length || ks.length>4) return null;
-  return ks.map(k=>{ const [v,l]=k.split('|'); return c[k].toLocaleString('es-CO')+(l?' '+latTxt(l):'')+' × '+money(+v); }).join(' + ');
+  const filaTieneLado = /\((un ojo|ambos ojos)\)\s*$/i.test(String((g&&g.servicio)||''));
+  const c={};
+  for(const r of ((g&&g.recs)||[])){
+    const v=Math.round(r.total||0);
+    const l=filaTieneLado ? '' : ladoDe(med, r.total, r.regla);
+    const k=v+'|'+l;
+    c[k]=(c[k]||0)+1;
+  }
+  const ks=Object.keys(c).sort((a,b)=>{
+    const [va]=a.split('|'), [vb]=b.split('|');
+    return (c[b]-c[a]) || (parseInt(vb)-parseInt(va));
+  });
+  if(!ks.length) return null;
+  if(ks.length===1){
+    const [v,l]=ks[0].split('|');
+    return c[ks[0]].toLocaleString('es-CO')+(l?' '+latTxt(l):'')+' × '+money(+v);
+  }
+  const filaHTML = k => {
+    const [v,l]=k.split('|');
+    const cant=c[k], unit=+v, sub=cant*unit;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:3px 8px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12.5px;line-height:1.35"><span><b>${cant.toLocaleString('es-CO')}</b>${l?' <span style="color:#64748b;font-size:11.5px">'+latTxt(l)+'</span>':''} <span style="color:#64748b">×</span> ${money(unit)}</span><span style="color:#475569;font-weight:600;font-size:12px;white-space:nowrap">${money(sub)}</span></div>`;
+  };
+  if(ks.length<=5){
+    return `<div class="tar-breakdown-list" style="display:flex;flex-direction:column;gap:4px;max-width:340px">${ks.map(filaHTML).join('')}</div>`;
+  }
+  const vis = ks.slice(0,4), rest = ks.slice(4);
+  const restCant = rest.reduce((s,k)=>s+c[k],0);
+  return `<div class="tar-breakdown-list" style="display:flex;flex-direction:column;gap:4px;max-width:340px">${vis.map(filaHTML).join('')}<details onclick="event.stopPropagation()" style="margin-top:2px"><summary style="cursor:pointer;font-size:11.5px;color:var(--brand,#0f5c4d);font-weight:600;padding:2px 4px;user-select:none">+ Ver ${rest.length} tarifa${rest.length>1?'s':''} más (${restCant.toLocaleString('es-CO')} ${restCant===1?'atención':'atenciones'})</summary><div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">${rest.map(filaHTML).join('')}</div></details></div>`;
 }
 // el título del renglón dice de qué ojo es cuando el renglón está separado por ojo
 function fraseLado(sv){ const m=String(sv||'').match(/\((un ojo|ambos ojos)\)\s*$/i);
@@ -10532,10 +10557,11 @@ function detalleHTML(d, med, f){
         const acN = g.acuerdo ? `<div class="obs" style="color:#9a6a00">${acNota(g.acuerdo)} <a href="#" onclick="event.stopPropagation();acQuitarDeFila('${med.replace(/'/g,"\\'")}','${String(g.servicio).replace(/'/g,"\\'")}','${g.uf}','${String(g.acuerdo.id||'').replace(/'/g,"\\'")}');return false" style="color:#a4262c;font-weight:600;margin-left:6px">quitar</a></div>` : '';
         // el valor se cambia AQUÍ: se toca y se vuelve un campo, como una casilla de Excel
         const ed = `edRenglon(this,'${med.replace(/'/g,"\\'")}','${String(g.servicio).replace(/'/g,"\\'")}','${g.uf}',${Math.round(pago)})`;
-        hh+=`<tr class="clickable${g.rev?' revfila':''}" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(jorPac(g))},this)">
-          <td><b>${fraseLado(g.servicio)}</b>${g.rev?'<span class="revpill">⚠ revisar</span>':''}${(()=>{ const js=jorResumen(g); return js || (g.obs?`<div class="obs">${g.obs}</div>`:''); })()}${acN}</td>
-          <td>${cxt}</td>
-          <td class="num"><span class="valed${g.acuerdo?' tocado':''}" title="Tocar para cambiar este valor" onclick="event.stopPropagation();${ed}"><b>${money(pago)}</b><i>✎</i></span></td></tr>`;
+        const _badgeCant = (!esJor && g.uniforme===false && g.cant>1) ? ` <span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;font-size:11px;font-weight:600;vertical-align:middle">${g.cant.toLocaleString('es-CO')} en total</span>` : '';
+        hh+=`<tr class="clickable${g.rev?' revfila':''}" title="${String(g.obs||'Clic para ver relación de pacientes').replace(/"/g,'&quot;')}" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(jorPac(g))},this)">
+          <td style="vertical-align:top;padding-top:10px"><b>${fraseLado(g.servicio)}</b>${_badgeCant}${g.rev?'<span class="revpill">⚠ revisar</span>':''}${(()=>{ const js=jorResumen(g); return js || (esJor && g.obs?`<div class="obs">${g.obs}</div>`:''); })()}${acN}</td>
+          <td style="vertical-align:top;padding-top:8px">${cxt}</td>
+          <td class="num" style="vertical-align:top;padding-top:10px"><span class="valed${g.acuerdo?' tocado':''}" title="Tocar para cambiar este valor" onclick="event.stopPropagation();${ed}"><b>${money(pago)}</b><i>✎</i></span></td></tr>`;
       }
       hh+=`<tr class="trow"><td colspan="2">Subtotal ${titulo.toLowerCase()}</td><td class="num">${money(tp)}</td></tr></table>`;
     }
