@@ -1220,8 +1220,8 @@ export default function TableroCarteraAnalytics() {
     const prepararLadoSinMontar = (lista: CalloutSlot[]) => {
       const ordenados = [...lista].sort((a, b) => a.labelY - b.labelY);
       const minGap = 20.5;
-      const minY = 16;
-      const maxY = 464;
+      const minY = 56;
+      const maxY = 368;
       for (let i = 0; i < ordenados.length; i++) {
         ordenados[i].labelY = Math.max(minY, Math.min(maxY, ordenados[i].labelY));
         if (i > 0 && ordenados[i].labelY - ordenados[i - 1].labelY < minGap) {
@@ -1281,8 +1281,8 @@ export default function TableroCarteraAnalytics() {
           {/* ANILLO GRANDE CON EL 100% DE LAS ENTIDADES SEÑALADAS Y ORGANIZADAS */}
           <div className="sm:col-span-7 flex items-center justify-center">
             <svg
-              viewBox="0 0 380 480"
-              className="w-full max-w-[440px] h-[480px] select-none overflow-visible"
+              viewBox="0 45 380 335"
+              className="w-full max-w-[440px] h-[310px] select-none overflow-visible"
             >
               {segmentos.length === 0 ? (
                 <circle
@@ -1385,11 +1385,15 @@ export default function TableroCarteraAnalytics() {
             </svg>
           </div>
 
-          {/* LISTADO COMPLETO DE TODAS LAS ENTIDADES CON ENCABEZADOS $M Y % (CERO SCROLL, CERO "OTRAS") */}
-          <div className="sm:col-span-5 space-y-0.5 pl-1">
+          {/* LEYENDA CON BARRA DE SCROLL VERTICAL Y ENCABEZADO FIJO $M | % */}
+          <div className="sm:col-span-5 max-h-[310px] overflow-y-auto space-y-0.5 pl-1 pr-1.5">
             <div
-              className="flex items-center justify-end gap-2 px-1.5 pb-1 text-[10px] font-bold border-b mb-1"
-              style={{ color: "#475569", borderColor: "#E2ECF8" }}
+              className="sticky top-0 z-10 flex items-center justify-end gap-2 px-1.5 py-1 text-[10px] font-bold border-b mb-1"
+              style={{
+                color: "#475569",
+                borderColor: "#E2ECF8",
+                backgroundColor: "#FFFFFF",
+              }}
             >
               <span>$M</span>
               <span className="w-9 text-right">%</span>
