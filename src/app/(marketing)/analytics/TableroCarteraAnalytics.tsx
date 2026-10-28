@@ -336,9 +336,7 @@ export default function TableroCarteraAnalytics() {
   const [ddFrecAbierto, setDdFrecAbierto] = useState<
     "year" | "month" | "dias" | "grp" | "resp" | null
   >(null);
-  const [aniosFrecSel, setAniosFrecSel] = useState<string[]>(
-    () => [...ANIOS_SISMA_DISPONIBLES]
-  );
+  const [aniosFrecSel, setAniosFrecSel] = useState<string[]>([]);
   const [mesesFrecSel, setMesesFrecSel] = useState<string[]>([]);
   const [empresasFrecSel, setEmpresasFrecSel] = useState<string[]>([]);
   const [responsablesFrecSel, setResponsablesFrecSel] = useState<string[]>([]);
@@ -497,14 +495,32 @@ export default function TableroCarteraAnalytics() {
     }
   ) => {
     const corteConsulta = fechaISO || fechaCorteVivo || "2026-10-20";
-    const aniosAct = filtrosCustom?.anios ?? aniosFrecSel;
+    const aniosBase = filtrosCustom?.anios ?? aniosFrecSel;
+    const aniosAct =
+      aniosBase.length > 0 && aniosBase.length < ANIOS_SISMA_DISPONIBLES.length
+        ? aniosBase
+        : filtroAnio !== "TODOS"
+        ? [filtroAnio]
+        : [];
     const mesesAct = filtrosCustom?.meses ?? mesesFrecSel;
     const diasAct = filtrosCustom?.diasActivo ?? diasFiltroActivo;
     const desdeAct = filtrosCustom?.desde ?? diasDesde;
     const hastaAct = filtrosCustom?.hasta ?? diasHasta;
     const semAct = filtrosCustom?.diasSem ?? diasSemanaSel;
-    const empAct = filtrosCustom?.empresas ?? empresasFrecSel;
-    const respAct = filtrosCustom?.responsables ?? responsablesFrecSel;
+    const empBase = filtrosCustom?.empresas ?? empresasFrecSel;
+    const empAct =
+      empBase.length > 0
+        ? empBase
+        : filtroEmpresa !== "TODAS"
+        ? [filtroEmpresa]
+        : [];
+    const respBase = filtrosCustom?.responsables ?? responsablesFrecSel;
+    const respAct =
+      respBase.length > 0
+        ? respBase
+        : filtroResponsable !== "TODAS"
+        ? [filtroResponsable]
+        : [];
     const mutAct = filtrosCustom?.mutual ?? incluirMutual;
 
     const params = new URLSearchParams();
@@ -512,7 +528,7 @@ export default function TableroCarteraAnalytics() {
     if (aniosAct.length > 0 && aniosAct.length < ANIOS_SISMA_DISPONIBLES.length) {
       params.set("anios", aniosAct.join(","));
     }
-    if (mesesAct.length > 0) {
+    if (mesesAct.length > 0 && mesesAct.length < 12) {
       params.set("meses", mesesAct.join(","));
     }
     if (diasAct) {
@@ -532,7 +548,7 @@ export default function TableroCarteraAnalytics() {
 
     const esSinFiltro =
       mutAct &&
-      (aniosAct.length === 0 || aniosAct.length >= ANIOS_SISMA_DISPONIBLES.length) &&
+      aniosAct.length === 0 &&
       mesesAct.length === 0 &&
       !diasAct &&
       empAct.length === 0 &&
@@ -559,21 +575,19 @@ export default function TableroCarteraAnalytics() {
           const p = f.slice(0, 10).split("/");
           return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : f;
         };
-        setCortesTodas((prev) => {
-          const sinDuplicado = prev.filter(
-            (c) =>
-              !c.fechaCorte.includes("SISMA Vivo") &&
-              c.fechaCorte.slice(0, 10) !== json.fechaCorte.slice(0, 10)
-          );
-          const nuevaLista = [...sinDuplicado, json.resumenCorte].sort((a, b) =>
-            aClaveOrden(a.fechaCorte).localeCompare(aClaveOrden(b.fechaCorte))
-          );
-          const nuevoIdx = nuevaLista.findIndex(
-            (c) => c.fechaCorte.slice(0, 10) === json.fechaCorte.slice(0, 10)
-          );
-          setIndiceCorteActivo(nuevoIdx !== -1 ? nuevoIdx : nuevaLista.length - 1);
-          return nuevaLista;
-        });
+        const sinDuplicado = cortesTodas.filter(
+          (c) =>
+            !c.fechaCorte.includes("SISMA Vivo") &&
+            c.fechaCorte.slice(0, 10) !== json.fechaCorte.slice(0, 10)
+        );
+        const nuevaLista = [...sinDuplicado, json.resumenCorte].sort((a, b) =>
+          aClaveOrden(a.fechaCorte).localeCompare(aClaveOrden(b.fechaCorte))
+        );
+        const nuevoIdx = nuevaLista.findIndex(
+          (c) => c.fechaCorte.slice(0, 10) === json.fechaCorte.slice(0, 10)
+        );
+        setCortesTodas(nuevaLista);
+        setIndiceCorteActivo(nuevoIdx !== -1 ? nuevoIdx : nuevaLista.length - 1);
         setModalidadSisma("TODAS");
       }
       if (!silencioso) {
@@ -597,16 +611,17 @@ export default function TableroCarteraAnalytics() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-sincronizar automáticamente cuando el usuario cambia Año, Mes, Empresa, Responsable o Mutual
+  // Re-sincronizar automáticamente cuando el usuario cambia cualquier filtro superior o inferior
   const primeraCargaRef = useRef<boolean>(true);
   useEffect(() => {
     if (primeraCargaRef.current) {
       primeraCargaRef.current = false;
       return;
     }
+    const hoyCol = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const timer = setTimeout(() => {
-      sincronizarConSismaVivo(fechaCorteVivo, true);
-    }, 150);
+      sincronizarConSismaVivo(fechaCorteVivo || hoyCol, true);
+    }, 120);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -615,6 +630,13 @@ export default function TableroCarteraAnalytics() {
     empresasFrecSel,
     responsablesFrecSel,
     incluirMutual,
+    filtroAnio,
+    filtroEmpresa,
+    filtroResponsable,
+    diasFiltroActivo,
+    diasDesde,
+    diasHasta,
+    diasSemanaSel,
   ]);
 
   const MESES_NOMBRES = [
@@ -862,14 +884,13 @@ export default function TableroCarteraAnalytics() {
   };
 
   const limpiarTodosLosFiltros = () => {
-    const todosAnios = [...ANIOS_SISMA_DISPONIBLES];
     setFiltroAnio("TODOS");
     setFiltroEmpresa("TODAS");
     setFiltroTipo("TODOS");
     setFiltroEstado("TODOS");
     setFiltroResponsable("TODAS");
     setBusqueda("");
-    setAniosFrecSel(todosAnios);
+    setAniosFrecSel([]);
     setMesesFrecSel([]);
     setEmpresasFrecSel([]);
     setResponsablesFrecSel([]);
@@ -886,7 +907,7 @@ export default function TableroCarteraAnalytics() {
     setColMenuAbierto(null);
     setPaginaActual(1);
     sincronizarConSismaVivo(fechaCorteVivo, true, {
-      anios: todosAnios,
+      anios: [],
       meses: [],
       diasActivo: false,
       desde: "",
@@ -897,6 +918,42 @@ export default function TableroCarteraAnalytics() {
       mutual: true,
     });
   };
+
+  const seleccionarCorteYSincronizar = (idxCorte: number, fechaRaw?: string) => {
+    setIndiceCorteActivo(idxCorte);
+    const fStr = String(
+      fechaRaw || listaCortesActiva[idxCorte]?.fechaCorte || ""
+    ).slice(0, 10);
+    const partes = fStr.split("/");
+    if (partes.length === 3) {
+      const iso = `${partes[2]}-${partes[1]}-${partes[0]}`;
+      setFechaCorteVivo(iso);
+      if (modalidadSisma === "TODAS") {
+        sincronizarConSismaVivo(iso, true);
+      }
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(fStr)) {
+      setFechaCorteVivo(fStr);
+      if (modalidadSisma === "TODAS") {
+        sincronizarConSismaVivo(fStr, true);
+      }
+    }
+  };
+
+  const todasLasEmpresasDisponibles = useMemo(() => {
+    const setEmp = new Set<string>(carteraInitialData.empresasDisponibles);
+    const baseSisma =
+      datosSismaCompletaRef.current?.topEmpresas ||
+      datosSismaVivo?.topEmpresas ||
+      carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
+      [];
+    for (const e of baseSisma) {
+      const c = normalizarEmpresaCorta(e.razonSocial);
+      if (c && c !== "OTRAS" && c !== "OTRAS ENTIDADES" && c !== "SIN ENTIDAD") {
+        setEmp.add(c);
+      }
+    }
+    return Array.from(setEmp).sort((a, b) => a.localeCompare(b));
+  }, [datosSismaVivo]);
 
   const tieneFiltroFechaBarra =
     (aniosFrecSel.length > 0 &&
@@ -1904,7 +1961,7 @@ export default function TableroCarteraAnalytics() {
                     <div
                       key={c.id}
                       onClick={() => {
-                        setIndiceCorteActivo(c.idxCorte);
+                        seleccionarCorteYSincronizar(c.idxCorte, c.fechaRaw);
                         setModoTendenciaCartera("CORTES");
                       }}
                       title="Clic para seleccionar este corte y verlo en la gráfica"
@@ -2966,7 +3023,8 @@ export default function TableroCarteraAnalytics() {
             }}
           >
             <span>
-              {aniosFrecSel.length === 0
+              {aniosFrecSel.length === 0 ||
+              aniosFrecSel.length === ANIOS_SISMA_DISPONIBLES.length
                 ? "Todos los años"
                 : [...aniosFrecSel].sort().join(" · ")}
             </span>
@@ -2987,7 +3045,7 @@ export default function TableroCarteraAnalytics() {
                 <button
                   type="button"
                   onClick={() => {
-                    setAniosFrecSel([...ANIOS_SISMA_DISPONIBLES]);
+                    setAniosFrecSel([]);
                     setFiltroAnio("TODOS");
                     setPaginaActual(1);
                   }}
@@ -3023,9 +3081,16 @@ export default function TableroCarteraAnalytics() {
                   return (
                     <div
                       key={yr}
-                      onClick={() =>
-                        toggleItemEnLista(aniosFrecSel, yr, setAniosFrecSel)
-                      }
+                      onClick={() => {
+                        if (
+                          aniosFrecSel.length === ANIOS_SISMA_DISPONIBLES.length
+                        ) {
+                          setAniosFrecSel([yr]);
+                          setPaginaActual(1);
+                        } else {
+                          toggleItemEnLista(aniosFrecSel, yr, setAniosFrecSel);
+                        }
+                      }}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] cursor-pointer transition"
                       style={{
                         backgroundColor: sel ? "#E7ECFE" : "transparent",
@@ -3333,7 +3398,8 @@ export default function TableroCarteraAnalytics() {
             }}
           >
             <span>
-              {empresasFrecSel.length === 0
+              {empresasFrecSel.length === 0 ||
+              empresasFrecSel.length === todasLasEmpresasDisponibles.length
                 ? "Todas las empresas"
                 : empresasFrecSel.length === 1
                 ? empresasFrecSel[0]
@@ -3356,9 +3422,7 @@ export default function TableroCarteraAnalytics() {
                 <button
                   type="button"
                   onClick={() => {
-                    setEmpresasFrecSel([
-                      ...carteraInitialData.empresasDisponibles,
-                    ]);
+                    setEmpresasFrecSel([]);
                     setFiltroEmpresa("TODAS");
                     setPaginaActual(1);
                   }}
@@ -3389,7 +3453,7 @@ export default function TableroCarteraAnalytics() {
                 </button>
               </div>
               <div className="space-y-0.5">
-                {carteraInitialData.empresasDisponibles.map((emp) => {
+                {todasLasEmpresasDisponibles.map((emp) => {
                   const sel = empresasFrecSel.includes(emp);
                   return (
                     <div
@@ -3832,14 +3896,9 @@ export default function TableroCarteraAnalytics() {
                                 backgroundColor: activo ? "#0E245E" : "#EFF6FF",
                                 color: activo ? "#FFFFFF" : "#1D58D8",
                               }}
-                              onClick={() => {
-                                setIndiceCorteActivo(idx);
-                                const partes = c.fechaCorte.slice(0, 10).split("/");
-                                if (partes.length === 3) {
-                                  const iso = `${partes[2]}-${partes[1]}-${partes[0]}`;
-                                  setFechaCorteVivo(iso);
-                                }
-                              }}
+                              onClick={() =>
+                                seleccionarCorteYSincronizar(idx, c.fechaCorte)
+                              }
                             >
                               <span>{c.fechaCorte.slice(0, 10)}</span>
                               {listaCortesActiva.length > 1 && (
@@ -4267,7 +4326,9 @@ export default function TableroCarteraAnalytics() {
                       return (
                         <div
                           key={corte.fechaCorte}
-                          onClick={() => setIndiceCorteActivo(idx)}
+                          onClick={() =>
+                            seleccionarCorteYSincronizar(idx, corte.fechaCorte)
+                          }
                           className="rounded-xl p-4 border transition cursor-pointer"
                           style={{
                             backgroundColor: "#FFFFFF",
@@ -4550,7 +4611,7 @@ export default function TableroCarteraAnalytics() {
                   style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
                 >
                   <option value="TODOS">Todos</option>
-                  {carteraInitialData.aniosDisponibles.map((a) => (
+                  {ANIOS_SISMA_DISPONIBLES.map((a) => (
                     <option key={a} value={a}>
                       {a}
                     </option>
@@ -4572,7 +4633,7 @@ export default function TableroCarteraAnalytics() {
                   style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
                 >
                   <option value="TODAS">Todas</option>
-                  {carteraInitialData.empresasDisponibles.map((emp) => (
+                  {todasLasEmpresasDisponibles.map((emp) => (
                     <option key={emp} value={emp}>
                       {emp}
                     </option>
@@ -5397,7 +5458,7 @@ export default function TableroCarteraAnalytics() {
                   className="w-full rounded-lg border px-3 py-2 font-semibold"
                   style={{ borderColor: "#CBD5E1" }}
                 >
-                  {carteraInitialData.empresasDisponibles.map((emp) => (
+                  {todasLasEmpresasDisponibles.map((emp) => (
                     <option key={emp} value={emp}>
                       {emp}
                     </option>
@@ -5413,7 +5474,7 @@ export default function TableroCarteraAnalytics() {
                   className="w-full rounded-lg border px-3 py-2 font-semibold"
                   style={{ borderColor: "#CBD5E1" }}
                 >
-                  {carteraInitialData.aniosDisponibles.map((a) => (
+                  {ANIOS_SISMA_DISPONIBLES.map((a) => (
                     <option key={a} value={a}>
                       {a}
                     </option>

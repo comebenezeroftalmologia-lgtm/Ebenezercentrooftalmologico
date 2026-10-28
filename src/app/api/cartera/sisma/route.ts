@@ -97,6 +97,7 @@ function normalizarEmpresaSisma(razonSocialRaw: string): string {
   if (r.includes("MUTUAL SER")) return "MUTUAL SER";
   if (r.includes("ECOPETROL")) return "ECOPETROL";
   if (r.includes("SEGUROS DE VIDA SURAMERICANA") || r.includes("SURA POLIZA")) return "SURA POLIZA";
+  if (r.includes("SUSALUD")) return "SUSALUD PREPAGADA";
   if (r.includes("SURAMERICANA") || r.includes("EPS SURA")) return "EPS SURA";
   if (r.includes("MEDPLUS")) return "MEDPLUS";
   if (r.includes("MEDISANITAS")) return "MEDISANITAS";
@@ -106,12 +107,19 @@ function normalizarEmpresaSisma(razonSocialRaw: string): string {
   if (r.includes("COOMEVA")) return "COOMEVA";
   if (r.includes("BOLIVAR")) return "SEGUROS BOLIVAR";
   if (r.includes("ALLIANZ")) return "ALLIANZ";
-  if (r.includes("COLPATRIA") || r.includes("AXA")) return "COLPATRIA";
+  if ((r.includes("COLPATRIA") || r.includes("AXA")) && r.includes("PREPAGADA")) return "AXA COLPATRIA PREPAGADA";
+  if (r.includes("COLPATRIA") || r.includes("AXA")) return "AXA COLPATRIA SEGUROS";
   if (r.includes("HDI")) return "HDI SEGUROS";
   if (r.includes("COMFENALCO")) return "COMFENALCO CARTAGENA";
   if (r.includes("SALUD TOTAL")) return "SALUD TOTAL";
   if (r.includes("PAN AMERICAN")) return "PAN AMERICAN LIFE";
   if (r.includes("MEXICHEM")) return "MEXICHEM";
+  if (r.includes("CENTRO DE ATENCION")) return "CENTRO ATENCION VISUAL";
+  if (r.includes("INVERSIONES MAR")) return "INVERSIONES MAR";
+  if (r.includes("AGENCIA DE ADUANAS")) return "AGENCIA ADUANAS";
+  if (r.includes("BMI COLOMBIA")) return "BMI COLOMBIA";
+  if (r.includes("SERVICIO NACIONAL") || r.includes("SENA")) return "SENA";
+  if (r.includes("MUNDIAL DE SEGUROS")) return "MUNDIAL SEGUROS";
   if (r.includes("ISLAS")) return "HOTEL LAS ISLAS";
   if (r.includes("PROGEMA")) return "PROGEMA";
   if (r.includes("MILENA ROMERO")) return "CONVENIO DRA MILENA ROMERO";
