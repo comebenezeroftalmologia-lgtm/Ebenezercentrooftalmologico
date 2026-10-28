@@ -7942,7 +7942,7 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
       // Una regla aprendida MANDA sobre el valor de la ficha: es la forma de corregir una
       // tarifa mal pactada sin esperar al cierre. Queda firmada, con motivo, y el acta dice
       // que reemplazó el valor de la ficha para que nadie la aplique sin darse cuenta.
-      if(!/sin regla/i.test(fx.regla||'') && !/norma aprendida/i.test(fx.regla||'')){
+      if(!/sin regla/i.test(fx.regla||'') && !/norma aprendida/i.test(fx.regla||'') && !/\((un ojo|ambos ojos)\)/i.test(fx.regla||'')){
         const nr2 = (typeof normaDe==='function') ? normaDe(h, fx.det, fx.emp) : null;
         if(nr2 && Math.round(nr2.pago)!==Math.round(fx.pago||0)){
           const kA = sc==='Cirugía' ? (esMut?'CIRM':'CIRP') : (sc==='Sede 2'?'S2':'S1');
@@ -10393,8 +10393,7 @@ function ladoPares(med){
         const base=mNorm(t.servicio||'').replace(/\b(UNILATERAL|BILATERAL)\b/g,'').replace(/\s+/g,' ').trim();
         const k=base+'|'+mNorm(t.empresa||''); const G=grp[k]=grp[k]||{base, emp:mNorm(t.empresa||''), un:[], ambos:[]}; G[l].push(v); }
       for(const G of Object.values(grp)){ if(G.un.length!==1 || G.ambos.length!==1 || G.un[0]===G.ambos[0]) continue;
-        const tok=G.base.split(/[^A-Z]+/).filter(w=>w.length>=6 && !STOP.has(w));
-        if(!tok.length) continue;
+        const tok=G.base.split(/[^A-Z]+/).filter(w=>w.length>=6 && !STOP.has(w)); if(!tok.length) continue;
         (_PARES[hh]=_PARES[hh]||[]).push({tok, emp:G.emp, un:G.un[0], ambos:G.ambos[0]}); } } }
   return _PARES[med]||[];
 }
@@ -13687,7 +13686,25 @@ async function nubeProbar(){
 // ============ NORMAS APRENDIDAS (las escribe quien liquida) ============
 // Una norma dice: «este servicio, en este contrato, se paga a X por caso».
 // NO aprende reglas con condiciones (porcentajes, topes, «si es bilateral»): esas se marcan para revisión.
-function norLeer(){ try{ return JSON.parse(localStorage.getItem('liq_normas')||'{}'); }catch(e){ return {}; } }
+// texto que delata una regla con condiciones: no se aprende sola
+const NOR_COMPLEJA = /\b(SI |CUANDO|DEPENDE|SEGUN|BILATERAL(ES)?|UNILATERAL(ES)?|UN OJO|AMBOS OJOS|PRIMEROS?|MAS DE|HASTA |TOPE|CUPO|PORCENTAJE|%|QUIROFANO|SALVO|EXCEPTO)\b/i;
+function norLeer(){
+  try{
+    const d = JSON.parse(localStorage.getItem('liq_normas')||'{}');
+    let limp = false;
+    for(const [k, n] of Object.entries(d)){
+      if(n && !n.quitada && NOR_COMPLEJA.test(String(n.motivo||''))){
+        n.quitada = true;
+        n.quitadaPor = 'Sistema (regla con condición de lateralidad)';
+        n.quitadaEl = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
+        try{ if(typeof NUBE_ON!=='undefined' && NUBE_ON && typeof NUBE!=='undefined') NUBE.guardarAjuste(k, n); }catch(e){}
+        limp = true;
+      }
+    }
+    if(limp){ try{ localStorage.setItem('liq_normas', JSON.stringify(d)); }catch(e){} }
+    return d;
+  }catch(e){ return {}; }
+}
 function norGuardarLocal(o){ try{ localStorage.setItem('liq_normas', JSON.stringify(o)); }catch(e){} }
 function norClaveServ(det){ return mNorm(det||'').replace(/\(.*$/,'').replace(/\s+/g,' ').trim().slice(0,60); }
 function norKey(n){ return 'NOR|'+(n.ambito==='contrato'? 'TODOS' : n.med)+'|'+n.emp+'|'+n.serv; }
@@ -13699,11 +13716,9 @@ function normaDe(hoja, det, emp){
   const propia = N['NOR|'+hoja+'|'+g+'|'+k];
   const todos  = N['NOR|TODOS|'+g+'|'+k];
   const n = (propia && !propia.quitada) ? propia : ((todos && !todos.quitada) ? todos : null);
-  if(!n) return null;
+  if(!n || NOR_COMPLEJA.test(String(n.motivo||''))) return null;
   return {pago: n.valor, regla: 'norma aprendida · '+(n.ambito==='contrato'?'todos los médicos':'pactado con el médico')+' · '+(n.motivo||'').slice(0,50), _n:n};
 }
-// texto que delata una regla con condiciones: no se aprende sola
-const NOR_COMPLEJA = /\b(SI |CUANDO|DEPENDE|SEGUN|BILATERAL|UNILATERAL|PRIMEROS?|MAS DE|HASTA |TOPE|CUPO|PORCENTAJE|%|QUIROFANO|SALVO|EXCEPTO)\b/i;
 function norCrear({med, det, emp, valor, cant, motivo, ambito}){
   const k = norClaveServ(det); if(!k) return {ok:false, msg:'No se pudo identificar el servicio.'};
   if(NOR_COMPLEJA.test(motivo||'')) return {ok:false, complejа:true,
@@ -15154,6 +15169,8 @@ function acEsNotaInvalida(a){
   if(!a) return true;
   const txt = String(a.texto||'') + ' ' + String(a.servicio||'') + ' ' + String(a.id||'');
   if(/APLICA PARA LOS PACIENTE/i.test(txt)) return true;
+  if(/norma aprendida.*reemplaza el valor de la ficha/i.test(txt)) return true;
+  if(/Son Bilateral y se estan cobran unilateral/i.test(txt)) return true;
   return false;
 }
 function acLeer(){
@@ -15164,7 +15181,7 @@ function acLeer(){
       if(acEsNotaInvalida(a) && (!a || !a.quitado)){
         if(a){
           a.quitado = true;
-          a.quitadoPor = 'Sistema (nota de ficha técnica, no es servicio)';
+          a.quitadoPor = 'Sistema (liquidado directamente por ficha técnica)';
           a.quitadoEl = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
           try{ if(typeof NUBE!=='undefined' && typeof NUBE_ON!=='undefined' && NUBE_ON) NUBE.guardarAjuste(k, a); }catch(e){}
         } else {
@@ -15227,11 +15244,9 @@ function aplicarAcuerdos(porMedico, periodo){
         const bl = (a.uf==='Quirófano'||a.uf==='Anestesia'||a.uf==='Mes completo') ? d.cir : d.sede;
         const allG = Object.values(d.cir).concat(Object.values(d.sede));
         let g = Object.values(bl).find(g=>g.servicio===a.servicio && g.uf===a.uf) || allG.find(g=>g.servicio===a.servicio);
-        let esMatchOrig = false;
         if(!g){
           g = Object.values(bl).find(g=>g.uf===a.uf && g._reglasOrig && g._reglasOrig.has(a.servicio))
             || allG.find(g=>g._reglasOrig && g._reglasOrig.has(a.servicio));
-          if(g) esMatchOrig = true;
         }
         if(!g){
           const partes = Object.values(bl).filter(x=>x.servicio===a.servicio+' (un ojo)' || x.servicio===a.servicio+' (ambos ojos)' || (x._reglasOrig && (x._reglasOrig.has(a.servicio+' (un ojo)') || x._reglasOrig.has(a.servicio+' (ambos ojos)'))));
@@ -15239,15 +15254,7 @@ function aplicarAcuerdos(porMedico, periodo){
           continue; }
         const esM = g.pago>0 ? (g.pagoM||0)>=g.pago-1 : /MUTUAL/i.test(((g.recs||[])[0]||{}).emp||'');
         if(g._pagoSist===undefined) g._pagoSist = g.pago;
-        if(esMatchOrig && g._porReglaOrig && g._porReglaOrig[a.servicio] && Object.keys(g._porReglaOrig).length > 1){
-          const sub = g._porReglaOrig[a.servicio];
-          const delta = a.valor - sub.pago;
-          g.pago += delta;
-          if(esM) g.pagoM += (a.valor - sub.pagoM);
-          sub.pago = a.valor; if(esM) sub.pagoM = a.valor;
-        } else {
-          g.pago = a.valor; g.pagoM = esM ? a.valor : 0;
-        }
+        g.pago = a.valor; g.pagoM = esM ? a.valor : 0;
         g.unit = g.cant ? g.pago/g.cant : g.pago; g.uniforme=false; g.acuerdo=a;
       } else if(a.tipo==='medico'){
         const scopeAcu = a.bloque==='cir' ? 'Cirugía' : (a.mutual ? 'Sede 2' : 'Sede Principal');
