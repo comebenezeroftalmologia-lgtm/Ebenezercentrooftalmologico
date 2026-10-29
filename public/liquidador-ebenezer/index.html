@@ -5120,7 +5120,7 @@ const REGLAS_DOC = {
     {re:/TONOGRAFIA/, P1:200000, P:350000, PART1:220000, PART:380000, S1:120000, S:160000, M:162990, bilDef:true}] },
  'ANALITH BARRIGA': { consP:{t:'pct',f:0.7}, ayudasPct:0.7, octFlat:50000, cirPct:0.7, angioPct:0.3,
     unaPorPaciente:/TOMOGRAF|ANGIOTOMOGRAF|ANGIOGRAF|FOTOGRAF|CAPSULOTOMIA|IRIDOTOMIA|CITOLOGIA/,
-    sinLecturaIV:/TOMOGRAF|ANGIOTOMOGRAF|ANGIOGRAF|FOTOGRAF/,   // Pedro Herrera 30/09/2026: «a Analith lo que es de intravítreo no se paga» (estudios de pacientes con aplicación intravítrea en el corte)   // ficha B24: lectura de tomografías y angiotomografías Mutual $22.500 POR PACIENTE (no por estudio ni por ojo)
+    sinLecturaIV:/TOMOGRAF|ANGIOTOMOGRAF|\bOCT\b/,   // Pedro Herrera 30/09/2026: «a Analith lo que es de intravítreo no se paga» (estudios de pacientes con aplicación intravítrea en el corte)   // ficha B24: lectura de tomografías y angiotomografías Mutual $22.500 POR PACIENTE (no por estudio ni por ojo)
     cirFijas:[{re:/PLUG|TAPON/, P:0},{re:/PLASTIA (DE|EN) CANALICULO/, P1:200000, P:400000},   // ficha E10/E11: $200.000 un ojo · $400.000 ambos
     // ficha Mutual: lectura de tomografías y angiotomografías $22.500 · angiografías $48.439
     //               fotografía a color $6.270 · capsulotomía $55.000 · iridotomía $55.000 · citología $36.200
@@ -6074,11 +6074,11 @@ function liquidarV4(recs, actos, actosAll){
     else if(g==='M' && esCons && RM.rubroCons){ M.consM++; if(/NEURO/.test(D)){ pago=66000; regla='Consulta neuroftalmología Mutual a $66.000'; } else { pago=0; regla='Cubierta por rubro de consultas Mutual'; } }
     else if(g==='M' && !esCons && cfg.sinLecturaIV && cfg.sinLecturaIV.test(D) && (pacIV.has(((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||'')) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(D+' '+(r.as||'')))){
       marcar(r._src,'no_cobro'); continue; }
-    else if(g==='M' && !esCons && cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (M._upp=M._upp||new Set()).has((((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10)+'|'+(/ANGIOTOMOGRAF|TOMOGRAF|\bOCT\b/.test(D)?'OCT':/ANGIOGRAF/.test(D)?'ANGIO':/FOTOGRAF/.test(D)?'FOTO':/CAPSULOTOM/.test(D)?'CAPS':/IRIDOTOM/.test(D)?'IRID':/CITOLOG/.test(D)?'CITO':D.slice(0,15)))){
+    else if(g==='M' && !esCons && cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (M._upp=M._upp||new Set()).has((((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10)+'|'+(/ANGIOTOMOGRAF|TOMOGRAF|\bOCT\b/.test(D)?('OCT:'+mNorm(r.as||r.d||'')):/ANGIOGRAF/.test(D)?'ANGIO':/FOTOGRAF/.test(D)?'FOTO':/CAPSULOTOM/.test(D)?'CAPS':/IRIDOTOM/.test(D)?'IRID':/CITOLOG/.test(D)?'CITO':D.slice(0,15)))){
       pago=0; regla='Segundo ojo/cargo del mismo paciente ese día en Sede 2: la ficha lo paga por paciente';
     }
     else if(g==='M' && !esCons && cfg.cirFijas && v4CirFija(cfg, r.d, r.e+' '+r.ct, r.q||1)){
-      if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)) (M._upp=M._upp||new Set()).add((((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10)+'|'+(/ANGIOTOMOGRAF|TOMOGRAF|\bOCT\b/.test(D)?'OCT':/ANGIOGRAF/.test(D)?'ANGIO':/FOTOGRAF/.test(D)?'FOTO':/CAPSULOTOM/.test(D)?'CAPS':/IRIDOTOM/.test(D)?'IRID':/CITOLOG/.test(D)?'CITO':D.slice(0,15)));
+      if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)) (M._upp=M._upp||new Set()).add((((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10)+'|'+(/ANGIOTOMOGRAF|TOMOGRAF|\bOCT\b/.test(D)?('OCT:'+mNorm(r.as||r.d||'')):/ANGIOGRAF/.test(D)?'ANGIO':/FOTOGRAF/.test(D)?'FOTO':/CAPSULOTOM/.test(D)?'CAPS':/IRIDOTOM/.test(D)?'IRID':/CITOLOG/.test(D)?'CITO':D.slice(0,15)));
       const cedM=((r.p||'').match(/(\d{5,12})/)||[])[1]||r.p;
       const gpM=v4GrupoProc(D);
       const kM=gpM ? (h+'|'+cedM+'|'+r.f.slice(0,10)+'|'+gpM) : null;
@@ -10558,6 +10558,88 @@ function desgloseTarifas(med, g){
 function fraseLado(sv){ const m=String(sv||'').match(/\((un ojo|ambos ojos)\)\s*$/i);
   const f=fraseConcepto(m? String(sv).replace(/\s*\((un ojo|ambos ojos)\)\s*$/i,'') : sv);
   return m ? f+' <span class="dojo">'+(/ambos/i.test(m[1])?'Bilateral':'Unilateral')+'</span>' : f; }
+function filtrarPacSeccion(inp){
+  const sec = inp.closest('.sec-bloque');
+  if(!sec) return;
+  const q = mNorm(inp.value||'').trim();
+  const cntEl = sec.querySelector('.pac-search-cnt');
+  const rows = [...sec.querySelectorAll('tr.clickable[data-drill]')];
+  if(!q){
+    rows.forEach(tr=>{
+      tr.style.display='';
+      const nx = tr.nextElementSibling;
+      if(nx && nx.classList.contains('drill')){
+        if(nx.dataset.autoOpen==='1') nx.remove();
+        else nx.querySelectorAll('tr').forEach(r=>{ r.style.display=''; r.style.background=''; });
+      }
+    });
+    const det0 = sec.querySelector('details');
+    if(det0 && det0.dataset.autoOpen==='1'){ det0.open=false; delete det0.dataset.autoOpen; }
+    if(cntEl){ cntEl.style.display='none'; cntEl.textContent=''; }
+    return;
+  }
+  let totalHits = 0;
+  rows.forEach(tr=>{
+    const dId = +tr.dataset.drill;
+    const rawList = (typeof DRILL!=='undefined' && DRILL[dId]) || [];
+    const flat = [];
+    for(const r of rawList){
+      if(r && r.lista && r.lista.length){
+        for(const j of r.lista){
+          if(j.actos && j.actos.length) for(const a of j.actos) flat.push({paciente:(a.ced?'CC - '+a.ced+' : ':'')+(a.pac||''), ced:a.ced||'', detalle:a.proc||'', fecha:a.f||''});
+          else if(j.pac) flat.push({paciente:j.pac, ced:'', detalle:j.tipo||'', fecha:j.f||''});
+        }
+      } else if(r){
+        flat.push(r);
+      }
+    }
+    const matches = flat.filter(r => mNorm((r.paciente||'')+' '+(r.ced||'')+' '+(r.detalle||r.servicio||'')+' '+(r.fecha||'')).includes(q));
+    if(matches.length){
+      totalHits += matches.length;
+      tr.style.display='';
+      const detParent = tr.closest('details');
+      if(detParent && !detParent.open){ detParent.open=true; detParent.dataset.autoOpen='1'; }
+      let nx = tr.nextElementSibling;
+      if(!nx || !nx.classList.contains('drill')){
+        toggleDrill(dId, tr);
+        nx = tr.nextElementSibling;
+        if(nx && nx.classList.contains('drill')) nx.dataset.autoOpen='1';
+      }
+      if(nx && nx.classList.contains('drill')){
+        const dtrs = [...nx.querySelectorAll('.drilltab tr')];
+        let currentDayTr = null, dayHasVisible = false;
+        dtrs.forEach((r, idx)=>{
+          if(idx===0 || r.classList.contains('dtot')) return;
+          if(r.classList.contains('ddia')){
+            if(currentDayTr) currentDayTr.style.display = dayHasVisible ? '' : 'none';
+            currentDayTr = r; dayHasVisible = false;
+            return;
+          }
+          const txt = mNorm(r.textContent||'');
+          const ok = txt.includes(q);
+          r.style.display = ok ? '' : 'none';
+          r.style.background = ok ? '#f0fdfa' : '';
+          if(ok) dayHasVisible = true;
+        });
+        if(currentDayTr) currentDayTr.style.display = dayHasVisible ? '' : 'none';
+      }
+    } else {
+      tr.style.display='none';
+      const nx = tr.nextElementSibling;
+      if(nx && nx.classList.contains('drill')){
+        if(nx.dataset.autoOpen==='1') nx.remove();
+        else nx.style.display='none';
+      }
+    }
+  });
+  if(cntEl){
+    cntEl.style.display = 'inline-block';
+    cntEl.textContent = totalHits ? (totalHits + (totalHits===1 ? ' coincidencia' : ' coincidencias')) : 'Sin coincidencias';
+    cntEl.style.background = totalHits ? '#ccfbf1' : '#fee2e2';
+    cntEl.style.color = totalHits ? '#0f766e' : '#b91c1c';
+    cntEl.style.borderColor = totalHits ? '#99f6e4' : '#fecaca';
+  }
+}
 function detalleHTML(d, med, f){
   f = f||{};
   const pv = g => f.emp==='M'? (g.pagoM||0) : f.emp==='O'? g.pago-(g.pagoM||0) : g.pago;
@@ -10591,13 +10673,14 @@ function detalleHTML(d, med, f){
       return out; };
     const cero  = gs.filter(g=>pv(g)<=0 && g.cant>0 && !enBasico.includes(g));
     if(!pagan.length && !cero.length && !enBasico.length) return;
-    let hh=`<h3>${titulo}</h3>`;
+    let hh=`<div class="sec-bloque"><div class="sec-head-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:16px 0 8px"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h3 style="margin:0">${titulo}</h3><div class="pac-search-wrap" style="position:relative;display:inline-flex;align-items:center" onclick="event.stopPropagation()"><span style="position:absolute;left:11px;font-size:12px;color:#64748b;pointer-events:none">🔎</span><input type="search" class="pac-search-inp" placeholder="Buscar paciente o cédula…" oninput="filtrarPacSeccion(this)" style="padding:5px 12px 5px 30px;font-size:12px;border-radius:999px;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;width:235px;outline:none;transition:all .18s ease;box-shadow:inset 0 1px 2px rgba(15,23,42,.04)" onfocus="this.style.borderColor='#0d9488';this.style.background='#fff';this.style.boxShadow='0 0 0 3px rgba(13,148,136,.12)';this.style.width='275px'" onblur="if(!this.value){this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';this.style.boxShadow='inset 0 1px 2px rgba(15,23,42,.04)';this.style.width='235px'}"><span class="pac-search-cnt" style="display:none;margin-left:7px;padding:2px 9px;border-radius:999px;background:#ccfbf1;color:#0f766e;border:1px solid #99f6e4;font-size:11px;font-weight:700;white-space:nowrap"></span></div></div></div>`;
     if(pagan.length || enBasico.length){
       let tp=0;
       hh+=`<table class="acta"><tr><th style="width:52%">Se liquida</th><th>Cantidad × tarifa</th><th class="num">Valor</th></tr>`;
       for(const g of enBasico){
         if(doblados.has(g)) continue;
-        hh+=`<tr class="clickable" style="color:var(--muted)" title="Clic: ver el detalle paciente por paciente" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(g.recs)},this)">
+        const _dIdB = drillReg(g.recs);
+        hh+=`<tr class="clickable" data-drill="${_dIdB}" style="color:var(--muted)" title="Clic: ver el detalle paciente por paciente" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${_dIdB},this)">
           <td>${fraseLado(g.servicio)}${g.obs?`<div class="obs">${g.obs}</div>`:''}</td>
           <td>${g.cant.toLocaleString('es-CO')} — ${/JORNADA/.test(mNorm(g.servicio||''))?'incluidos en la jornada':'ya están dentro del básico'}</td><td class="num">$ 0</td></tr>`;
       }
@@ -10618,7 +10701,8 @@ function detalleHTML(d, med, f){
         // el valor se cambia AQUÍ: se toca y se vuelve un campo, como una casilla de Excel
         const ed = `edRenglon(this,'${med.replace(/'/g,"\\'")}','${String(g.servicio).replace(/'/g,"\\'")}','${g.uf}',${Math.round(pago)})`;
         const _badgeCant = (!esJor && g.uniforme===false && g.cant>1) ? ` <span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;font-size:11px;font-weight:600;vertical-align:middle">${g.cant.toLocaleString('es-CO')} en total</span>` : '';
-        hh+=`<tr class="clickable${g.rev?' revfila':''}" title="${String(g.obs||'Clic para ver relación de pacientes').replace(/"/g,'&quot;')}" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(jorPac(g))},this)">
+        const _dIdP = drillReg(jorPac(g));
+        hh+=`<tr class="clickable${g.rev?' revfila':''}" data-drill="${_dIdP}" title="${String(g.obs||'Clic para ver relación de pacientes').replace(/"/g,'&quot;')}" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${_dIdP},this)">
           <td style="vertical-align:top;padding-top:10px"><b>${fraseLado(g.servicio)}</b>${_badgeCant}${g.rev?'<span class="revpill">⚠ revisar</span>':''}${(()=>{ const js=jorResumen(g); return js || (esJor && g.obs?`<div class="obs">${g.obs}</div>`:''); })()}${acN}</td>
           <td style="vertical-align:top;padding-top:8px">${cxt}</td>
           <td class="num" style="vertical-align:top;padding-top:10px"><span class="valed${g.acuerdo?' tocado':''}" title="Tocar para cambiar este valor" onclick="event.stopPropagation();${ed}"><b>${money(pago)}</b><i>✎</i></span></td></tr>`;
@@ -10628,10 +10712,13 @@ function detalleHTML(d, med, f){
     if(cero.length){
       hh+=`<details style="margin:8px 0 0"><summary style="cursor:pointer;font-size:12.5px;color:var(--muted)">No se paga en este renglón (${cero.length} concepto${cero.length>1?'s':''}) — clic para ver por qué</summary>
         <table class="sintab" style="margin-top:8px;font-size:12.5px">`;
-      for(const g of cero)
-        hh+=`<tr class="clickable" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(g.recs)},this)"><td style="width:70px" class="num">${g.cant.toLocaleString('es-CO')} ×</td><td>${fraseLado(g.servicio)}${g.obs?`<div class="obs">${g.obs}</div>`:''}${g.acuerdo?`<div class="obs" style="color:#9a6a00">${acNota(g.acuerdo)}</div>`:''}</td><td class="num"><span class="valed${g.acuerdo?' tocado':''}" title="Tocar para pagar algo por este renglón" onclick="event.stopPropagation();edRenglon(this,'${med.replace(/'/g,"\\'")}','${String(g.servicio).replace(/'/g,"\\'")}','${g.uf}',0)"><b>$ 0</b><i>✎</i></span></td></tr>`;
+      for(const g of cero){
+        const _dIdC = drillReg(g.recs);
+        hh+=`<tr class="clickable" data-drill="${_dIdC}" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${_dIdC},this)"><td style="width:70px" class="num">${g.cant.toLocaleString('es-CO')} ×</td><td>${fraseLado(g.servicio)}${g.obs?`<div class="obs">${g.obs}</div>`:''}${g.acuerdo?`<div class="obs" style="color:#9a6a00">${acNota(g.acuerdo)}</div>`:''}</td><td class="num"><span class="valed${g.acuerdo?' tocado':''}" title="Tocar para pagar algo por este renglón" onclick="event.stopPropagation();edRenglon(this,'${med.replace(/'/g,"\\'")}','${String(g.servicio).replace(/'/g,"\\'")}','${g.uf}',0)"><b>$ 0</b><i>✎</i></span></td></tr>`;
+      }
       hh+=`</table></details>`;
     }
+    hh+=`</div>`;
     out.push(hh);
   };
   const sedeSelDet = (document.getElementById('sede')||{}).value || '';
