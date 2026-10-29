@@ -8,3 +8,6 @@ supabase/.temp/
 # Exports crudos de Frecuencias (pueden pesar varios MB; se recargan
 # con scripts/frecuencias/ingest.mjs cuando llegue un nuevo export)
 scripts/frecuencias/data/
+
+# Datos de pacientes/afiliados (nunca al repositorio)
+/datos-privados/
