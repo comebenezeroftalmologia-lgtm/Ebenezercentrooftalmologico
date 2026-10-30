@@ -7051,26 +7051,35 @@ function semaforoPintar(){
     const x = datos.find(d=>d.m===m);
     const razones=[];
     let estado='verde';
+    let _manoRes = false;
+    if(f && f.est!=='ok' && f.est!=='na' && typeof manoAnalizar==='function' && typeof cmpdLeer==='function'){
+      try{
+        const _an = (typeof MANO!=='undefined' && MANO.cache && MANO.cache[m]) ? MANO.cache[m] : manoAnalizar(m);
+        const _D = cmpdLeer();
+        if(_an && _an.causas && _an.causas.length && _an.causas.every(c=>{ const dv=_D[cmpdKey(m,c.id)]; return dv && !dv.borrado; })) _manoRes = true;
+      }catch(e){}
+    }
+    let rv = (typeof revDe==='function')? revDe(m, tot, f, _manoRes) : null;
+    let rvCambio = null;
+    if(rv && rv.origen==='acta' && rv.tot!=null && Math.round(rv.tot)!==Math.round(tot)){ rvCambio=rv; rv=null; estado='ambar';
+      razones.push(rvCambio.estado==='devolver' ? '<b>Corregido después de devuelto</b> — falta aprobar' : '<b>Cambió después de aprobado</b> ('+money(rvCambio.tot)+' → '+money(tot)+') — falta aprobar'); }
+    const _yaAprob = !!(rv && (rv.estado==='ok' || rv.estado==='ajuste'));
     if(f){
       if(f.est==='ok') razones.push('Cuadra con '+cmpFuente(true));
+      else if(_manoRes) razones.push('✓ Diferencia explicada ('+cmpFuente(true)+')');
       else if(f.est==='falta_recibido'){ estado='ambar'; razones.push('No está en lo de su equipo'); }
       else if(f.est==='falta_sistema'){ estado='ambar'; razones.push(cmpFuente()+' <b>'+money(f.rec||0)+'</b> · el tablero no lo calcula aquí'); }
       else if(f.est!=='na'){ estado='ambar';
         razones.push(cmpFuente()+' <b>'+money(f.rec)+'</b> · diferencia <b>'+(f.dif<0?'+':'−')+money(Math.abs(f.dif)).replace('$ ','$')+'</b>');
-        MOT.dif++; MOT.valDif += Math.abs(f.dif||0); }
+        if(!_yaAprob){ MOT.dif++; MOT.valDif += Math.abs(f.dif||0); } }
     }
     if(x && x.st>0){ estado='ambar'; razones.push('<b>'+x.st+' servicio'+(x.st>1?'s':'')+' sin decidir</b>');
-      MOT.decidir++; MOT.valDecidir += x.st; }
+      if(!_yaAprob){ MOT.decidir++; MOT.valDecidir += x.st; } }
     if(x && x.d){ const nAc=Object.values(x.d.cir||{}).concat(Object.values(x.d.sede||{})).filter(g=>g.acuerdo).length; if(nAc) razones.push(nAc+' acuerdo'+(nAc>1?'s':'')); }
     if(v){
       const sinResp=(v.valSobra||0), sinPagar=(v.valFalta||0);
-      if(sinResp>50000 || sinPagar>50000){ estado='ambar'; razones.push('Revisar frecuencias'); MOT.frec++; }
+      if(sinResp>50000 || sinPagar>50000){ estado='ambar'; razones.push('Revisar frecuencias'); if(!_yaAprob) MOT.frec++; }
     }
-    let rv = (typeof revDe==='function')? revDe(m) : null;
-    // aprobado o devuelto desde el acta: si después cambió el valor, vuelve a quedar por aprobar
-    let rvCambio = null;
-    if(rv && rv.origen==='acta' && rv.tot!=null && Math.round(rv.tot)!==Math.round(tot)){ rvCambio=rv; rv=null; estado='ambar';
-      razones.push(rvCambio.estado==='devolver' ? '<b>Corregido después de devuelto</b> — falta aprobar' : '<b>Cambió después de aprobado</b> ('+money(rvCambio.tot)+' → '+money(tot)+') — falta aprobar'); }
     let totM = tot;
     if(rv && rv.estado==='ajuste'){ totM = Math.round(rv.valor||0); ajuste += (totM - tot); }
     if(rv){
@@ -7165,7 +7174,7 @@ function cierreHTML(verdes, ambar, nCeros, MOT, granT){
   if(MOT.decidir)  puntos.push(['ambar', '<b>'+MOT.valDecidir+' servicio'+(MOT.valDecidir>1?'s':'')+' sin decidir</b> en '+MOT.decidir+' médico'+(MOT.decidir>1?'s':'')+' — hay que ponerles valor o marcar que no se pagan']);
   if(MOT.dif)      puntos.push(['ambar', '<b>'+MOT.dif+' médico'+(MOT.dif>1?'s':'')+' con diferencia</b> contra '+cmpFuente(true)+' — '+money(Math.round(MOT.valDif))+' en total']);
   if(MOT.frec)     puntos.push(['ambar', '<b>'+MOT.frec+' con frecuencias por revisar</b> — lo facturado no coincide con lo liquidado']);
-  try{ let nP=0, nM=0; for(const x of (RESULT&&RESULT._datos)||[]){ const k=pendDe(x.m).filter(z=>!z.res).length; if(k){ nP+=k; nM++; } }
+  try{ let nP=0, nM=0; for(const x of (RESULT&&RESULT._datos)||[]){ const _rv=typeof revDe==='function'?revDe(x.m, Math.round(x.cir+x.sed+(x.man||0))):null; if(_rv && _rv.estado==='ok') continue; const k=pendDe(x.m).filter(z=>!z.res).length; if(k){ nP+=k; nM++; } }
     if(nP) puntos.push(['ambar', '<b>'+manoPlural(nP,'paciente')+' pendiente'+(nP>1?'s':'')+' del corte anterior</b> en '+manoPlural(nM,'médico')+' — están en su acta: se pagan en este corte o no se pagan']); }catch(e){}
   if(MOT.devuelta) puntos.push(['rojo',  '<b>'+MOT.devuelta+' devuelta'+(MOT.devuelta>1?'s':'')+' por contabilidad</b> — hay un comentario que atender']);
   const listo = !puntos.length;
@@ -8096,7 +8105,7 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
       if(g.recs.length && fx.pago!==g.unit) g.uniforme=false;
       g.cant++; g.fact += (fx.t||0); g.pago += fx.pago; if(esM) g.pagoM += fx.pago;
       if(fx.det) g.dets.add(String(fx.det).slice(0,55));
-      g.recs.push({fecha:(fx.fecha||'').slice(0,16), paciente:fx.pac||'', ced:fx.ced||'', factura:fx.fa||'', detalle:fx.det||'', cantidad:1, total:fx.pago, facturado:Math.round(fx.t||0), emp:fx.emp||'', fuente:fx.fuente||'', regla:(fx.regla||'')+(fx._lado?' ('+fx._lado+')':''), lista:fx.lista||null,
+      g.recs.push({fecha:(fx.fecha||'').slice(0,16), paciente:fx.pac||'', ced:fx.ced||'', factura:fx.fa||'', detalle:fx.det||'', cantidad:1, total:fx.pago, facturado:Math.round(fx.t||0), emp:fx.emp||'', fuente:fx.fuente||'', regla:(fx.regla||'')+(fx._lado?' ('+fx._lado+')':''), reglaOrig:_reglaOrigBase, lista:fx.lista||null,
         k:fx._ik||null, med:h, cambio:fx.cambio||null, agenda:_agItem});
       if(fx.cambio) (g.cambios=g.cambios||[]).push(Object.assign({paciente:fx.pac||'', fecha:String(fx.fecha||'').slice(0,10), det:fx.det||''}, fx.cambio));
     }
@@ -10848,7 +10857,7 @@ function cruSistema(med, partes){
                              : v4EmpG(r.emp||g.detalle||'')==='M';
         const parte = (g.uf==='Quirófano'||g.uf==='Anestesia') ? (esMut?'CIRM':'CIRP') : (esMut?'S2':'S1');
         if(partes.length && partes.indexOf(parte)<0) continue;
-        out.push({f:(r.fecha||'').slice(0,10), pac:r.paciente||'', srv:r.detalle||g.servicio||'', emp:r.emp||'', v:Math.round(r.total||0), v0:(r.total||0), regla:g.servicio||'', k:r.k||null, acu:(g.acuerdo && g.acuerdo.causa)? g.acuerdo : null, ren:(g.acuerdo && g.acuerdo.tipo==='renglon')? acKeyDe(g.acuerdo) : null, bloque:bl, uf:g.uf||'', parte});
+        out.push({f:(r.fecha||'').slice(0,10), pac:r.paciente||'', srv:r.detalle||g.servicio||'', emp:r.emp||'', v:Math.round(r.total||0), v0:(r.total||0), regla:r.reglaOrig||g.servicio||'', reglaSrv:g.servicio||'', reglaRaw:r.regla||g.servicio||'', k:r.k||null, acu:(g.acuerdo && g.acuerdo.causa)? g.acuerdo : null, ren:(g.acuerdo && g.acuerdo.tipo==='renglon')? acKeyDe(g.acuerdo) : null, bloque:bl, uf:g.uf||'', parte});
       }
     }
   }
@@ -11025,12 +11034,16 @@ function cmpValores(det, ambito){
 // ¿de qué liquidación es este archivo? se prueba contra cada ámbito y gana el que mejor encaja
 function cmpAmbitoAuto(vals, nombre, det){
   const N = mNorm(nombre||'');
+  const _sedeSel = (document.getElementById('sede')||{}).value || '';
   const pista = k => {
     if(/HONO.*MUTUAL|MUTUAL.*JULIO|MUTUAL.*20\d\d/.test(N)) return k==='MUT'?0.7:1;
     if(/HONO.*PP|HONO.*PYP|_PP_|\bPP\b/.test(N))            return k==='PYP'?0.7:1;
     if(/MUTUAL|SEDE *2|ESCARLETH|MSER/.test(N))              return k==='S2'?0.8:(k==='MUT'?0.9:1);
     if(/CIRUG|QUIROF|KIMBERLY/.test(N))                      return k==='CIR'?0.8:1;
     if(/PYP|SEDE *1|PRINCIPAL|FELLY/.test(N))                return k==='S1'?0.8:(k==='PYP'?0.9:1);
+    if(_sedeSel==='Sede 2' && k==='S2')                      return 0.85;
+    if(_sedeSel==='Sede Principal' && k==='S1')              return 0.85;
+    if(_sedeSel==='Cirugía' && k==='CIR')                    return 0.85;
     return 1;
   };
   let mejor=null, mejorErr=Infinity;
@@ -11157,18 +11170,37 @@ function cmpPintarLista(){
 }
 
 // ---- COMPARAR (lo ordena el usuario con el botón) ----
+function cmpArchivosActivos(){
+  const L = (CMP && CMP.archivos) || [];
+  const sedeSel = (document.getElementById('sede')||{}).value || '';
+  const perm = sedeSel==='Sede 2' ? ['S2'] : sedeSel==='Sede Principal' ? ['S1'] : sedeSel==='Cirugía' ? ['CIRP','CIRM'] : null;
+  if(!perm) return {archivos: L.map((a,i)=>({a,i})), perm: null};
+  const partesDe = a => (CMP_AMB.find(x=>x.k===a.ambito)||{partes:[]}).partes;
+  const exactos = L.map((a,i)=>({a,i,p:partesDe(a)})).filter(x=>x.p.length && x.p.every(p=>perm.includes(p)));
+  if(exactos.length) return {archivos: exactos, perm};
+  const compatibles = L.map((a,i)=>({a,i,p:partesDe(a)})).filter(x=>x.p.some(p=>perm.includes(p)));
+  return {archivos: compatibles, perm};
+}
 function cmpEjecutar(){
   if(!RESULT || !CMP.archivos.length){ alert('Cargue primero al menos una liquidación recibida.'); return; }
   const box=document.getElementById('cmpBox'), info=document.getElementById('cmpInfo');
+  const {archivos: archAct, perm: permPartes} = cmpArchivosActivos();
+  if(!archAct.length){
+    CMP.filas=null; CMP.det={};
+    if(info) info.innerHTML='<div class="filtinfo" style="margin-top:6px">Los archivos cargados en el comparativo corresponden a otra sede. Cargue la liquidación manual de esta sede o elija «Todas las sedes».</div>';
+    if(box) box.innerHTML='';
+    try{ MANO.cache={}; manoPintar(); }catch(e){}
+    return;
+  }
   const partesCubiertas = new Set();
-  CMP.archivos.forEach(a=>{ (CMP_AMB.find(x=>x.k===a.ambito)||{partes:[]}).partes.forEach(p=>partesCubiertas.add(p)); });
+  archAct.forEach(({a})=>{ (CMP_AMB.find(x=>x.k===a.ambito)||{partes:[]}).partes.forEach(p=>{ if(!permPartes || permPartes.includes(p)) partesCubiertas.add(p); }); });
   // ---- consolidar lo recibido y lo del sistema, ámbito por ámbito ----
   const rec={}, dobles=[];
   CMP.det={};
   // Dos archivos de la misma parte con el mismo médico NO se suman: de cada médico se usa un solo archivo
   // (el último que llegó, o el que la persona escoja). Archivos de la misma parte con médicos distintos sí se juntan.
   const REP=cmpRepetidos(); CMP.dueno=REP.dueno;
-  CMP.archivos.forEach((a,i)=>{
+  archAct.forEach(({a,i})=>{
     const amb=cmpAmbKey(a), usa=m=>REP.dueno[amb+'|'+m]===i;
     const vals=cmpValores(a.det, a.ambito);
     for(const [m,v] of Object.entries(vals)) if(usa(m)) rec[m]=(rec[m]||0)+v;
@@ -11353,7 +11385,7 @@ function manoAnalizar(med){
   const idn=x=>{ const c=cruCed(x.pac), n=cruNom(x.pac); return c || puente[n] || n || '?'; };
   const clave=x=>String(x.f||'').slice(0,10)+'|'+idn(x);
   const A={}, B={};
-  for(const x of Tp){ const k=clave(x); (A[k]=A[k]||{k, f:x.f, pac:x.pac, v:0, recs:[], srv:x.srv, regla:x.regla, emp:x.emp}); A[k].v+=x.v; A[k].recs.push(x); }
+  for(const x of Tp){ const k=clave(x); (A[k]=A[k]||{k, f:x.f, pac:x.pac, v:0, recs:[], srv:x.srv, regla:x.regla, reglaSrv:x.reglaSrv||x.regla, reglaRaw:x.reglaRaw||x.regla, emp:x.emp}); A[k].v+=x.v; A[k].recs.push(x); }
   for(const x of M){ const k=clave(x); (B[k]=B[k]||{k, f:x.f, pac:x.pac, v:0, items:[], srv:x.srv, emp:x.emp, incl:false}); B[k].v+=Math.round(x.v||0); B[k].items.push(x); if(x.incl) B[k].incl=true; }
   const causas=[]; let iguales=0;
   // 1) jornadas, agendas y valores fijos (lo que no va paciente por paciente)
@@ -11363,7 +11395,7 @@ function manoAnalizar(med){
     for(const x of resAd){ const c=manoLeerCuenta(x.srv); if(c && Math.abs(c.n*c.u - x.v)>1)
       notas.push('Ojo: «'+x.srv.trim()+'» — '+c.n+' × '+money(c.u)+' = <b>'+money(c.n*c.u)+'</b>, pero está escrito <b>'+money(x.v)+'</b>. Parece un error de digitación.'); }
     // días que a mano se contaron como jornada y el tablero no
-    const diasJ=new Set(); for(const x of Tp){ const m=String(x.regla||'').match(/jornada[^\d]*(\d{4}-\d{2}-\d{2})/i); if(m) diasJ.add(m[1]); }
+    const diasJ=new Set(); for(const x of Tp){ const m=String(x.reglaRaw||x.regla||'').match(/jornada[^\d]*(\d{4}-\d{2}-\d{2})/i); if(m) diasJ.add(m[1]); }
     const cuentaMano=resAd.map(x=>manoLeerCuenta(x.srv)).filter(Boolean).reduce((t,c)=>t+c.n,0);
     const nTab=Tfix.map(x=>{ const m=String(x.srv||'').match(/^(\d+)\s+jornada/i); return m? +m[1] : 0; }).reduce((a,b)=>a+b,0);
     if(cuentaMano && nTab && cuentaMano>nTab && diasJ.size){
@@ -11406,10 +11438,15 @@ function manoAnalizar(med){
       continue; }
     if(Math.abs(a.v-b.v)<=1){ iguales++; continue; }
     const gk=manoSinFecha(a.regla)+'|'+b.v+'|'+a.v;
-    (gD[gk]=gD[gk]||{regla:manoSinFecha(a.regla), fechada:a.regla!==manoSinFecha(a.regla), vM:b.v, vT:a.v, srv:a.srv, pac:[]}).pac.push({f:a.f, pac:a.pac, srv:a.srv, vM:b.v, vT:a.v, recs:a.recs, mItems:b.items});
+    const gkSrv=manoSinFecha(a.reglaSrv||a.regla)+'|'+b.v+'|'+a.v;
+    const gkRaw=manoSinFecha(a.reglaRaw||a.regla)+'|'+b.v+'|'+a.v;
+    (gD[gk]=gD[gk]||{regla:manoSinFecha(a.regla), gkSrv, gkRaw, tail:'|'+b.v+'|'+a.v, fechada:(a.reglaRaw||a.regla)!==manoSinFecha(a.reglaRaw||a.regla), vM:b.v, vT:a.v, srv:a.srv, pac:[]}).pac.push({f:a.f, pac:a.pac, srv:a.srv, vM:b.v, vT:a.v, recs:a.recs, mItems:b.items});
   }
   for(const [k,a] of Object.entries(A)){ if(B[k] || !(a.v>0)) continue;
-    const gk=manoSinFecha(a.regla)+'|'+manoTipoSrv(a.srv); (gT[gk]=gT[gk]||{regla:manoSinFecha(a.regla), fechada:a.regla!==manoSinFecha(a.regla), srv:a.srv, pac:[]}).pac.push({f:a.f, pac:a.pac, srv:a.srv, vM:0, vT:a.v, recs:a.recs}); }
+    const gk=manoSinFecha(a.regla)+'|'+manoTipoSrv(a.srv);
+    const gkSrv=manoSinFecha(a.reglaSrv||a.regla)+'|'+manoTipoSrv(a.srv);
+    const gkRaw=manoSinFecha(a.reglaRaw||a.regla)+'|'+manoTipoSrv(a.srv);
+    (gT[gk]=gT[gk]||{regla:manoSinFecha(a.regla), gkSrv, gkRaw, tail:'|'+manoTipoSrv(a.srv), fechada:(a.reglaRaw||a.regla)!==manoSinFecha(a.reglaRaw||a.regla), srv:a.srv, pac:[]}).pac.push({f:a.f, pac:a.pac, srv:a.srv, vM:0, vT:a.v, recs:a.recs}); }
   const suma=(L,f)=>L.reduce((t,x)=>t+f(x),0);
   for(const [gk,g] of Object.entries(gM)){
     const n=g.pac.length, val=-suma(g.pac,x=>x.vM), ts=manoTipoSrv(g.srv);
@@ -11429,7 +11466,7 @@ function manoAnalizar(med){
   }
   for(const [gk,g] of Object.entries(gT)){
     const n=g.pac.length, val=suma(g.pac,x=>x.vT);
-    causas.push({id:'T|'+gk, tipo:'soloTab', valor:val, titulo:manoCuantos(n,manoTipoSrv(g.srv))+(n===1?' que el tablero paga y no está en la liquidación manual':' que el tablero paga y no están en la liquidación manual'),
+    causas.push({id:'T|'+gk, altIds:['T|'+g.gkSrv, 'T|'+g.gkRaw], _pref:'T|', _tail:g.tail, tipo:'soloTab', valor:val, titulo:manoCuantos(n,manoTipoSrv(g.srv))+(n===1?' que el tablero paga y no está en la liquidación manual':' que el tablero paga y no están en la liquidación manual'),
       texto:'El tablero paga '+manoPlural(n,'paciente')+' por «'+latTxt(fraseConcepto(g.regla))+'» ('+money(val)+') y en la liquidación manual no '+(n===1?'aparece':'aparecen')+'. Días: '+manoDias(g.pac)+'.',
       pac:g.pac, unit:0, unitT:(new Set(g.pac.map(x=>x.vT)).size===1? g.pac[0].vT : null), vMano:0, vTab:val, acciones:['tablero','editar']});
   }
@@ -11438,10 +11475,38 @@ function manoAnalizar(med){
     const lT=ladoDe(med, g.vT, g.regla), lM=ladoDe(med, g.vM, '');
     const lat=(lT && lM && lT!==lM)? ' En la liquidación manual se pagó como <b>'+(/ambos/.test(lM)?'bilateral':'unilateral')+'</b> y el tablero como <b>'+(/ambos/.test(lT)?'bilateral':'unilateral')+'</b> según la cantidad facturada.' : '';
     const incl = g.vM===0 ? ' En la liquidación manual están como «incluidos» (sin valor).' : (g.vT===0 ? ' El tablero los tiene incluidos (sin valor aparte).' : '');
-    causas.push({id:'D|'+gk, tipo:'dist', valor:val, latM:(lT&&lM&&lT!==lM)?(/ambos/.test(lM)?'bilateral':'unilateral'):'', latT:(lT&&lM&&lT!==lM)?(/ambos/.test(lT)?'bilateral':'unilateral'):'', titulo:manoCuantos(n,manoTipoSrv(g.srv))+': liquidación manual '+money(g.vM)+'; tablero '+money(g.vT),
+    causas.push({id:'D|'+gk, altIds:['D|'+g.gkSrv, 'D|'+g.gkRaw], _pref:'D|', _tail:g.tail, tipo:'dist', valor:val, latM:(lT&&lM&&lT!==lM)?(/ambos/.test(lM)?'bilateral':'unilateral'):'', latT:(lT&&lM&&lT!==lM)?(/ambos/.test(lT)?'bilateral':'unilateral'):'', titulo:manoCuantos(n,manoTipoSrv(g.srv))+': liquidación manual '+money(g.vM)+'; tablero '+money(g.vT),
       texto:'Mismo paciente, distinto valor. Regla del tablero: «'+latTxt(fraseConcepto(g.regla))+'».'+lat+incl+(g.fechada||n>1? ' Días: '+manoDias(g.pac)+'.' : ''),
       pac:g.pac, unit:g.vM, unitT:g.vT, acciones:['tablero','mano_mes','editar']});
   }
+  // Compatibilidad con decisiones guardadas antes o después de renombrar servicios (_clasificarTipoSrv)
+  try{
+    const _D0 = typeof cmpdLeer==='function' ? cmpdLeer() : {};
+    const _perPref = 'CMPD|'+(RESULT?RESULT.periodoInicio:'')+'|'+med+'|';
+    for(const c of causas){
+      if(_D0[cmpdKey(med, c.id)] && !_D0[cmpdKey(med, c.id)].borrado) continue;
+      if(TA.some(x=>x.acu && x.acu.causa===c.id)) continue;
+      let matched = null;
+      for(const aid of (c.altIds||[])){
+        if((_D0[cmpdKey(med, aid)] && !_D0[cmpdKey(med, aid)].borrado) || TA.some(x=>x.acu && x.acu.causa===aid)){ matched = aid; break; }
+      }
+      if(!matched && c._pref && c._tail){
+        const sameTail = causas.filter(z=>z._pref===c._pref && z._tail===c._tail);
+        if(sameTail.length===1){
+          for(const [k,v] of Object.entries(_D0)){
+            if(!v || v.borrado || !k.startsWith(_perPref)) continue;
+            const cid = k.slice(_perPref.length);
+            if(cid.startsWith(c._pref) && cid.endsWith(c._tail)){ matched = cid; break; }
+          }
+          if(!matched){
+            const tx = TA.find(x=>x.acu && x.acu.causa && x.acu.causa.startsWith(c._pref) && x.acu.causa.endsWith(c._tail));
+            if(tx) matched = tx.acu.causa;
+          }
+        }
+      }
+      if(matched) c.id = matched;
+    }
+  }catch(e){}
   for(const x of TA){ if(x.acu.srvEd && x.acu.pacs){ for(const q of x.acu.pacs){ const kq=String(q.f||'').slice(0,10)+'|'+actaIdn(q.pac);
         const c=causas.find(z=>z.tipo==='soloMano' && z.pac.some(p=>String(p.f||'').slice(0,10)+'|'+actaIdn(p.pac)===kq)); if(!c) continue;
         c.aplic=c.aplic||{v:0, n:0}; c.aplic.v+=q.v; c.aplic.n++; c.valor+=q.v; c.vTab=(c.vTab||0)+q.v; } continue; }
@@ -11517,11 +11582,12 @@ function manoPintar(){
     return `<button class="mano-it ${a.med===MANO.sel?'sel':''}" data-med="${esc(a.med)}" onclick="manoSel('${jsqM(a.med)}')">
       <span class="mi-n">${esc(fmtNom(a.med))}</span><span class="mi-d ${ok?'':(a.dif>0?'mas':'dif')}">${ok?'✓':(a.dif>0?'+':'')+money(a.dif)}</span>
       <span class="mi-s">${ok? 'Cuadra al peso' : a.fila.rec==null? 'No está en la liquidación manual' : rs? '<span class="res">✓ Explicado</span>' : 'Falta decidir '+(falta>0?'+':'')+money(falta)+' · '+manoPlural(pend,'causa')}</span></button>`; };
-  const malos=ord.filter(a=>!cuadra(a)), buenos=ord.filter(cuadra);
+  const malos=ord.filter(a=>!cuadra(a) && !resuelto(a)), explicados=ord.filter(a=>resuelto(a)), buenos=ord.filter(cuadra);
   h+=`<div class="mano-md"><div class="mano-lista">
       <div class="ptop"><span>Médicos</span><button class="ptog" onclick="panelTog('lista')" title="Cerrar la lista (más espacio)">‹</button></div>
       <div class="pstrip"><button class="ptog" onclick="panelTog('lista')" title="Abrir la lista">›</button><button class="pnav" onclick="manoNav(-1)" title="Médico anterior">▲</button><div class="pvert" id="manoStripNom"></div><button class="pnav" onclick="manoNav(1)" title="Médico siguiente">▼</button></div>
       <div class="ml-t">Por revisar <span>${malos.length}</span></div>${malos.map(item).join('')||'<div class="hint" style="padding:8px">Ninguno 🎉</div>'}
+      ${explicados.length?`<details class="ml-ok" ${explicados.some(a=>a.med===MANO.sel)||!malos.length?'open':''}><summary>✓ Explicados <span>${explicados.length}</span></summary>${explicados.map(item).join('')}</details>`:''}
       <details class="ml-ok" ${buenos.some(a=>a.med===MANO.sel)?'open':''}><summary>✓ Cuadran al peso <span>${buenos.length}</span></summary>${buenos.map(item).join('')}</details>
     </div><div class="mano-det" id="manoDet"></div></div>`;
   box.innerHTML=h; manoDetalle(); panelAplicar();
@@ -12485,11 +12551,41 @@ function actaPendHTML(m){
 }
 // ============ REVISIÓN DEL COMPARATIVO: aceptar, ajustar o devolver ============
 function revLeer(){ try{ return JSON.parse(localStorage.getItem('liq_revision')||'{}'); }catch(e){ return {}; } }
-function revKey(med){ return (RESULT?RESULT.periodoInicio:'')+'|'+med; }
-function revDe(med){ return revLeer()[revKey(med)] || null; }
+function revSedeTag(){
+  const s = (document.getElementById('sede')||{}).value || '';
+  return s==='Sede 2'?'S2' : s==='Sede Principal'?'S1' : s==='Cirugía'?'CIR' : 'TODO';
+}
+function revKey(med){ return (RESULT?RESULT.periodoInicio:'')+'|'+revSedeTag()+'|'+med; }
+function revKeyLegacy(med){ return (RESULT?RESULT.periodoInicio:'')+'|'+med; }
+function revDe(med, tot, f, manoRes){
+  const R = revLeer();
+  const ks = revKey(med);
+  if(R[ks]) return R[ks];
+  const rl = R[revKeyLegacy(med)];
+  if(!rl) return null;
+  if(tot===undefined && typeof actaTot==='function') tot = actaTot(med);
+  if(rl.origen==='acta' && rl.tot!=null && tot!=null && Math.round(rl.tot)!==Math.round(tot)){
+    const st = revSedeTag();
+    if(st!=='TODO'){
+      if(f===undefined && typeof CMP!=='undefined' && CMP.filas) f = CMP.filas.find(x=>x.med===med) || null;
+      if(manoRes===undefined && f && f.est!=='ok' && f.est!=='na' && typeof manoAnalizar==='function' && typeof cmpdLeer==='function'){
+        try{
+          const _an = (typeof MANO!=='undefined' && MANO.cache && MANO.cache[med]) ? MANO.cache[med] : manoAnalizar(med);
+          const _D = cmpdLeer();
+          if(_an && _an.causas && _an.causas.length && _an.causas.every(c=>{ const dv=_D[cmpdKey(med,c.id)]; return dv && !dv.borrado; })) manoRes = true;
+        }catch(e){}
+      }
+      const x = (RESULT && RESULT._datos || []).find(d=>d.m===med);
+      const sinPend = (!f || f.est==='ok' || f.est==='na' || manoRes) && !(x && x.st>0);
+      if(rl.estado==='ok' && sinPend) return {...rl, tot};
+      return null;
+    }
+  }
+  return rl;
+}
 function revGuardar(med, obj){
   const R=revLeer(); const k=revKey(med);
-  if(obj) R[k]=obj; else delete R[k];
+  if(obj){ obj.sede = revSedeTag(); R[k]=obj; } else { delete R[k]; const kl=revKeyLegacy(med); if(R[kl]){ delete R[kl]; try{ if(typeof NUBE_ON!=='undefined' && NUBE_ON) NUBE.guardarAjuste('REV|'+kl, {borrado:true}); }catch(e){} } }
   try{ localStorage.setItem('liq_revision', JSON.stringify(R)); }catch(e){}
   try{ if(typeof NUBE_ON!=='undefined' && NUBE_ON) NUBE.guardarAjuste('REV|'+k, obj||{borrado:true}); }catch(e){}
   try{ registrarAudit({t:new Date().toLocaleString('es-CO'), accion: obj? ('REVISIÓN: '+obj.estado.toUpperCase()) : 'REVISIÓN QUITADA',
@@ -13329,6 +13425,7 @@ async function nubeComparativoCierres(){
     // ensayo propio, mostrando un «su equipo» que nadie había liquidado.
     if(!c.enviado) continue;
     if(c.porUid===mio) continue;                                // lo propio nunca se compara consigo mismo
+    if(miParte && c.parte!==miParte) continue;
     const filas = Object.entries(c.porMedico).map(([m,v])=>({med:m, crudo:m, nums:[{c:0, v:+v||0}]}));
     const det = {modo:'porHoja', hoja:'nube', filas, cols:{}, etiqueta:'Enviado por '+(c.porNombre||'')};
     CMP.archivos.push({nombre:(NOMP[c.parte]||c.parte)+' — '+(c.enviadoPor||c.porNombre||''),
