@@ -933,7 +933,7 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
       <details class="dlmenu"><summary class="btn quiet">⬇ Descargar</summary>
         <div class="dlbox">
           <a onclick="pdfTodas()">📄 Actas de todos los médicos</a>
-          <a onclick="pdfResumen()">📄 Resumen del mes</a>
+          <a onclick="pdfResumenSedes()">📄 Resumen del mes</a>
           <a onclick="pdfCuadre()">📄 Cuadre contra lo liquidado</a>
           <a id="btnCSV">⬇ Todo en Excel</a>
           <a onclick="window.print()">🖨 Imprimir la pantalla</a>
@@ -7119,7 +7119,7 @@ function semaforoPintar(){
         <button class="btn" style="padding:8px 16px;font-size:13px" onclick="excelCompleto()">⬇ Reporte completo (Excel)</button>
         <details class="dlmenu"><summary class="btn quiet">Más descargas</summary>
           <div class="dlbox">
-            <a onclick="pdfResumen()">📄 Resumen del mes (PDF)</a>
+            <a onclick="pdfResumenSedes()">📄 Resumen del mes (PDF)</a>
             <a onclick="pdfTodas()">📄 Actas de todos los médicos (PDF)</a>
             <a onclick="pdfCuadre()">📄 Cuadre contra lo liquidado (PDF)</a>
             <a onclick="showTab('comp')">⚖ Ver la liquidación manual</a>
@@ -7390,7 +7390,7 @@ function semAbrir(m){
   const html = `<div class="actabox" id="semActaBox">
     <div class="actatop a4">
       <div class="a4l"><div class="an">${fmtNom(m)}</div><div class="a4s">${actaSubtitulo(m, tot)}</div>
-        <div class="a4b"><button class="btn quiet" onclick="pdfActa('${esc}')">📄 PDF del acta</button>
+        <div class="a4b"><button class="btn quiet" onclick="pdfActa('${esc}')">📄 PDF del acta</button>${(typeof puede==='function' && puede('subir_informe')) ? `<button class="btn quiet" onclick="excelMedico('${esc}')">⬇ Excel del acta</button>` : ''}
         <button class="btn quiet" onclick="acAbrir('${esc}',null,null,0)">＋ Agregar un servicio que no está</button>
         <button class="btn quiet" onclick="irMedico('${esc}')">Abrir en Médicos</button></div></div>
       <div class="a4r"><div class="a4tl">Total a pagar</div><div class="at">${money(tot)}</div><div class="a4b">${actaBotones(m, tot)}</div></div>
@@ -15406,6 +15406,98 @@ function pdfActa(h){
   doc.save('Honorarios '+pdfNombre(h)+' '+(RESULT.periodoFin||'').replace(/\//g,'-')+'.pdf');
   try{ if(typeof NUBE!=='undefined' && NUBE.audit) NUBE.audit({accion:'PDF ACTA', detalle:h}); }catch(e){}
 }
+async function pdfResumenSedes(){
+  var sel = document.getElementById("sede");
+  if(!sel){ alert("No se encuentra el selector de sede."); return; }
+  var cap = document.createElement("div");
+  cap.style.cssText = "position:fixed;z-index:99999;left:0;right:0;top:0;bottom:0;background:rgba(10,20,40,.55);display:flex;align-items:center;justify-content:center;font:600 16px system-ui,sans-serif;color:#fff";
+  cap.innerHTML = "<div style='background:#1e5ba8;padding:18px 26px;border-radius:10px'>Calculando las tres sedes, un momento...</div>";
+  document.body.appendChild(cap);
+  var orig = sel.value;
+  var mapa = [["Sede 2","mut"],["Sede Principal","pyp"],["Cirug\u00eda","cir"]];
+  var acc = {};
+  try{
+    for (var i=0;i<mapa.length;i++){
+      sel.value = mapa[i][0];
+      sel.dispatchEvent(new Event("change",{bubbles:true}));
+      document.getElementById("btnCalc").click();
+      await new Promise(function(r){ setTimeout(r,1200); });
+      var t0 = Date.now();
+      while(!(window.RESULT && RESULT._datos) && Date.now()-t0 < 20000){ await new Promise(function(r){setTimeout(r,300);}); }
+      var D = (window.RESULT && RESULT._datos) || [];
+      for (var j=0;j<D.length;j++){
+        var x = D[j];
+        var v = Math.round((x.cir||0)+(x.sed||0)+(x.man||0));
+        if(!acc[x.m]) acc[x.m] = {mut:0,pyp:0,cir:0};
+        acc[x.m][mapa[i][1]] += v;
+      }
+    }
+  } finally {
+    sel.value = orig;
+    sel.dispatchEvent(new Event("change",{bubbles:true}));
+    try{ document.getElementById("btnCalc").click(); }catch(e){}
+    cap.remove();
+  }
+  var meds = Object.keys(acc).filter(function(m){ return (acc[m].mut+acc[m].pyp+acc[m].cir) > 0; }).sort();
+  if(!meds.length){ alert("No hay datos para el resumen."); return; }
+  var tm=0, tp=0, tc=0, body=[];
+  meds.forEach(function(m,i){
+    var a = acc[m];
+    tm += a.mut; tp += a.pyp; tc += a.cir;
+    body.push([ i+1, pdfNombre(m), pdfFmt(a.mut), pdfFmt(a.pyp), pdfFmt(a.cir), pdfFmt(a.mut+a.pyp+a.cir) ]);
+  });
+  body.push([ "", "TOTAL", pdfFmt(tm), pdfFmt(tp), pdfFmt(tc), pdfFmt(tm+tp+tc) ]);
+  var J = pdfLib();
+  var doc = new J({unit:"pt", format:"a4"});
+  var y = pdfTitulo(doc, "Resumen de liquidaci\u00f3n", pdfPeriodoTexto(), "Mutual Ser \u00b7 P y P \u00b7 Cirug\u00eda", 150);
+  doc.autoTable({
+    startY: y, margin:{top:150,left:30,right:30,bottom:85}, theme:"plain",
+    head: [["N","Especialista","Mutual","P y P","Cirug\u00eda","Total"]],
+    body: body,
+    headStyles:{fillColor:PDF_AZUL, textColor:[255,255,255], fontStyle:"bold", halign:"center"},
+    styles:{fontSize:8.5, cellPadding:4},
+    columnStyles:{0:{cellWidth:24,halign:"center"},1:{cellWidth:170},2:{halign:"right"},3:{halign:"right"},4:{halign:"right"},5:{halign:"right",fontStyle:"bold"}},
+    didParseCell: function(d){ if(d.section==="body" && d.row.index===body.length-1){ d.cell.styles.fontStyle="bold"; d.cell.styles.fillColor=[235,240,247]; } }
+  });
+  pdfMarco(doc);
+  doc.save("Resumen liquidacion " + (new Date()).toISOString().slice(0,10) + ".pdf");
+}
+
+function excelMedico(h){
+  var R = pdfFilasMedico(h);
+  var S=function(v){return {v:String(v==null?"":v), t:"s"}};
+  var T=function(v){return {v:String(v==null?"":v), t:"s", s:1}};
+  var N5=function(v){return {v:String(v==null?"":v), t:"s", s:5}};
+  var HD=function(v){return {v:String(v==null?"":v), t:"s", s:2}};
+  var M=function(v){return {v:Math.round(v||0), t:"n", s:3}};
+  var MB=function(v){return {v:Math.round(v||0), t:"n", s:4}};
+  var E=function(){return {v:"", t:"s"}};
+  var n = R.filas.length;
+  var enc = [
+    [S("HONORARIOS MÉDICOS")],
+    [T(pdfNombre(h))],
+    [S(pdfPeriodoTexto())],
+    [S(pdfAmbitoTexto())],
+    [],
+    [N5("Relación de pacientes atendidos"),E(),E(),E(),E(),N5("VALOR A FACTURAR"),MB(R.total)],
+    [S(n+" registros · liquidado según la ficha técnica vigente")],
+    []
+  ];
+  var cab = [HD("N"),HD("Fecha"),HD("Empresa"),HD("Tipo"),HD("Paciente"),HD("Servicio"),HD("Honorario")];
+  var cuerpo = R.filas.map(function(r,i){ return [S(i+1), S(r.f), S(r.emp), S(r.tipo), S(r.pac), S(r.det), M(r.v)]; });
+  var pie = [];
+  (R.cierres||[]).forEach(function(c){ pie.push([E(),E(),E(),E(),E(),N5(c.txt),M(c.v)]); });
+  pie.push([]);
+  pie.push([E(),E(),E(),E(),E(),N5("VALOR A FACTURAR"),MB(R.total)]);
+  var filas = enc.concat([cab], cuerpo, pie);
+  var blob = xLibro([{nombre:"Acta", xml:xHoja(filas, [5,11,26,11,32,44,14])}]);
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Acta " + h + ".xlsx";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+}
+
 function pdfTodas(){
   const J=pdfLib(); if(!J||!RESULT) return;
   const doc = new J({unit:'pt', format:'a4'});
