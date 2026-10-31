@@ -15472,7 +15472,8 @@ function excelMedico(h){
   var M=function(v){return {v:Math.round(v||0), t:"n", s:3}};
   var MB=function(v){return {v:Math.round(v||0), t:"n", s:4}};
   var E=function(){return {v:"", t:"s"}};
-  var n = R.filas.length;
+  var fil = R.filas.filter(function(r){ return Math.round(r.v||0) !== 0; });
+  var n = fil.length;
   var enc = [
     [S("HONORARIOS MÉDICOS")],
     [T(pdfNombre(h))],
@@ -15484,7 +15485,7 @@ function excelMedico(h){
     []
   ];
   var cab = [HD("N"),HD("Fecha"),HD("Empresa"),HD("Tipo"),HD("Paciente"),HD("Servicio"),HD("Honorario")];
-  var cuerpo = R.filas.map(function(r,i){ return [S(i+1), S(r.f), S(r.emp), S(r.tipo), S(r.pac), S(r.det), M(r.v)]; });
+  var cuerpo = fil.map(function(r,i){ return [S(i+1), S(r.f), S(r.emp), S(r.tipo), S(r.pac), S(r.det), M(r.v)]; });
   var pie = [];
   (R.cierres||[]).forEach(function(c){ pie.push([E(),E(),E(),E(),E(),N5(c.txt),M(c.v)]); });
   pie.push([]);
