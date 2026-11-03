@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
+import { MUNICIPIOS_ATENDIDOS, normalizarDocumento } from "@/lib/mutualser/afiliados";
 
 // Valida si un paciente está activo en la base de afiliados de MutualSer.
 // Lo llama el agente de Dapta (acción API). Se protege con la llave BOT_API_KEY
@@ -9,9 +10,6 @@ import { createServiceClient } from "@/lib/supabase/server";
 // dirección, correo ni teléfono.
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
-
-// Municipios de afiliación que Ebenezer atiende por MutualSer (regla definida por Ebenezer, 13-oct-2026).
-const MUNICIPIOS_ATENDIDOS = new Set(["Cartagena", "Arjona", "Mahates", "María la Baja", "San Cristóbal", "San Estanislao", "Santa Rosa", "Soplaviento", "Turbaco", "Turbaná", "Villanueva"]);
 
 function llaveValida(recibida: string | null): boolean {
   const esperada = process.env.BOT_API_KEY;
@@ -49,8 +47,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const documento = String(cuerpo.documento ?? "").replace(/\D/g, "");
-  if (documento.length < 4 || documento.length > 15) {
+  const documento = normalizarDocumento(cuerpo.documento);
+  if (documento.length < 4 || documento.length > 20) {
     return NextResponse.json({ error: "Documento inválido", afiliado: false }, { status: 400 });
   }
 
