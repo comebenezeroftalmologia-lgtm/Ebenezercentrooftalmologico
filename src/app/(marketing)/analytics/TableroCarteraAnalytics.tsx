@@ -443,7 +443,7 @@ export default function TableroCarteraAnalytics() {
           );
           return;
         }
-        if (Array.isArray(json.anuladas)) {
+        if (Array.isArray(json.anuladas) && json.anuladas.length > 0) {
           setAnuladas(
             json.anuladas.map((r: AnuladaRow) => ({
               ...r,
@@ -451,7 +451,7 @@ export default function TableroCarteraAnalytics() {
             }))
           );
         }
-        if (Array.isArray(json.legalizadas)) {
+        if (Array.isArray(json.legalizadas) && json.legalizadas.length > 0) {
           setLegalizadas(
             json.legalizadas.map((r: AnuladaRow) => ({
               ...r,
@@ -459,7 +459,7 @@ export default function TableroCarteraAnalytics() {
             }))
           );
         }
-        if (Array.isArray(json.glosas)) {
+        if (Array.isArray(json.glosas) && json.glosas.length > 0) {
           setGlosas(
             json.glosas.map((r: GlosaRow) => ({
               ...r,
@@ -467,12 +467,22 @@ export default function TableroCarteraAnalytics() {
             }))
           );
         }
-        if (Array.isArray(json.pendientes)) {
+        if (Array.isArray(json.pendientes) && json.pendientes.length > 0) {
           setPendientes(
             json.pendientes.map((r: PendienteRow) => ({
               ...r,
               responsable: normalizarResponsableReal(r.responsable, r.empresa),
             }))
+          );
+        }
+        const vacio =
+          (json.anuladas?.length ?? 0) === 0 &&
+          (json.legalizadas?.length ?? 0) === 0 &&
+          (json.glosas?.length ?? 0) === 0 &&
+          (json.pendientes?.length ?? 0) === 0;
+        if (vacio) {
+          mostrarMensaje(
+            "La base aun no tiene registros cargados. Lo que ves es la foto del archivo; lo que registres si se guarda."
           );
         }
       } catch {
