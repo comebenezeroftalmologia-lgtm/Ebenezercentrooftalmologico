@@ -421,51 +421,75 @@ export default function TableroCarteraAnalytics() {
     medico: "",
   });
 
+  // Carga los registros desde la base de datos.
+  //
+  // Antes esto leia localStorage: cada facturadora veia solo lo que ella misma
+  // habia escrito, y todo se perdia al limpiar la cache o cambiar de equipo.
+  // Ahora la fuente de verdad es la base, compartida por todas.
+  //
+  // Si la base no responde, el tablero sigue mostrando la foto del archivo y
+  // avisa, para que nadie registre creyendo que se guardo.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.anuladas)) {
+    let vigente = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/cartera/registros", { cache: "no-store" });
+        const json = await res.json();
+        if (!vigente) return;
+        if (!res.ok || !json.ok) {
+          mostrarMensaje(
+            "No se pudo leer la base de datos: " + (json?.error || res.statusText) +
+            ". Lo que ves es la ultima foto del archivo y NO se esta guardando."
+          );
+          return;
+        }
+        if (Array.isArray(json.anuladas)) {
           setAnuladas(
-            parsed.anuladas.map((r: AnuladaRow) => ({
+            json.anuladas.map((r: AnuladaRow) => ({
               ...r,
               responsable: normalizarResponsableReal(r.responsable, r.empresa),
             }))
           );
         }
-        if (Array.isArray(parsed.legalizadas)) {
+        if (Array.isArray(json.legalizadas)) {
           setLegalizadas(
-            parsed.legalizadas.map((r: AnuladaRow) => ({
+            json.legalizadas.map((r: AnuladaRow) => ({
               ...r,
               responsable: normalizarResponsableReal(r.responsable, r.empresa),
             }))
           );
         }
-        if (Array.isArray(parsed.glosas)) {
+        if (Array.isArray(json.glosas)) {
           setGlosas(
-            parsed.glosas.map((r: GlosaRow) => ({
+            json.glosas.map((r: GlosaRow) => ({
               ...r,
               facturador: normalizarResponsableReal(r.facturador, r.empresa),
             }))
           );
         }
-        if (Array.isArray(parsed.pendientes)) {
+        if (Array.isArray(json.pendientes)) {
           setPendientes(
-            parsed.pendientes.map((r: PendienteRow) => ({
+            json.pendientes.map((r: PendienteRow) => ({
               ...r,
               responsable: normalizarResponsableReal(r.responsable, r.empresa),
             }))
           );
         }
-        if (Array.isArray(parsed.cortesTodas) && parsed.cortesTodas.length >= carteraInitialData.sismaBack.cortes.TODAS.length) setCortesTodas(parsed.cortesTodas);
-        if (Array.isArray(parsed.cortesPyp)) setCortesPyp(parsed.cortesPyp);
+      } catch {
+        if (vigente) {
+          mostrarMensaje(
+            "Sin conexion con la base de datos. Lo que ves es la ultima foto del archivo y NO se esta guardando."
+          );
+        }
       }
-    } catch {
-      // Ignore storage error
-    }
+    })();
+    return () => {
+      vigente = false;
+    };
   }, []);
 
+  // Cache local para que la pantalla no parpadee al recargar. La fuente de
+  // verdad es la base de datos: esto ya no es donde se guarda.
   const persistAll = (
     nextAnuladas = anuladas,
     nextLegalizadas = legalizadas,
@@ -488,6 +512,28 @@ export default function TableroCarteraAnalytics() {
       );
     } catch {
       // Ignore storage error
+    }
+  };
+
+  // Guarda UNA sola fila en la base de datos, no el tablero entero: asi dos
+  // personas pueden trabajar a la vez sin pisarse. Cada llamada queda tambien
+  // registrada en el historial, con quien la hizo y cuando.
+  const guardarEnBase = async (entidad: string, accion: "CREAR" | "EDITAR", fila: unknown) => {
+    try {
+      const res = await fetch("/api/cartera/registros", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entidad, accion, fila }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        mostrarMensaje("NO SE GUARDO: " + (json?.error || res.statusText));
+        return false;
+      }
+      return true;
+    } catch {
+      mostrarMensaje("NO SE GUARDO: sin conexion con la base de datos.");
+      return false;
     }
   };
 
@@ -3063,6 +3109,7 @@ export default function TableroCarteraAnalytics() {
       persistAll(anuladas, legalizadas, glosas, next, cortesTodas, cortesPyp);
     }
 
+    void guardarEnBase(tabActiva, "EDITAR", { ...filaEditando, id });
     setFilaEditando(null);
     mostrarMensaje(`Registro ${id} actualizado.`);
   };
@@ -3103,10 +3150,12 @@ export default function TableroCarteraAnalytics() {
         const next = [nueva, ...anuladas];
         setAnuladas(next);
         persistAll(next, legalizadas, glosas, pendientes, cortesTodas, cortesPyp);
+        void guardarEnBase(tabActiva, "CREAR", nueva);
       } else {
         const next = [nueva, ...legalizadas];
         setLegalizadas(next);
         persistAll(anuladas, next, glosas, pendientes, cortesTodas, cortesPyp);
+        void guardarEnBase(tabActiva, "CREAR", nueva);
       }
     } else if (tabActiva === "glosas") {
       const nueva: GlosaRow = {
@@ -3131,6 +3180,7 @@ export default function TableroCarteraAnalytics() {
       const next = [nueva, ...glosas];
       setGlosas(next);
       persistAll(anuladas, legalizadas, next, pendientes, cortesTodas, cortesPyp);
+      void guardarEnBase(tabActiva, "CREAR", nueva);
     } else {
       const nueva: PendienteRow = {
         id: `PEN-${Date.now()}`,
@@ -3151,6 +3201,7 @@ export default function TableroCarteraAnalytics() {
       const next = [nueva, ...pendientes];
       setPendientes(next);
       persistAll(anuladas, legalizadas, glosas, next, cortesTodas, cortesPyp);
+      void guardarEnBase(tabActiva, "CREAR", nueva);
     }
 
     setMostrarModalNuevo(false);
