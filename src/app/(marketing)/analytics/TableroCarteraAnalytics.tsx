@@ -230,6 +230,11 @@ const normalizarResponsableReal = (respRaw: string | undefined, empresaRaw: stri
 
 const STORAGE_KEY = "ebenezer_sisma_back_mesa_v5";
 
+/** Hoy en Colombia, AAAA-MM-DD, sin depender de la zona del navegador. */
+function hoyEnColombia(): string {
+  return new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 export default function TableroCarteraAnalytics() {
   const [cortesTodas, setCortesTodas] = useState<CorteSismaBack[]>(
     carteraInitialData.sismaBack.cortes.TODAS
@@ -397,8 +402,11 @@ export default function TableroCarteraAnalytics() {
     anio: "2026",
     periodo: "",
     factura: "FCOE",
-    fechaFactura: "2026-10-19",
-    fechaRadicacion: "2026-10-19",
+    // Valor por defecto del formulario de registro nuevo: HOY, no una fecha
+    // fija. Estaba clavado en "2026-10-19", asi que todo lo que alguien
+    // registrara en diciembre entraria fechado en octubre sin darse cuenta.
+    fechaFactura: hoyEnColombia(),
+    fechaRadicacion: hoyEnColombia(),
     valorRadicado: "",
     valorGlosado: "",
     tipo: "GLOSA",
@@ -2272,7 +2280,13 @@ export default function TableroCarteraAnalytics() {
       return normalizarResponsableReal(String(row[colKey] || ""), String(row.empresa || ""));
     }
     if (colKey === "fechaRadicacion") {
-      return String(row.fechaRadicacion || row.fechaFactura || "-");
+      // Si no hay fecha de radicacion pero alguien escribio algo en esa
+      // casilla ("NO RADICA", "PDT"...), se muestra ESO. Antes se caia a la
+      // fecha de factura, que es otra cosa: una factura sin radicar se veia
+      // con fecha de radicacion. La nota dice la verdad; la otra fecha miente.
+      const nota = (row as Record<string, unknown>).fechaRadicacionNota;
+      if (!row.fechaRadicacion && nota) return String(nota);
+      return String(row.fechaRadicacion || "-");
     }
     if (colKey === "facturaReemplaza") {
       return String(row.facturaReemplaza || "PENDIENTE");
@@ -2932,11 +2946,16 @@ export default function TableroCarteraAnalytics() {
             numero: anuladas.length + i + 1,
             empresa: emp,
             empresaOriginal: emp,
-            fechaFactura: cols[1] || "2026-10-19",
+            // Si el archivo no trae fecha, NO se le inventa una. Aqui decia
+            // `cols[1] || "2026-10-19"`: cada fila sin fecha entraba con el
+            // 19 de octubre, una fecha que nadie escribio y que despues nadie
+            // podria distinguir de una de verdad. Vacio es incomodo; una
+            // fecha falsa es peor, porque se puede filtrar y sumar.
+            fechaFactura: cols[1] || "",
             periodo: "",
             anio: "2026",
             factura: fac,
-            fechaRadicacion: cols[3] || "2026-10-19",
+            fechaRadicacion: cols[3] || "",
             valorRadicado: val,
             copagos: 0,
             valorGlosaDevolucion: val,
@@ -5216,7 +5235,9 @@ export default function TableroCarteraAnalytics() {
                               {r.factura}
                             </td>
                             <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
-                              {r.fechaRadicacion || r.fechaFactura || "-"}
+                              {r.fechaRadicacion ||
+                                (r as unknown as Record<string, string>).fechaRadicacionNota ||
+                                "-"}
                             </td>
                             <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
                               {formatCOP(r.valorRadicado)}
