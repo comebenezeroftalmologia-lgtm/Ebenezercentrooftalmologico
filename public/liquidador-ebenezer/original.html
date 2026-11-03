@@ -15801,6 +15801,20 @@ async function excelResumenSedes(){
     if(h) setTimeout(function(){ window.__pacInyectar(h.parentElement); }, 60); }, true);
 })();
 
+(function(){
+  if(!window.NUBE || !NUBE.leerCierres || NUBE.__cierresMes) return;
+  NUBE.__cierresMes = true;
+  var _lc = NUBE.leerCierres.bind(NUBE);
+  NUBE.leerCierres = async function(per){
+    var r = await _lc(per);
+    var n = Array.isArray(r) ? r.length : (r ? Object.keys(r).length : 0);
+    if(n === 0 && typeof per === "string" && per.indexOf("|") > 0){
+      try{ r = await _lc(per.split("|")[0]); }catch(e){}
+    }
+    return r;
+  };
+})();
+
 function pdfTodas(){
   const J=pdfLib(); if(!J||!RESULT) return;
   const doc = new J({unit:'pt', format:'a4'});
