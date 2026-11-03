@@ -15407,38 +15407,61 @@ function pdfActa(h){
   try{ if(typeof NUBE!=='undefined' && NUBE.audit) NUBE.audit({accion:'PDF ACTA', detalle:h}); }catch(e){}
 }
 async function pdfResumenSedes(){
-  var sel = document.getElementById("sede");
-  if(!sel){ alert("No se encuentra el selector de sede."); return; }
-  var cap = document.createElement("div");
-  cap.style.cssText = "position:fixed;z-index:99999;left:0;right:0;top:0;bottom:0;background:rgba(10,20,40,.55);display:flex;align-items:center;justify-content:center;font:600 16px system-ui,sans-serif;color:#fff";
-  cap.innerHTML = "<div style='background:#1e5ba8;padding:18px 26px;border-radius:10px'>Calculando las tres sedes, un momento...</div>";
-  document.body.appendChild(cap);
-  var orig = sel.value;
-  var mapa = [["Sede 2","mut"],["Sede Principal","pyp"],["Cirug\u00eda","cir"]];
-  var acc = {};
+  var MAPA = {S2:"mut", S1:"pyp", CIR:"cir"};
+  var acc = {}, pie = [], desdeCierre = false;
   try{
-    for (var i=0;i<mapa.length;i++){
-      sel.value = mapa[i][0];
-      sel.dispatchEvent(new Event("change",{bubbles:true}));
-      document.getElementById("btnCalc").click();
-      await new Promise(function(r){ setTimeout(r,1200); });
-      var t0 = Date.now();
-      while(!(window.RESULT && RESULT._datos) && Date.now()-t0 < 20000){ await new Promise(function(r){setTimeout(r,300);}); }
-      var D = (window.RESULT && RESULT._datos) || [];
-      for (var j=0;j<D.length;j++){
-        var x = D[j];
-        var v = Math.round((x.cir||0)+(x.sed||0)+(x.man||0));
-        if(!acc[x.m]) acc[x.m] = {mut:0,pyp:0,cir:0};
-        acc[x.m][mapa[i][1]] += v;
-      }
+    var per = (typeof nubePeriodoActual==="function") ? nubePeriodoActual() : "";
+    var C = (window.NUBE && NUBE.leerCierres) ? await NUBE.leerCierres(per) : null;
+    var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){return C[k];}) : []);
+    if (arr && arr.length){
+      arr.forEach(function(c){
+        var col = MAPA[String(c.parte||"")]; if(!col) return;
+        var pm = c.porMedico || {};
+        Object.keys(pm).forEach(function(k){
+          var v = pm[k];
+          var n = (typeof v === "number") ? v : Math.round((Number(v.c)||0)+(Number(v.s)||0)+(Number(v.m)||0));
+          if(!acc[k]) acc[k] = {mut:0,pyp:0,cir:0};
+          acc[k][col] += Math.round(n)||0;
+        });
+        var nom = {S1:"Sede Principal", S2:"Sede 2", CIR:"Cirug\u00eda"}[String(c.parte)] || String(c.parte);
+        pie.push({o:({S2:1,S1:2,CIR:3})[String(c.parte)]||9, t: nom + ": " + String(c.porNombre||"")});
+      });
+      if(Object.keys(acc).length) desdeCierre = true;
     }
-  } finally {
-    sel.value = orig;
-    sel.dispatchEvent(new Event("change",{bubbles:true}));
-    try{ document.getElementById("btnCalc").click(); }catch(e){}
-    cap.remove();
+  }catch(e){ desdeCierre = false; }
+  if(!desdeCierre){
+    var sel = document.getElementById("sede");
+    if(!sel){ alert("No se encuentra el selector de sede."); return; }
+    var cap = document.createElement("div");
+    cap.style.cssText = "position:fixed;z-index:99999;left:0;right:0;top:0;bottom:0;background:rgba(10,20,40,.55);display:flex;align-items:center;justify-content:center;font:600 16px system-ui,sans-serif;color:#fff";
+    cap.innerHTML = "<div style='background:#1e5ba8;padding:18px 26px;border-radius:10px'>Calculando las tres sedes, un momento...</div>";
+    document.body.appendChild(cap);
+    var orig = sel.value;
+    var mapa = [["Sede 2","mut"],["Sede Principal","pyp"],["Cirug\u00eda","cir"]];
+    try{
+      for (var i=0;i<mapa.length;i++){
+        sel.value = mapa[i][0];
+        sel.dispatchEvent(new Event("change",{bubbles:true}));
+        document.getElementById("btnCalc").click();
+        await new Promise(function(r){ setTimeout(r,1200); });
+        var t0 = Date.now();
+        while(!(window.RESULT && RESULT._datos) && Date.now()-t0 < 20000){ await new Promise(function(r){setTimeout(r,300);}); }
+        var D = (window.RESULT && RESULT._datos) || [];
+        for (var j=0;j<D.length;j++){
+          var x = D[j];
+          var v2 = Math.round((x.cir||0)+(x.sed||0)+(x.man||0));
+          if(!acc[x.m]) acc[x.m] = {mut:0,pyp:0,cir:0};
+          acc[x.m][mapa[i][1]] += v2;
+        }
+      }
+    } finally {
+      sel.value = orig;
+      sel.dispatchEvent(new Event("change",{bubbles:true}));
+      try{ document.getElementById("btnCalc").click(); }catch(e){}
+      cap.remove();
+    }
   }
-  var meds = Object.keys(acc).filter(function(m){ return (acc[m].mut+acc[m].pyp+acc[m].cir) > 0; }).sort();
+  var meds = Object.keys(acc).filter(function(m){ return (acc[m].mut+acc[m].pyp+acc[m].cir) !== 0; }).sort();
   if(!meds.length){ alert("No hay datos para el resumen."); return; }
   var tm=0, tp=0, tc=0, body=[];
   meds.forEach(function(m,i){
@@ -15449,7 +15472,9 @@ async function pdfResumenSedes(){
   body.push([ "", "TOTAL", pdfFmt(tm), pdfFmt(tp), pdfFmt(tc), pdfFmt(tm+tp+tc) ]);
   var J = pdfLib();
   var doc = new J({unit:"pt", format:"a4"});
-  var y = pdfTitulo(doc, "Resumen de liquidaci\u00f3n", pdfPeriodoTexto(), "Mutual Ser \u00b7 P y P \u00b7 Cirug\u00eda", 150);
+  var sub = "Mutual Ser \u00b7 P y P \u00b7 Cirug\u00eda";
+  if(desdeCierre && pie.length){ pie.sort(function(a,b){return a.o-b.o;}); sub = "Cerradas por \u2014 " + pie.map(function(p){return p.t;}).join("  \u00b7  "); }
+  var y = pdfTitulo(doc, "Resumen de liquidaci\u00f3n", pdfPeriodoTexto(), sub, 150);
   doc.autoTable({
     startY: y, margin:{top:150,left:30,right:30,bottom:85}, theme:"plain",
     head: [["N","Especialista","Mutual","P y P","Cirug\u00eda","Total"]],
@@ -15460,6 +15485,7 @@ async function pdfResumenSedes(){
     didParseCell: function(d){ if(d.section==="body" && d.row.index===body.length-1){ d.cell.styles.fontStyle="bold"; d.cell.styles.fillColor=[235,240,247]; } }
   });
   pdfMarco(doc);
+
   doc.save("Resumen liquidacion " + (new Date()).toISOString().slice(0,10) + ".pdf");
 }
 
@@ -15563,6 +15589,216 @@ function excelMedico(h){
     }catch(e){}
     return _fk.apply(this, arguments);
   };
+})();
+
+async function excelResumenSedes(){
+  var MAPA = {S2:"mut", S1:"pyp", CIR:"cir"};
+  var NOM  = {S2:"Sede 2", S1:"Sede Principal", CIR:"Cirug\u00eda"};
+  var ORD  = {S2:1, S1:2, CIR:3};
+  var arr = [];
+  try{
+    var per = (typeof nubePeriodoActual==="function") ? nubePeriodoActual() : "";
+    var C = (window.NUBE && NUBE.leerCierres) ? await NUBE.leerCierres(per) : null;
+    arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){return C[k];}) : []);
+  }catch(e){ arr = []; }
+  arr = arr.filter(function(c){ return MAPA[String(c.parte||"")]; });
+  if(!arr.length){ alert("Todav\u00eda no hay cierres guardados de este mes."); return; }
+  arr.sort(function(a,b){ return (ORD[a.parte]||9)-(ORD[b.parte]||9); });
+  var T=function(v){return {v:String(v==null?"":v), t:"s", s:1}};
+  var N5=function(v){return {v:String(v==null?"":v), t:"s", s:5}};
+  var S=function(v){return {v:String(v==null?"":v), t:"s"}};
+  var HD=function(v){return {v:String(v==null?"":v), t:"s", s:2}};
+  var M=function(v){return {v:Math.round(Number(v)||0), t:"n", s:3}};
+  var MB=function(v){return {v:Math.round(Number(v)||0), t:"n", s:4}};
+  var E=function(){return {v:"", t:"s"}};
+  function val(v){ return (typeof v === "number") ? Math.round(v) : Math.round((Number(v.c)||0)+(Number(v.s)||0)+(Number(v.m)||0)); }
+  var acc = {};
+  arr.forEach(function(c){ var col=MAPA[c.parte], pm=c.porMedico||{};
+    Object.keys(pm).forEach(function(k){ if(!acc[k]) acc[k]={mut:0,pyp:0,cir:0}; acc[k][col]+=val(pm[k])||0; }); });
+  var meds = Object.keys(acc).filter(function(m){ return (acc[m].mut+acc[m].pyp+acc[m].cir)!==0; }).sort();
+  var hojas = [];
+  var f = [[S("HONORARIOS M\u00c9DICOS")],[T("Resumen de liquidaci\u00f3n")],[S(pdfPeriodoTexto())],
+    [S("Cerradas por \u2014 "+arr.map(function(c){return NOM[c.parte]+": "+String(c.porNombre||"");}).join("  \u00b7  "))],[]];
+  f.push([HD("N"),HD("Especialista"),HD("Mutual"),HD("P y P"),HD("Cirug\u00eda"),HD("Total")]);
+  var tm=0,tp=0,tc=0;
+  meds.forEach(function(m,i){ var a=acc[m]; tm+=a.mut; tp+=a.pyp; tc+=a.cir;
+    f.push([S(i+1), S(pdfNombre(m)), M(a.mut), M(a.pyp), M(a.cir), MB(a.mut+a.pyp+a.cir)]); });
+  f.push([E(), N5("TOTAL"), MB(tm), MB(tp), MB(tc), MB(tm+tp+tc)]);
+  hojas.push({nombre:"Resumen", xml:xHoja(f, [5,34,15,15,15,16])});
+  arr.forEach(function(c){
+    var pm=c.porMedico||{};
+    var lista = Object.keys(pm).map(function(k){ return [k, val(pm[k])]; }).filter(function(x){ return x[1]!==0; })
+      .sort(function(a,b){ return b[1]-a[1]; });
+    var g=[[S("HONORARIOS M\u00c9DICOS")],[T(NOM[c.parte])],[S(pdfPeriodoTexto())],
+      [N5("Cerrada por"), S(String(c.porNombre||""))],
+      [N5("Enviada el"), S(c.enviadoEl ? (new Date(c.enviadoEl)).toLocaleString("es-CO") : "")],
+      [N5("Lo que da el sistema"), MB(c.sistema)],
+      [N5("Como qued\u00f3"), MB(c.total)],
+      [N5("Diferencia por los cambios"), MB((Number(c.total)||0)-(Number(c.sistema)||0))],
+      [N5("Cambios hechos a mano"), S(String((c.cambios&&c.cambios.length)||0))],[]];
+    g.push([HD("N"),HD("Especialista"),HD("Valor")]);
+    var t=0;
+    lista.forEach(function(x,i){ t+=x[1]; g.push([S(i+1), S(pdfNombre(x[0])), M(x[1])]); });
+    g.push([E(), N5("TOTAL"), MB(t)]);
+    hojas.push({nombre:NOM[c.parte].replace(/[\\\/\?\*\[\]:]/g,""), xml:xHoja(g, [5,36,18])});
+  });
+  var blob = xLibro(hojas);
+  var a2 = document.createElement("a");
+  a2.href = URL.createObjectURL(blob);
+  a2.download = "Resumen liquidacion " + (new Date()).toISOString().slice(0,10) + ".xlsx";
+  document.body.appendChild(a2); a2.click(); a2.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a2.href); }, 4000);
+}
+
+(function(){
+  if(window.__btnResumenCierre) return; window.__btnResumenCierre = true;
+  function poner(){
+    var hs = document.querySelectorAll("#sec-equipo h2"), h2 = null;
+    for(var i=0;i<hs.length;i++){ if(/Estado del cierre del mes/.test(hs[i].textContent||"")){ h2 = hs[i]; break; } }
+    if(!h2) return;
+    var cont = h2.parentElement; if(!cont || cont.querySelector(".btnResCierre")) return;
+    var b = document.createElement("button");
+    b.className = "btn btnResCierre";
+    b.style.cssText = "margin:8px 0 2px";
+    b.textContent = "\ud83d\udcc4 Resumen del mes (PDF)";
+    b.onclick = function(){ try{ pdfResumenSedes(); }catch(e){ alert("No se pudo generar el resumen."); } };
+    var x = document.createElement("button");
+    x.className = "btn quiet btnResCierre2";
+    x.style.cssText = "margin:8px 0 2px 8px";
+    x.textContent = "\u2b07 Resumen en Excel";
+    x.onclick = function(){ try{ excelResumenSedes(); }catch(e){ alert("No se pudo generar el Excel."); } };
+    h2.insertAdjacentElement("afterend", x);
+    h2.insertAdjacentElement("afterend", b);
+  }
+  function init(){ poner();
+    try{ var bx=document.getElementById("sec-equipo");
+      if(bx && !bx.__obsRes && window.MutationObserver){ bx.__obsRes=1; new MutationObserver(function(){ poner(); }).observe(bx,{childList:true,subtree:true}); } }catch(e){} }
+  init(); setTimeout(init,800); setTimeout(init,2500);
+  document.addEventListener("click", function(e){
+    var t = e.target.closest && e.target.closest(".tab");
+    if(t && t.getAttribute("data-t")==="equipo"){ var n=0; var iv=setInterval(function(){ poner(); if(++n>12) clearInterval(iv); }, 400); }
+  }, true);
+})();
+
+(function(){
+  if (window.__pacPanel2) return; window.__pacPanel2 = true;
+  var CSS = ".pacpanel{margin:10px 0 14px;border:1px solid #d7e0ee;border-radius:10px;background:#fbfcfe}"
+   + ".pacbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid #e6ecf5}"
+   + ".pacq{flex:1;min-width:180px;padding:6px 10px;border:1px solid #c9d6e8;border-radius:7px;font:inherit}"
+   + ".pacchip{padding:4px 10px;border:1px solid #c9d6e8;border-radius:20px;background:#fff;cursor:pointer;font-size:12px}"
+   + ".pacchip.on{background:#1e5ba8;color:#fff;border-color:#1e5ba8}"
+   + ".pacsel{padding:5px 8px;border:1px solid #c9d6e8;border-radius:7px;font-size:12px;background:#fff}"
+   + ".paccnt{font-size:12px;color:#55637a;margin-left:auto;white-space:nowrap;font-weight:600}"
+   + ".paclist{max-height:520px;overflow:auto;padding:6px 8px}"
+   + ".pacitem{border-bottom:1px solid #eef2f8;padding:5px 0}"
+   + ".pachead{font-weight:600;font-size:12.5px;color:#1b2a44;display:flex;gap:8px;align-items:center}"
+   + ".pacitem.listo .pachead{color:#1a7f4b}.pacitem.listo .pachead:after{content:' listo';font-size:10px;background:#e6f3ea;color:#1a7f4b;border-radius:4px;padding:0 5px}"
+   + ".pacrow{display:flex;gap:8px;align-items:flex-start;padding:3px 0 3px 18px;font-size:12px;color:#36435c}"
+   + ".pacrow .pd{flex:1;min-width:150px}.pacrow .pe{width:120px;color:#6b7a93}"
+   + ".pacrow .pr{width:190px;color:#8a6d1f;font-size:11px}.pacrow .pv{width:88px;text-align:right;font-variant-numeric:tabular-nums}"
+   + ".pacrow .pf{width:76px;color:#6b7a93}.pacrow .pc{width:132px;font-size:11px;color:#1e5ba8;font-weight:600}"
+   + ".tagpct{background:#fff3d6;color:#8a6d1f;border-radius:4px;padding:0 5px;font-size:10px}"
+   + ".tagfija{background:#e6f3ea;color:#1a7f4b;border-radius:4px;padding:0 5px;font-size:10px}";
+  var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st);
+  function norm(s){ return String(s==null?"":s).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim(); }
+  function money(n){ return "$ "+(Math.round(Number(n)||0)).toLocaleString("es-CO"); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function cat(d){ var t=norm(d);
+    if(/ANGIOTOMOGRAF/.test(t)) return "Angiotomograf\u00eda (OCT)";
+    if(/ANGIORRETINO|ANGIOFLUORE|ANGIOGRAF/.test(t)) return "Angiograf\u00eda";
+    if(/FOTOGRAF|RETINOGRAF/.test(t)) return "Fotograf\u00eda";
+    if(/TOMOGRAF|OCT/.test(t)) return "Tomograf\u00eda (OCT)";
+    if(/CAMPO VISUAL/.test(t)) return "Campo visual";
+    if(/ECOGRAF/.test(t)) return "Ecograf\u00eda";
+    if(/TOPOGRAF|PENTACAM/.test(t)) return "Topograf\u00eda";
+    if(/PAQUIMETR/.test(t)) return "Paquimetr\u00eda";
+    if(/BIOMETR/.test(t)) return "Biometr\u00eda";
+    if(/INTERCONSULTA|CONSULTA/.test(t)) return "Consulta";
+    if(/LASER|CAPSULOTOMIA|IRIDOTOMIA|TRABECULO|FOTOCOAGULA|ABLACION/.test(t)) return "L\u00e1ser";
+    if(/INYECCION|INTRAVITRE/.test(t)) return "Inyecci\u00f3n";
+    if(/CIRUG|EXTRACCION|EXTRACAPSULAR|FACOEMULS|PTERIGION|BLEFARO|RESECCION|REPARACION|PLASTIA|TAPON|PLUG|QUERATECTOMIA|ESTRABISMO/.test(t)) return "Cirug\u00eda y procedimientos";
+    return "Otros"; }
+  window.__pacCat = cat;
+  function leer(){ try{ return JSON.parse(localStorage.getItem("liq_listos")||"{}"); }catch(e){ return {}; } }
+  window.pacGuardar = function(k,on){ var L=leer(), cl="LST|"+k;
+    if(on){ L[cl]={listo:1, por:((window.NUBE&&NUBE.perfil&&NUBE.perfil.nombre)||""), fecha:new Date().toLocaleString("es-CO")}; } else { delete L[cl]; }
+    try{ localStorage.setItem("liq_listos", JSON.stringify(L)); }catch(e){}
+    try{ if(window.NUBE&&NUBE.guardarAjuste) NUBE.guardarAjuste(cl, on?L[cl]:null); }catch(e){} };
+  function regs(med){ var vis={}, L=[];
+    (window.DRILL||[]).forEach(function(g){ if(!g||!g.forEach) return;
+      g.forEach(function(r){ if(!r||r.med!==med) return; var k=String(r.k||""); if(!k||vis[k]) return; vis[k]=1; L.push(r); }); });
+    return L; }
+  window.__pacRegs = regs;
+  window.pacCont = function(pan){ var t=pan.querySelectorAll(".pacrow input").length, n=pan.querySelectorAll(".pacrow input:checked").length;
+    var e=pan.querySelector(".paccnt"); if(e) e.textContent=n+" de "+t+" listos"; };
+  window.pacMarcar = function(chk){ pacGuardar(chk.getAttribute("data-k"), chk.checked);
+    var it=chk.closest(".pacitem"); var a=it.querySelectorAll(".pacrow input"), o=it.querySelectorAll(".pacrow input:checked");
+    it.classList.toggle("listo", a.length===o.length); pacCont(chk.closest(".pacpanel")); };
+  window.pacFiltrar = function(el){ var pan=el.closest(".pacpanel");
+    var q=norm((pan.querySelector(".pacq")||{}).value||"");
+    var ch=pan.querySelector(".pacchip.on"); var f=ch?ch.getAttribute("data-f"):"todos";
+    var sc=pan.querySelector(".pacsel"); var c=sc?sc.value:"";
+    pan.querySelectorAll(".pacitem").forEach(function(it){ var hay=false;
+      it.querySelectorAll(".pacrow").forEach(function(rw){
+        var okT=!q||(rw.getAttribute("data-txt")||"").indexOf(q)>=0;
+        var okC=!c||rw.getAttribute("data-cat")===c;
+        var t=rw.getAttribute("data-tipo"), pg=rw.getAttribute("data-pago");
+        var okF=(f==="todos")||(f==="fija"&&t==="fija"&&pg==="1")||(f==="pct"&&t==="pct")||(f==="cero"&&pg==="0");
+        var v=okT&&okC&&okF; rw.style.display=v?"":"none"; if(v) hay=true; });
+      it.style.display=hay?"":"none"; }); };
+  window.pacChip=function(b){ var pan=b.closest(".pacpanel"); pan.querySelectorAll(".pacchip").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); pacFiltrar(b); };
+  window.pacModo=function(sel){ var card=sel.closest(".doc-card"); var pan=sel.closest(".pacpanel");
+    var q=(pan.querySelector(".pacq")||{}).value||""; var ch=pan.querySelector(".pacchip.on"); var f=ch?ch.getAttribute("data-f"):"todos";
+    var c=(pan.querySelector(".pacsel")||{}).value||"";
+    pan.remove(); window.__pacInyectar(card, sel.value);
+    var np=card.querySelector(".pacpanel"); if(!np) return;
+    np.querySelector(".pacq").value=q; np.querySelector(".pacsel").value=c;
+    np.querySelectorAll(".pacchip").forEach(function(x){ x.classList.toggle("on", x.getAttribute("data-f")===f); });
+    np.querySelector(".pacmodo").value=sel.value;
+    pacFiltrar(np.querySelector(".pacq")); };
+  function panelHTML(med, modo){
+    var L=regs(med); if(!L.length) return "";
+    var LS=leer(); modo=modo||"pac";
+    var cats={}; L.forEach(function(r){ cats[cat(r.detalle)]=1; });
+    var gr={};
+    L.forEach(function(r){ var g = (modo==="srv") ? cat(r.detalle) : String(r.paciente||"(sin paciente)"); (gr[g]=gr[g]||[]).push(r); });
+    var keys=Object.keys(gr).sort();
+    var h=[];
+    h.push("<div class=\"pacpanel\"><div class=\"pacbar\">");
+    h.push("<input class=\"pacq\" placeholder=\"Buscar paciente, c\u00e9dula o servicio...\" oninput=\"pacFiltrar(this)\">");
+    h.push("<select class=\"pacmodo pacsel\" onchange=\"pacModo(this)\"><option value=\"pac\">Agrupar por paciente</option><option value=\"srv\">Agrupar por servicio</option></select>");
+    h.push("<select class=\"pacsel\" onchange=\"pacFiltrar(this)\"><option value=\"\">Todos los servicios</option>"+Object.keys(cats).sort().map(function(c){return "<option value=\""+esc(c)+"\">"+esc(c)+"</option>";}).join("")+"</select>");
+    h.push("<button class=\"pacchip on\" data-f=\"todos\" onclick=\"pacChip(this)\">Todos</button>");
+    h.push("<button class=\"pacchip\" data-f=\"fija\" onclick=\"pacChip(this)\">Tarifa fija</button>");
+    h.push("<button class=\"pacchip\" data-f=\"pct\" onclick=\"pacChip(this)\">% facturado</button>");
+    h.push("<button class=\"pacchip\" data-f=\"cero\" onclick=\"pacChip(this)\">Sin pago</button>");
+    h.push("<span class=\"paccnt\"></span></div><div class=\"paclist\">");
+    keys.forEach(function(g){ var rs=gr[g], tot=0, todos=true;
+      rs.forEach(function(r){ tot+=Number(r.total)||0; if(!LS["LST|"+String(r.k)]) todos=false; });
+      h.push("<div class=\"pacitem"+(todos?" listo":"")+"\"><div class=\"pachead\">"+esc(g)+" &middot; "+rs.length+" &middot; "+money(tot)+"</div>");
+      rs.forEach(function(r){ var ct=cat(r.detalle); var pct=/%/.test(String(r.regla||"")); var pago=(Number(r.total)||0)>0?"1":"0";
+        var txt=norm(String(r.paciente||"")+" "+(r.ced||"")+" "+(r.detalle||"")+" "+ct);
+        var ck=LS["LST|"+String(r.k)]?" checked":"";
+        h.push("<label class=\"pacrow\" data-cat=\""+esc(ct)+"\" data-tipo=\""+(pct?"pct":"fija")+"\" data-pago=\""+pago+"\" data-txt=\""+esc(txt)+"\">"
+         +"<input type=\"checkbox\" data-k=\""+esc(r.k)+"\" onchange=\"pacMarcar(this)\""+ck+">"
+         +"<span class=\"pf\">"+esc(String(r.fecha||"").slice(0,10))+"</span>"
+         +"<span class=\"pc\">"+esc(ct)+"</span>"
+         +"<span class=\"pd\">"+esc(modo==="srv"?String(r.paciente||""):String(r.detalle||""))+"</span>"
+         +"<span class=\"pe\">"+esc(String(r.emp||"").slice(0,20))+"</span>"
+         +"<span class=\"pr\">"+(pct?"<span class=\"tagpct\">% facturado</span> ":"<span class=\"tagfija\">fija</span> ")+esc(String(r.regla||"").slice(0,55))+"</span>"
+         +"<span class=\"pv\">"+money(r.total)+"</span></label>"); });
+      h.push("</div>"); });
+    h.push("</div></div>"); return h.join(""); }
+  window.__pacPanelHTML=panelHTML;
+  window.__pacInyectar=function(card, modo){ if(!card||card.querySelector(".pacpanel")) return;
+    var nm=((card.querySelector(".doc-name")||{}).textContent||"").trim(); if(!nm) return;
+    var body=card.querySelector(".doc-body")||card; var html=panelHTML(nm, modo); if(!html) return;
+    var d=document.createElement("div"); d.innerHTML=html;
+    var ref=body.querySelector(".sec-bloque");
+    if(ref) body.insertBefore(d.firstChild, ref); else body.appendChild(d.firstChild);
+    pacCont(card.querySelector(".pacpanel")); };
+  document.addEventListener("click", function(e){ var h=e.target.closest&&e.target.closest(".doc-head");
+    if(h) setTimeout(function(){ window.__pacInyectar(h.parentElement); }, 60); }, true);
 })();
 
 function pdfTodas(){
