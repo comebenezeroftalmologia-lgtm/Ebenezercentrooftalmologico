@@ -1,0 +1,2499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Talento Humano · Ebenezer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f2f7;--white:#fff;--border:#e2e8f5;
+  --b1:#5b92d4;--b2:#2563eb;--b3:#1e3a8a;
+  --green:#16a34a;--text:#0f172a;--muted:#64748b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(37,99,235,.08);
+  --shadow-lg:0 4px 6px rgba(0,0,0,.05),0 12px 40px rgba(37,99,235,.12);
+  --sidebar-w:210px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+/* ═══ UPLOAD SCREEN ═══════════════════════════════════════════════════════ */
+#upload-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:linear-gradient(135deg,#eff6ff 0%,#f0f2f7 50%,#ecfdf5 100%);}
+.up-card{
+  background:#fff;border-radius:24px;padding:52px 48px;width:100%;max-width:480px;
+  box-shadow:0 8px 60px rgba(37,99,235,.13);border:1px solid #dbeafe;text-align:center;
+}
+.up-logo{width:160px;margin:0 auto 28px;}
+.up-card h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:var(--b3);letter-spacing:-.3px;}
+.up-card p{font-size:13px;color:var(--muted);margin-top:8px;margin-bottom:28px;line-height:1.6;}
+.drop{
+  border:2px dashed #bfdbfe;border-radius:16px;padding:38px 20px;
+  cursor:pointer;transition:.2s;background:linear-gradient(135deg,#f8fbff,#f0f6ff);position:relative;
+}
+.drop:hover,.drop.drag{border-color:var(--b2);background:#eff6ff;}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+.drop-icon{font-size:46px;margin-bottom:10px;}
+.drop h3{font-size:15px;font-weight:700;color:var(--b3);}
+.drop p{font-size:12px;color:var(--muted);margin-top:4px;}
+.up-btn{
+  width:100%;margin-top:18px;padding:14px;border-radius:14px;border:none;cursor:pointer;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;
+  background:linear-gradient(135deg,#3b82f6,#1e3a8a);color:#fff;
+  transition:.2s;display:none;letter-spacing:.1px;
+}
+.up-btn:hover{opacity:.92;transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,99,235,.35);}
+.up-file-info{
+  display:none;align-items:center;gap:12px;
+  background:#eff6ff;border-radius:12px;padding:12px 16px;margin-top:14px;text-align:left;
+  border:1px solid #dbeafe;
+}
+.fi-name{font-size:13px;font-weight:700;color:var(--b3);}
+.fi-size{font-size:11px;color:var(--muted);}
+.up-error{display:none;margin-top:14px;background:#fef2f2;border-radius:12px;padding:12px 16px;font-size:13px;color:#dc2626;font-weight:600;border:1px solid #fecaca;}
+
+/* ═══ SIDEBAR ═════════════════════════════════════════════════════════════ */
+#dashboard{display:none;}
+.sidebar{
+  position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
+  background:#0f172a;
+  display:flex;flex-direction:column;z-index:100;
+  box-shadow:4px 0 24px rgba(0,0,0,.18);
+}
+.sb-logo{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.07);text-align:center;}
+.sb-logo img{width:130px;max-height:60px;object-fit:contain;filter:brightness(1.1);}
+.sb-sub{font-size:9.5px;color:rgba(255,255,255,.35);letter-spacing:1.5px;text-transform:uppercase;margin-top:6px;font-weight:600;}
+.nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+.ni{
+  display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:10px;
+  font-size:12.5px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;
+  transition:.15s;border:none;background:transparent;width:100%;text-align:left;
+  font-family:'Inter',sans-serif;
+}
+.ni:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9);}
+.ni.active{
+  background:linear-gradient(135deg,rgba(37,99,235,.5),rgba(37,99,235,.25));
+  color:#fff;font-weight:600;
+  box-shadow:inset 0 0 0 1px rgba(59,130,246,.4);
+}
+.ni .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+.sb-foot{padding:12px;font-size:10px;color:rgba(255,255,255,.2);text-align:center;border-top:1px solid rgba(255,255,255,.06);}
+.sb-reload{
+  margin:8px 10px;padding:10px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.65);cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:12px;font-weight:600;width:calc(100% - 20px);transition:.15s;
+}
+.sb-reload:hover{background:rgba(255,255,255,.12);color:#fff;}
+
+/* ═══ MAIN ════════════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-w);}
+.topbar{
+  background:#fff;border-bottom:1px solid var(--border);
+  padding:14px 28px;display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 1px 8px rgba(15,23,42,.05);position:sticky;top:0;z-index:50;
+}
+.topbar h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:800;color:var(--b3);letter-spacing:-.3px;}
+.topbar p{font-size:11.5px;color:var(--muted);margin-top:1px;}
+.tr{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:500;}
+.dot{width:8px;height:8px;background:#16a34a;border-radius:50%;box-shadow:0 0 0 2px rgba(22,163,74,.2);}
+
+/* ═══ FILTRO MES — PREMIUM ════════════════════════════════════════════════ */
+.month-filter{position:relative;display:flex;align-items:center;}
+.month-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 16px;border-radius:12px;
+  border:1.5px solid var(--border);background:#fff;
+  cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:12.5px;font-weight:600;color:#334155;
+  transition:.18s;box-shadow:0 1px 4px rgba(15,23,42,.06);
+  white-space:nowrap;
+}
+.month-btn:hover{border-color:var(--b2);background:#eff6ff;color:var(--b2);}
+.month-btn.active-filter{
+  border-color:var(--b2);background:linear-gradient(135deg,#eff6ff,#dbeafe);
+  color:var(--b2);box-shadow:0 2px 8px rgba(37,99,235,.18);
+}
+.month-btn .cal-icon{font-size:14px;}
+.month-btn .chevron{font-size:10px;color:#94a3b8;margin-left:2px;transition:.2s;}
+.month-btn.active-filter .chevron{color:var(--b2);}
+.month-dropdown-open .chevron{transform:rotate(180deg);}
+.month-badge{
+  background:linear-gradient(135deg,var(--b2),var(--b3));color:#fff;
+  border-radius:20px;font-size:10px;font-weight:700;
+  padding:2px 8px;min-width:22px;text-align:center;line-height:1.4;
+}
+.month-dropdown{
+  position:absolute;top:calc(100% + 10px);right:0;
+  background:#fff;border:1px solid var(--border);border-radius:18px;
+  box-shadow:0 8px 32px rgba(15,23,42,.12),0 2px 8px rgba(15,23,42,.06);
+  z-index:300;min-width:260px;overflow:hidden;
+  display:none;
+  animation:slideDown .18s cubic-bezier(.4,0,.2,1);
+}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px) scale(.98);}to{opacity:1;transform:none;}}
+.month-dropdown.open{display:block;}
+.md-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 18px 10px;
+  background:linear-gradient(135deg,#f8faff,#f0f6ff);
+  border-bottom:1px solid var(--border);
+}
+.md-title{font-size:11px;font-weight:700;color:var(--b3);text-transform:uppercase;letter-spacing:1px;}
+.md-actions{display:flex;gap:6px;}
+.md-actions button{
+  font-size:11px;font-weight:600;border:none;background:none;
+  cursor:pointer;color:var(--b2);padding:4px 9px;border-radius:7px;
+  font-family:'Inter',sans-serif;transition:.12s;
+}
+.md-actions button:hover{background:#eff6ff;}
+.md-actions button.clear-btn{color:#dc2626;}
+.md-actions button.clear-btn:hover{background:#fef2f2;}
+.md-list{max-height:260px;overflow-y:auto;padding:8px 0;scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;}
+.md-list::-webkit-scrollbar{width:4px;}
+.md-list::-webkit-scrollbar-track{background:transparent;}
+.md-list::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px;}
+.md-item{
+  display:flex;align-items:center;gap:12px;
+  padding:9px 18px;cursor:pointer;transition:.1s;
+  font-size:13px;font-weight:500;color:var(--text);
+}
+.md-item:hover{background:#f8faff;}
+.md-item input[type=checkbox]{
+  width:16px;height:16px;accent-color:var(--b2);cursor:pointer;flex-shrink:0;
+  border-radius:4px;
+}
+.md-item label{cursor:pointer;flex:1;font-weight:500;}
+.md-year-group{border-bottom:1px solid #f1f5f9;}
+.md-year-group:last-child{border-bottom:none;}
+.md-year-header{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 18px;background:#f8faff;
+  font-size:11px;font-weight:700;color:var(--b3);
+  text-transform:uppercase;letter-spacing:.6px;
+}
+.md-year-header input[type=checkbox]{width:16px;height:16px;accent-color:var(--b2);cursor:pointer;flex-shrink:0;border-radius:4px;}
+.md-year-header label{cursor:pointer;flex:1;}
+.md-year-months .md-item{padding-left:30px;}
+.md-footer{
+  padding:10px 18px 14px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  background:#fafbff;
+}
+.md-footer-info{font-size:11px;color:var(--muted);font-weight:500;}
+.md-apply{
+  padding:8px 20px;border-radius:10px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#3b82f6,#1e3a8a);color:#fff;
+  font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;
+  transition:.18s;letter-spacing:.1px;
+  box-shadow:0 2px 8px rgba(37,99,235,.3);
+}
+.md-apply:hover{opacity:.92;transform:translateY(-1px);}
+
+/* ═══ CONTENT ═════════════════════════════════════════════════════════════ */
+.content{padding:24px 28px;}
+.page{display:none;}.page.active{display:block;}
+
+/* ═══ KPI CARDS ══════════════════════════════════════════════════════════ */
+.krow{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:22px;}
+.kpi{
+  background:#fff;border-radius:16px;padding:18px 20px 16px;
+  box-shadow:var(--shadow);border:1px solid var(--border);
+  position:relative;overflow:hidden;
+  transition:.2s;
+}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+.kpi::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px;
+}
+.kpi.bl::before{background:linear-gradient(180deg,#3b82f6,#1e3a8a);}
+.kpi.gn::before{background:linear-gradient(180deg,#22c55e,#15803d);}
+.kpi.or::before{background:linear-gradient(180deg,#f97316,#c2410c);}
+.kpi.pu::before{background:linear-gradient(180deg,#a78bfa,#6d28d9);}
+.kpi.rd::before{background:linear-gradient(180deg,#f87171,#dc2626);}
+.kpi-icon{
+  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:17px;margin-bottom:12px;
+}
+.kpi.bl .kpi-icon{background:#eff6ff;}
+.kpi.gn .kpi-icon{background:#f0fdf4;}
+.kpi.or .kpi-icon{background:#fff7ed;}
+.kpi.pu .kpi-icon{background:#f5f3ff;}
+.kpi.rd .kpi-icon{background:#fef2f2;}
+.kpi label{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;display:block;margin-bottom:6px;}
+.kpi .vl{font-size:26px;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;line-height:1.1;letter-spacing:-.5px;}
+.kpi .sb{font-size:11.5px;color:var(--muted);margin-top:4px;font-weight:500;}
+.kpi.bl .vl{color:#1d4ed8;}
+.kpi.gn .vl{color:#15803d;}
+.kpi.or .vl{color:#c2410c;}
+.kpi.pu .vl{color:#6d28d9;}
+.kpi.rd .vl{color:#dc2626;}
+
+/* ═══ LAYOUT GRIDS ════════════════════════════════════════════════════════ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+.g3-2{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
+.g2-3{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.g2>*,.g3>*,.g3-2>*,.g2-3>*{min-width:0;}
+
+/* ═══ CARDS ═══════════════════════════════════════════════════════════════ */
+.card{
+  background:#fff;border-radius:16px;padding:20px;
+  box-shadow:var(--shadow);border:1px solid var(--border);
+}
+.card h3{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:12px;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--muted);font-weight:700;
+  margin-bottom:16px;padding-bottom:12px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:7px;
+}
+.card h3::before{
+  content:'';width:3px;height:14px;border-radius:2px;
+  background:linear-gradient(135deg,var(--b2),var(--b3));flex-shrink:0;
+}
+.section-mb{margin-bottom:16px;}
+
+/* ═══ PROGRESS BARS ══════════════════════════════════════════════════════ */
+.prog-list{display:flex;flex-direction:column;gap:11px;}
+.prog-item label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;font-weight:500;}
+.prog-item label span:last-child{color:var(--muted);font-weight:700;font-size:11px;}
+.bar-bg{background:#f1f5f9;border-radius:6px;height:7px;}
+.bar-fill{border-radius:6px;height:7px;transition:.6s ease;}
+
+/* ═══ HEATMAP TABLE ══════════════════════════════════════════════════════ */
+.hm{width:100%;border-collapse:collapse;font-size:11px;}
+.hm th{padding:8px 6px;font-size:9.5px;text-transform:uppercase;color:var(--muted);font-weight:700;text-align:center;border-bottom:2px solid var(--border);}
+.hm td{padding:8px 6px;text-align:center;border-radius:6px;font-weight:700;font-size:11.5px;}
+.hm .rl{text-align:left;font-size:10.5px;color:var(--text);font-weight:600;padding-right:10px;white-space:nowrap;}
+
+/* ═══ BADGES ══════════════════════════════════════════════════════════════ */
+.badge{display:inline-flex;align-items:center;padding:3px 11px;border-radius:20px;font-size:11.5px;font-weight:700;letter-spacing:.1px;}
+.ok{background:#dcfce7;color:#15803d;}
+.warn{background:#fef9c3;color:#a16207;}
+.danger{background:#fee2e2;color:#dc2626;}
+.info{background:#dbeafe;color:#1d4ed8;}
+
+/* ═══ DATA TABLE ═════════════════════════════════════════════════════════ */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.tbl thead th{
+  padding:11px 14px;text-align:left;
+  font-size:10.5px;text-transform:uppercase;color:var(--muted);
+  font-weight:700;border-bottom:2px solid var(--border);
+  background:#fafbfc;letter-spacing:.5px;
+}
+.tbl tbody tr{border-bottom:1px solid #f1f5f9;transition:.12s;}
+.tbl tbody tr:hover{background:#f8faff;}
+.tbl tbody td{padding:11px 14px;font-weight:500;}
+.tbl tbody tr:last-child{border-bottom:none;}
+
+/* ═══ LOADING ════════════════════════════════════════════════════════════ */
+#loading{
+  display:none;position:fixed;inset:0;
+  background:rgba(240,242,247,.95);backdrop-filter:blur(4px);
+  z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:18px;
+}
+.spinner{
+  width:46px;height:46px;border:3px solid #e2e8f5;
+  border-top-color:var(--b2);border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading p{font-size:14px;font-weight:600;color:var(--b3);}
+
+/* ═══ SCROLLBAR GLOBAL ═══════════════════════════════════════════════════ */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Procesando tu archivo...</p>
+</div>
+
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen">
+  <div class="up-card">
+    <img class="up-logo" src="data:image/jpeg;base64,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" alt="Ebenezer">
+    <h1>Reporte de Talento Humano</h1>
+    <p>Sube tu archivo Excel con la base de datos y el reporte se generará automáticamente</p>
+
+    <div class="drop" id="dropZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
+      <div class="drop-icon">📊</div>
+      <h3>Arrastra tu archivo Excel aquí</h3>
+      <p>o haz clic para seleccionar · .xlsx / .xls</p>
+    </div>
+
+    <div class="up-file-info" id="upFileInfo">
+      <span style="font-size:24px">📊</span>
+      <div>
+        <div class="fi-name" id="upFileName"></div>
+        <div class="fi-size" id="upFileSize"></div>
+      </div>
+    </div>
+
+    <button class="up-btn" id="upBtn" onclick="processFile()">
+      ✨ Generar Reporte
+    </button>
+    <div class="up-error" id="upError"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <img src="data:image/jpeg;base64,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" alt="Ebenezer">
+      <div class="sb-sub">Talento Humano</div>
+    </div>
+    <nav class="nav">
+      <button class="ni active" onclick="showTab('resumen',this)"><span class="ic">📊</span>Resumen</button>
+      <button class="ni" onclick="showTab('empleados',this)"><span class="ic">👥</span>Empleados</button>
+      <button class="ni" onclick="showTab('clima',this)"><span class="ic">🌤️</span>Clima</button>
+      <button class="ni" onclick="showTab('rotacion',this)"><span class="ic">🔄</span>Rotación</button>
+      <button class="ni" onclick="showTab('ausentismo',this)"><span class="ic">🏥</span>Ausentismo</button>
+      <button class="ni" onclick="showTab('accidentes',this)"><span class="ic">⚠️</span>Accidentes</button>
+      <button class="ni" onclick="showTab('recobro',this)"><span class="ic">💰</span>Recobro Inc.</button>
+      <button class="ni" onclick="showTab('capacitacion',this)"><span class="ic">🎓</span>Capacitación</button>
+      <button class="ni" onclick="showTab('desempeno',this)"><span class="ic">🏅</span>Desempeño</button>
+      <button class="ni" onclick="showTab('transporte',this)"><span class="ic">🚌</span>Transporte</button>
+    </nav>
+    <button class="sb-reload" onclick="recargar()">↩ Subir nuevo archivo</button>
+    <div class="sb-foot">© 2025 Ebenezer Oftalmología</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><h2 id="ptitle">Resumen General</h2><p id="psubtitle">Dashboard de Gestión · Talento Humano</p></div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <!-- FILTRO DE MESES -->
+        <div class="month-filter" id="monthFilter">
+          <button class="month-btn" id="monthBtn" onclick="toggleMonthDropdown(event)">
+            <span class="cal-icon">📅</span>
+            <span id="monthBtnLabel">Todos los meses</span>
+            <span class="month-badge" id="monthBadge" style="display:none">0</span>
+            <span class="chevron">▾</span>
+          </button>
+          <div class="month-dropdown" id="monthDropdown">
+            <div class="md-header">
+              <span class="md-title">Filtrar por mes</span>
+              <div class="md-actions">
+                <button onclick="selectAllMonths()">✓ Todos</button>
+                <button class="clear-btn" onclick="clearMonths()">✕ Limpiar</button>
+              </div>
+            </div>
+            <div class="md-list" id="monthList"></div>
+            <div class="md-footer">
+              <span class="md-footer-info" id="mdSelCount">0 seleccionados</span>
+              <button class="md-apply" onclick="applyMonthFilter()">Aplicar filtro</button>
+            </div>
+          </div>
+        </div>
+        <div class="tr"><div class="dot"></div><span id="topdate"></span></div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- RESUMEN -->
+      <div id="tab-resumen" class="page active">
+        <div class="krow" id="k-resumen"></div>
+        <div class="g2">
+          <div class="card"><h3>Distribución por Sede</h3><div style="height:200px"><canvas id="c-sede"></canvas></div><div id="sede-note" style="font-size:11.5px;color:#64748b;margin-top:10px;padding:8px 12px;background:#f8faff;border-radius:8px;border-left:3px solid var(--b2)"></div></div>
+          <div class="card"><h3>Tipo de Contrato</h3><div style="height:250px"><canvas id="c-contrato-r"></canvas></div></div>
+        </div>
+        <div class="g3">
+          <div class="card"><h3>Género</h3><div style="height:180px"><canvas id="c-genero"></canvas></div></div>
+          <div class="card"><h3>Motivos de Retiro</h3><div class="prog-list" id="pr"></div></div>
+          <div class="card"><h3>Top Ausentismo</h3><div class="prog-list" id="pa"></div></div>
+        </div>
+      </div>
+
+      <!-- EMPLEADOS -->
+      <div id="tab-empleados" class="page">
+        <div class="krow" id="k-empleados"></div>
+        <div class="g2">
+          <div class="card"><h3>Rango de Edades</h3><div style="height:220px"><canvas id="c-edades"></canvas></div></div>
+          <div class="card"><h3>Antigüedad</h3><div style="height:220px"><canvas id="c-antig"></canvas></div></div>
+        </div>
+        <div class="g3">
+          <div class="card"><h3>Nivel de Estudio</h3><div style="height:260px"><canvas id="c-estudio"></canvas></div></div>
+          <div class="card"><h3>Estado Civil</h3><div style="height:260px"><canvas id="c-ecivil"></canvas></div></div>
+          <div class="card"><h3>Tipo Contrato</h3><div style="height:260px"><canvas id="c-contrato"></canvas></div></div>
+        </div>
+        <!-- HIJOS -->
+        <div class="card section-mb">
+          <h3>Empleados con / sin Hijos</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+            <div style="height:220px"><canvas id="c-hijos-donut"></canvas></div>
+            <div>
+              <div id="hijos-kpis" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;"></div>
+              <div style="padding:12px 14px;background:#f8faff;border-radius:10px;border:1px solid #e2e8f5;">
+                <div style="font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Distribución detallada</div>
+                <div id="hijos-bars" class="prog-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+            <h3 style="margin:0;border:none;padding:0">Masa Salarial Total por Área/Proceso <span style="font-size:10px;color:#94a3b8;font-weight:400;text-transform:none">(salario + auxilio de vivienda)</span></h3>
+            <div style="position:relative">
+              <button id="sal-btn" onclick="salDropToggle()" style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:12px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:#334155;transition:.18s;box-shadow:0 1px 4px rgba(15,23,42,.06);white-space:nowrap">
+                <span>🏢</span><span id="sal-btn-label">Todas las áreas</span><span id="sal-badge" style="display:none;background:linear-gradient(135deg,var(--b2),var(--b3));color:#fff;border-radius:20px;font-size:10px;font-weight:700;padding:2px 8px"></span><span style="font-size:10px;color:#94a3b8" id="sal-chev">▼</span>
+              </button>
+              <div id="sal-dropdown" style="display:none;position:absolute;top:calc(100% + 10px);right:0;background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:0 8px 32px rgba(15,23,42,.12);z-index:300;min-width:260px;overflow:hidden;animation:slideDown .18s cubic-bezier(.4,0,.2,1)">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 10px;background:linear-gradient(135deg,#f8faff,#f0f6ff);border-bottom:1px solid var(--border)">
+                  <span style="font-size:11px;font-weight:700;color:var(--b3);text-transform:uppercase;letter-spacing:1px">Filtrar Áreas</span>
+                  <div style="display:flex;gap:6px">
+                    <button onclick="salFilterAll(true)" style="font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--b2);padding:4px 9px;border-radius:7px;font-family:'Inter',sans-serif">Todas</button>
+                    <button onclick="salFilterAll(false)" style="font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;color:#dc2626;padding:4px 9px;border-radius:7px;font-family:'Inter',sans-serif">Ninguna</button>
+                  </div>
+                </div>
+                <div id="sal-list" style="max-height:280px;overflow-y:auto;padding:8px 0;scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent"></div>
+                <div style="padding:10px 18px 14px;border-top:1px solid var(--border);background:#fafbff;display:flex;justify-content:flex-end">
+                  <button onclick="salDropToggle()" style="padding:8px 20px;border-radius:10px;border:none;cursor:pointer;background:linear-gradient(135deg,#3b82f6,#1e3a8a);color:#fff;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;box-shadow:0 2px 8px rgba(37,99,235,.3)">Aplicar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="sal-detail"><div id="sal-detail-inner"></div></div>
+        </div>
+        <div class="card"><h3>Auxilio de Vivienda</h3>
+          <div class="krow" id="k-aux-viv"></div>
+          <div style="font-size:11.5px;color:#94a3b8;margin-top:10px">El detalle por área y por persona está en la sección Masa Salarial (clic en cada área para desplegarlo).</div>
+        </div>
+        <div class="card"><h3>Tendencia de Empleados por Mes <span style="font-size:10px;color:#94a3b8;font-weight:400;text-transform:none">(excluye médicos y aprendices)</span></h3><div style="height:240px"><canvas id="c-emp-trend"></canvas></div></div>
+      </div>
+
+      <!-- CLIMA -->
+      <div id="tab-clima" class="page">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+          <label class="month-btn" id="clima-periodo-wrap" for="clima-periodo" style="gap:8px;">
+            <span class="cal-icon">🗓️</span>
+            <select id="clima-periodo"
+              style="border:none;background:transparent;font:inherit;font-weight:600;color:inherit;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;-moz-appearance:none;padding:0 2px;"></select>
+            <span class="chevron" style="pointer-events:none">▾</span>
+          </label>
+        </div>
+        <div class="krow" id="k-clima"></div>
+        <div class="g2">
+          <div class="card"><h3>Radar por Categoría</h3><div style="height:320px"><canvas id="c-radar"></canvas></div></div>
+          <div class="card"><h3>Puntaje por Área</h3><div style="height:320px"><canvas id="c-areas"></canvas></div></div>
+        </div>
+        <div class="card"><h3>Heatmap · Categorías × Áreas</h3><div style="overflow-x:auto"><table class="hm" id="hm"></table></div></div>
+        <div class="g2">
+          <div class="card"><h3>Top Mejores Evaluados</h3><div style="overflow-x:auto"><table class="tbl">
+            <thead><tr><th>N°</th><th>Sub-área</th><th>Categoría</th><th>Nota</th></tr></thead>
+            <tbody id="clima-mejores-tb"></tbody>
+          </table></div></div>
+          <div class="card"><h3>Top Peores Evaluados</h3><div style="overflow-x:auto"><table class="tbl">
+            <thead><tr><th>N°</th><th>Sub-área</th><th>Categoría</th><th>Nota</th></tr></thead>
+            <tbody id="clima-peores-tb"></tbody>
+          </table></div></div>
+        </div>
+      </div>
+
+      <!-- ROTACION -->
+      <div id="tab-rotacion" class="page">
+        <div class="krow" id="k-rotacion"></div>
+        <!-- Info médicos y aprendices -->
+        <div id="info-excluidos" style="display:flex;align-items:center;gap:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:12px 18px;margin-bottom:12px;">
+          <span style="font-size:20px;">ℹ️</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#15803d;">Grupos excluidos del cálculo de rotación</div>
+            <div style="font-size:11.5px;color:#16a34a;margin-top:2px;" id="excluidos-detalle">Médicos (OPS) y Aprendices no se contabilizan en la tasa de rotación.</div>
+          </div>
+        </div>
+        <!-- Fórmula info -->
+        <div style="display:flex;align-items:center;gap:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:12px 18px;margin-bottom:16px;">
+          <span style="font-size:20px;">📐</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#1e3a8a;">Fórmula aplicada: Tasa de Rotación = (S ÷ M) × 100</div>
+            <div style="font-size:11.5px;color:#3b82f6;margin-top:2px;"><strong>S</strong> = Salidas del periodo &nbsp;·&nbsp; <strong>M</strong> = Promedio de empleados = (Inicio + Fin) ÷ 2</div>
+          </div>
+        </div>
+        <div class="g2" style="margin-bottom:16px">
+          <div class="card"><h3>Motivos de Retiro</h3><div style="height:270px"><canvas id="c-rot-bar"></canvas></div></div>
+          <div class="card"><h3>Distribución %</h3><div style="height:270px"><canvas id="c-rot-pie"></canvas></div></div>
+        </div>
+        <div class="card">
+          <h3>Tasa de Rotación Mensual — (S/M) × 100</h3>
+          <div style="height:270px"><canvas id="c-rot-tasa"></canvas></div>
+        </div>
+      </div>
+
+      <!-- AUSENTISMO -->
+      <div id="tab-ausentismo" class="page">
+        <div class="krow" id="k-aus"></div>
+        <div class="g2">
+          <div class="card"><h3>Top Diagnósticos</h3><div style="height:290px"><canvas id="c-aus-bar"></canvas></div></div>
+          <div class="card"><h3>Distribución %</h3><div style="height:290px"><canvas id="c-aus-pie"></canvas></div></div>
+        </div>
+        <div class="g2">
+          <div class="card"><h3>Ausentismo por Área</h3><div style="height:240px"><canvas id="c-aus-area"></canvas></div></div>
+          <div class="card"><h3>Tendencia Mensual + Comparativo</h3><div style="height:240px"><canvas id="c-aus-trend"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- ACCIDENTES -->
+      <div id="tab-accidentes" class="page">
+        <div class="krow" id="k-acc"></div>
+        <div class="card" style="margin-bottom:15px"><h3>Accidentes por Mes</h3><div style="height:240px"><canvas id="c-acc"></canvas></div></div>
+        <div class="card">
+          <h3>Registro Mensual</h3>
+          <table class="tbl"><thead><tr><th>Mes</th><th>Año</th><th>Accidentes</th><th>Días Incap.</th><th>Área</th><th>Estado</th></tr></thead>
+          <tbody id="acc-tb"></tbody></table>
+        </div>
+      </div>
+
+      <!-- RECOBRO DE INCAPACIDADES -->
+      <div id="tab-recobro" class="page">
+        <div class="krow" id="k-recobro"></div>
+        <div class="g2" style="margin-bottom:15px">
+          <div class="card"><h3>Estado del Recobro</h3><div style="height:260px"><canvas id="c-recobro-pie"></canvas></div></div>
+          <div class="card"><h3>Valor por Estado (COP)</h3><div style="height:260px"><canvas id="c-recobro-bar"></canvas></div></div>
+        </div>
+        <div class="card">
+          <h3>Detalle de Incapacidades</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+            <input id="rec-filter-nombre" type="text" placeholder="🔍 Buscar empleado…"
+              style="flex:1;min-width:200px;padding:7px 12px;border:1px solid #dde3ef;border-radius:8px;font-size:13px;outline:none;"
+              oninput="filtrarRecobro()">
+            <select id="rec-filter-estado" onchange="filtrarRecobro()"
+              style="padding:7px 12px;border:1px solid #dde3ef;border-radius:8px;font-size:13px;background:#fff;cursor:pointer;outline:none;">
+              <option value="">Todos los estados</option>
+              <option value="PAGADO">Pagado</option>
+              <option value="RADICADA">Radicada</option>
+            </select>
+            <span id="rec-count" style="font-size:12px;color:#64748b;white-space:nowrap;"></span>
+          </div>
+          <div style="overflow-x:auto">
+          <table class="tbl"><thead><tr><th>Empleado</th><th>Días</th><th>Estado</th><th>Valor Recobrado</th><th>Valor Pendiente</th></tr></thead>
+          <tbody id="recobro-tb"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAPACITACIÓN -->
+      <div id="tab-capacitacion" class="page">
+        <div class="krow" id="k-cap"></div>
+        <div class="g2" style="margin-bottom:15px">
+          <div class="card"><h3>Capacitaciones por Responsable</h3><div style="height:270px"><canvas id="c-cap-area"></canvas></div></div>
+          <div class="card"><h3>Distribución por Mes</h3><div style="height:270px"><canvas id="c-cap-tipo"></canvas></div></div>
+        </div>
+        <div class="card">
+          <h3>Registro de Capacitaciones</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+            <input id="cap-search" type="text" placeholder="🔍 Buscar capacitación..." oninput="filtrarCap()"
+              style="flex:1;min-width:200px;padding:7px 12px;border:1px solid #e2e8f5;border-radius:8px;font-size:13px;font-family:inherit;background:#f8faff;color:#334155;">
+            <select id="cap-fil-mes" onchange="filtrarCap()"
+              style="padding:7px 12px;border:1px solid #e2e8f5;border-radius:8px;font-size:13px;font-family:inherit;background:#f8faff;color:#334155;">
+              <option value="">📅 Todos los meses</option>
+            </select>
+            <select id="cap-fil-resp" onchange="filtrarCap()"
+              style="padding:7px 12px;border:1px solid #e2e8f5;border-radius:8px;font-size:13px;font-family:inherit;background:#f8faff;color:#334155;">
+              <option value="">🏢 Todos los responsables</option>
+            </select>
+            <select id="cap-fil-est" onchange="filtrarCap()"
+              style="padding:7px 12px;border:1px solid #e2e8f5;border-radius:8px;font-size:13px;font-family:inherit;background:#f8faff;color:#334155;">
+              <option value="">✅ Todos los estados</option>
+              <option value="ejecut">Ejecutada</option>
+            </select>
+            <button onclick="filtrarCap(true)" style="padding:7px 14px;background:#e2e8f5;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:#475569;">✕ Limpiar</button>
+          </div>
+          <div style="overflow-x:auto">
+          <table class="tbl"><thead><tr><th>#</th><th>Nombre Capacitación</th><th>Público Objeto</th><th>Responsable</th><th>Facilitador</th><th>Mes</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Asistentes</th><th>Estado</th><th>¿Se realizó?</th></tr></thead>
+          <tbody id="cap-tb"></tbody></table>
+          </div>
+          <div id="cap-count" style="margin-top:8px;font-size:12px;color:#94a3b8;text-align:right;"></div>
+        </div>
+      </div>
+
+      <!-- DESEMPEÑO -->
+      <div id="tab-desempeno" class="page">
+        <div class="krow" id="k-desemp"></div>
+        <div class="g2" style="margin-bottom:15px">
+          <div class="card"><h3>Puntaje por Área</h3><div id="desemp-area-wrap" style="height:320px;overflow-y:auto"><canvas id="c-desemp-area"></canvas></div></div>
+          <div class="card"><h3>% de Ejecución por Área</h3><div id="desemp-pct-wrap" style="height:320px;overflow-y:auto"><canvas id="c-desemp-pct"></canvas></div></div>
+        </div>
+        <div class="card">
+          <h3>Detalle por Área</h3>
+          <table class="tbl"><thead><tr><th>Área</th><th>Puntaje Obtenido</th><th>Puntaje Máximo</th><th>% Ejecución</th><th>Estado</th></tr></thead>
+          <tbody id="desemp-tb"></tbody></table>
+        </div>
+      </div>
+
+      <!-- TRANSPORTE -->
+      <div id="tab-transporte" class="page">
+        <div class="krow" id="k-transp"></div>
+        <div class="g2" style="margin-bottom:15px">
+          <div class="card"><h3>Tipo de Transporte</h3><div style="height:260px"><canvas id="c-transp-tipo"></canvas></div></div>
+          <div class="card"><h3>Tiempo Promedio de Llegada (min)</h3><div style="height:260px"><canvas id="c-transp-tiempo"></canvas></div></div>
+        </div>
+        <div class="card">
+          <h3>Detalle por Empleado</h3>
+          <div style="overflow-x:auto">
+          <table class="tbl"><thead><tr><th>Área</th><th>Tipo de Transporte</th><th>Tiempo (min)</th></tr></thead>
+          <tbody id="transp-tb"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+Chart.register(ChartDataLabels);
+let selectedFile = null;
+let charts = {};
+let globalWB = null;
+let _climaPeriods = [];
+let selectedMonths = new Set();
+let pendingMonths = new Set();
+const BLUE='#2563eb', GREEN='#16a34a';
+const C=['#2563eb','#16a34a','#0ea5e9','#f97316','#8b5cf6','#ef4444','#eab308','#1e3a8a','#22c55e','#38bdf8'];
+const FONT = 'Inter';
+
+// Formatea montos COP completos: $1.250.000
+function fmtCOP(v){
+  const n = Math.round(parseFloat(v)||0);
+  return '$' + n.toLocaleString('es-CO');
+}
+// Formato abreviado para eje de gráficas
+function fmtCOPShort(v){
+  if(v>=1000000) return '$'+(v/1000000).toFixed(1)+'M';
+  if(v>=1000) return '$'+(v/1000).toFixed(0)+'K';
+  return '$'+v;
+}
+
+// DRAG & DROP
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+
+function handleFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  document.getElementById('upFileInfo').style.display='flex';
+  document.getElementById('upFileName').textContent = file.name;
+  document.getElementById('upFileSize').textContent = (file.size/1024).toFixed(1)+' KB';
+  document.getElementById('upBtn').style.display='block';
+  document.getElementById('upError').style.display='none';
+}
+
+function processFile() {
+  if (!selectedFile) return;
+  document.getElementById('loading').style.display='flex';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array',cellDates:true});
+      globalWB = wb;
+      selectedMonths = new Set();
+      buildMonthFilter(wb);
+      const data = parseWorkbook(wb, selectedMonths);
+      renderDashboard(data);
+      document.getElementById('loading').style.display='none';
+      document.getElementById('upload-screen').style.display='none';
+      document.getElementById('dashboard').style.display='block';
+      document.getElementById('topdate').textContent = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+    } catch(err) {
+      document.getElementById('loading').style.display='none';
+      document.getElementById('upError').style.display='block';
+      document.getElementById('upError').textContent = '⚠️ Error al leer el archivo. Asegúrate de que sea el Excel de la base de datos de Talento Humano.';
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(selectedFile);
+}
+
+function parseWorkbook(wb, monthFilter) {
+  // monthFilter: Set of "Mmm YY" strings. Empty or null = show all.
+  const D = {};
+  const now = new Date();
+  const filterActive = monthFilter && monthFilter.size > 0;
+  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  function monthKey(d) {
+    if (!d) return null;
+    if (typeof d === 'string') d = new Date(d);
+    if (!(d instanceof Date) || isNaN(d)) return null;
+    return meses[d.getMonth()] + ' ' + d.getFullYear().toString().slice(2);
+  }
+  function inFilter(key) { return !filterActive || selectedMonths.has(key); }
+
+  // ── PERSONAL ─────────────────────────────────────────────────────────────
+  // Columnas reales: N°, PROCESOS, CARGO, Sede, NOMBRE COMPLETO, NUM DOCUMENTO,
+  // FECHA NACIMIENTO, SEXO, ESTADO CIVIL, HIJOS, N° HIJOS, DIRECCIÓN, TELÉFONO,
+  // GRADO DE ESTUDIO, PROFESION, EMAIL, TIPO DE CONTRATO, FECHA DE INGRESO,
+  // SALARIO , AUXILIO DE VIVIENDA, TOTAL SALARIO, BANCO DE LA CUENTA,
+  // FONDO PENSIÓN, FONDO DE CESANTIAS, EPS, MEDIO DE TRANSPORTE,
+  // TIEMPO EN LLEGAR AL TRABAJO , PLAN COMPLENTARIO EN SALUD, VALOR DEL PLAN ,
+  // NOMBRE CONTACTO DE EMERGENCIA, CONTACTO DE EMERGENCIA, PARENTESCO
+  if (wb.SheetNames.includes('PERSONAL')) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['PERSONAL'], {defval:''});
+    // Forward-fill PROCESOS (solo aparece en primera fila de cada área)
+    let lastProc = '';
+    rows.forEach(r => {
+      const p = String(r['PROCESOS']||'').trim();
+      if (p) lastProc = p;
+      else r['PROCESOS'] = lastProc;
+    });
+    const allPersonal = rows.filter(r => r['NOMBRE COMPLETO'] && String(r['NOMBRE COMPLETO']).trim());
+    // Separar OPS (médicos y no médicos), aprendices y empleados base para rotación
+    const MED_RE = /medic|médic|optometr|oftalm|anestesi|retino/i;
+    const esOps = r => String(r['TIPO DE CONTRATO']||'').trim().toLowerCase().includes('ops');
+    // Médico = contrato OPS con cargo/proceso médico (los optómetras de planta se cuentan como planta)
+    const esMedico = r => esOps(r) && (MED_RE.test(String(r['CARGO']||'')) || MED_RE.test(String(r['PROCESOS']||'')));
+    const esOpsNoMed = r => esOps(r) && !esMedico(r);
+    const esAprendiz = r => String(r['TIPO DE CONTRATO']||'').trim().toLowerCase().includes('aprendiz') || String(r['CARGO']||'').trim().toLowerCase().includes('aprendiz');
+    D.totalMedicos = allPersonal.filter(esMedico).length;
+    D.totalOps = allPersonal.filter(esOpsNoMed).length;
+    D.totalAprendices = allPersonal.filter(r => !esOps(r) && esAprendiz(r)).length;
+    // emp = solo empleados de planta/fijo, sin OPS ni aprendices
+    const emp = allPersonal.filter(r => !esOps(r) && !esAprendiz(r));
+    D.totalEmp = emp.length;
+    D.totalEmpConMedicos = allPersonal.length;
+
+    // Género (columna real: SEXO)
+    const genero = {'F':0,'M':0};
+    emp.forEach(r => {
+      const g = String(r['SEXO']||r['Sexo']||'').trim().toUpperCase();
+      if (g==='F'||g==='FEMENINO') genero['F']++;
+      else if (g==='M'||g==='MASCULINO') genero['M']++;
+    });
+    D.genero = {'Femenino':genero['F'], 'Masculino':genero['M']};
+
+    // Contrato — etiquetas legibles, médicos separados de los demás OPS
+    const mapContrato = c => {
+      const t = String(c).trim().toLowerCase();
+      if (t.includes('planta')||t.includes('indefinid')) return 'Término Indefinido';
+      if (t.includes('fijo')) return 'Término Fijo';
+      if (t.includes('ops')) return 'OPS (no médicos)';
+      if (t.includes('aprendiz')||t.includes('sena')) return 'Aprendiz SENA';
+      return String(c).trim();
+    };
+    const contrato = {};
+    allPersonal.forEach(r => {
+      const c = String(r['TIPO DE CONTRATO']||'').trim(); if(!c) return;
+      const lbl = esMedico(r) ? 'Médicos (OPS)' : mapContrato(c);
+      contrato[lbl]=(contrato[lbl]||0)+1;
+    });
+    D.contrato = contrato;
+
+    // Sede — simplifica etiquetas
+    const sede = {};
+    emp.forEach(r => {
+      let s = String(r['Sede']||'').trim();
+      if (s.toLowerCase().includes('admin')) s='Sede Adm.';
+      else if (s.toLowerCase().includes('ambas')) s='Ambas Sedes';
+      else if (s==='Sede 1'||s.toLowerCase().includes(' 1')) s='Sede 1';
+      else if (s==='Sede 2'||s.toLowerCase().includes(' 2')) s='Sede 2';
+      if (s) sede[s]=(sede[s]||0)+1;
+    });
+    D.sede = sede;
+
+    // Estudio
+    const estudio = {};
+    emp.forEach(r => { const e = String(r['GRADO DE ESTUDIO']||'').trim(); if(e) estudio[e]=(estudio[e]||0)+1; });
+    D.estudio = estudio;
+
+    // Estado civil (columna real: ESTADO CIVIL)
+    const ecivil = {};
+    emp.forEach(r => { const e = String(r['ESTADO CIVIL']||r['Estado civil']||'').trim(); if(e) ecivil[e]=(ecivil[e]||0)+1; });
+    D.ecivil = ecivil;
+
+    // Hijos (columnas reales: HIJOS, N° HIJOS)
+    let conHijos=0, sinHijos=0, totalHijosN=0, contHijosN=0;
+    emp.forEach(r => {
+      const h = String(r['HIJOS']||'').trim().toLowerCase();
+      const nh = parseInt(r['N° HIJOS']||0)||0;
+      if (h==='si'||h==='sí') { conHijos++; totalHijosN+=nh; contHijosN++; }
+      else sinHijos++;
+    });
+    D.hijos = { conHijos, sinHijos, totalHijos: totalHijosN,
+      promedioHijos: contHijosN?(totalHijosN/contHijosN).toFixed(1):0,
+      promTodos: emp.length?(totalHijosN/emp.length).toFixed(1):0 };
+
+    // Edades (columna real: FECHA NACIMIENTO)
+    const edades = {'<25':0,'25-35':0,'35-45':0,'45-55':0,'>55':0};
+    emp.forEach(r => {
+      let fn = r['FECHA NACIMIENTO'];
+      if (!fn) return;
+      if (typeof fn === 'string') fn = new Date(fn);
+      const edad = (now - fn) / (365.25*24*3600*1000);
+      if (edad<25) edades['<25']++;
+      else if (edad<35) edades['25-35']++;
+      else if (edad<45) edades['35-45']++;
+      else if (edad<55) edades['45-55']++;
+      else edades['>55']++;
+    });
+    D.edades = edades;
+    const edadTotal = emp.reduce((a,r)=>{
+      let fn=r['FECHA NACIMIENTO']; if(!fn) return a;
+      if(typeof fn==='string') fn=new Date(fn);
+      return a+((now-fn)/(365.25*24*3600*1000));
+    },0);
+    D.edadPromedio = emp.length ? (edadTotal/emp.length).toFixed(1) : '—';
+
+    // Antigüedad (columna real: FECHA DE INGRESO)
+    const antig = {'<1 año':0,'1-3 años':0,'3-5 años':0,'5-10 años':0,'>10 años':0};
+    emp.forEach(r => {
+      let fi = r['FECHA DE INGRESO'];
+      if (!fi) return;
+      if (typeof fi === 'string') fi = new Date(fi);
+      const a = (now - fi) / (365.25*24*3600*1000);
+      if (a<1) antig['<1 año']++;
+      else if (a<3) antig['1-3 años']++;
+      else if (a<5) antig['3-5 años']++;
+      else if (a<10) antig['5-10 años']++;
+      else antig['>10 años']++;
+    });
+    D.antig = antig;
+
+    // Antigüedad por área (PROCESOS)
+    const antigArea = {};
+    emp.forEach(r => {
+      let fi = r['FECHA DE INGRESO'];
+      const area = String(r['PROCESOS']||'').trim();
+      if (!fi||!area) return;
+      if (typeof fi==='string') fi=new Date(fi);
+      const a = (now-fi)/(365.25*24*3600*1000);
+      antigArea[area] = antigArea[area]||{sum:0,cnt:0};
+      antigArea[area].sum+=a; antigArea[area].cnt++;
+    });
+    D.antigArea = antigArea;
+
+    // Tipo empleado — mapeado desde TIPO DE CONTRATO real (médicos separados)
+    const tipoEmp = {'Indefinido':0,'Fijo':0,'Ops':0,'Medicos':0,'Aprendiz':0};
+    allPersonal.forEach(r => {
+      const t = String(r['TIPO DE CONTRATO']||'').trim().toLowerCase();
+      if (esMedico(r)) tipoEmp['Medicos']++;
+      else if (t.includes('planta')||t.includes('indefinid')) tipoEmp['Indefinido']++;
+      else if (t.includes('fijo')||t.includes('término')) tipoEmp['Fijo']++;
+      else if (t.includes('ops')||t.includes('obra')||t.includes('temporal')||t.includes('prestaci')) tipoEmp['Ops']++;
+      else if (t.includes('sena')||t.includes('aprendiz')) tipoEmp['Aprendiz']++;
+    });
+    D.tipoEmp = tipoEmp;
+
+    // Estadísticas de edad y antigüedad promedio por grupo
+    const avgYears = (list, col) => {
+      const vals = list.map(r => {
+        let d = r[col]; if (!d) return null;
+        if (typeof d === 'string') d = new Date(d);
+        return (d instanceof Date && !isNaN(d)) ? (now-d)/(365.25*24*3600*1000) : null;
+      }).filter(v => v != null);
+      return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
+    };
+    const esF = r => /^f/i.test(String(r['SEXO']||r['Sexo']||'').trim());
+    const esM2 = r => /^m/i.test(String(r['SEXO']||r['Sexo']||'').trim());
+    D.grpStats = {};
+    [['emp',emp],
+     ['medicos',allPersonal.filter(esMedico)],
+     ['ops',allPersonal.filter(esOpsNoMed)],
+     ['aprendices',allPersonal.filter(r=>!esOps(r)&&esAprendiz(r))],
+     ['mujeres',emp.filter(esF)],
+     ['hombres',emp.filter(esM2)]
+    ].forEach(([k,list]) => {
+      D.grpStats[k] = { n:list.length, edad:avgYears(list,'FECHA NACIMIENTO'), antig:avgYears(list,'FECHA DE INGRESO') };
+    });
+
+    // Auxilio de vivienda (columna real: AUXILIO DE VIVIENDA)
+    const auxArea={}, auxAreaCnt={}; let auxTotal=0, auxPers=0;
+    allPersonal.forEach(r => {
+      const a = parseFloat(String(r['AUXILIO DE VIVIENDA']||'').replace(/[^0-9.]/g,''))||0;
+      if (a>0) {
+        const g = String(r['PROCESOS']||'').trim()||'Sin área';
+        auxArea[g]=(auxArea[g]||0)+a; auxAreaCnt[g]=(auxAreaCnt[g]||0)+1;
+        auxTotal+=a; auxPers++;
+      }
+    });
+    D.aux = { area:auxArea, areaCnt:auxAreaCnt, total:auxTotal, personas:auxPers };
+
+    // Salario por sede (columna real: SALARIO )
+    const salSede = {}, salCount = {};
+    emp.forEach(r => {
+      let s = String(r['Sede']||'').trim();
+      if (s.toLowerCase().includes('admin')) s='Sede Adm.';
+      else if (s.toLowerCase().includes(' 1')) s='Sede 1';
+      else if (s.toLowerCase().includes(' 2')) s='Sede 2';
+      const sal = parseFloat(String(r['SALARIO ']||r['SALARIO']||'').replace(/[^0-9.]/g,''))||0;
+      if (sal>0) { salSede[s]=(salSede[s]||0)+sal; salCount[s]=(salCount[s]||0)+1; }
+    });
+    D.salSede = {};
+    Object.keys(salSede).forEach(k => D.salSede[k]=parseFloat((salSede[k]/salCount[k]/1000000).toFixed(2)));
+    D.salPromedio = emp.length ? emp.reduce((a,r)=>a+(parseFloat(String(r['SALARIO ']||r['SALARIO']||'').replace(/[^0-9.]/g,''))||0),0)/emp.length : 0;
+
+    // Salario total por grupo/proceso (columna real: PROCESOS) — salario + auxilio de vivienda, incluyendo médicos y aprendices
+    const salGrupo = {}, salGrupoCount = {}, salGrupoMembers = {};
+    allPersonal.forEach(r => {
+      const grupo = String(r['PROCESOS']||'').replace(/\s+/g,' ').trim().replace(/^["']+|["']+$/g,'').trim();
+      const salBase = parseFloat(String(r['SALARIO ']||r['SALARIO']||'').replace(/[^0-9.]/g,''))||0;
+      const auxV = parseFloat(String(r['AUXILIO DE VIVIENDA']||'').replace(/[^0-9.]/g,''))||0;
+      const sal = salBase + auxV;
+      if (grupo && sal>0) {
+        salGrupo[grupo]=(salGrupo[grupo]||0)+sal;
+        salGrupoCount[grupo]=(salGrupoCount[grupo]||0)+1;
+        if (!salGrupoMembers[grupo]) salGrupoMembers[grupo]=[];
+        salGrupoMembers[grupo].push({ nombre: String(r['NOMBRE COMPLETO']||'').trim(), cargo: String(r['CARGO']||'').trim(), sal, auxV });
+      }
+    });
+    D.salGrupo = {};
+    Object.keys(salGrupo).forEach(k => D.salGrupo[k]=Math.round(salGrupo[k]));
+    D.salGrupoCount = salGrupoCount;
+    D.salGrupoMembers = salGrupoMembers;
+
+    // Ingresos por mes (FECHA DE INGRESO) para tendencia
+    const ingMes = {};
+    emp.forEach(r => {
+      let fi = r['FECHA DE INGRESO'];
+      if (!fi) return;
+      if (typeof fi === 'string') fi = new Date(fi);
+      if (fi instanceof Date && !isNaN(fi)) {
+        const k = meses[fi.getMonth()] + ' ' + fi.getFullYear().toString().slice(2);
+        ingMes[k] = (ingMes[k]||0)+1;
+      }
+    });
+    D.ingMes = ingMes;
+
+    // Transporte (columnas reales: MEDIO DE TRANSPORTE, TIEMPO EN LLEGAR AL TRABAJO )
+    const tiempoMap={'0':'< 15 min','1':'15-30 min','2':'30-45 min','3':'45-60 min','4':'1-1.5 hrs','5':'1.5-2 hrs','6':'2-2.5 hrs','7':'2.5-3 hrs','8':'> 3 hrs'};
+    D.transpRows = emp.map(r=>{
+      const t=String(r['TIEMPO EN LLEGAR AL TRABAJO ']||'').trim();
+      return {
+        area: String(r['PROCESOS']||'').trim(),
+        tipo: String(r['MEDIO DE TRANSPORTE']||'').trim(),
+        tiempo: tiempoMap[t]||t,
+      };
+    }).filter(r=>r.tipo);
+
+    // Educación por área/género/edad
+    D.educRows = emp.map(r=>({
+      area: String(r['PROCESOS']||'').trim(),
+      genero: String(r['SEXO']||r['Sexo']||'').trim(),
+      estudio: String(r['GRADO DE ESTUDIO']||'').trim(),
+      edad: r['FECHA NACIMIENTO']?((now-(typeof r['FECHA NACIMIENTO']==='string'?new Date(r['FECHA NACIMIENTO']):r['FECHA NACIMIENTO']))/(365.25*24*3600*1000)).toFixed(0):0,
+    })).filter(r=>r.estudio);
+  }
+
+  // ── RETIROS ───────────────────────────────────────────────────────────────
+  // Columnas reales: CEDULA, NOMBRE COMPLETO, CARGO, FECHA DE RETIRO, MOTIVO DE RETIRO
+  if (wb.SheetNames.includes('RETIROS')) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['RETIROS'], {defval:''});
+    // Excluir médicos (OPS) y aprendices de todos los cálculos de rotación y tendencia
+    const esMedicoRet = r => {
+      const c = String(r['CARGO']||'').trim().toLowerCase();
+      return c.includes('médico')||c.includes('medico')||c.includes('oftalmólogo')||c.includes('oftalmologo')||c.includes('ops');
+    };
+    const esAprendizRet = r => {
+      const c = String(r['CARGO']||'').trim().toLowerCase();
+      return c.includes('aprendiz')||c.includes('sena');
+    };
+    // rowsBase: solo planta/fijo — sin médicos ni aprendices
+    const rowsBase = rows.filter(r => !esMedicoRet(r) && !esAprendizRet(r));
+    // Filtrar retiros por mes de FECHA DE RETIRO
+    const retFiltered = filterActive ? rowsBase.filter(r => {
+      const k = monthKey(r['FECHA DE RETIRO']);
+      return k && selectedMonths.has(k);
+    }) : rowsBase;
+    D.totalRetiros = retFiltered.length;
+    const motivos = {};
+    retFiltered.forEach(r => {
+      const m = String(r['MOTIVO DE RETIRO']||'').trim();
+      if(m) motivos[m]=(motivos[m]||0)+1;
+    });
+    D.retiro = motivos;
+
+    // Tasa de rotación por mes: (S / M) × 100
+    // S = retiros ese mes, M = promedio empleados = (inicio + fin) / 2
+    // Inicio del periodo ≈ empleados actuales + total retiros (si no hay filtro), o estimado con retiros acumulados
+    const totalSalidas = rowsBase.length; // total histórico sin filtro (excluye médicos y aprendices)
+    const empFin = D.totalEmp||0;
+    const empIni = empFin + totalSalidas; // aprox inicio = fin + todos los que salieron
+    // Rotación por mes: acumular salidas mes a mes y calcular M
+    const retPorMes = {};
+    rowsBase.forEach(r => {
+      const k = monthKey(r['FECHA DE RETIRO']);
+      if(k) retPorMes[k]=(retPorMes[k]||0)+1;
+    });
+    // Ordenar meses
+    const mesesOrden2=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const mesesSorted = Object.keys(retPorMes).sort((a,b)=>{
+      const pa=a.split(' '),pb=b.split(' ');
+      const ya=parseInt('20'+pa[1]),yb=parseInt('20'+pb[1]);
+      return ya!==yb?ya-yb:mesesOrden2.indexOf(pa[0])-mesesOrden2.indexOf(pb[0]);
+    });
+    // Calcular tasa acumulando salidas: M del mes = empFin + salidas_desde_ese_mes_en_adelante
+    let acumDesde = totalSalidas;
+    D.rotTasaMes = {};
+    mesesSorted.forEach(mes => {
+      const s = retPorMes[mes]||0;
+      const mIni = empFin + acumDesde;
+      const mFin = mIni - s;
+      const M = (mIni + mFin) / 2;
+      D.rotTasaMes[mes] = M > 0 ? parseFloat(((s / M) * 100).toFixed(2)) : 0;
+      acumDesde -= s;
+    });
+    D.retPorMes = retPorMes;
+
+    // Headcount aproximado por mes (reconstrucción hacia atrás desde empleados actuales)
+    const mesesOrdenHC=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const hcMonths = Object.keys(retPorMes).sort((a,b)=>{
+      const pa=a.split(' '),pb=b.split(' ');
+      const ya=parseInt('20'+pa[1]),yb=parseInt('20'+pb[1]);
+      return ya!==yb?ya-yb:mesesOrdenHC.indexOf(pa[0])-mesesOrdenHC.indexOf(pb[0]);
+    });
+    const empMes = {};
+    let hcRun = empFin; // comenzar desde empleados actuales
+    [...hcMonths].reverse().forEach(mes => {
+      hcRun += (retPorMes[mes]||0); // agregar de vuelta quienes salieron ese mes
+      empMes[mes] = hcRun;
+    });
+    D.empMes = hcMonths.reduce((o,m)=>({...o,[m]:empMes[m]}),{});
+
+    // Tasa global del periodo: S=totalSalidas, M=(empIni+empFin)/2
+    const Mglobal = (empIni + empFin) / 2;
+    D.tasaRotGlobal = Mglobal > 0 ? parseFloat(((totalSalidas / Mglobal) * 100).toFixed(2)) : 0;
+    D.empIni = empIni;
+    D.empFinPer = empFin;
+
+    // Si hay filtro de meses activo, recalcular tasa y series solo con los meses seleccionados
+    if (filterActive) {
+      const selM = mesesSorted.filter(m => selectedMonths.has(m));
+      D.rotTasaMes = Object.fromEntries(Object.entries(D.rotTasaMes).filter(([m]) => selectedMonths.has(m)));
+      D.empMes = Object.fromEntries(Object.entries(D.empMes).filter(([m]) => selectedMonths.has(m)));
+      if (selM.length) {
+        const S = selM.reduce((a,m) => a+(retPorMes[m]||0), 0);
+        const mIniP = empMes[selM[0]] || empFin;
+        const last  = selM[selM.length-1];
+        const mFinP = (empMes[last]||empFin) - (retPorMes[last]||0);
+        const Mp = (mIniP + mFinP) / 2;
+        D.tasaRotGlobal = Mp > 0 ? parseFloat(((S / Mp) * 100).toFixed(2)) : 0;
+        D.empIni = mIniP;
+        D.empFinPer = mFinP;
+      } else {
+        D.tasaRotGlobal = 0; D.empIni = empFin; D.empFinPer = empFin;
+      }
+    }
+  }
+
+  // ── AUSENTISMO ────────────────────────────────────────────────────────────
+  // Fila 1: título, Fila 2: headers reales
+  // Columnas: Nº, AREA, NOMBRE COMPLETO, NUMERO DE DOCUMENTO, FECHA INICIO, FECHA FIN, NUMERO DE DÍAS, MOTIVO, EPS
+  if (wb.SheetNames.includes('AUSENTISMO')) {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets['AUSENTISMO'], {header:1, defval:''});
+    // Fila 2 (índice 1) es el header real
+    const headers = raw[1];
+    const dataRows = raw.slice(2).filter(r => r[0] && String(r[0]).trim() && !isNaN(r[0]));
+    const areaI  = headers.findIndex(h=>String(h).toLowerCase().includes('area')||String(h).toLowerCase().includes('área'));
+    const diasI  = headers.findIndex(h=>String(h).toLowerCase().includes('día')||String(h).toLowerCase().includes('dia')||String(h).toLowerCase().includes('dias'));
+    const motivI = headers.findIndex(h=>String(h).toLowerCase().includes('motivo'));
+    const fechaI = headers.findIndex(h=>String(h).toLowerCase().includes('fecha ini')||String(h).toLowerCase().includes('inicio'));
+
+    // Filtrar por mes si corresponde
+    const ausFiltered = filterActive
+      ? dataRows.filter(r => { const k=monthKey(r[fechaI]); return k && selectedMonths.has(k); })
+      : dataRows;
+
+    // Excluir incapacidades por embarazo/maternidad de los gráficos
+    const emb = /embarazo|maternid|gestac|licencia\s*mat/i;
+    const ausNoEmb = ausFiltered.filter(r=>!emb.test(String(r[motivI]||'')));
+
+    D.totalCasosAus = ausNoEmb.length;
+    D.totalDiasAus  = ausNoEmb.reduce((a,r)=>a+(parseInt(r[diasI])||0), 0);
+
+    // Motivos
+    const aus = {};
+    ausNoEmb.forEach(r => { const m=String(r[motivI]||'').trim(); if(m) aus[m]=(aus[m]||0)+1; });
+    D.aus = Object.fromEntries(Object.entries(aus).sort((a,b)=>b[1]-a[1]).slice(0,8));
+
+    // Por área
+    const ausArea = {};
+    ausNoEmb.forEach(r => { const a=String(r[areaI]||'').trim(); if(a) ausArea[a]=(ausArea[a]||0)+1; });
+    D.ausArea = ausArea;
+
+    // Tendencia mensual (sin embarazo)
+    const ausMes = {};
+    ausNoEmb.forEach(r => {
+      let f = r[fechaI];
+      if (!f) return;
+      if (typeof f==='string') f=new Date(f);
+      if (f instanceof Date && !isNaN(f)) {
+        const m = meses[f.getMonth()]+' '+f.getFullYear().toString().slice(2);
+        ausMes[m] = (ausMes[m]||0)+1;
+      }
+    });
+    D.ausMes = ausMes;
+  }
+
+  // ── ACCIDENTES ────────────────────────────────────────────────────────────
+  // Columnas reales: AÑO, MES, ¿HUBO ACCIDENTE?, Nº ACCIDENTES, TIPO DE ACCIDENTE, ÁREA, DÍAS DE INCAPACIDAD, OBSERVACIONES
+  if (wb.SheetNames.includes('ACCIDENTES')) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['ACCIDENTES'], {defval:''});
+    // Construir clave de mes para cada fila de accidentes
+    const accFiltered = filterActive ? rows.filter(r => {
+      const mes = String(r['MES']||'').trim();
+      const anio = String(r['AÑO']||'').trim();
+      if (!mes || !anio) return false;
+      // Convertir nombre de mes español a índice
+      const mIdx = meses.findIndex(m => mes.toLowerCase().includes(m.toLowerCase()) || mes.toLowerCase().startsWith(m.toLowerCase()));
+      const key = mIdx>=0 ? meses[mIdx]+' '+String(anio).slice(-2) : null;
+      return key && selectedMonths.has(key);
+    }) : rows;
+    D.totalAcc    = accFiltered.reduce((a,r)=>a+(parseInt(r['Nº ACCIDENTES'])||0), 0);
+    D.totalDiasAcc= accFiltered.reduce((a,r)=>a+(parseInt(r['DÍAS DE INCAPACIDAD'])||0), 0);
+    D.accRows = accFiltered;
+    const accMes = {};
+    rows.forEach(r => { if(r['MES']) accMes[r['MES']] = parseInt(r['Nº ACCIDENTES'])||0; });
+    D.accMes = accMes;
+  }
+
+  // ── CLIMA ─────────────────────────────────────────────────────────────────
+  // La hoja puede traer varios periodos de encuesta. Cada periodo es un bloque
+  // que empieza con una fila "RESULTADO GENERAL". Se detectan TODOS los bloques
+  // automáticamente (no un número fijo), así que si más adelante se agrega un
+  // nuevo periodo a la hoja CLIMA, el tablero lo reconoce solo, sin tocar código.
+  if (wb.SheetNames.includes('CLIMA')) {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets['CLIMA'], {header:1, defval:''});
+    const blockStarts = [];
+    raw.forEach((r, i) => { if (String(r[0]||'').trim().toUpperCase().startsWith('RESULTADO GENERAL')) blockStarts.push(i); });
+
+    const periods = [];
+    blockStarts.forEach((startIdx, bi) => {
+      const endIdx = blockStarts[bi+1] !== undefined ? blockStarts[bi+1] : raw.length;
+      const block = raw.slice(startIdx, endIdx);
+
+      const resultado = parseFloat(block[0][1]) || 0;
+      let participacion = block[0][4];
+      if (typeof participacion === 'number') {
+        participacion = (participacion<=1 ? (participacion*100) : participacion).toFixed(2) + '%';
+      } else {
+        participacion = String(participacion||'');
+      }
+
+      // Etiqueta del periodo: la primera fila del bloque que mencione "Periodo" o "Encuesta"
+      let label = 'Periodo ' + (bi+1);
+      for (const r of block) {
+        const c0 = String(r[0]||'');
+        if (/periodo|encuesta/i.test(c0)) { label = c0.trim(); break; }
+      }
+
+      // Fila de encabezado del bloque (columna A = "CATEGORIAS")
+      const catRowRel = block.findIndex(r => String(r[0]||'').trim().toUpperCase() === 'CATEGORIAS');
+      let cats=[], areas=[], climaData=[], mejores=[], peores=[];
+      if (catRowRel >= 0) {
+        const headRow = block[catRowRel];
+        const excl = ['nota','categoría','categoria','puntaje','resultado','total','promedio',
+                      'número','numero','sub','mejor','peor','calificacion','calificación','rango'];
+        const areaEntries = [];
+        headRow.forEach((h, ci) => {
+          if (ci === 0) return;
+          const s = String(h||'').trim();
+          if (!s) return;
+          const sl = s.toLowerCase();
+          const isGeneric = excl.some(w => sl === w) || sl.includes('mejor') || sl.includes('número') || sl.includes('sub');
+          if (!isGeneric) areaEntries.push({name: s, ci});
+        });
+        areas = areaEntries.map(e => e.name);
+
+        // Categorías × áreas — acotado al rango del bloque de este periodo
+        for (let i=catRowRel+1; i<block.length; i++) {
+          const row = block[i];
+          if (!row[0]||!String(row[0]).trim()) continue;
+          const cat = String(row[0]).trim();
+          const vals = areaEntries.map(e => parseFloat(row[e.ci])||0);
+          if (vals.some(v=>v>0)) { cats.push(cat); climaData.push(vals); }
+        }
+
+        // Rankings "Mejores evaluados" / "Peores evaluados" — se ubican buscando
+        // esas palabras en el título del bloque, encima del encabezado
+        const titleRow = block.slice(0, catRowRel).slice().reverse().find(r => r.some(c => /mejor|peor/i.test(String(c||''))));
+        function extractRanking(kw) {
+          if (!titleRow) return [];
+          const colStart = titleRow.findIndex(c => new RegExp(kw,'i').test(String(c||'')));
+          if (colStart < 0) return [];
+          let numI=-1, subI=-1, catI=-1, notaI=-1;
+          for (let ci = colStart; ci < Math.min(colStart+6, headRow.length); ci++) {
+            const s = String(headRow[ci]||'').toLowerCase();
+            if (numI<0 && /número|numero/.test(s)) numI = ci;
+            else if (subI<0 && /sub/.test(s)) subI = ci;
+            else if (catI<0 && /categor/.test(s)) catI = ci;
+            else if (notaI<0 && /nota/.test(s)) notaI = ci;
+          }
+          if (numI<0) return [];
+          const list = [];
+          for (let i=catRowRel+1; i<block.length; i++) {
+            const row = block[i];
+            if (row[numI]===''||row[numI]===undefined||row[numI]===null) break;
+            list.push({ numero: row[numI], subarea: String(row[subI]||''), categoria: String(row[catI]||''), nota: String(row[notaI]||'') });
+          }
+          return list;
+        }
+        mejores = extractRanking('mejor');
+        peores  = extractRanking('peor');
+      }
+      periods.push({ label, resultado, participacion, cats, areas, data: climaData, mejores, peores });
+    });
+
+    D.climaPeriods = periods;
+    D.clima = periods.length ? periods[periods.length-1] : { resultado:0, participacion:'', cats:[], areas:[], data:[], mejores:[], peores:[] };
+  }
+
+  // ── SEGUIMIENTO INCAPACIDADES (= Recobro) ────────────────────────────────
+  // Fila 1: título, Fila 2: NOMBRE, CC, FONDO DE SALUD, TIPO DE INCAPACIDAD,
+  //         NUMERO DE DIAS, FECHA DE INICIO, FECHA FIN., RADICADO, VALOR, ESTADO, Fecha de pago, COMENTARIO
+  const recobroSheet = wb.SheetNames.find(n=>n.toUpperCase().includes('SEGUIMIENTO')||n.toUpperCase().includes('INCAPACIDAD')||n.toUpperCase().includes('RECOBRO'));
+  if (recobroSheet) {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[recobroSheet], {header:1, defval:''});
+    // Fila 2 (índice 1) es el header real
+    const headers = raw[1];
+    const nameI  = headers.findIndex(h=>String(h).toUpperCase().includes('NOMBRE'));
+    const diasI2 = headers.findIndex(h=>String(h).toUpperCase().includes('DIAS')||String(h).toUpperCase().includes('DÍAS'));
+    const estadoI= headers.findIndex(h=>String(h).toUpperCase().includes('ESTADO'));
+    const valorI = headers.findIndex(h=>String(h).toUpperCase().includes('VALOR'));
+    const fechaRecI = headers.findIndex(h=>String(h).toUpperCase().includes('FECHA')&&(String(h).toUpperCase().includes('INICIO')||String(h).toUpperCase().includes('PAGO')||String(h).toUpperCase().includes('INICIO')));
+    const allRows = raw.slice(2).filter(r=>r[nameI]&&String(r[nameI]).trim());
+    const dataRows = filterActive ? allRows.filter(r=>{
+      const k = monthKey(r[fechaRecI]);
+      return k && selectedMonths.has(k);
+    }) : allRows;
+    const estadoCounts={}, estadoVals={};
+    let totalRec=0, totalPend=0;
+    D.recobroRows = dataRows.map(r => {
+      // Normaliza variantes del Excel: RADICADO/radicada→RADICADA, pagado→PAGADO, etc.
+      let estado = String(r[estadoI]||'—').replace(/\s+/g,' ').trim().toUpperCase();
+      if (estado.startsWith('RADICAD')) estado='RADICADA';
+      else if (estado.startsWith('PAGAD')) estado='PAGADO';
+      else if (estado.startsWith('PENDIENT')) estado='PENDIENTE';
+      const valRaw = String(r[valorI]||'0').replace(/[^0-9.,]/g,'').replace(',','.');
+      const val = parseFloat(valRaw)||0;
+      estadoCounts[estado]=(estadoCounts[estado]||0)+1;
+      estadoVals[estado]=(estadoVals[estado]||0)+val;
+      totalRec += (estado==='PAGADO'||estado==='Pagado') ? val : 0;
+      totalPend += (estado!=='PAGADO'&&estado!=='Pagado') ? val : 0;
+      return { nombre:String(r[nameI]||'').trim(), dias:r[diasI2]||0, estado, valorRecobrado: (estado==='PAGADO'||estado==='Pagado')?val:0, valorPendiente:(estado!=='PAGADO'&&estado!=='Pagado')?val:0 };
+    });
+    D.recobroStats = { estadoCounts, estadoVals, totalRec, totalPend };
+  }
+
+  // ── EVALUACIÓN DE DESEMPEÑO ───────────────────────────────────────────────
+  // Fila 1: PUNTAJE OBTENIDO=4.45, EJECUCIÓN=0.89
+  // Fila 6: Area | Nota
+  // Filas 7+: Comercial | 5.0 | ...
+  const despSheet = wb.SheetNames.find(n=>n.toUpperCase().includes('DESEM'));
+  if (despSheet) {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[despSheet], {header:1, defval:''});
+    const puntajeGlobal = parseFloat(raw[0][1])||0;
+    const ejecucionGlobal = parseFloat(raw[0][4])||0;
+    // Fila con "Area" y "Nota"
+    const areaRowIdx = raw.findIndex(r=>r.some(c=>String(c).toLowerCase()==='area'||String(c).toLowerCase()==='área'));
+    D.despRows = [];
+    D.despGlobal = { puntaje: puntajeGlobal, ejecucion: ejecucionGlobal };
+    if (areaRowIdx>=0) {
+      for (let i=areaRowIdx+1; i<raw.length; i++) {
+        const row = raw[i];
+        if (!row[0]||!String(row[0]).trim()) continue;
+        D.despRows.push({ area: String(row[0]).trim(), puntaje: parseFloat(row[1])||0, maximo: 5 });
+      }
+    }
+    // Resultados por nivel (col 3-4)
+    const nivelRowIdx = raw.findIndex(r=>r.some(c=>String(c).toLowerCase().includes('nivel de desempeño')||String(c).toLowerCase().includes('nivel')));
+    D.despNivel = {};
+    if (nivelRowIdx>=0) {
+      for (let i=nivelRowIdx+1; i<raw.length; i++) {
+        const row = raw[i];
+        if (!row[3]||!String(row[3]).trim()) continue;
+        D.despNivel[String(row[3]).trim()] = parseInt(row[4])||0;
+      }
+    }
+  }
+
+  // ── CAPACITACIONES ────────────────────────────────────────────────────────
+  // Hoja: CAPACITACIONES
+  // Cols: 0=ID 1=Nombre 2=Publico 3=Responsable 4=Facilitador
+  //       5=Mes prog 6=Fecha prog 7=Fecha ejec 8=Estado 9=Se realizó 10=Asistentes
+  const capSheetName = wb.SheetNames.find(n=>n.toUpperCase().includes('CAPACITACION'));
+  D.capRows = [];
+  if (capSheetName) {
+    const capRaw = XLSX.utils.sheet_to_json(wb.Sheets[capSheetName], {header:1, defval:''});
+    const fmtDCap = d => {
+      if (!d) return '—';
+      if (d instanceof Date) return d.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+      if (typeof d === 'number' && d > 40000) return new Date(Math.round((d-25569)*86400000)).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+      return String(d);
+    };
+    for (let i = 1; i < capRaw.length; i++) {
+      const r = capRaw[i];
+      if (!r[1] || String(r[1]).trim() === '') continue;
+      D.capRows.push({
+        nombre:      String(r[1]).trim(),
+        publico:     String(r[2]||'').trim(),
+        responsable: String(r[3]||'').trim(),
+        facilitador: String(r[4]||'').trim(),
+        mesProg:     String(r[5]||'').trim(),
+        fechaProg:   fmtDCap(r[6]),
+        fechaEj:     fmtDCap(r[7]),
+        estado:      String(r[8]||'').trim(),
+        realizo:     String(r[9]||'').trim(),
+        asistentes:  parseInt(r[10])||0,
+      });
+    }
+  }
+  D.capTotal = D.capRows.length;
+  D.capEjec  = D.capRows.filter(r=>(r.realizo||'').toLowerCase().startsWith('s')||(r.estado||'').toLowerCase().includes('ejecut')).length;
+
+    // ── CURSOS Y PÓLIZA ───────────────────────────────────────────────────────
+  // No hay hoja de transporte separada — los datos vienen de PERSONAL
+
+  return D;
+}
+
+const ICON_MAP = {
+  'Total':'👥','N° Empleados':'👥','Empleados Fijo':'📋','Empleados Sena':'🎓','Empleados Ops':'⚙️',
+  'Personal OPS':'⚙️','Capacitaciones':'🎓','Total Empleados':'👥','Antigüedad Prom.':'📅','Médicos':'🩺',
+  'Mujeres':'♀️','Hombres':'♂️','Edad Promedio':'🎂','Clima Org.':'🌤️',
+  'Resultado General':'⭐','Participación':'📊','Mejor Área':'🏆','Área a Mejorar':'📈',
+  'Rotación':'🔄','Total Retiros':'🔄','Sin Justa Causa':'⚠️','Renuncia Voluntaria':'✋','Otros':'📌',
+  'Total Casos':'🏥','Total Días':'📅','Prom. Días/Caso':'📉','Mayor Motivo':'🔍',
+  'Total Accidentes':'⚠️','Días Incapacidad':'🩹','Meses sin Acc.':'✅','Ausentismo':'🏥',
+  'Valor Recuperado':'💰','Valor Pendiente':'⏳','Total Registros':'📄','Estados distintos':'🏷️',
+  'Total Cursos':'📚','Procesos Cubiertos':'🗂️','Tipos':'📋','Modalidades':'🖥️',
+  'Puntaje Global':'🏅','% Ejecución':'📊','Áreas Evaluadas':'🗺️','Mayor Puntaje':'🥇',
+  'Accidentes':'⚠️',
+};
+
+function kpi(id, items) {
+  document.getElementById(id).innerHTML = items.map(([label,val,sub,cls])=>{
+    const ico = ICON_MAP[label]||'📊';
+    return `<div class="kpi ${cls||'bl'}">
+      <div class="kpi-icon">${ico}</div>
+      <label>${label}</label>
+      <div class="vl">${val}</div>
+      <div class="sb">${sub||''}</div>
+    </div>`;
+  }).join('');
+}
+
+function barChart(id, labels, data, colors, opts={}) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id); if(!ctx) return;
+  const isH = !!opts.h;
+  const total = data.reduce((a,b)=>a+(b||0),0)||1;
+  charts[id] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        data, backgroundColor:colors,
+        borderColor: colors.map ? colors.map(col=>col+'cc') : colors,
+        borderWidth:1.5, borderRadius:isH?4:8,
+        borderSkipped:false, barPercentage:.7, categoryPercentage:.8,
+        label:'Valor'
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      indexAxis: isH?'y':'x',
+      layout:{padding:{right:isH?72:6, left:isH?10:0, top:isH?4:(opts.topPad||30)}},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#1e293b', titleColor:'#f1f5f9', bodyColor:'#94a3b8',
+          cornerRadius:8, padding:10,
+          callbacks:{
+            label: ctx2 => {
+              const v = ctx2.parsed[isH?'x':'y'];
+              const val = opts.cop?fmtCOPShort(v):opts.pct?v+'%':opts.dec?v.toFixed(2):v;
+              if (opts.noPct) return ` ${val}`;
+              const pct = ((v/total)*100).toFixed(1);
+              return ` ${val}  (${pct}% del total)`;
+            }
+          }
+        },
+        datalabels:{
+          display: ctx2 => (ctx2.dataset.data[ctx2.dataIndex]||0) > 0,
+          anchor:'end', align:isH?'end':'end', clamp:true,
+          color:'#0f172a', font:{family:FONT, size:11.5, weight:'700'},
+          formatter:(v) => {
+            if (!v) return '';
+            const val = opts.cop?fmtCOPShort(v):opts.pct?v+'%':opts.dec?v.toFixed(2):v;
+            if (opts.noPct) return val;
+            const pct = ((v/total)*100).toFixed(1);
+            return val+'  '+pct+'%';
+          }
+        }
+      },
+      scales:{
+        x:{
+          ticks:{color: isH?'#94a3b8':'#334155', font:{family:FONT,size:10}, maxRotation: isH?0:35, autoSkip:false,
+            ...(isH&&opts.cop?{callback:v=>fmtCOPShort(v)}:{})
+          },
+          grid:{color:'#f1f5f9'}, border:{color:'transparent'}, ...(opts.xO||{})
+        },
+        y:{
+          ticks:{color: isH?'#334155':'#94a3b8', font:{family:FONT,size:isH?10.5:10}, maxRotation:0,
+            ...(!isH&&opts.cop?{callback:v=>fmtCOPShort(v)}:{})
+          },
+          grid:{color:'#f1f5f9'}, border:{color:'transparent'}, ...(opts.yO||{})
+        }
+      }
+    }
+  });
+}
+
+
+function donutChart(id, labels, data, colors) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id); if(!ctx) return;
+  const cols = colors||C.slice(0,data.length);
+  // Dona + tabla de datos al lado (reemplaza la leyenda)
+  const wrap = ctx.parentElement && ctx.parentElement.dataset.donutSplit ? ctx.parentElement.parentElement : ctx.parentElement;
+  let tblEl = document.getElementById(id+'-tbl');
+  if (wrap && !wrap.dataset.donutWrapped) {
+    wrap.dataset.donutWrapped='1';
+    wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='16px';
+    const left=document.createElement('div');
+    left.dataset.donutSplit='1';
+    left.style.cssText='flex:1 1 42%;height:100%;position:relative;min-width:0';
+    wrap.insertBefore(left, ctx); left.appendChild(ctx);
+    tblEl=document.createElement('div');
+    tblEl.id=id+'-tbl';
+    tblEl.style.cssText='flex:1 1 58%;max-height:100%;overflow-y:auto;min-width:0;scrollbar-width:thin';
+    wrap.appendChild(tblEl);
+  }
+  const dsum = data.reduce((a,b)=>a+b,0)||1;
+  if (tblEl) {
+    const thS='padding:5px 6px;font-size:9.5px;text-transform:uppercase;color:var(--muted);font-weight:700;letter-spacing:.4px;border-bottom:1.5px solid var(--border)';
+    tblEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:auto">
+      <thead><tr>
+        <th style="text-align:left;${thS}">Categoría</th>
+        <th style="text-align:right;${thS}">Cant.</th>
+        <th style="text-align:right;${thS}">%</th>
+      </tr></thead>
+      <tbody>
+        ${labels.map((l,i)=>`<tr style="border-bottom:1px solid #f1f5f9">
+          <td style="padding:6px 6px;color:#334155;font-weight:600"><div style="display:flex;align-items:center;gap:7px"><span style="flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:${cols[i]}"></span><span>${l}</span></div></td>
+          <td style="padding:6px 6px;text-align:right;font-weight:700;color:#0f172a">${data[i]}</td>
+          <td style="padding:6px 6px;text-align:right;color:#64748b;font-weight:600">${(data[i]/dsum*100).toFixed(1)}%</td>
+        </tr>`).join('')}
+        <tr>
+          <td style="padding:7px 6px;font-weight:800;color:#0f172a;border-top:1.5px solid var(--border);font-size:11px;text-transform:uppercase">Total</td>
+          <td style="padding:7px 6px;text-align:right;font-weight:800;color:#0f172a;border-top:1.5px solid var(--border)">${dsum}</td>
+          <td style="padding:7px 6px;text-align:right;font-weight:800;color:#0f172a;border-top:1.5px solid var(--border)">100%</td>
+        </tr>
+      </tbody></table>`;
+  }
+  charts[id] = new Chart(ctx, {
+    type:'doughnut',
+    data:{labels, datasets:[{data, backgroundColor:cols, borderWidth:3, borderColor:'#fff', hoverOffset:10}]},
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'55%',
+      layout:{padding:{left:8,right:8,top:6,bottom:6}},
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          // Solo % en porciones ≥10% (el detalle exacto está en la tabla al lado) — sin amontonamientos
+          display:(ctx)=>{
+            const sum=ctx.dataset.data.reduce((a,b)=>a+b,0);
+            return ctx.dataset.data[ctx.dataIndex]/sum*100>=10;
+          },
+          color:'#0f172a',
+          font:{family:FONT, size:12, weight:'800'},
+          anchor:'center', align:'center',
+          textStrokeColor:'#fff',
+          textStrokeWidth:3.5,
+          formatter:(v,ctx)=>{
+            const sum=ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+            return Math.round(v/sum*100)+'%';
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── FILTRO CAPACITACIONES ──────────────────────────────────────────────────
+let _capAllRows = [];
+function filtrarCap(reset) {
+  if (reset) {
+    document.getElementById('cap-search').value='';
+    document.getElementById('cap-fil-mes').value='';
+    document.getElementById('cap-fil-resp').value='';
+    document.getElementById('cap-fil-est').value='';
+  }
+  const search = (document.getElementById('cap-search')?.value||'').toLowerCase();
+  const mes    = document.getElementById('cap-fil-mes')?.value||'';
+  const resp   = document.getElementById('cap-fil-resp')?.value||'';
+  const est    = document.getElementById('cap-fil-est')?.value||'';
+  const filtered = _capAllRows.filter((r,i)=>{
+    if (search && !r.nombre.toLowerCase().includes(search) && !r.publico.toLowerCase().includes(search) && !r.facilitador.toLowerCase().includes(search)) return false;
+    if (mes  && r.mesProg !== mes) return false;
+    if (resp && r.responsable !== resp) return false;
+    if (est === 'ejecut' && !(r.estado||'').toLowerCase().includes('ejecut') && !(r.realizo||'').toLowerCase().startsWith('s')) return false;
+    if (est === 'pend'   &&  ((r.estado||'').toLowerCase().includes('ejecut') ||  (r.realizo||'').toLowerCase().startsWith('s'))) return false;
+    return true;
+  });
+  const tb = document.getElementById('cap-tb');
+  if (!tb) return;
+  tb.innerHTML = filtered.length
+    ? filtered.map((r,i)=>`<tr>
+        <td>${i+1}</td>
+        <td>${r.nombre||'—'}</td>
+        <td style="font-size:11px">${r.publico||'—'}</td>
+        <td>${r.responsable||'—'}</td>
+        <td>${r.facilitador||'—'}</td>
+        <td>${r.mesProg||'—'}</td>
+        <td>${r.fechaProg||'—'}</td>
+        <td>${r.fechaEj||'—'}</td>
+        <td style="text-align:center">${r.asistentes||0}</td>
+        <td><span class="badge ${(r.estado||'').toLowerCase().includes('ejecut')?'ok':'warn'}">${r.estado||'—'}</span></td>
+        <td><span class="badge ${(r.realizo||'').toLowerCase().startsWith('s')?'ok':'danger'}">${r.realizo||'—'}</span></td>
+      </tr>`).join('')
+    : '<tr><td colspan="11" style="text-align:center;color:#aaa;padding:16px">Sin resultados</td></tr>';
+  const cnt = document.getElementById('cap-count');
+  if (cnt) cnt.textContent = filtered.length + ' de ' + _capAllRows.length + ' capacitaciones';
+}
+
+function progList(id, obj) {
+  const max = Math.max(...Object.values(obj));
+  document.getElementById(id).innerHTML = Object.entries(obj).map(([k,v],i)=>
+    `<div class="prog-item"><label><span>${k}</span><span>${v}</span></label>
+     <div class="bar-bg"><div class="bar-fill" style="width:${v/max*100}%;background:${C[i]}"></div></div></div>`
+  ).join('');
+}
+
+// ── CLIMA: render de un periodo puntual (se re-usa al cambiar el selector) ──
+function renderClima(idx) {
+  const cl = _climaPeriods[idx] || {};
+  let mejorArea='—', peorArea='—', mejorVal=0, peorVal=5;
+  if (cl.areas && cl.data && cl.areas.length) {
+    const areaAvg = cl.areas.map((_,ai)=>{
+      const vals=cl.data.map(r=>r[ai]);
+      return vals.reduce((a,b)=>a+b,0)/vals.length;
+    });
+    areaAvg.forEach((v,i)=>{if(v>mejorVal){mejorVal=v;mejorArea=cl.areas[i];} if(v<peorVal){peorVal=v;peorArea=cl.areas[i];}});
+  }
+  kpi('k-clima', [
+    ['Resultado General', cl.resultado||'—', 'Escala 1–5', 'gn'],
+    ['Participación', cl.participacion||'—', 'del total', 'bl'],
+    ['Mejor Área', mejorArea, mejorVal.toFixed(2), 'gn'],
+    ['Área a Mejorar', peorArea, peorVal.toFixed(2), 'or'],
+  ]);
+
+  if (cl.cats && cl.data && cl.areas && cl.cats.length) {
+    const radarAvg = cl.data.map(r=>parseFloat((r.reduce((a,b)=>a+b,0)/r.length).toFixed(2)));
+    if (charts['c-radar']) charts['c-radar'].destroy();
+    const rc = document.getElementById('c-radar');
+    if (rc) charts['c-radar'] = new Chart(rc, {
+      type:'radar',
+      data:{labels:cl.cats, datasets:[{label:'Promedio',data:radarAvg,
+        backgroundColor:'rgba(37,99,235,.12)',borderColor:BLUE,
+        pointBackgroundColor:BLUE,pointBorderColor:'#fff',pointRadius:5,borderWidth:2.5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        scales:{r:{min:3,max:5,
+          ticks:{color:'#64748b',font:{family:FONT,size:9},backdropColor:'transparent',stepSize:.5},
+          grid:{color:'#e2e8f5'},angleLines:{color:'#e2e8f5'},
+          pointLabels:{color:'#334155',font:{family:FONT,size:10.5,weight:'600'}}
+        }},
+        plugins:{legend:{display:false},datalabels:{display:true,color:BLUE,font:{family:FONT,size:10,weight:'700'},formatter:v=>v}}
+      }
+    });
+
+    const areaAvg = cl.areas.map((_,ai)=>parseFloat((cl.data.map(r=>r[ai]).reduce((a,b)=>a+b,0)/cl.data.length).toFixed(2)));
+    // Horizontal si hay muchas áreas
+    const climaH = cl.areas.length > 6;
+    barChart('c-areas', cl.areas, areaAvg, areaAvg.map(v=>v>=4.4?GREEN:v>=4.0?BLUE:v>=3.7?'#eab308':'#ef4444'),
+      climaH
+        ? {h:true, dec:true,
+            xO:{min:3,max:5,ticks:{callback:v=>v.toFixed(1),color:'#64748b',font:{family:FONT,size:10}}},
+            yO:{ticks:{color:'#334155',font:{family:FONT,size:10.5}}}}
+        : {dec:true,
+            yO:{min:3,max:5,ticks:{callback:v=>v.toFixed(1),color:'#64748b',font:{family:FONT,size:10.5}}}}
+    );
+
+    function hBg(v){return v>=4.5?'rgba(122,181,64,.2)':v>=4.0?'rgba(74,125,181,.15)':v>=3.7?'rgba(251,191,36,.2)':'rgba(239,68,68,.2)';}
+    function hC(v){return v>=4.5?'#4d8a1c':v>=4.0?'#2d537a':v>=3.7?'#a16207':'#c42b2b';}
+    const hmt=document.getElementById('hm');
+    let hh='<tr><th style="text-align:left;min-width:110px">Categoría</th>';
+    cl.areas.forEach(a=>hh+=`<th>${a}</th>`);
+    hh+='</tr>';
+    cl.cats.forEach((cat,ci)=>{
+      hh+=`<tr><td class="rl">${cat}</td>`;
+      cl.areas.forEach((_,ai)=>{const v=cl.data[ci][ai];hh+=`<td style="background:${hBg(v)};color:${hC(v)}">${v}</td>`;});
+      hh+='</tr>';
+    });
+    hmt.innerHTML=hh;
+  }
+
+  // Rankings Top mejores / peores evaluados
+  function rankRows(list, tone) {
+    if (!list || !list.length) return '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px">Sin datos para este periodo</td></tr>';
+    return list.map(r => `<tr>
+        <td><span class="badge ${tone}">${r.numero}</span></td>
+        <td><strong>${r.subarea||'—'}</strong></td>
+        <td>${r.categoria||'—'}</td>
+        <td style="font-weight:700">${r.nota||'—'}</td>
+      </tr>`).join('');
+  }
+  const mejoresTb = document.getElementById('clima-mejores-tb');
+  if (mejoresTb) mejoresTb.innerHTML = rankRows(cl.mejores, 'ok');
+  const peoresTb = document.getElementById('clima-peores-tb');
+  if (peoresTb) peoresTb.innerHTML = rankRows(cl.peores, 'danger');
+}
+
+function renderDashboard(D) {
+  // ── RESUMEN
+  const gs = D.grpStats||{};
+  kpi('k-resumen', [
+    ['N° Empleados', D.totalEmp||0, 'Planta: Indefinido + Fijo · Edad prom. '+(gs.emp?.edad||'—')+' años', 'bl'],
+    ['Médicos', D.totalMedicos||0, 'OPS cargo médico · Edad '+(gs.medicos?.edad||'—')+' · Antig. '+(gs.medicos?.antig||'—')+' años', 'or'],
+    ['Personal OPS', D.totalOps||0, 'OPS no médicos · Edad '+(gs.ops?.edad||'—')+' · Antig. '+(gs.ops?.antig||'—')+' años', 'pu'],
+    ['Clima Org.', D.clima?.resultado||'—', 'Participación: '+(D.clima?.participacion||'—'), 'gn'],
+    ['Rotación', D.totalRetiros||0, 'Retiros en periodo', 'rd'],
+    ['Capacitaciones', (D.capEjec||0)+'/'+(D.capTotal||0), 'ejecutadas del plan ('+Math.round((D.capEjec||0)/(D.capTotal||1)*100)+'%)', 'gn'],
+  ]);
+  // Sede: barras apiladas — "solo esta sede" + "ambas sedes" para que se entienda la suma
+  {
+    const sd = D.sede||{};
+    const ambas = sd['Ambas Sedes']||0;
+    const propios = { 'Sede Adm.': sd['Sede Adm.']||0, 'Sede 1': sd['Sede 1']||0, 'Sede 2': sd['Sede 2']||0 };
+    const sedeLbl = ['Sede Adm.','Sede 1','Sede 2'].filter(l=>propios[l]+((l!=='Sede Adm.')?ambas:0)>0);
+    const dSolo = sedeLbl.map(l=>propios[l]);
+    const dAmbas = sedeLbl.map(l=>l==='Sede Adm.'?0:ambas);
+    if (charts['c-sede']) charts['c-sede'].destroy();
+    const sCtx = document.getElementById('c-sede');
+    if (sCtx) charts['c-sede'] = new Chart(sCtx, {
+      type:'bar',
+      data:{ labels:sedeLbl, datasets:[
+        { label:'Solo esta sede', data:dSolo, backgroundColor:C.slice(0,sedeLbl.length), borderRadius:{topLeft:0,topRight:0,bottomLeft:8,bottomRight:8}, borderSkipped:false, barPercentage:.6, categoryPercentage:.8 },
+        { label:'Trabajan en ambas sedes', data:dAmbas, backgroundColor:'#94a3b8', borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:false, barPercentage:.6, categoryPercentage:.8 }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, layout:{padding:{top:26}},
+        plugins:{
+          legend:{display:true, position:'bottom', labels:{color:'#334155',font:{family:FONT,size:11},padding:12,boxWidth:10,boxHeight:10,usePointStyle:true,pointStyleWidth:10}},
+          tooltip:{ callbacks:{ label:c=>` ${c.dataset.label}: ${c.parsed.y}`, footer:items=>'Total en esta sede: '+items.reduce((a,i)=>a+i.parsed.y,0) } },
+          datalabels:{
+            display:c=>(c.dataset.data[c.dataIndex]||0)>0,
+            color:'#0f172a', textStrokeColor:'#fff', textStrokeWidth:3,
+            font:{family:FONT,size:11.5,weight:'800'},
+            formatter:(v,c)=>{
+              // En el segmento superior de cada barra, mostrar también el total
+              const di=c.dataIndex;
+              const top = dAmbas[di]>0 ? 1 : 0;
+              if (c.datasetIndex===top) {
+                const tot = dSolo[di]+dAmbas[di];
+                return dAmbas[di]>0 ? v+'\nTotal: '+tot : v;
+              }
+              return v;
+            },
+            anchor:'center', align:'center', textAlign:'center'
+          }
+        },
+        scales:{
+          x:{ stacked:true, ticks:{color:'#334155',font:{family:FONT,size:11,weight:'600'}}, grid:{display:false}, border:{color:'transparent'} },
+          y:{ stacked:true, ticks:{color:'#64748b',font:{family:FONT,size:10}}, grid:{color:'#f1f5f9'}, border:{color:'transparent'} }
+        }
+      }
+    });
+    const sn = document.getElementById('sede-note');
+    if (sn) sn.innerHTML = `<strong>¿Cómo leerlo?</strong> El color de cada barra son las personas que trabajan solo en esa sede; el segmento gris son las <strong>${ambas} personas que rotan entre Sede 1 y Sede 2</strong> (aparecen en las dos barras). Así: Sede Adm. <strong>${propios['Sede Adm.']}</strong> · Sede 1 <strong>${propios['Sede 1']} + ${ambas} = ${propios['Sede 1']+ambas}</strong> · Sede 2 <strong>${propios['Sede 2']} + ${ambas} = ${propios['Sede 2']+ambas}</strong>. Personas únicas de planta: <strong>${D.totalEmp||0}</strong> (${propios['Sede Adm.']} + ${propios['Sede 1']} + ${propios['Sede 2']} + ${ambas}).`;
+  }
+  donutChart('c-contrato-r', Object.keys(D.contrato||{}), Object.values(D.contrato||{}));
+  donutChart('c-genero', Object.keys(D.genero||{}), Object.values(D.genero||{}), ['#f472b6',BLUE]);
+  if (D.retiro) progList('pr', D.retiro);
+  if (D.aus) progList('pa', D.aus);
+
+  // Tipo empleado cards in resumen
+  const te = D.tipoEmp||{};
+  const totalAll = D.totalEmpConMedicos||D.totalEmp||1;
+  const tipoHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:15px">
+      <div class="kpi bl"><label>Término Indefinido</label><div class="vl">${te['Indefinido']||0}</div>
+      <div class="sb">Edad ${gs.emp?.edad||'—'} · Antig. ${gs.emp?.antig||'—'} años</div></div>
+      <div class="kpi gn"><label>Término Fijo</label><div class="vl">${te['Fijo']||0}</div>
+      <div class="sb">Planta a término fijo</div></div>
+      <div class="kpi rd"><label>Aprendices</label><div class="vl">${D.totalAprendices||0}</div>
+      <div class="sb">SENA · Edad ${gs.aprendices?.edad||'—'} años</div></div>
+    </div>`;
+  const resumenContent = document.getElementById('tab-resumen');
+  // Eliminar tarjetas de tipo empleado anteriores si existen (re-render)
+  const oldTipo = resumenContent.querySelector('[data-tipo-emp]');
+  if (oldTipo) oldTipo.remove();
+  const tipoWrap = document.createElement('div');
+  tipoWrap.setAttribute('data-tipo-emp','1');
+  tipoWrap.innerHTML = tipoHtml;
+  resumenContent.insertBefore(tipoWrap, resumenContent.querySelector('.g2'));
+
+  // ── EMPLEADOS
+  const muj = D.genero?.['Femenino']||0;
+  const hom = D.genero?.['Masculino']||0;
+  const hij = D.hijos||{conHijos:0,sinHijos:0,promedioHijos:0};
+  const totalH = (hij.conHijos||0)+(hij.sinHijos||0)||1;
+  const pctCon = ((hij.conHijos/totalH)*100).toFixed(1);
+  const pctSin = ((hij.sinHijos/totalH)*100).toFixed(1);
+
+  kpi('k-empleados', [
+    ['Total Empleados', D.totalEmp||0, 'Indefinido + Fijo · Antig. prom. '+(gs.emp?.antig||'—')+' años', 'bl'],
+    ['Mujeres', muj, ((muj/(D.totalEmp||1))*100).toFixed(1)+'% · Edad prom. '+(gs.mujeres?.edad||'—')+' años', 'gn'],
+    ['Hombres', hom, ((hom/(D.totalEmp||1))*100).toFixed(1)+'% · Edad prom. '+(gs.hombres?.edad||'—')+' años', 'or'],
+    ['Edad Promedio', D.edadPromedio||'—', 'años · personal de planta', 'pu'],
+    ['Antigüedad Prom.', gs.emp?.antig||'—', 'años en la clínica', 'bl'],
+  ]);
+  barChart('c-edades', Object.keys(D.edades||{}), Object.values(D.edades||{}), [BLUE,'#5a9fd4',GREEN,'#7c5cfc','#f97316'], {topPad:32});
+  barChart('c-antig', Object.keys(D.antig||{}), Object.values(D.antig||{}), ['#f97316','#fbbf24',GREEN,BLUE,'#2d537a']);
+  donutChart('c-estudio', Object.keys(D.estudio||{}), Object.values(D.estudio||{}));
+  donutChart('c-ecivil', Object.keys(D.ecivil||{}), Object.values(D.ecivil||{}), [BLUE,GREEN,'#f97316','#ef4444']);
+  donutChart('c-contrato', Object.keys(D.contrato||{}), Object.values(D.contrato||{}));
+  if (D.salGrupo && Object.keys(D.salGrupo).length>0) {
+    const allSalLabels = Object.keys(D.salGrupo);
+    const allSalVals = Object.values(D.salGrupo);
+    const allSalColors = allSalLabels.map((_,i)=>C[i%C.length]);
+    let salActive = new Set(allSalLabels);
+
+    // Build dropdown list items
+    const listEl = document.getElementById('sal-list');
+    if (listEl) listEl.innerHTML = allSalLabels.map((l,i)=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 18px;cursor:pointer;transition:.1s;font-size:13px;font-weight:500;color:var(--text)" onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background=''" onclick="salToggle('${l.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${i})">
+        <input type="checkbox" id="salck-${i}" checked style="width:16px;height:16px;accent-color:${allSalColors[i]};cursor:pointer;flex-shrink:0">
+        <span style="width:10px;height:10px;border-radius:50%;background:${allSalColors[i]};flex-shrink:0"></span>
+        <label for="salck-${i}" style="cursor:pointer;flex:1">${l}</label>
+      </div>`).join('');
+
+    function salUpdateBtn() {
+      const n = salActive.size, total = allSalLabels.length;
+      const badge = document.getElementById('sal-badge');
+      const lbl = document.getElementById('sal-btn-label');
+      if (n === total) { lbl.textContent='Todas las áreas'; badge.style.display='none'; }
+      else { lbl.textContent='Áreas seleccionadas'; badge.textContent=n; badge.style.display=''; }
+    }
+
+    function renderSalDetail() {
+      const inner = document.getElementById('sal-detail-inner');
+      if (!inner) return;
+      const areas = allSalLabels.filter(l=>salActive.has(l));
+      window._salAreas = areas;
+      if (!window._salOpen) window._salOpen = new Set();
+      inner.innerHTML = areas.map((area, ai)=>{
+        const members = (D.salGrupoMembers[area]||[]).sort((a,b)=>b.sal-a.sal);
+        const color = allSalColors[allSalLabels.indexOf(area)];
+        const total = D.salGrupo[area]||0;
+        const auxTot = members.reduce((a,m)=>a+(m.auxV||0),0);
+        const open = window._salOpen.has(area);
+        return `<div style="margin-bottom:10px;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+          <div onclick="salAcordeon(${ai})" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:${color}15;cursor:pointer;user-select:none;transition:.15s" onmouseover="this.style.filter='brightness(.97)'" onmouseout="this.style.filter=''">
+            <span style="font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block"></span>${area}</span>
+            <span style="font-size:12px;font-weight:700;color:${color};display:flex;align-items:center;gap:10px">
+              <span>${members.length} ${members.length===1?'persona':'personas'} · Total: ${fmtCOP(total)}${auxTot?` <span style="font-size:10.5px;color:#64748b;font-weight:600">(incl. aux. vivienda ${fmtCOPShort(auxTot)})</span>`:''}</span>
+              <span style="font-size:10px;color:#94a3b8;transition:.15s">${open?'▲':'▼'}</span>
+            </span>
+          </div>
+          <div style="display:${open?'block':'none'};border-top:1px solid var(--border)">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#fafbfc">
+              <th style="padding:8px 14px;text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">#</th>
+              <th style="padding:8px 14px;text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">Nombre</th>
+              <th style="padding:8px 14px;text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">Cargo</th>
+              <th style="padding:8px 14px;text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">Salario base</th>
+              <th style="padding:8px 14px;text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">Aux. vivienda</th>
+              <th style="padding:8px 14px;text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">Total</th>
+            </tr></thead>
+            <tbody>${members.map((m,i)=>`
+              <tr style="border-bottom:1px solid #f1f5f9">
+                <td style="padding:9px 14px;color:var(--muted);font-weight:600">${i+1}</td>
+                <td style="padding:9px 14px;font-weight:600">${m.nombre}</td>
+                <td style="padding:9px 14px;color:#64748b">${m.cargo}</td>
+                <td style="padding:9px 14px;text-align:right;font-weight:600;color:#334155">${fmtCOP(m.sal-(m.auxV||0))}</td>
+                <td style="padding:9px 14px;text-align:right;font-weight:600;color:${m.auxV?'#334155':'#cbd5e1'}">${m.auxV?fmtCOP(m.auxV):'—'}</td>
+                <td style="padding:9px 14px;text-align:right;font-weight:700;color:${color}">${fmtCOP(m.sal)}</td>
+              </tr>`).join('')}
+              <tr style="background:${color}10;border-top:2px solid ${color}55">
+                <td colspan="3" style="padding:11px 14px;font-weight:800;color:#0f172a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Total ${area}</td>
+                <td style="padding:11px 14px;text-align:right;font-weight:800;color:#0f172a">${fmtCOP(total-auxTot)}</td>
+                <td style="padding:11px 14px;text-align:right;font-weight:800;color:#0f172a">${auxTot?fmtCOP(auxTot):'—'}</td>
+                <td style="padding:11px 14px;text-align:right;font-weight:800;color:${color};font-size:13px">${fmtCOP(total)}</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    window.salAcordeon = function(ai) {
+      const area = (window._salAreas||[])[ai];
+      if (area===undefined) return;
+      if (!window._salOpen) window._salOpen = new Set();
+      window._salOpen.has(area) ? window._salOpen.delete(area) : window._salOpen.add(area);
+      renderSalDetail();
+    };
+
+    window.salToggle = function(l,i) {
+      salActive.has(l)?salActive.delete(l):salActive.add(l);
+      const ck = document.getElementById('salck-'+i);
+      if (ck) ck.checked = salActive.has(l);
+      salUpdateBtn(); renderSalDetail();
+    };
+    window.salFilterAll = function(on) {
+      salActive = on ? new Set(allSalLabels) : new Set();
+      allSalLabels.forEach((_,i)=>{ const ck=document.getElementById('salck-'+i); if(ck) ck.checked=on; });
+      salUpdateBtn(); renderSalDetail();
+    };
+    window.salDropToggle = function() {
+      const dd = document.getElementById('sal-dropdown');
+      const chev = document.getElementById('sal-chev');
+      const btn = document.getElementById('sal-btn');
+      const open = dd.style.display==='block';
+      dd.style.display = open?'none':'block';
+      chev.textContent = open?'▼':'▲';
+      btn.style.borderColor = open?'var(--border)':'var(--b2)';
+    };
+    // Close dropdown on outside click
+    document.addEventListener('click', e=>{ const dd=document.getElementById('sal-dropdown'); const btn=document.getElementById('sal-btn'); if(dd&&btn&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.style.display='none';document.getElementById('sal-chev').textContent='▼';btn.style.borderColor='var(--border)';}});
+    renderSalDetail();
+  } else if (D.salSede) {
+    const salSedeReal = {};
+    Object.entries(D.salSede).forEach(([k,v])=>salSedeReal[k]=Math.round(v*1000000));
+    barChart('c-sal', Object.keys(salSedeReal), Object.values(salSedeReal), [BLUE,GREEN,'#0ea5e9','#f97316'],
+      {cop:true, yO:{ticks:{callback:v=>fmtCOP(v),color:'#64748b',font:{family:FONT,size:10}}}});
+  }
+
+  // Auxilio de vivienda
+  const aux = D.aux||{area:{},total:0,personas:0};
+  const auxEl = document.getElementById('k-aux-viv');
+  if (auxEl) auxEl.innerHTML = `
+    <div class="kpi bl"><div class="kpi-icon">🏠</div><label>Personas con Auxilio</label><div class="vl">${aux.personas||0}</div>
+      <div class="sb">${((aux.personas||0)/(D.totalEmpConMedicos||1)*100).toFixed(1)}% de todo el personal</div></div>
+    <div class="kpi gn"><div class="kpi-icon">💰</div><label>Total Mensual</label><div class="vl">${fmtCOPShort(aux.total||0)}</div>
+      <div class="sb">suma de auxilios de vivienda</div></div>
+    <div class="kpi pu"><div class="kpi-icon">📊</div><label>Promedio por Persona</label><div class="vl">${aux.personas?fmtCOPShort(aux.total/aux.personas):'—'}</div>
+      <div class="sb">auxilio promedio mensual</div></div>`;
+
+  // Tendencia de empleados: headcount aproximado por mes
+  if (D.empMes && Object.keys(D.empMes).length>0) {
+    const etLabels = Object.keys(D.empMes);
+    const etVals   = Object.values(D.empMes);
+    if (charts['c-emp-trend']) charts['c-emp-trend'].destroy();
+    const etCtx = document.getElementById('c-emp-trend');
+    if (etCtx) charts['c-emp-trend'] = new Chart(etCtx, {
+      type:'line',
+      data:{ labels: etLabels, datasets:[{
+        label:'Empleados (sin méd. ni aprendices)', data: etVals,
+        borderColor:BLUE, backgroundColor:'rgba(37,99,235,.10)',
+        borderWidth:2.5, pointRadius:5, pointBackgroundColor:BLUE,
+        pointBorderColor:'#fff', pointBorderWidth:2, tension:0.4, fill:true
+      }]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        layout:{padding:{top:28}},
+        plugins:{
+          legend:{labels:{color:'#64748b',font:{family:FONT,size:11},usePointStyle:true,padding:16}},
+          datalabels:{display:true, anchor:'top', align:'top', clamp:true,
+            color:BLUE, font:{family:FONT,size:10,weight:'700'}, formatter:v=>v>0?v:''}
+        },
+        scales:{
+          x:{ticks:{color:'#64748b',font:{family:FONT,size:10.5},maxRotation:45,autoSkip:true,maxTicksLimit:12}, grid:{display:false}, border:{color:'transparent'}},
+          y:{ticks:{color:'#64748b',font:{family:FONT,size:10.5},stepSize:1}, grid:{color:'#f1f5f9'}, border:{color:'transparent'}}
+        }
+      }
+    });
+  }
+
+  // ── HIJOS
+  donutChart('c-hijos-donut',
+    ['Con hijos ('+pctCon+'%)', 'Sin hijos ('+pctSin+'%)'],
+    [hij.conHijos||0, hij.sinHijos||0],
+    ['#2563eb','#e2e8f5']
+  );
+  document.getElementById('hijos-kpis').innerHTML = `
+    <div class="kpi bl" style="margin:0">
+      <div class="kpi-icon">👶</div>
+      <label>Con Hijos</label>
+      <div class="vl">${hij.conHijos||0}</div>
+      <div class="sb">${pctCon}% del total</div>
+    </div>
+    <div class="kpi gn" style="margin:0">
+      <div class="kpi-icon">🏠</div>
+      <label>Sin Hijos</label>
+      <div class="vl">${hij.sinHijos||0}</div>
+      <div class="sb">${pctSin}% del total</div>
+    </div>
+    <div class="kpi pu" style="margin:0">
+      <div class="kpi-icon">📊</div>
+      <label>Promedio de Hijos</label>
+      <div class="vl">${hij.promedioHijos||'—'}</div>
+      <div class="sb">entre los ${hij.conHijos||0} con hijos · ${hij.totalHijos||0} hijos en total · ${hij.promTodos||0} por empleado</div>
+    </div>`;
+  // Barra de distribución hijos
+  const hijosBars = document.getElementById('hijos-bars');
+  if (hijosBars) {
+    const hjData = {'Con hijos': hij.conHijos||0, 'Sin hijos': hij.sinHijos||0};
+    const hjMax = Math.max(...Object.values(hjData))||1;
+    hijosBars.innerHTML = Object.entries(hjData).map(([k,v],i)=>
+      `<div class="prog-item">
+        <label><span>${k}</span><span>${v} · ${((v/totalH)*100).toFixed(1)}%</span></label>
+        <div class="bar-bg"><div class="bar-fill" style="width:${(v/hjMax*100).toFixed(1)}%;background:${i===0?BLUE:'#94a3b8'}"></div></div>
+      </div>`).join('');
+  }
+
+  // ── CLIMA
+  _climaPeriods = D.climaPeriods && D.climaPeriods.length ? D.climaPeriods : (D.clima ? [D.clima] : []);
+  {
+    const sel = document.getElementById('clima-periodo');
+    const wrap = document.getElementById('clima-periodo-wrap');
+    if (sel) {
+      sel.innerHTML = _climaPeriods.map((p,i)=>`<option value="${i}">${p.label}</option>`).join('');
+      if (wrap) wrap.style.display = _climaPeriods.length > 1 ? 'flex' : 'none';
+      sel.value = _climaPeriods.length ? _climaPeriods.length-1 : 0; // más reciente por defecto
+      sel.onchange = () => renderClima(parseInt(sel.value));
+    }
+  }
+  renderClima(_climaPeriods.length ? _climaPeriods.length-1 : 0);
+
+  // ── ROTACION
+  const ret = D.retiro||{};
+  const retVals = Object.values(ret);
+  const retTotal = retVals.reduce((a,b)=>a+b,0);
+  const retSJC = ret['Sin Justa Causa']||0;
+  const retRV = ret['Renuncia Voluntaria']||0;
+  // Tasa de rotación usando fórmula (S/M)×100
+  const tasa = D.tasaRotGlobal||0;
+  const empIni = D.empIni||0;
+  const empFin = D.empFinPer||D.totalEmp||0;
+  const Mglobal = (empIni + empFin) / 2;
+  kpi('k-rotacion', [
+    ['Tasa de Rotación', tasa.toFixed(2)+'%', 'Fórmula (S/M)×100 · periodo filtrado', tasa<=5?'gn':tasa<=10?'or':'rd'],
+    ['Total Retiros (S)', D.totalRetiros||0, 'Salidas del periodo', 'or'],
+    ['Prom. Empleados (M)', Math.round(Mglobal)||0, 'Inicio: '+empIni+' · Fin: '+empFin, 'bl'],
+    ['Sin Justa Causa', retSJC, retTotal?(Math.round(retSJC/retTotal*100)+'% de retiros'):'—', 'rd'],
+  ]);
+  // Actualizar detalle de excluidos
+  const exclEl = document.getElementById('excluidos-detalle');
+  if (exclEl) exclEl.innerHTML = `<strong>${D.totalMedicos||0} Médicos</strong>, <strong>${D.totalOps||0} OPS</strong> y <strong>${D.totalAprendices||0} Aprendices</strong> no se contabilizan en la tasa de rotación · Base de cálculo: <strong>${D.totalEmp||0} empleados de planta</strong>`;
+  // Motivos de retiro: barras horizontales con nombre completo
+  if (Object.keys(ret).length>0) {
+    const retLabels = Object.keys(ret);
+    const retData   = Object.values(ret);
+    const rbCtx = document.getElementById('c-rot-bar');
+    if (rbCtx) rbCtx.parentElement.style.height = Math.max(200, retLabels.length*44)+'px';
+    barChart('c-rot-bar', retLabels, retData, C.slice(0,retLabels.length).concat(C).slice(0,retLabels.length), {h:true});
+  }
+  donutChart('c-rot-pie', Object.keys(ret), Object.values(ret), C);
+
+  // Gráfica de tasa de rotación mensual
+  if (D.rotTasaMes && Object.keys(D.rotTasaMes).length>0) {
+    const rLabels = Object.keys(D.rotTasaMes);
+    const rVals = Object.values(D.rotTasaMes);
+    if (charts['c-rot-tasa']) charts['c-rot-tasa'].destroy();
+    const rCtx = document.getElementById('c-rot-tasa');
+    if (rCtx) charts['c-rot-tasa'] = new Chart(rCtx, {
+      type:'line',
+      data:{
+        labels: rLabels,
+        datasets:[
+          {label:'Tasa mensual (%)', data:rVals,
+            borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,.10)',
+            borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#2563eb',
+            pointBorderColor:'#fff', pointBorderWidth:2, tension:0.4, fill:true}
+        ]
+      },
+      options:{responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{ top:28 } },
+        plugins:{
+          legend:{labels:{color:'#64748b', font:{family:FONT,size:11}, usePointStyle:true, padding:16}},
+          datalabels:{
+            display:true, color:'#2563eb', font:{family:FONT,size:10,weight:'700'},
+            formatter:v=>v>0?v.toFixed(1)+'%':'',
+            anchor:'top', align:'top', clamp:true
+          }
+        },
+        scales:{
+          x:{ticks:{color:'#64748b',font:{family:FONT,size:10.5}}, grid:{display:false}, border:{color:'transparent'}},
+          y:{ticks:{color:'#64748b',font:{family:FONT,size:10.5},callback:v=>v+'%'}, grid:{color:'#f1f5f9'}, border:{color:'transparent'}}
+        }
+      }
+    });
+  }
+
+  // ── AUSENTISMO
+  const aus = D.aus||{};
+  kpi('k-aus', [
+    ['Total Casos', D.totalCasosAus||0, 'Incapacidades', 'pu'],
+    ['Total Días', D.totalDiasAus||0, 'Días perdidos', 'or'],
+    ['Mayor Motivo', Object.keys(aus)[0]||'—', (Object.values(aus)[0]||0)+' casos', 'rd'],
+  ]);
+  // Top Diagnósticos: barras horizontales con nombre completo
+  if (Object.keys(aus).length>0) {
+    const ausLabels = Object.keys(aus);
+    const ausVals   = Object.values(aus);
+    const abCtx = document.getElementById('c-aus-bar');
+    if (abCtx) abCtx.parentElement.style.height = Math.max(200, ausLabels.length*36)+'px';
+    barChart('c-aus-bar', ausLabels, ausVals, (C.concat(C)).slice(0,ausLabels.length), {h:true});
+  }
+  donutChart('c-aus-pie', Object.keys(aus), Object.values(aus), C);
+
+  // Ausentismo por área: barras horizontales con nombre completo
+  if (D.ausArea && Object.keys(D.ausArea).length>0) {
+    const aaLabels = Object.keys(D.ausArea);
+    const aaVals   = Object.values(D.ausArea);
+    const aaCtx = document.getElementById('c-aus-area');
+    if (aaCtx) aaCtx.parentElement.style.height = Math.max(200, aaLabels.length*36)+'px';
+    barChart('c-aus-area', aaLabels, aaVals, (C.concat(C)).slice(0,aaLabels.length), {h:true});
+  }
+
+  // Tendencia mensual con comparativo
+  if (D.ausMes && Object.keys(D.ausMes).length>0) {
+    const mesLabels = Object.keys(D.ausMes);
+    const mesVals = Object.values(D.ausMes);
+    // Línea de tendencia (media móvil simple)
+    const trend = mesVals.map((_,i,a)=>i===0?a[i]:parseFloat(((a.slice(0,i+1).reduce((s,v)=>s+v,0))/(i+1)).toFixed(1)));
+    if (charts['c-aus-trend']) charts['c-aus-trend'].destroy();
+    const tCtx = document.getElementById('c-aus-trend');
+    if (tCtx) charts['c-aus-trend'] = new Chart(tCtx, {
+      type:'line',
+      data:{
+        labels: mesLabels,
+        datasets:[
+          {label:'Casos mes',data:mesVals,
+            borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,.10)',
+            borderWidth:2.5,pointRadius:5,pointBackgroundColor:'#8b5cf6',
+            pointBorderColor:'#fff',pointBorderWidth:2,tension:0.4,fill:true}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        layout:{padding:{top:28}},
+        plugins:{
+          legend:{labels:{color:'#64748b',font:{family:FONT,size:11},usePointStyle:true,padding:16}},
+          datalabels:{display:true, anchor:'top', align:'top', clamp:true,
+            color:'#8b5cf6', font:{family:FONT,size:10,weight:'700'},
+            formatter:v=>v>0?v:''}
+        },
+        scales:{
+          x:{ticks:{color:'#64748b',font:{family:FONT,size:10.5}},grid:{display:false},border:{color:'transparent'}},
+          y:{ticks:{color:'#64748b',font:{family:FONT,size:10.5},stepSize:1},grid:{color:'#f1f5f9'},border:{color:'transparent'}}
+        }
+      }
+    });
+  }
+
+  // ── ACCIDENTES
+  const accMes = D.accMes||{};
+  const accV = Object.values(accMes);
+  const mesesSinAcc = accV.filter(v=>v===0).length;
+  kpi('k-acc', [
+    ['Total Accidentes', D.totalAcc||0, 'Baja accidentalidad', 'gn'],
+    ['Días Incapacidad', D.totalDiasAcc||0, 'Por accidentes', 'bl'],
+    ['Meses sin Acc.', mesesSinAcc, 'de '+accV.length+' meses', 'gn'],
+  ]);
+  barChart('c-acc', Object.keys(accMes), accV, accV.map(v=>v>0?'#ef4444':'rgba(74,125,181,.4)'));
+  if (D.accRows) {
+    document.getElementById('acc-tb').innerHTML = D.accRows.map(r=>
+      `<tr><td>${r['MES']||''}</td><td>${r['AÑO']||''}</td>
+       <td><span class="badge ${(r['Nº ACCIDENTES']||0)>0?'danger':'ok'}">${r['Nº ACCIDENTES']||0}</span></td>
+       <td>${r['DÍAS DE INCAPACIDAD']||0}</td>
+       <td>${r['ÁREA']||r['AREA']||'—'}</td>
+       <td><span class="badge ${(r['Nº ACCIDENTES']||0)>0?'warn':'ok'}">${(r['Nº ACCIDENTES']||0)>0?'Ocurrió':'Sin accidentes'}</span></td>
+      </tr>`
+    ).join('');
+  }
+
+  // ── RECOBRO
+  const recRows = D.recobroRows || [];
+  const rs = D.recobroStats || {estadoCounts:{},estadoVals:{},totalRec:0,totalPend:0};
+  // Solo mostrar estados PAGADO y RADICADO en gráficas
+  const recAllowed = k=>/(pagado|radicad)/i.test(k);
+  const recCounts = Object.fromEntries(Object.entries(rs.estadoCounts).filter(([k])=>recAllowed(k)));
+  const recVals   = Object.fromEntries(Object.entries(rs.estadoVals).filter(([k])=>recAllowed(k)));
+  kpi('k-recobro', [
+    ['Valor Pagado',    fmtCOP(rs.totalRec),  'Total recobrado',  'gn'],
+    ['Valor Radicado',  fmtCOP(Object.entries(rs.estadoVals).filter(([k])=>/radicad/i.test(k)).reduce((a,[,v])=>a+v,0)), 'Por cobrar', 'bl'],
+    ['Total Registros', recRows.length, 'Incapacidades', 'pu'],
+    ['Pagados',         Object.entries(rs.estadoCounts).filter(([k])=>/pagado/i.test(k)).reduce((a,[,v])=>a+v,0), 'registros pagados', 'gn'],
+  ]);
+  if (Object.keys(recCounts).length>0) {
+    donutChart('c-recobro-pie', Object.keys(recCounts), Object.values(recCounts), [GREEN,BLUE].concat(C.slice(3)));
+    barChart('c-recobro-bar', Object.keys(recVals), Object.values(recVals),
+      [GREEN,BLUE], {cop:true, yO:{ticks:{callback:v=>fmtCOP(v),color:'#64748b',font:{family:FONT,size:10}}}});
+  }
+  window._recobroRows = recRows;
+  function filtrarRecobro(){
+    const txt = (document.getElementById('rec-filter-nombre')?.value||'').toLowerCase();
+    const est = (document.getElementById('rec-filter-estado')?.value||'').toUpperCase();
+    const rows = (window._recobroRows||[]).filter(r=>{
+      const matchN = !txt || (r.nombre||'').toLowerCase().includes(txt);
+      const matchE = !est || (r.estado||'').toUpperCase().includes(est);
+      return matchN && matchE;
+    });
+    const tb = document.getElementById('recobro-tb');
+    const cnt = document.getElementById('rec-count');
+    if(cnt) cnt.textContent = rows.length + ' registro' + (rows.length!==1?'s':'');
+    tb.innerHTML = rows.map(r=>{
+      const isPagado = r.estado==='PAGADO'||r.estado==='Pagado';
+      const isRadicada = r.estado==='RADICADA'||r.estado==='Radicada';
+      return `<tr>
+        <td><strong>${r.nombre||'—'}</strong></td>
+        <td>${r.dias||0} días</td>
+        <td><span class="badge ${isPagado?'ok':isRadicada?'warn':'danger'}">${r.estado||'—'}</span></td>
+        <td style="font-weight:700;color:#15803d">${fmtCOP(r.valorRecobrado)}</td>
+        <td style="font-weight:700;color:#dc2626">${fmtCOP(r.valorPendiente)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">Sin registros que coincidan</td></tr>';
+  }
+  filtrarRecobro();
+
+  // ── CAPACITACIÓN
+  const capRows = D.capRows || [];
+  const capResp = {}, capMes = {};
+  let capTotalAsist = 0;
+  capRows.forEach(r => {
+    capResp[r.responsable||'General'] = (capResp[r.responsable||'General']||0)+1;
+    capMes[r.mesProg||'Sin mes']      = (capMes[r.mesProg||'Sin mes']||0)+1;
+    capTotalAsist += r.asistentes||0;
+  });
+  const capEjecutadas = capRows.filter(r=>(r.realizo||'').toLowerCase().startsWith('s')||(r.estado||'').toLowerCase().includes('ejecut')).length;
+  kpi('k-cap', [
+    ['Total Capacitaciones', capRows.length, 'Registradas en el plan', 'bl'],
+    ['Ejecutadas', capEjecutadas, Math.round(capEjecutadas/(capRows.length||1)*100)+'% cumplimiento', 'gn'],
+    ['Total Asistentes', capTotalAsist, 'Participantes acumulados', 'pu'],
+    ['Responsables', Object.keys(capResp).length, 'Áreas involucradas', 'or'],
+  ]);
+  barChart('c-cap-area', Object.keys(capResp), Object.values(capResp), C.slice(0,Object.keys(capResp).length), {h:true});
+  donutChart('c-cap-tipo', Object.keys(capMes), Object.values(capMes), C);
+  // Guardar filas y poblar filtros
+  _capAllRows = capRows;
+  const selMes  = document.getElementById('cap-fil-mes');
+  const selResp = document.getElementById('cap-fil-resp');
+  if (selMes) {
+    selMes.innerHTML = '<option value="">📅 Todos los meses</option>';
+    [...new Set(capRows.map(r=>r.mesProg).filter(Boolean))].forEach(m=>selMes.innerHTML+=`<option value="${m}">${m}</option>`);
+  }
+  if (selResp) {
+    selResp.innerHTML = '<option value="">🏢 Todos los responsables</option>';
+    [...new Set(capRows.map(r=>r.responsable).filter(Boolean))].sort().forEach(r=>selResp.innerHTML+=`<option value="${r}">${r}</option>`);
+  }
+  filtrarCap();
+
+    // ── DESEMPEÑO
+  const despRows = D.despRows || [];
+  const dg = D.despGlobal || {puntaje:0, ejecucion:0};
+  const despKeys2 = despRows.map(r=>r.area);
+  const despPts2  = despRows.map(r=>parseFloat(r.puntaje)||0);
+  const despPct2  = despRows.map(r=>parseFloat(((r.puntaje/r.maximo)*100).toFixed(1)));
+  kpi('k-desemp', [
+    ['Puntaje Global', dg.puntaje.toFixed(2)||'—', 'Escala 1–5', dg.puntaje>=4.5?'gn':dg.puntaje>=3.5?'or':'rd'],
+    ['% Ejecución', ((dg.ejecucion||0)*100).toFixed(0)+'%', 'Global del período', dg.ejecucion>=0.8?'gn':dg.ejecucion>=0.6?'or':'rd'],
+    ['Áreas Evaluadas', despKeys2.length, 'Reportadas', 'bl'],
+    ['Mayor Puntaje', despPts2.length?Math.max(...despPts2).toFixed(2):'—', despKeys2[despPts2.indexOf(Math.max(...despPts2))]||'—', 'gn'],
+  ]);
+  if (despKeys2.length>0) {
+    // Altura dinámica según número de áreas (mín 300, ~30px por área)
+    const despH = Math.max(300, despKeys2.length * 32);
+    ['desemp-area-wrap','desemp-pct-wrap'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.height=despH+'px';
+    });
+    // Barras horizontales: más legibles con muchas áreas
+    barChart('c-desemp-area', despKeys2, despPts2,
+      despPts2.map(v=>v>=4.5?GREEN:v>=4.0?BLUE:v>=3.5?'#eab308':'#ef4444'),
+      {h:true, dec:true,
+        xO:{min:3, max:5, ticks:{callback:v=>v.toFixed(1), color:'#64748b', font:{family:FONT,size:10.5}}},
+        yO:{ticks:{color:'#334155', font:{family:FONT,size:11,weight:'500'}}}
+      });
+    barChart('c-desemp-pct', despKeys2, despPct2,
+      despPct2.map(v=>v>=80?GREEN:v>=70?BLUE:'#eab308'),
+      {h:true, pct:true,
+        xO:{min:50, max:100, ticks:{callback:v=>v+'%', color:'#64748b', font:{family:FONT,size:10.5}}},
+        yO:{ticks:{color:'#334155', font:{family:FONT,size:11,weight:'500'}}}
+      });
+  }
+  // Tabla con niveles de desempeño
+  const nivelData = D.despNivel||{};
+  document.getElementById('desemp-tb').innerHTML = despRows.map((r,i)=>
+    `<tr><td>${r.area}</td><td>${despPts2[i].toFixed(2)}</td><td>5.0</td>
+     <td>${despPct2[i].toFixed(1)}%</td>
+     <td><span class="badge ${despPts2[i]>=4.5?'ok':despPts2[i]>=4.0?'warn':'danger'}">${despPts2[i]>=4.5?'Excelente':despPts2[i]>=4.0?'Bueno':'Aceptable'}</span></td></tr>`
+  ).join('') || '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">Sin datos en hoja "EVALUACIÓN DE DESEMPEÑO"</td></tr>';
+
+  // ── TRANSPORTE (datos vienen de PERSONAL: MEDIO DE TRANSPORTE + TIEMPO EN LLEGAR)
+  const transpRows2 = D.transpRows || [];
+  const transpTipo2 = {}, transpTiempo2 = {};
+  transpRows2.forEach(r => {
+    if(r.tipo) transpTipo2[r.tipo]=(transpTipo2[r.tipo]||0)+1;
+    if(r.tiempo) transpTiempo2[r.tiempo]=(transpTiempo2[r.tiempo]||0)+1;
+  });
+  // Ordenar tiempos lógicamente
+  const tiempoOrder = ['Menos de 15 minutos','Entre 15 y 30 minutos','Entre 30 y 45 minutos','Entre 45 y 60 minutos','Más de 60 minutos'];
+  const tiempoOrdenado = {}, tiempoVals2 = [];
+  tiempoOrder.forEach(k=>{ if(transpTiempo2[k]){ tiempoOrdenado[k]=transpTiempo2[k]; } });
+  Object.keys(transpTiempo2).forEach(k=>{ if(!tiempoOrder.includes(k)&&k) tiempoOrdenado[k]=transpTiempo2[k]; });
+  kpi('k-transp', [
+    ['Total Registros', transpRows2.length, 'Empleados con datos', 'bl'],
+    ['Transporte más usado', Object.keys(transpTipo2).sort((a,b)=>transpTipo2[b]-transpTipo2[a])[0]||'—', (Object.values(transpTipo2).sort((a,b)=>b-a)[0]||0)+' empleados', 'gn'],
+    ['Tiempo más frecuente', Object.keys(tiempoOrdenado)[0]||'—', (Object.values(tiempoOrdenado)[0]||0)+' personas', 'or'],
+    ['Tipos de transporte', Object.keys(transpTipo2).length, 'Distintos', 'pu'],
+  ]);
+  donutChart('c-transp-tipo', Object.keys(transpTipo2), Object.values(transpTipo2), C);
+  barChart('c-transp-tiempo', Object.keys(tiempoOrdenado), Object.values(tiempoOrdenado), C.slice(0,Object.keys(tiempoOrdenado).length), {h:true});
+  document.getElementById('transp-tb').innerHTML = transpRows2.slice(0,50).map(r=>
+    `<tr><td>${r.area||'—'}</td><td>${r.tipo||'—'}</td><td>${r.tiempo||'—'}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:20px">Sin datos de transporte en hoja "PERSONAL"</td></tr>';
+}
+
+// TABS
+const titles={
+  resumen:'Resumen General',
+  empleados:'Análisis de Empleados',
+  clima:'Clima Organizacional',
+  rotacion:'Rotación de Personal',
+  ausentismo:'Gestión de Ausentismo',
+  accidentes:'Accidentes de Trabajo',
+  recobro:'Recobro de Incapacidades',
+  capacitacion:'Capacitación por Áreas',
+  desempeno:'Desempeño por Áreas',
+  transporte:'Movilidad y Transporte'
+};
+function showTab(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('ptitle').textContent=titles[id];
+  // Redibujar gráficas de la pestaña recién mostrada (evita canvas en blanco al cambiar de pestaña)
+  requestAnimationFrame(()=>Object.values(charts).forEach(c=>{try{c.resize();}catch(e){}}));
+}
+// ── FILTRO DE MESES ──────────────────────────────────────────────────────────
+
+function buildMonthFilter(wb) {
+  const mesesOrden=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const monthSet = new Set();
+
+  // Extraer meses de AUSENTISMO
+  if (wb.SheetNames.includes('AUSENTISMO')) {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets['AUSENTISMO'], {header:1, defval:''});
+    const headers = raw[1]||[];
+    const fechaI = headers.findIndex(h=>String(h).toLowerCase().includes('fecha ini')||String(h).toLowerCase().includes('inicio'));
+    raw.slice(2).forEach(r => {
+      let f = r[fechaI]; if (!f) return;
+      if (typeof f==='string') f=new Date(f);
+      if (f instanceof Date && !isNaN(f)) monthSet.add(mesesOrden[f.getMonth()]+' '+f.getFullYear().toString().slice(2));
+    });
+  }
+
+  // Extraer meses de ACCIDENTES
+  if (wb.SheetNames.includes('ACCIDENTES')) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['ACCIDENTES'], {defval:''});
+    rows.forEach(r => {
+      const mes = String(r['MES']||'').trim();
+      const anio = String(r['AÑO']||'').trim();
+      if (!mes || !anio) return;
+      const mIdx = mesesOrden.findIndex(m => mes.toLowerCase().includes(m.toLowerCase()));
+      if (mIdx>=0) monthSet.add(mesesOrden[mIdx]+' '+String(anio).slice(-2));
+    });
+  }
+
+  // Extraer meses de RETIROS
+  if (wb.SheetNames.includes('RETIROS')) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['RETIROS'], {defval:''});
+    rows.forEach(r => {
+      let f = r['FECHA DE RETIRO']; if (!f) return;
+      if (typeof f==='string') f=new Date(f);
+      if (f instanceof Date && !isNaN(f)) monthSet.add(mesesOrden[f.getMonth()]+' '+f.getFullYear().toString().slice(2));
+    });
+  }
+
+  // Extraer meses de CAPACITACIÓN
+  const capSheet = wb.SheetNames.find(n=>n.toUpperCase().includes('EDUC')||n.toUpperCase().includes('CAPAC'));
+  if (capSheet) {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[capSheet], {header:1, defval:''});
+    const hdrIdx = raw.findIndex(r=>r.some(c=>String(c).toUpperCase().includes('FECHA')));
+    if (hdrIdx>=0) {
+      const hdrs = raw[hdrIdx];
+      const fechaI = hdrs.findIndex(h=>String(h).toUpperCase().includes('FECHA'));
+      raw.slice(hdrIdx+1).forEach(r => {
+        let f = r[fechaI]; if (!f) return;
+        if (typeof f==='string') f=new Date(f);
+        if (f instanceof Date && !isNaN(f)) monthSet.add(mesesOrden[f.getMonth()]+' '+f.getFullYear().toString().slice(2));
+      });
+    }
+  }
+
+  if (monthSet.size === 0) {
+    document.getElementById('monthFilter').style.display='none';
+    return;
+  }
+
+  // Ordenar cronológicamente
+  const sorted = Array.from(monthSet).sort((a,b) => {
+    const pa = a.split(' '), pb = b.split(' ');
+    const ya = parseInt('20'+pa[1]), yb = parseInt('20'+pb[1]);
+    if (ya !== yb) return ya - yb;
+    return mesesOrden.indexOf(pa[0]) - mesesOrden.indexOf(pb[0]);
+  });
+
+  pendingMonths = new Set(sorted); // por defecto todos seleccionados
+
+  // Agrupar por año para que se pueda escoger año y luego mes
+  const grouped = {};
+  sorted.forEach(m => {
+    const yy = m.split(' ')[1];
+    (grouped[yy] = grouped[yy]||[]).push(m);
+  });
+  const years = Object.keys(grouped).sort((a,b)=>parseInt(a)-parseInt(b));
+
+  const list = document.getElementById('monthList');
+  list.innerHTML = years.map(yy => `
+    <div class="md-year-group" data-year="${yy}">
+      <div class="md-year-header">
+        <input type="checkbox" class="mc-year" id="yc-${yy}" checked onchange="toggleYear('${yy}',this.checked)">
+        <label for="yc-${yy}">20${yy}</label>
+      </div>
+      <div class="md-year-months">
+        ${grouped[yy].map(m => {
+          const mid = m.replace(' ','-');
+          return `<div class="md-item">
+            <input type="checkbox" class="mc-month" id="mc-${mid}" value="${m}" checked onchange="togglePending('${m}',this.checked);syncYearCheckbox('${yy}')">
+            <label for="mc-${mid}">${m.split(' ')[0]}</label>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('monthFilter').style.display='flex';
+  updateMonthBtn();
+}
+
+function togglePending(month, checked) {
+  if (checked) pendingMonths.add(month);
+  else pendingMonths.delete(month);
+}
+
+// Marca/desmarca todos los meses de un año de un clic
+function toggleYear(yy, checked) {
+  document.querySelectorAll(`.md-year-group[data-year="${yy}"] input.mc-month`).forEach(cb => {
+    cb.checked = checked;
+    togglePending(cb.value, checked);
+  });
+}
+
+// Refleja en el checkbox del año si todos/algunos/ninguno de sus meses están marcados
+function syncYearCheckbox(yy) {
+  const monthCbs = document.querySelectorAll(`.md-year-group[data-year="${yy}"] input.mc-month`);
+  const yearCb = document.getElementById('yc-'+yy);
+  if (!yearCb || !monthCbs.length) return;
+  const total = monthCbs.length;
+  const checked = Array.from(monthCbs).filter(cb=>cb.checked).length;
+  yearCb.checked = checked === total;
+  yearCb.indeterminate = checked > 0 && checked < total;
+}
+
+function toggleMonthDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('monthDropdown');
+  const btn = document.getElementById('monthBtn');
+  dd.classList.toggle('open');
+  btn.classList.toggle('month-dropdown-open', dd.classList.contains('open'));
+}
+
+function selectAllMonths() {
+  document.querySelectorAll('#monthList input.mc-year').forEach(cb => cb.checked = true);
+  document.querySelectorAll('#monthList input.mc-month').forEach(cb => {
+    cb.checked = true;
+    pendingMonths.add(cb.value);
+  });
+}
+
+function clearMonths() {
+  document.querySelectorAll('#monthList input.mc-year').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+  document.querySelectorAll('#monthList input.mc-month').forEach(cb => {
+    cb.checked = false;
+    pendingMonths.delete(cb.value);
+  });
+}
+
+function applyMonthFilter() {
+  // Cerrar dropdown
+  document.getElementById('monthDropdown').classList.remove('open');
+
+  // Determinar qué meses están marcados actualmente
+  const checked = new Set();
+  document.querySelectorAll('#monthList input.mc-month').forEach(cb => {
+    if (cb.checked) checked.add(cb.value);
+  });
+
+  const total = document.querySelectorAll('#monthList input.mc-month').length;
+  // Si todos están marcados, tratarlo como "sin filtro" (todos)
+  selectedMonths = (checked.size === total || checked.size === 0) ? new Set() : checked;
+
+  updateMonthBtn();
+  if (!globalWB) return;
+
+  // Destruir gráficas y re-renderizar
+  Object.values(charts).forEach(c=>c.destroy());
+  charts={};
+  const data = parseWorkbook(globalWB, selectedMonths);
+  renderDashboard(data);
+}
+
+function updateMonthBtn() {
+  const total = document.querySelectorAll('#monthList input.mc-month').length;
+  const checked = document.querySelectorAll('#monthList input.mc-month:checked').length;
+  const badge = document.getElementById('monthBadge');
+  const label = document.getElementById('monthBtnLabel');
+  const btn = document.getElementById('monthBtn');
+  const counter = document.getElementById('mdSelCount');
+
+  if (counter) counter.textContent = checked + ' de ' + total + ' seleccionados';
+
+  if (checked === 0 || checked === total) {
+    badge.style.display='none';
+    label.textContent='Todos los meses';
+    btn.classList.remove('active-filter');
+  } else if (checked === 1) {
+    const sel = document.querySelector('#monthList input.mc-month:checked');
+    label.textContent = sel ? sel.value : '1 mes';
+    badge.style.display='none';
+    btn.classList.add('active-filter');
+  } else {
+    label.textContent = checked + ' meses';
+    badge.textContent = checked;
+    badge.style.display='inline-block';
+    btn.classList.add('active-filter');
+  }
+}
+
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('monthDropdown');
+  const filter = document.getElementById('monthFilter');
+  const btn = document.getElementById('monthBtn');
+  if (dd && filter && !filter.contains(e.target)) {
+    dd.classList.remove('open');
+    if(btn) btn.classList.remove('month-dropdown-open');
+  }
+});
+
+function recargar(){
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+  document.getElementById('upBtn').style.display='none';
+  document.getElementById('upFileInfo').style.display='none';
+  document.getElementById('upError').style.display='none';
+  selectedFile=null;
+  globalWB=null;
+  selectedMonths=new Set();
+  pendingMonths=new Set();
+  document.getElementById('monthFilter').style.display='none';
+  document.getElementById('monthDropdown').classList.remove('open');
+  Object.values(charts).forEach(c=>c.destroy());
+  charts={};
+}
+</script>
+</body>
+</html>
