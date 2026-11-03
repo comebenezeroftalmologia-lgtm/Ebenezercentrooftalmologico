@@ -44,6 +44,7 @@ const NOMBRE_CORTO: Partial<Record<Modulo, string>> = {
   no_quirurgicos: "Ord. No Quirúrgicos",
   quirurgicos: "Ord. Quirúrgicos",
   redes_sociales: "Redes Sociales",
+  talento_humano: "Talento Humano",
 };
 
 const SUBTITULO_MODULO: Partial<Record<Modulo, string>> = {
@@ -53,6 +54,7 @@ const SUBTITULO_MODULO: Partial<Record<Modulo, string>> = {
   no_quirurgicos: "Exámenes y procedimientos",
   quirurgicos: "Conversión a cirugía",
   redes_sociales: "Pauta y alcance digital",
+  talento_humano: "Planta, ausentismo y desempeño",
 };
 
 function IconoModulo({ slug, className }: { slug: Modulo; className?: string }) {
@@ -63,6 +65,7 @@ function IconoModulo({ slug, className }: { slug: Modulo; className?: string }) 
     case "quirurgicos": return <Wallet className={className} strokeWidth={1.75} />;
     case "no_quirurgicos": return <Wallet className={className} strokeWidth={1.75} />;
     case "redes_sociales": return <Target className={className} strokeWidth={1.75} />;
+    case "talento_humano": return <Users className={className} strokeWidth={1.75} />;
     default: return <LayoutGrid className={className} strokeWidth={1.75} />;
   }
 }
