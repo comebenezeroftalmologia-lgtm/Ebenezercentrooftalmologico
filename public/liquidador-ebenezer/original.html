@@ -15499,6 +15499,57 @@ function excelMedico(h){
   setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
 }
 
+(function(){
+  if (typeof pdfFilasMedico !== "function" || window.__acuEnActa) return;
+  window.__acuEnActa = true;
+  var _orig = pdfFilasMedico;
+  function _per(){
+    try{ var v=(document.getElementById("corteIni")||{}).value||""; var p=v.split("-");
+      if(p.length===3) return (+p[2])+"/"+(+p[1])+"/"+p[0]; }catch(e){}
+    return "";
+  }
+  function _acu(med){
+    var out=[], vistos={};
+    try{
+      var todos = (typeof acVigentes==="function") ? acVigentes(med, _per()) : [];
+      var sede = (document.getElementById("sede")||{}).value || "";
+      var esCir = sede.indexOf("Cirug")===0, esMut = (sede==="Sede 2");
+      todos.forEach(function(a){
+        var bl = String(a.bloque||"");
+        if(esCir){ if(bl!=="cir") return; }
+        else { if(bl!=="sede") return; if((String(a.mutual)==="true")!==esMut) return; }
+        var v = Math.round(Number(a.valor)||0);
+        if(!v) return;
+        var kk = String(a.pac||"")+"|"+String(a.texto||"")+"|"+v;
+        if(vistos[kk]) return; vistos[kk]=1;
+        out.push({txt:String(a.texto||"Acuerdo"), v:v});
+      });
+    }catch(e){}
+    return out;
+  }
+  pdfFilasMedico = function(h){
+    var R = _orig(h);
+    try{
+      var ds = (window.RESULT && RESULT._datos) || [];
+      var d = null;
+      for (var i=0;i<ds.length;i++){ if(ds[i].m===h){ d=ds[i]; break; } }
+      if(d){
+        var tab = Math.round((d.cir||0)+(d.sed||0)+(d.man||0));
+        var dif = tab - Math.round(R.total||0);
+        if(dif !== 0){
+          var ac = _acu(h), s = 0;
+          ac.forEach(function(a){ s += a.v; });
+          R.cierres = R.cierres || [];
+          if(ac.length && s === dif){ ac.forEach(function(a){ R.cierres.push({txt:a.txt, v:a.v}); }); }
+          else { R.cierres.push({txt:"Ajustes y acuerdos del mes", v:dif}); }
+          R.total = tab;
+        }
+      }
+    }catch(e){}
+    return R;
+  };
+})();
+
 function pdfTodas(){
   const J=pdfLib(); if(!J||!RESULT) return;
   const doc = new J({unit:'pt', format:'a4'});
