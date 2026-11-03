@@ -36,6 +36,7 @@ const SUBTITULOS: Record<Modulo, string> = {
   procesos: "Mapa de las 13 áreas, Atención al Usuario (SIAU), procesos y tareas.",
   proyectos: "Espacios de trabajo, tableros Kanban y seguimiento de iniciativas.",
   talento_humano: "Planta, retiros, ausentismo, clima y desempeño del personal.",
+  cartera: "Mesa de trabajo de glosas, devoluciones y anulaciones, en WorkCenter.",
 };
 
 function IconoTarjeta({ slug }: { slug: Modulo }) {
