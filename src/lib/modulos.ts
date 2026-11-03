@@ -13,7 +13,13 @@ export type Modulo =
   | "frecuencias"
   | "venta_del_dia"
   | "procesos"
-  | "proyectos";
+  | "proyectos"
+  // Talento Humano va aparte, con su propio slug, a proposito: trae nombres,
+  // salarios, incapacidades y evaluaciones. No puede colgar del permiso de
+  // otro tablero ni entrar con los de "Analytics" en bloque: se asigna
+  // persona por persona en /usuarios, como cualquier otro modulo, pero sin
+  // que nadie lo herede por error.
+  | "talento_humano";
 
 export type GrupoModulo = "Analytics" | "Procesos";
 
@@ -26,6 +32,7 @@ export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoM
   { slug: "venta_del_dia", label: "Venta del Día", href: "/venta-del-dia", grupo: "Analytics" },
   { slug: "frecuencias", label: "Cartera y Radicación", href: "/cartera", grupo: "Analytics" },
   { slug: "venta_del_dia", label: 'Digiturno y Contact', href: '/digiturno-contact', grupo: "Analytics" },
+  { slug: "talento_humano", label: "Talento Humano", href: "/talento-humano", grupo: "Analytics" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
   { slug: "proyectos", label: "Tareas", href: "/proyectos", grupo: "Procesos" },
 ];

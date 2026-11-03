@@ -35,6 +35,7 @@ const SUBTITULOS: Record<Modulo, string> = {
   redes_sociales: "Alcance digital, interacción y rendimiento de campañas.",
   procesos: "Mapa de las 13 áreas, Atención al Usuario (SIAU), procesos y tareas.",
   proyectos: "Espacios de trabajo, tableros Kanban y seguimiento de iniciativas.",
+  talento_humano: "Planta, retiros, ausentismo, clima y desempeño del personal.",
 };
 
 function IconoTarjeta({ slug }: { slug: Modulo }) {

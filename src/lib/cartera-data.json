@@ -1441,12 +1441,13 @@
       "motivo": "factura con resolucion txt, se debe generar radicacion con nueva resolucion json",
       "facturaReemplaza": "FCOE90172",
       "fechaAnulacion": "2026-08-11",
-      "fechaRadicacionReemplazo": "VALOR FV VS RIPS",
+      "fechaRadicacionReemplazo": null,
       "rips": "",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionReemplazoNota": "VALOR FV VS RIPS"
     },
     {
       "id": "T1-37",
@@ -2352,13 +2353,14 @@
       "tipo": "ANULACIÓN / REFACTURACIÓN",
       "motivo": "Actualizacion de Contrato/Tarifa",
       "facturaReemplaza": "CIRUGIA",
-      "fechaAnulacion": "PDT",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaAnulacionNota": "PDT"
     },
     {
       "id": "T1-75",
@@ -2448,13 +2450,14 @@
       "tipo": "ANULACIÓN / REFACTURACIÓN",
       "motivo": "Actualizacion de Contrato/Tarifa",
       "facturaReemplaza": "CIRUGIA",
-      "fechaAnulacion": "PDT",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaAnulacionNota": "PDT"
     },
     {
       "id": "T1-79",
@@ -2544,13 +2547,14 @@
       "tipo": "ANULACIÓN / REFACTURACIÓN",
       "motivo": "Actualizacion de Contrato/Tarifa",
       "facturaReemplaza": "ECOGRAFIA",
-      "fechaAnulacion": "PDT",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaAnulacionNota": "PDT"
     },
     {
       "id": "T1-83",
@@ -2585,7 +2589,7 @@
       "periodo": "",
       "anio": "2022",
       "factura": "FCOE28353",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 33093,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2598,7 +2602,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-85",
@@ -2609,7 +2614,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE36365",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 47234,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2622,7 +2627,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-86",
@@ -2633,7 +2639,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE36369",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 83480,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2646,7 +2652,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-87",
@@ -2657,7 +2664,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE33099",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 125000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2670,7 +2677,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-88",
@@ -2681,7 +2689,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE36370",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 18300,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2694,7 +2702,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-89",
@@ -2705,7 +2714,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE47998",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 952000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2718,7 +2727,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-90",
@@ -2729,7 +2739,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE47999",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 952000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2742,7 +2752,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-91",
@@ -2753,7 +2764,7 @@
       "periodo": "",
       "anio": "2022",
       "factura": "FCOE28226",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 20000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2766,7 +2777,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-92",
@@ -2777,7 +2789,7 @@
       "periodo": "",
       "anio": "2022",
       "factura": "FCOE32681",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 23177,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2790,7 +2802,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-93",
@@ -2801,7 +2814,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE32805",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 72100,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2814,7 +2827,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-94",
@@ -2825,7 +2839,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE32831",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 22660,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2838,7 +2852,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-95",
@@ -2849,7 +2864,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE36765",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 34330,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2862,7 +2877,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-96",
@@ -2873,7 +2889,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE36767",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 68660,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2886,7 +2902,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-97",
@@ -2897,7 +2914,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE38674",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 34330,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2910,7 +2927,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-98",
@@ -2921,7 +2939,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE39314",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 34330,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2934,7 +2952,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-99",
@@ -2945,7 +2964,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE42669",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 34330,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2958,7 +2977,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-100",
@@ -2969,7 +2989,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE41427",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 2130000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -2982,7 +3002,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-101",
@@ -2993,7 +3014,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE42997",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 1930000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3006,7 +3027,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-102",
@@ -3017,7 +3039,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE42998",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 2100000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3030,7 +3052,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-103",
@@ -3041,7 +3064,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE42999",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 1200000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3054,7 +3077,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-104",
@@ -3065,7 +3089,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE45962",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 1530000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3078,7 +3102,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-105",
@@ -3089,7 +3114,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE45963",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 550000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3102,7 +3127,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-106",
@@ -3113,7 +3139,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE45965",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 550000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3126,7 +3152,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-107",
@@ -3137,7 +3164,7 @@
       "periodo": "",
       "anio": "2023",
       "factura": "FCOE47050",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 34330,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3150,7 +3177,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-108",
@@ -3161,7 +3189,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE52815",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 41574,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3174,7 +3202,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-109",
@@ -3185,7 +3214,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE52819",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 41574,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3198,7 +3227,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-110",
@@ -3209,7 +3239,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE52820",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 41574,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3222,7 +3252,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-111",
@@ -3233,7 +3264,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE57801",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 41574,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3246,7 +3277,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-112",
@@ -3257,7 +3289,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE62766",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 48000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3270,7 +3302,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-113",
@@ -3281,7 +3314,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE51861",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 2912000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3294,7 +3327,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-114",
@@ -3305,7 +3339,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE62719",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 48000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3318,7 +3352,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-115",
@@ -3329,7 +3364,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE65578",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 41574,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3342,7 +3377,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-116",
@@ -3353,7 +3389,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE71367",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 28000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3366,7 +3402,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-117",
@@ -3377,7 +3414,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE65122",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 800000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3390,7 +3427,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-118",
@@ -3473,7 +3511,7 @@
       "periodo": "",
       "anio": "2024",
       "factura": "FCOE79844",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 413751,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3486,7 +3524,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-122",
@@ -3497,7 +3536,7 @@
       "periodo": "",
       "anio": "2025",
       "factura": "FCOE71575",
-      "fechaRadicacion": "NO RADICA",
+      "fechaRadicacion": null,
       "valorRadicado": 22660,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -3510,7 +3549,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICA"
     },
     {
       "id": "T1-123",
@@ -3589,7 +3629,7 @@
       "numero": 126,
       "empresa": "ECOPETROL",
       "empresaOriginal": "ECOPETROL",
-      "fechaFactura": "3/06/2026",
+      "fechaFactura": "2026-06-03",
       "periodo": "",
       "anio": "2026",
       "factura": "FCOE87429",
@@ -3613,7 +3653,7 @@
       "numero": 127,
       "empresa": "ECOPETROL",
       "empresaOriginal": "ECOPETROL",
-      "fechaFactura": "3/06/2026",
+      "fechaFactura": "2026-06-03",
       "periodo": "",
       "anio": "2026",
       "factura": "FCOE87421",
@@ -3792,13 +3832,14 @@
       "tipo": "ANULACIÓN / REFACTURACIÓN",
       "motivo": "Actualizacion de Contrato/Tarifa",
       "facturaReemplaza": "NO DEJA",
-      "fechaAnulacion": "PDT",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaAnulacionNota": "PDT"
     },
     {
       "id": "T1-135",
@@ -5089,12 +5130,13 @@
       "motivo": "El tiempo de radicación del documento excede los 22 días del ingreso de la Factura electrónica registrada en el sistema - REFACTURAR",
       "facturaReemplaza": "PENDIENTE X COPAGO AMBOS SERVICIOS 5,000 C/U",
       "fechaAnulacion": "",
-      "fechaRadicacionReemplazo": "# 40027801 C-# 40027967",
+      "fechaRadicacionReemplazo": null,
       "rips": "",
       "revisionFinanciera": "PENDIENTE X COPAGO AMBOS SERVICIOS 5,000 C/U",
       "preagrupado": "9856",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionReemplazoNota": "# 40027801 C-# 40027967"
     },
     {
       "id": "T1-189",
@@ -5633,7 +5675,7 @@
       "periodo": "",
       "anio": "2026",
       "factura": "FCOE88249",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 156375,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -5646,7 +5688,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-212",
@@ -5688,13 +5731,15 @@
       "tipo": "GLOSA",
       "motivo": "GLOSA X AUTORIZACION",
       "facturaReemplaza": "FCOE87850",
-      "fechaAnulacion": "#40473510",
-      "fechaRadicacionReemplazo": "#40473510",
+      "fechaAnulacion": null,
+      "fechaRadicacionReemplazo": null,
       "rips": "",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaAnulacionNota": "#40473510",
+      "fechaRadicacionReemplazoNota": "#40473510"
     },
     {
       "id": "T1-214",
@@ -5753,7 +5798,7 @@
       "periodo": "2026-03-06",
       "anio": "2026",
       "factura": "FCOE88248",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 29154,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -5766,7 +5811,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-217",
@@ -6089,7 +6135,7 @@
       "periodo": "",
       "anio": "2026",
       "factura": "FCOE87743",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 1267000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6102,7 +6148,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "EN GESTIÓN"
+      "estadoGestion": "EN GESTIÓN",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-231",
@@ -6161,7 +6208,7 @@
       "periodo": "2026-06-19",
       "anio": "2026",
       "factura": "FCOE87964",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 1901685,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6174,7 +6221,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA PAOLA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-234",
@@ -6185,7 +6233,7 @@
       "periodo": "2026-06-11",
       "anio": "2026",
       "factura": "FCOE88085",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 270375,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6198,31 +6246,33 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-235",
       "numero": 235,
       "empresa": "MEDPLUS",
       "empresaOriginal": "MED PLUS",
-      "fechaFactura": "22/06/2026",
+      "fechaFactura": "2026-06-22",
       "periodo": "19/06/2026",
       "anio": "2026",
       "factura": "FCOE87969",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 833000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
       "tipo": "ANULACIÓN / REFACTURACIÓN",
       "motivo": "SE ANULA FACTURA POR VALOR ERRADO FACTURADO",
       "facturaReemplaza": "FCOE88511",
-      "fechaAnulacion": "08/07/2026",
+      "fechaAnulacion": "2026-07-08",
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-236",
@@ -6233,7 +6283,7 @@
       "periodo": "2025-12-02",
       "anio": "2026",
       "factura": "FCOE88516",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 4069819,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6246,7 +6296,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-237",
@@ -6257,7 +6308,7 @@
       "periodo": "2026-05-29",
       "anio": "2026",
       "factura": "FCOE87360",
-      "fechaRadicacion": "RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 6559782,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6270,7 +6321,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA PAOLA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "RADICADA"
     },
     {
       "id": "T1-238",
@@ -6281,7 +6333,7 @@
       "periodo": "2026-05-25",
       "anio": "2026",
       "factura": "FCOE88112",
-      "fechaRadicacion": "RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 3534500,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6294,7 +6346,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA PAOLA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "RADICADA"
     },
     {
       "id": "T1-239",
@@ -6305,7 +6358,7 @@
       "periodo": "2026-06-12",
       "anio": "2026",
       "factura": "FCOE87981",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 457000,
       "copagos": 25100,
       "valorGlosaDevolucion": 0,
@@ -6318,7 +6371,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-240",
@@ -6329,7 +6383,7 @@
       "periodo": "2026-07-10",
       "anio": "2026",
       "factura": "FCOE88579",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 11036154,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6342,7 +6396,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA PAOLA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-241",
@@ -6353,7 +6408,7 @@
       "periodo": "2026-07-10",
       "anio": "2026",
       "factura": "FCOE88610",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 1611400,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6366,7 +6421,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA PAOLA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-242",
@@ -6377,7 +6433,7 @@
       "periodo": "2026-07-02",
       "anio": "2026",
       "factura": "FCOE88639",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 1536548,
       "copagos": 72900,
       "valorGlosaDevolucion": 0,
@@ -6390,7 +6446,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-243",
@@ -6401,7 +6458,7 @@
       "periodo": "2026-07-02",
       "anio": "2026",
       "factura": "",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 3622174,
       "copagos": 30100,
       "valorGlosaDevolucion": 0,
@@ -6414,7 +6471,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-244",
@@ -6425,7 +6483,7 @@
       "periodo": "2025-09-04",
       "anio": "2026",
       "factura": "FCOE87574",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 3026763,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6438,7 +6496,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-245",
@@ -6449,7 +6508,7 @@
       "periodo": "2025-09-04",
       "anio": "2026",
       "factura": "FCOE87578",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 542605,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6462,7 +6521,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-246",
@@ -6497,7 +6557,7 @@
       "periodo": "2026-07-03",
       "anio": "2026",
       "factura": "FCOE88597",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 4784156,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6510,7 +6570,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA PAOLA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-248",
@@ -6521,7 +6582,7 @@
       "periodo": "2026-07-01",
       "anio": "2026",
       "factura": "FCOE88642",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 3622174,
       "copagos": 30100,
       "valorGlosaDevolucion": 0,
@@ -6534,7 +6595,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-249",
@@ -6569,7 +6631,7 @@
       "periodo": "2026-07-01",
       "anio": "2026",
       "factura": "FCOE88831",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 111300,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -6582,7 +6644,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-251",
@@ -7937,7 +8000,7 @@
       "periodo": "2024-09-02",
       "anio": "2024",
       "factura": "FCOE65045",
-      "fechaRadicacion": "2024-09-010",
+      "fechaRadicacion": null,
       "valorRadicado": 22000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -7950,7 +8013,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "2024-09-010"
     },
     {
       "id": "T1-308",
@@ -7961,7 +8025,7 @@
       "periodo": "2024-09-02",
       "anio": "2024",
       "factura": "FCOE65314",
-      "fechaRadicacion": "2024-09-010",
+      "fechaRadicacion": null,
       "valorRadicado": 127000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -7974,7 +8038,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "2024-09-010"
     },
     {
       "id": "T1-309",
@@ -8005,7 +8070,7 @@
       "numero": 311,
       "empresa": "COLMEDICA",
       "empresaOriginal": "COLMEDICA",
-      "fechaFactura": "2026/29/07",
+      "fechaFactura": "2026-07-29",
       "periodo": "2026/29/07",
       "anio": "2026",
       "factura": "FCOE89244",
@@ -8153,7 +8218,7 @@
       "periodo": "2026-07-24",
       "anio": "2026",
       "factura": "FCOE89125",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 1100333,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -8166,7 +8231,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-317",
@@ -8201,7 +8267,7 @@
       "periodo": "2026-07-16",
       "anio": "2026",
       "factura": "FCOE89838",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 1644957,
       "copagos": 104261,
       "valorGlosaDevolucion": 0,
@@ -8214,7 +8280,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-319",
@@ -8273,7 +8340,7 @@
       "periodo": "",
       "anio": "2026",
       "factura": "FCOE90053",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 656700,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -8286,7 +8353,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-322",
@@ -9961,12 +10029,13 @@
       "motivo": "FACTURA CON AUTORIZACION ERRADA, SE SOLICITA NUEVA AUTO Y SE REFACTURA",
       "facturaReemplaza": "FCOE90865",
       "fechaAnulacion": "2026-08-31",
-      "fechaRadicacionReemplazo": "31/06/2026",
+      "fechaRadicacionReemplazo": null,
       "rips": "RIPS 022960",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionReemplazoNota": "31/06/2026"
     },
     {
       "id": "T1-392",
@@ -10033,12 +10102,13 @@
       "motivo": "DOCUMENTO CON AUTORIZACION RELACIONADA A OTRA FACTURA, SE SOLICITA NUEVA AUTO Y SE REFACTURA",
       "facturaReemplaza": "FCOE90886",
       "fechaAnulacion": "2026-08-31",
-      "fechaRadicacionReemplazo": "31/06/2026",
+      "fechaRadicacionReemplazo": null,
       "rips": "22963",
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionReemplazoNota": "31/06/2026"
     },
     {
       "id": "T1-395",
@@ -10632,13 +10702,15 @@
       "tipo": "ANULACIÓN / REFACTURACIÓN",
       "motivo": "Facturas que en conciliacion de cartera con Mutual Ser aparecen como NO RADICADAS",
       "facturaReemplaza": "FCOE91593",
-      "fechaAnulacion": "#41494790",
-      "fechaRadicacionReemplazo": "#41494790",
+      "fechaAnulacion": null,
+      "fechaRadicacionReemplazo": null,
       "rips": "#41494790",
       "revisionFinanciera": "AUTORIZACION pdt",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaAnulacionNota": "#41494790",
+      "fechaRadicacionReemplazoNota": "#41494790"
     },
     {
       "id": "T1-420",
@@ -10865,7 +10937,7 @@
       "periodo": "2026-07-16",
       "anio": "2026",
       "factura": "FCOE89838",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 1644957,
       "copagos": 104261,
       "valorGlosaDevolucion": 0,
@@ -10878,7 +10950,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-430",
@@ -10937,7 +11010,7 @@
       "periodo": "",
       "anio": "2026",
       "factura": "FCOE90053",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 656700,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -10950,7 +11023,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-433",
@@ -11009,7 +11083,7 @@
       "periodo": "2026-09-10",
       "anio": "2026",
       "factura": "FCOE91277",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 350000,
       "copagos": 0,
       "valorGlosaDevolucion": 0,
@@ -11022,7 +11096,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA ALEJANDRA",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-436",
@@ -11057,7 +11132,7 @@
       "periodo": "2026-09-28",
       "anio": "2026",
       "factura": "FCOE91772",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 2126400,
       "copagos": 1292100,
       "valorGlosaDevolucion": 0,
@@ -11070,7 +11145,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-438",
@@ -11081,7 +11157,7 @@
       "periodo": "2026-09-30",
       "anio": "2026",
       "factura": "FCOE91906",
-      "fechaRadicacion": "NO RADICADA",
+      "fechaRadicacion": null,
       "valorRadicado": 608000,
       "copagos": 376500,
       "valorGlosaDevolucion": 0,
@@ -11094,7 +11170,8 @@
       "revisionFinanciera": "",
       "preagrupado": "",
       "responsable": "MARIA JOSE",
-      "estadoGestion": "REEMPLAZADA"
+      "estadoGestion": "REEMPLAZADA",
+      "fechaRadicacionNota": "NO RADICADA"
     },
     {
       "id": "T1-439",
@@ -12218,13 +12295,14 @@
       "tipo": "GLOSA",
       "motivo": "Factura ya pagada o en trámite",
       "facturaReemplaza": "CAMBIO DE AUTO - SERVICIO ECO",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-24",
@@ -12314,13 +12392,14 @@
       "tipo": "GLOSA",
       "motivo": "El afiliado informando no pertenece al régimen reportado.",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-28",
@@ -12338,13 +12417,14 @@
       "tipo": "GLOSA",
       "motivo": "El afiliado informando no pertenece al régimen reportado.",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-29",
@@ -12362,13 +12442,14 @@
       "tipo": "GLOSA",
       "motivo": "Factura ya pagada o en trámite",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-30",
@@ -12386,13 +12467,15 @@
       "tipo": "GLOSA",
       "motivo": "Factura ya pagada o en trámite",
       "facturaReemplaza": "DOS SERVICIOS UNA AUTO",
-      "fechaAnulacion": "PDT AUTO",
-      "fechaRadicacionReemplazo": "39991788",
+      "fechaAnulacion": null,
+      "fechaRadicacionReemplazo": null,
       "rips": "",
       "revisionFinanciera": "PDT AUTO",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "PDT AUTO",
+      "fechaRadicacionReemplazoNota": "39991788"
     },
     {
       "id": "T2-31",
@@ -12434,13 +12517,14 @@
       "tipo": "GLOSA",
       "motivo": "El afiliado informando no pertenece al régimen reportado.",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-33",
@@ -12458,13 +12542,14 @@
       "tipo": "GLOSA",
       "motivo": "Factura ya pagada o en trámite",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "NO CORRESPONDE  A LA FV COMPARADA DE PAGO",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "NO CORRESPONDE  A LA FV COMPARADA DE PAGO",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "NO CORRESPONDE  A LA FV COMPARADA DE PAGO"
     },
     {
       "id": "T2-34",
@@ -12530,13 +12615,14 @@
       "tipo": "GLOSA",
       "motivo": "El Prestador de Servicios de Salud que factura no hace parte de la red de la Entidad Responsable de Pago",
       "facturaReemplaza": "REFACTURAR",
-      "fechaAnulacion": "La fecha de prestación del servicio 05/02/2025 no se encuentra dentro de la fecha inicio 01/05/2025",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "La fecha de prestación del servicio 05/02/2025 no se encuentra dentro de la fecha inicio 01/05/2025",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "La fecha de prestación del servicio 05/02/2025 no se encuentra dentro de la fecha inicio 01/05/2025"
     },
     {
       "id": "T2-37",
@@ -12602,13 +12688,14 @@
       "tipo": "GLOSA",
       "motivo": "Factura ya pagada o en trámite",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-40",
@@ -12626,13 +12713,14 @@
       "tipo": "GLOSA",
       "motivo": "El afiliado informando no pertenece al régimen reportado.",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-41",
@@ -12650,13 +12738,14 @@
       "tipo": "GLOSA",
       "motivo": "El afiliado informando no pertenece al régimen reportado.",
       "facturaReemplaza": "NOTA DE AJUSTE",
-      "fechaAnulacion": "OK",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "OK",
       "preagrupado": "",
       "responsable": "ERIKA ALZATE",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "OK"
     },
     {
       "id": "T2-42",
@@ -13442,13 +13531,14 @@
       "tipo": "GLOSA",
       "motivo": "ACEPTACION DE GLOSA X VALOR 18,736 ERROR DE TARIFA",
       "facturaReemplaza": "NC146",
-      "fechaAnulacion": "NOTA NO ACEPTADA EN LA DIAN, FV ACEPTADA X CLIENTE",
+      "fechaAnulacion": null,
       "fechaRadicacionReemplazo": "",
       "rips": "",
       "revisionFinanciera": "NOTA NO ACEPTADA EN LA DIAN, FV ACEPTADA X CLIENTE",
       "preagrupado": "",
       "responsable": "MARIA PAOLA",
-      "estadoGestion": "LEGALIZADA"
+      "estadoGestion": "LEGALIZADA",
+      "fechaAnulacionNota": "NOTA NO ACEPTADA EN LA DIAN, FV ACEPTADA X CLIENTE"
     },
     {
       "id": "T2-75",
@@ -14976,11 +15066,11 @@
       "subtabla": "RESPONDIDA_NO_ACEPTADA",
       "empresa": "COLSANITAS",
       "empresaOriginal": "COLSANITAS",
-      "fechaFactura": "21/09/26",
+      "fechaFactura": "2026-09-21",
       "periodo": "21/09/26",
       "anio": "2026",
       "factura": "FCOE91573",
-      "fechaRadicacion": "21/09/26",
+      "fechaRadicacion": "2026-09-21",
       "valorRadicado": 588042,
       "valorFactura": 588042,
       "valorGlosado": 33,
@@ -14995,11 +15085,11 @@
       "subtabla": "RESPONDIDA_NO_ACEPTADA",
       "empresa": "COLSANITAS",
       "empresaOriginal": "COLSANITAS",
-      "fechaFactura": "21/09/26",
+      "fechaFactura": "2026-09-21",
       "periodo": "21/09/26",
       "anio": "2026",
       "factura": "FCOE91573",
-      "fechaRadicacion": "21/09/26",
+      "fechaRadicacion": "2026-09-21",
       "valorRadicado": 383739,
       "valorFactura": 383739,
       "valorGlosado": 28907,
@@ -17465,11 +17555,11 @@
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-1",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17477,18 +17567,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #40012054 | Estado: 1389400632640",
-      "notaCredito": "1389400632640"
+      "notaCredito": "1389400632640",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-2",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-2",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17496,18 +17588,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #39991788 | Estado: 1324801171474",
-      "notaCredito": "1324801171474"
+      "notaCredito": "1324801171474",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-3",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-3",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17515,18 +17609,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #40024144 | Estado: 1362001221760",
-      "notaCredito": "1362001221760"
+      "notaCredito": "1362001221760",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-4",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-4",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17534,18 +17630,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #40024471 | Estado: 1324405934882",
-      "notaCredito": "1324405934882"
+      "notaCredito": "1324405934882",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-5",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-5",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17553,18 +17651,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 40024819 | Estado: 1365702211869",
-      "notaCredito": "1365702211869"
+      "notaCredito": "1365702211869",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-6",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-6",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17572,18 +17672,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #40024976 | Estado: 1365400839205",
-      "notaCredito": "1365400839205"
+      "notaCredito": "1365400839205",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-7",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-7",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17591,18 +17693,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 40027395 | Estado: 1324801171475",
-      "notaCredito": "1324801171475"
+      "notaCredito": "1324801171475",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-8",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-8",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17610,18 +17714,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 40027468 | Estado: 1324801172590",
-      "notaCredito": "1324801172590"
+      "notaCredito": "1324801172590",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-9",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-9",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17629,18 +17735,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 40027548 | Estado: 1365400844004",
-      "notaCredito": "1365400844004"
+      "notaCredito": "1365400844004",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-10",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-10",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17648,18 +17756,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 40027801 | Estado: 1389400633918",
-      "notaCredito": "1389400633918"
+      "notaCredito": "1389400633918",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-11",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-11",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17667,18 +17777,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #40027967 | Estado: 1389400634990",
-      "notaCredito": "1389400634990"
+      "notaCredito": "1389400634990",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-12",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "CASO-12",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17686,18 +17798,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #40473510 | Estado: 1365400847404",
-      "notaCredito": "1365400847404"
+      "notaCredito": "1365400847404",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-13",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE84671",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17705,18 +17819,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 40490626 | Estado: 1300106412567",
-      "notaCredito": "1300106412567"
+      "notaCredito": "1300106412567",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-14",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE87826",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17724,18 +17840,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #40473510 | Estado: 1365400847404",
-      "notaCredito": "1365400847404"
+      "notaCredito": "1365400847404",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-15",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE84873",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17743,18 +17861,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: MIPRES SOLICITADO X CORREO | Estado: ERIKA LE ESCRIBIO A SCARLETH",
-      "notaCredito": "ERIKA LE ESCRIBIO A SCARLETH"
+      "notaCredito": "ERIKA LE ESCRIBIO A SCARLETH",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-16",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE77774",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17762,18 +17882,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 40492622 | Estado: PENDIENTE",
-      "notaCredito": "PENDIENTE"
+      "notaCredito": "PENDIENTE",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-17",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE82111",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17781,18 +17903,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 41031593 | Estado: 1300106419470",
-      "notaCredito": "1300106419470"
+      "notaCredito": "1300106419470",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-18",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE84857",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17800,18 +17924,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: # 41032182 -anulada #41109929 | Estado: pdt por aprobar",
-      "notaCredito": "pdt por aprobar"
+      "notaCredito": "pdt por aprobar",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-19",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE91420",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17819,18 +17945,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: PENDIENTE | Estado: PENDIENTE",
-      "notaCredito": "PENDIENTE"
+      "notaCredito": "PENDIENTE",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-20",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE90602",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17838,18 +17966,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: correo enviado A SCARLETH 23/09 | Estado: EN GESTION",
-      "notaCredito": "EN GESTION"
+      "notaCredito": "EN GESTION",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-21",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE88993",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17857,18 +17987,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: pdt verificar con Erika 26/08 | Estado: ERIKA LE ESCRIBIO A SCARLETH",
-      "notaCredito": "ERIKA LE ESCRIBIO A SCARLETH"
+      "notaCredito": "ERIKA LE ESCRIBIO A SCARLETH",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-22",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE89011",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17876,18 +18008,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: correo enviado A SCARLETH 31/08 | Estado: EN GESTION",
-      "notaCredito": "EN GESTION"
+      "notaCredito": "EN GESTION",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-23",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE83684",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17895,18 +18029,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #41084706 | Estado: EN GESTION",
-      "notaCredito": "EN GESTION"
+      "notaCredito": "EN GESTION",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-24",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE78560",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17914,18 +18050,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: PENDIENTE | Estado: EN GESTION",
-      "notaCredito": "EN GESTION"
+      "notaCredito": "EN GESTION",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-25",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE91593",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17933,18 +18071,20 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: #41494790 | Estado: EN GESTION",
-      "notaCredito": "EN GESTION"
+      "notaCredito": "EN GESTION",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     },
     {
       "id": "T3C-26",
       "subtabla": "EN_GESTION",
       "empresa": "MUTUAL SER",
       "empresaOriginal": "MUTUAL SER",
-      "fechaFactura": "2026",
+      "fechaFactura": null,
       "periodo": "2026",
       "anio": "2026",
       "factura": "FCOE90876",
-      "fechaRadicacion": "2026",
+      "fechaRadicacion": null,
       "valorRadicado": 0,
       "valorFactura": 0,
       "valorGlosado": 0,
@@ -17952,7 +18092,9 @@
       "facturador": "ERIKA ALZATE",
       "responsableAceptacion": "",
       "observacionInterna": "Aut/Caso: GLOSA | Estado: EN GESTION",
-      "notaCredito": "EN GESTION"
+      "notaCredito": "EN GESTION",
+      "fechaFacturaNota": "2026",
+      "fechaRadicacionNota": "2026"
     }
   ],
   "pendientes": [
