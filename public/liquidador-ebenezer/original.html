@@ -15550,6 +15550,21 @@ function excelMedico(h){
   };
 })();
 
+(function(){
+  if (typeof fkToggleTarifaExcel !== "function" || window.__fkConCandado) return;
+  window.__fkConCandado = true;
+  var _fk = fkToggleTarifaExcel;
+  fkToggleTarifaExcel = function(){
+    try{
+      if (typeof puede === "function" && !puede("valores")){
+        alert("Su perfil solo consulta: no puede cambiar las tarifas del motor. Av\u00edsele al administrador.");
+        return;
+      }
+    }catch(e){}
+    return _fk.apply(this, arguments);
+  };
+})();
+
 function pdfTodas(){
   const J=pdfLib(); if(!J||!RESULT) return;
   const doc = new J({unit:'pt', format:'a4'});
