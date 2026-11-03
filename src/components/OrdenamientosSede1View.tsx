@@ -64,18 +64,47 @@ const ALL_MONTH_DEFS: MonthDef[] = [
   { mm: "12", label: "Diciembre", axisLabel: "Dic", shortLabel: "DIC", prevLabel: "De Nov / Oct / Sep" },
 ];
 
-const YEARS = ["2026", "2025", "2024"];
+/* ---------------------------------------------------------------------
+   LOS ANOS SALEN DEL ARCHIVO, NO DE UNA LISTA ESCRITA A MANO.
+
+   Aqui decia: const YEARS = ["2026", "2025", "2024"].
+
+   Esa lista fue el problema. El 17-10-2026 se cargaron las cifras reales
+   de Sede 1 desde Frecuencias: diez meses, todos de 2026. El 19-10-2026
+   se agrego este filtro de ano con tres opciones, y para que las otras
+   dos no salieran vacias se rellenaron 48 meses de 2024 y 2025 que nunca
+   existieron. Nueve de ellos son copia exacta de un mes de 2026: octubre
+   de 2024, de 2025 y de 2026 eran identicos cifra por cifra.
+
+   La prueba que lo zanja: los mismos 14 medicos y los mismos 11
+   procedimientos en los tres anos. En dos anos no entro ni salio nadie.
+
+   No se pueden reconstruir: el ordenamiento sale de ordenes_resumen.json,
+   que solo tiene 2026-01 a 2026-10. La base de Frecuencias si llega a
+   2024, pero eso son atenciones FACTURADAS, no lo que el medico ORDENO.
+   Son cosas distintas y no se deducen una de otra.
+
+   Asi que 2024 y 2025 se borraron del archivo, y esta lista se saca de lo
+   que de verdad haya. El dia que entren ordenes viejas, el filtro las
+   muestra solo; y nadie puede volver a agregar un ano vacio sin datos
+   detras, porque ya no hay donde escribirlo.
+   --------------------------------------------------------------------- */
 
 export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) {
   const isQuirurgico = (tipo ?? mode ?? "quirurgicos") === "quirurgicos";
   const dataset: MonthMap = isQuirurgico ? REAL_DATA.quirurgicos : REAL_DATA.no_quirurgicos;
+
+  const YEARS = useMemo(
+    () => Array.from(new Set(Object.keys(dataset).map((m) => m.slice(0, 4)))).sort().reverse(),
+    [dataset],
+  );
 
   // Hasta donde llegan de verdad los datos del archivo. Se saca del propio
   // archivo, no de una constante: si manana trae un mes mas, el aviso se
   // mueve solo.
   const ultimoMesConDatos = Object.keys(dataset).sort().pop() ?? null;
 
-  const [selectedYear, setSelectedYear] = useState<string>("2026");
+  const [selectedYear, setSelectedYear] = useState<string>(() => YEARS[0] ?? "");
   const [selectedCard, setSelectedCard] = useState<1 | 2 | 3 | 4 | null>(null);
   const [selectedMonthMm, setSelectedMonthMm] = useState<string>("09"); // "01".."12" o "todos"
   const [selectedDoctor, setSelectedDoctor] = useState<string>("Todos");
@@ -100,21 +129,29 @@ export function OrdenamientosSede1View({ tipo, mode }: OrdenamientosSede1Props) 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Meses disponibles según el año seleccionado (2026 tiene Ene-Oct; 2025 y 2024 tienen Ene-Dic)
+  // Los meses que se ofrecen son los que el archivo tiene para ese ano.
+  // Antes decia "2026 tiene Ene-Oct; 2025 y 2024 tienen Ene-Dic", escrito a
+  // mano: en noviembre habria ofrecido un mes sin datos, y ofrecia doce
+  // meses de dos anos que no existian.
   const yearMonths = useMemo(() => {
-    const defs = selectedYear === "2026" ? ALL_MONTH_DEFS.slice(0, 10) : ALL_MONTH_DEFS;
-    return defs.map((d) => ({
+    const hay = new Set(
+      Object.keys(dataset)
+        .filter((m) => m.startsWith(selectedYear))
+        .map((m) => m.slice(5, 7)),
+    );
+    return ALL_MONTH_DEFS.filter((d) => hay.has(d.mm)).map((d) => ({
       ...d,
       key: `${selectedYear}-${d.mm}`,
     }));
-  }, [selectedYear]);
+  }, [selectedYear, dataset]);
 
-  // Si cambian a 2026 y estaban en Nov/Dic, ajustar a Septiembre ("09")
+  // Si el mes elegido no existe en el ano elegido, se pasa al ultimo que si.
   useEffect(() => {
-    if (selectedYear === "2026" && (selectedMonthMm === "11" || selectedMonthMm === "12")) {
-      setSelectedMonthMm("09");
+    if (selectedMonthMm === "todos") return;
+    if (yearMonths.length && !yearMonths.some((m) => m.mm === selectedMonthMm)) {
+      setSelectedMonthMm(yearMonths[yearMonths.length - 1].mm);
     }
-  }, [selectedYear, selectedMonthMm]);
+  }, [yearMonths, selectedMonthMm]);
 
   // Lista única de todos los médicos reales y procedimientos homologados reales en el año seleccionado
   const { allDoctors, allProcedures } = useMemo(() => {
