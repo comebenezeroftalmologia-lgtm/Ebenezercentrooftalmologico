@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
   }
   const q = new URLSearchParams({ fecha });
   if (b.idEspecialidad) q.set("idEspecialidad", String(b.idEspecialidad));
-  if (b.idAsunto) q.set("idAsunto", String(b.idAsunto));
+  // Asunto 10 = «Consulta oftalmología general primera vez» (29 médicos; confirmado por TIC).
+  q.set("idAsunto", String(b.idAsunto || 10));
   if (b.codMedico) q.set("codMedico", String(b.codMedico));
 
   try {

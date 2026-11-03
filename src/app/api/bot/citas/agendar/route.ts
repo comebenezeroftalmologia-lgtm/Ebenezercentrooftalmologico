@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
   const doc = normalizarDocumento(b.documento ?? "");
   const codMedico = Number(b.codMedico);
-  const idAsunto = Number(b.idAsunto);
+  const idAsunto = Number(b.idAsunto || 10); // 10 = consulta general primera vez
   const fecha = (b.fecha ?? "").trim();
   const hora = (b.hora ?? "").trim();
   if (doc.length < 4 || !Number.isInteger(codMedico) || codMedico < 1 || !Number.isInteger(idAsunto) || idAsunto < 1 || !FECHA_RE.test(fecha) || !HORA_RE.test(hora)) {
@@ -54,6 +54,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ agendada: false, motivo: "paciente_sin_autoid", accion_sugerida: "derivar_humano" }, { status: 502 });
     }
 
+    // SISMA no impide citas duplicadas: si ya tiene una pendiente ese día, no se agenda otra.
+    const hist = await sismaNodeJson<unknown>(`/api/pacientes/${autoid}/citas?desde=${fecha}&hasta=${fecha}`);
+    if (hist.status === 200 && Array.isArray(hist.data)) {
+      const pendiente = (hist.data as Record<string, unknown>[]).some((c) => {
+        const est = String(c.estado ?? c.Estado ?? "").toUpperCase();
+        return est === "P" || est === "CC";
+      });
+      if (pendiente) {
+        return NextResponse.json({ agendada: false, motivo: "cita_duplicada", accion_sugerida: "derivar_humano" });
+      }
+    }
+
     const r = await sismaNodeJson<unknown>("/api/citas", {
       method: "POST",
       body: {
@@ -63,6 +75,10 @@ export async function POST(req: NextRequest) {
     });
     if (r.status >= 200 && r.status < 300) {
       return NextResponse.json({ agendada: true, fecha, hora, detalle: r.data });
+    }
+    if (r.status === 409) {
+      // CupoOcupado: otra persona tomó el cupo; es un caso normal, se ofrece otro horario.
+      return NextResponse.json({ agendada: false, motivo: "cupo_ocupado", accion_sugerida: "ofrecer_otro_horario" });
     }
     return NextResponse.json({ agendada: false, motivo: "sisma_rechazo", status: r.status, detalle: r.data, accion_sugerida: "ofrecer_otro_horario" });
   } catch (e) {
