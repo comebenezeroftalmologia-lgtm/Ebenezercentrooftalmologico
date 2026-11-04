@@ -21,9 +21,8 @@ export type Modulo =
   // que nadie lo herede por error.
   | "talento_humano"
   // Cartera va aparte por la misma razon que Talento Humano: aqui se registra
-  // la plata glosada y devuelta de la clinica. Hasta ahora la vista de
-  // Analytics entraba con el permiso de "frecuencias"; esta superficie de
-  // trabajo se asigna persona por persona.
+  // la plata glosada y devuelta. La vista de Analytics entraba con el permiso
+  // de "frecuencias"; esta superficie de trabajo se asigna persona por persona.
   | "cartera";
 
 export type GrupoModulo = "Analytics" | "Procesos";

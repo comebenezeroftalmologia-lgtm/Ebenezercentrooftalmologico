@@ -427,8 +427,8 @@ export default function TableroCarteraAnalytics() {
   // habia escrito, y todo se perdia al limpiar la cache o cambiar de equipo.
   // Ahora la fuente de verdad es la base, compartida por todas.
   //
-  // Si la base no responde, el tablero sigue mostrando la foto del archivo y
-  // avisa, para que nadie registre creyendo que se guardo.
+  // Si la base no responde o aun no tiene registros, el tablero CONSERVA lo que
+  // ya muestra y avisa, en vez de quedarse en blanco.
   useEffect(() => {
     let vigente = true;
     (async () => {
@@ -498,8 +498,6 @@ export default function TableroCarteraAnalytics() {
     };
   }, []);
 
-  // Cache local para que la pantalla no parpadee al recargar. La fuente de
-  // verdad es la base de datos: esto ya no es donde se guarda.
   const persistAll = (
     nextAnuladas = anuladas,
     nextLegalizadas = legalizadas,
@@ -525,9 +523,8 @@ export default function TableroCarteraAnalytics() {
     }
   };
 
-  // Guarda UNA sola fila en la base de datos, no el tablero entero: asi dos
-  // personas pueden trabajar a la vez sin pisarse. Cada llamada queda tambien
-  // registrada en el historial, con quien la hizo y cuando.
+  // Guarda UNA sola fila en la base, no el tablero entero: asi dos personas
+  // pueden trabajar a la vez sin pisarse. Cada llamada queda en el historial.
   const guardarEnBase = async (entidad: string, accion: "CREAR" | "EDITAR", fila: unknown) => {
     try {
       const res = await fetch("/api/cartera/registros", {
