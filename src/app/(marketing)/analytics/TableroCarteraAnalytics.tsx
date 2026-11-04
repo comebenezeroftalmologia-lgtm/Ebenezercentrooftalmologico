@@ -1912,6 +1912,8 @@ export default function TableroCarteraAnalytics() {
       etiquetaEje: c.etiqueta,
       carteraTotal: c.carteraTotal,
       totalCarteraReal: c.carteraReal,
+      carteraCorriente: c.carteraCorriente,
+      carteraVencida: c.carteraVencida,
       mostrarLabel:
         cierresMensuales.length <= 7 ||
         idx === 0 ||
@@ -1928,6 +1930,8 @@ export default function TableroCarteraAnalytics() {
             etiquetaEje: c.etiquetaEje,
             carteraTotal: c.carteraTotal,
             totalCarteraReal: c.totalCarteraReal,
+            carteraCorriente: (c as { carteraCorriente?: number }).carteraCorriente ?? 0,
+            carteraVencida: (c as { carteraVencida?: number }).carteraVencida ?? 0,
             mostrarLabel: true,
           }));
 
@@ -1942,9 +1946,13 @@ export default function TableroCarteraAnalytics() {
     const plotW = svgW - padL - padR;
     const plotH = yFloor - padT;
 
+    // La escala tiene que abarcar las CUATRO series. Si solo mirara Total y
+    // Real, la linea de Vencida se saldria del area dibujable.
     const todosValores = puntosGrafica.flatMap((p) => [
       p.carteraTotal,
       p.totalCarteraReal,
+      p.carteraCorriente,
+      p.carteraVencida,
     ]);
     const maxVal = Math.max(...todosValores, 1) * 1.06;
     const minVal = Math.max(0, Math.min(...todosValores, 0) * 0.85);
@@ -1987,6 +1995,27 @@ export default function TableroCarteraAnalytics() {
 
     const pathTotal = construirCurvaSuave(coordsTotal);
     const pathReal = construirCurvaSuave(coordsReal);
+
+    /* Corriente y Vencida: las dos partes que suman el Total.
+       Van como lineas finas y SIN capsula de valor. Con once meses, cuatro
+       capsulas por punto taparian los nombres de los meses, y lo que Faber
+       pidió fue justamente que los meses se vean claros. El valor exacto
+       sigue disponible al pasar el mouse por encima. */
+    const coordsCorriente = puntosGrafica.map((p, i) => ({
+      x: getX(i),
+      y: getYRaw(p.carteraCorriente),
+      val: p.carteraCorriente,
+    }));
+    const coordsVencida = puntosGrafica.map((p, i) => ({
+      x: getX(i),
+      y: getYRaw(p.carteraVencida),
+      val: p.carteraVencida,
+    }));
+    const hayDesglose = puntosGrafica.some(
+      (p) => p.carteraCorriente > 0 || p.carteraVencida > 0,
+    );
+    const pathCorriente = hayDesglose ? construirCurvaSuave(coordsCorriente) : "";
+    const pathVencida = hayDesglose ? construirCurvaSuave(coordsVencida) : "";
 
     const areaTotal =
       coordsTotal.length > 1
@@ -2052,6 +2081,30 @@ export default function TableroCarteraAnalytics() {
                 style={{ backgroundColor: "#059669" }}
               />
               <span>Cartera Real</span>
+            </div>
+
+            {/* Las dos partes del Total. Se muestran en la leyenda con la
+                misma linea punteada con que se dibujan, para que se
+                entienda de un vistazo que son el desglose y no otra cosa. */}
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold shadow-2xs"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#DCE6F5", color: "#0F172A" }}
+            >
+              <span
+                className="w-3.5 h-0 shrink-0"
+                style={{ borderTop: "2px dashed #38BDF8" }}
+              />
+              <span>Corriente</span>
+            </div>
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold shadow-2xs"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#DCE6F5", color: "#0F172A" }}
+            >
+              <span
+                className="w-3.5 h-0 shrink-0"
+                style={{ borderTop: "2px dashed #DC2626" }}
+              />
+              <span>Vencida</span>
             </div>
 
             <div
@@ -2196,6 +2249,31 @@ export default function TableroCarteraAnalytics() {
                 strokeWidth="1.2"
               />
 
+              {/* Las dos partes que suman el Total. Van PRIMERO para que
+                  queden por debajo: Total y Real son las que se leen, estas
+                  dos son el desglose y no deben taparlas. Linea fina y
+                  punteada, sin relleno. */}
+              {pathCorriente ? (
+                <path
+                  d={pathCorriente}
+                  fill="none"
+                  stroke="#38BDF8"
+                  strokeWidth="1.6"
+                  strokeDasharray="5 3"
+                  opacity="0.95"
+                />
+              ) : null}
+              {pathVencida ? (
+                <path
+                  d={pathVencida}
+                  fill="none"
+                  stroke="#DC2626"
+                  strokeWidth="1.6"
+                  strokeDasharray="5 3"
+                  opacity="0.95"
+                />
+              ) : null}
+
               {/* Curva Azul: Cartera Total */}
               <path
                 d={pathTotal}
@@ -2203,6 +2281,24 @@ export default function TableroCarteraAnalytics() {
                 stroke="#1D58D8"
                 strokeWidth="2.6"
               />
+
+              {/* Puntos chicos de Corriente y Vencida: sin capsula, pero
+                  con el valor al pasar el mouse. Asi el dato exacto esta
+                  disponible sin llenar la grafica de numeros. */}
+              {hayDesglose
+                ? coordsCorriente.map((c, i) => (
+                    <circle key={`pc-${i}`} cx={c.x} cy={c.y} r="2.6" fill="#38BDF8">
+                      <title>{`${puntosGrafica[i].etiquetaEje} · Cartera Corriente: ${formatCOP(c.val)}`}</title>
+                    </circle>
+                  ))
+                : null}
+              {hayDesglose
+                ? coordsVencida.map((c, i) => (
+                    <circle key={`pv-${i}`} cx={c.x} cy={c.y} r="2.6" fill="#DC2626">
+                      <title>{`${puntosGrafica[i].etiquetaEje} · Cartera Vencida: ${formatCOP(c.val)}`}</title>
+                    </circle>
+                  ))
+                : null}
 
               {/* Curva Verde: Cartera Real */}
               <path
