@@ -2350,9 +2350,32 @@ export default function TableroCarteraAnalytics() {
                    Se prueban cuatro posiciones, de la mas natural a la mas
                    forzada, y se toma la primera que quede libre. */
                 const ocupadas = [yPillTotCenter, yPillRealCenter, yPillVencCalc];
-                const libre = (y: number) => ocupadas.every((o) => Math.abs(y - o) >= 18);
-                const yPillCorrBruto =
-                  [yCorr - 16, yCorr + 16, yCorr - 34, yCorr + 34].find(libre) ?? yCorr - 34;
+                /* Se puntea cada posicion posible por lo LEJOS que queda de
+                   la capsula mas cercana, y gana la mas despejada.
+
+                   Antes se tomaba "la primera libre" y, si ninguna lo
+                   estaba, se usaba una fija a ciegas. Eso fue justo lo que
+                   paso en enero: Total y Real casi se tocan (3.827 y 3.747),
+                   las cuatro opciones chocaban, y la de rescate aterrizo
+                   encima de la verde, a dos pixeles. Elegir la mas
+                   despejada nunca se queda sin respuesta.
+
+                   El desempate suma una penalizacion por alejarse del punto:
+                   entre dos huecos igual de buenos, gana el mas cercano a
+                   su propia linea, que es donde se entiende a que serie
+                   pertenece la cifra. */
+                const desplazamientos: number[] = [];
+                for (let d = -72; d <= 72; d += 4) desplazamientos.push(d);
+                const candidatas = desplazamientos.map((d) => {
+                  const y = Math.max(12, Math.min(baseLineY - 10, yCorr + d));
+                  const holgura = Math.min(...ocupadas.map((o) => Math.abs(y - o)));
+                  // La holgura se tapa en 22: pasado eso ya no estorba a
+                  // nadie y lo que importa es quedar cerca de su linea.
+                  return { y, puntaje: Math.min(holgura, 22) - Math.abs(d) / 10 };
+                });
+                const yPillCorrBruto = candidatas.reduce((a, b) =>
+                  b.puntaje > a.puntaje ? b : a,
+                ).y;
                 // Que nunca se salga del dibujo por arriba ni se meta en el
                 // eje por abajo: una capsula cortada se ve peor que movida.
                 const yPillCorr = Math.max(12, Math.min(baseLineY - 10, yPillCorrBruto));
