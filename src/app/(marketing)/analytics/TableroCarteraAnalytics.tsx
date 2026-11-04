@@ -1942,12 +1942,12 @@ export default function TableroCarteraAnalytics() {
        veces y el problema no era donde ponerlas sino que no cabian. Con
        264px utiles en vez de 152, las lineas se separan solas y cada
        cifra se queda al lado de la suya. */
-    const svgH = 380;
+    const svgH = 268;
     const padL = 44;
     const padR = 44;
     const padT = 36;
-    const baseLineY = 348;
-    const yFloor = 300; // Piso de la curva 38px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
+    const baseLineY = 236;
+    const yFloor = 196; // Piso de la curva 38px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
     const plotW = svgW - padL - padR;
     const plotH = yFloor - padT;
 
@@ -2436,54 +2436,6 @@ export default function TableroCarteraAnalytics() {
                             Van primero para que queden POR DEBAJO de las de
                             Total y Real: si dos se tocan, la que debe
                             quedar legible es la principal. */}
-                        {hayDesglose && (
-                          <>
-                            <rect
-                              x={xCorr - wPillCorr / 2}
-                              y={yPillCorr - 8}
-                              width={wPillCorr}
-                              height={16}
-                              rx={8}
-                              fill="#FFFFFF"
-                              stroke="#BAE6FD"
-                              strokeWidth="1"
-                              opacity="0.97"
-                            />
-                            <text
-                              x={xCorr}
-                              y={yPillCorr + 3}
-                              textAnchor="middle"
-                              fontSize="8.6"
-                              fontWeight="700"
-                              fill="#0369A1"
-                            >
-                              {txtCorr}
-                            </text>
-
-                            <rect
-                              x={xVenc - wPillVenc / 2}
-                              y={yPillVenc - 8}
-                              width={wPillVenc}
-                              height={16}
-                              rx={8}
-                              fill="#FFFFFF"
-                              stroke="#FECACA"
-                              strokeWidth="1"
-                              opacity="0.97"
-                            />
-                            <text
-                              x={xVenc}
-                              y={yPillVenc + 3}
-                              textAnchor="middle"
-                              fontSize="8.6"
-                              fontWeight="700"
-                              fill="#B91C1C"
-                            >
-                              {txtVenc}
-                            </text>
-                          </>
-                        )}
-
                         {/* Nodo y cápsula superior: Cartera Total */}
                         <circle
                           cx={x}
@@ -2568,6 +2520,71 @@ export default function TableroCarteraAnalytics() {
               })}
             </svg>
             )}
+
+            {/* TABLA DEL DESGLOSE, DEBAJO DE LA GRAFICA.
+                Cuatro cifras flotando sobre las curvas nunca quedan claras:
+                siempre hay duda de cual pertenece a cual, y con once meses
+                se enciman. Aqui cada fila lleva su nombre y su color, y
+                cada columna su mes: no hay forma de confundirse. */}
+            {modoTendenciaCartera === "MES" && cierresMensuales.length > 0 ? (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full border-collapse text-[10.5px]">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 bg-white px-2 py-1.5 text-left font-semibold text-[#5B6B8C]">
+                        Millones
+                      </th>
+                      {cierresMensuales.map((c) => (
+                        <th
+                          key={`th-${c.mes}`}
+                          className="px-1.5 py-1.5 text-right font-semibold text-[#0E245E]"
+                        >
+                          {c.etiqueta}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { k: "carteraCorriente", n: "Corriente", c: "#38BDF8", t: "#0369A1" },
+                      { k: "carteraVencida", n: "Vencida", c: "#DC2626", t: "#B91C1C" },
+                      { k: "carteraTotal", n: "Total", c: "#1D58D8", t: "#0E245E" },
+                      { k: "carteraReal", n: "Real", c: "#059669", t: "#065F46" },
+                    ].map((fila, idx) => (
+                      <tr
+                        key={fila.k}
+                        style={{ backgroundColor: idx % 2 ? "#F8FAFC" : "#FFFFFF" }}
+                      >
+                        <td
+                          className="sticky left-0 whitespace-nowrap px-2 py-1 font-bold"
+                          style={{
+                            color: fila.t,
+                            backgroundColor: idx % 2 ? "#F8FAFC" : "#FFFFFF",
+                          }}
+                        >
+                          <span
+                            className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+                            style={{ backgroundColor: fila.c }}
+                          />
+                          {fila.n}
+                        </td>
+                        {cierresMensuales.map((c) => (
+                          <td
+                            key={`${fila.k}-${c.mes}`}
+                            className="whitespace-nowrap px-1.5 py-1 text-right font-mono font-semibold"
+                            style={{ color: fila.t }}
+                          >
+                            {Math.round(
+                              (c[fila.k as keyof typeof c] as number) / 1_000_000,
+                            ).toLocaleString("es-CO")}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
           </div>
 
           {/* PANEL DERECHO: TABLA ESTRUCTURADA "FECHAS DE CORTE (EXCEL / SISMA)" */}
