@@ -2339,20 +2339,33 @@ export default function TableroCarteraAnalytics() {
                 const wPillCorr = Math.max(40, txtCorr.length * 5.8 + 12);
                 const wPillVenc = Math.max(40, txtVenc.length * 5.8 + 12);
 
-                const chocaCon = (y: number) =>
-                  Math.abs(y - yPillTotCenter) < 17 || Math.abs(y - yPillRealCenter) < 17;
-                const arriba = yCorr - 16;
-                const abajo = yCorr + 16;
-                const yPillCorrBruto = !chocaCon(arriba)
-                  ? arriba
-                  : !chocaCon(abajo)
-                    ? abajo
-                    : arriba - 17;
+                const yPillVencCalc = Math.min(baseLineY - 10, yVenc + 16);
+
+                /* Corriente se coloca esquivando las OTRAS TRES capsulas,
+                   no solo Total y Real. Al principio se me olvido Vencida
+                   y en enero las dos quedaron una encima de la otra: en
+                   enero Corriente marca 2.036M y Vencida 1.790M, casi la
+                   misma altura. Lo mismo paso en septiembre contra Real.
+
+                   Se prueban cuatro posiciones, de la mas natural a la mas
+                   forzada, y se toma la primera que quede libre. */
+                const ocupadas = [yPillTotCenter, yPillRealCenter, yPillVencCalc];
+                const libre = (y: number) => ocupadas.every((o) => Math.abs(y - o) >= 18);
+                const yPillCorrBruto =
+                  [yCorr - 16, yCorr + 16, yCorr - 34, yCorr + 34].find(libre) ?? yCorr - 34;
                 // Que nunca se salga del dibujo por arriba ni se meta en el
                 // eje por abajo: una capsula cortada se ve peor que movida.
                 const yPillCorr = Math.max(12, Math.min(baseLineY - 10, yPillCorrBruto));
 
-                const yPillVenc = Math.min(baseLineY - 10, yVenc + 16);
+                const yPillVenc = yPillVencCalc;
+
+                /* En el primer y el ultimo mes la capsula se sale por el
+                   borde: va centrada en el punto, y el punto esta pegado
+                   al margen. Se corre hacia adentro lo necesario. */
+                const dentro = (w: number) =>
+                  Math.max(w / 2 + 2, Math.min(svgW - w / 2 - 2, x));
+                const xCorr = dentro(wPillCorr);
+                const xVenc = dentro(wPillVenc);
 
                 return (
                   <g
@@ -2380,7 +2393,7 @@ export default function TableroCarteraAnalytics() {
                         {hayDesglose && (
                           <>
                             <rect
-                              x={x - wPillCorr / 2}
+                              x={xCorr - wPillCorr / 2}
                               y={yPillCorr - 8}
                               width={wPillCorr}
                               height={16}
@@ -2391,7 +2404,7 @@ export default function TableroCarteraAnalytics() {
                               opacity="0.97"
                             />
                             <text
-                              x={x}
+                              x={xCorr}
                               y={yPillCorr + 3}
                               textAnchor="middle"
                               fontSize="8.6"
@@ -2402,7 +2415,7 @@ export default function TableroCarteraAnalytics() {
                             </text>
 
                             <rect
-                              x={x - wPillVenc / 2}
+                              x={xVenc - wPillVenc / 2}
                               y={yPillVenc - 8}
                               width={wPillVenc}
                               height={16}
@@ -2413,7 +2426,7 @@ export default function TableroCarteraAnalytics() {
                               opacity="0.97"
                             />
                             <text
-                              x={x}
+                              x={xVenc}
                               y={yPillVenc + 3}
                               textAnchor="middle"
                               fontSize="8.6"
