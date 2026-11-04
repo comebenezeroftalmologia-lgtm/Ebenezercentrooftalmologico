@@ -1937,12 +1937,17 @@ export default function TableroCarteraAnalytics() {
 
     const n = puntosGrafica.length;
     const svgW = 680;
-    const svgH = 258;
+    /* Mas alto que antes (258). Con cuatro series y su cifra, el alto
+       viejo obligaba a amontonar las capsulas: se corrigio el dibujo tres
+       veces y el problema no era donde ponerlas sino que no cabian. Con
+       264px utiles en vez de 152, las lineas se separan solas y cada
+       cifra se queda al lado de la suya. */
+    const svgH = 380;
     const padL = 44;
     const padR = 44;
     const padT = 36;
-    const baseLineY = 226;
-    const yFloor = 188; // Piso de la curva 38px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
+    const baseLineY = 348;
+    const yFloor = 300; // Piso de la curva 38px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
     const plotW = svgW - padL - padR;
     const plotH = yFloor - padT;
 
@@ -2365,13 +2370,31 @@ export default function TableroCarteraAnalytics() {
                    su propia linea, que es donde se entiende a que serie
                    pertenece la cifra. */
                 const desplazamientos: number[] = [];
-                for (let d = -72; d <= 72; d += 4) desplazamientos.push(d);
+                // Con la grafica mas alta ya no hace falta mandar la
+                // capsula lejos: con +-48 sobra, y asi nunca se despega
+                // tanto de su linea que uno dude de a cual pertenece.
+                for (let d = -48; d <= 48; d += 4) desplazamientos.push(d);
+                /* Tambien hay que esquivar los PUNTOS, no solo las capsulas.
+                   En septiembre la capsula de Corriente quedo bien separada
+                   de las otras tres capsulas y aun asi se veia tapada: lo
+                   que le caia encima era el circulo verde de Cartera Real,
+                   que no estaba en la cuenta. Un punto pide menos espacio
+                   que una capsula, por eso va con su propia medida. */
+                const puntos = [yTot, yReal, yVenc];
                 const candidatas = desplazamientos.map((d) => {
                   const y = Math.max(12, Math.min(baseLineY - 10, yCorr + d));
-                  const holgura = Math.min(...ocupadas.map((o) => Math.abs(y - o)));
-                  // La holgura se tapa en 22: pasado eso ya no estorba a
-                  // nadie y lo que importa es quedar cerca de su linea.
-                  return { y, puntaje: Math.min(holgura, 22) - Math.abs(d) / 10 };
+                  const holgCapsulas = Math.min(...ocupadas.map((o) => Math.abs(y - o)));
+                  const holgPuntos = Math.min(...puntos.map((o) => Math.abs(y - o)));
+                  // Las holguras se tapan: pasado cierto punto ya no
+                  // estorban a nadie y lo que importa es quedar cerca de
+                  // su propia linea, que es lo que explica la cifra.
+                  return {
+                    y,
+                    puntaje:
+                      Math.min(holgCapsulas, 22) +
+                      Math.min(holgPuntos, 14) -
+                      Math.abs(d) / 10,
+                  };
                 });
                 const yPillCorrBruto = candidatas.reduce((a, b) =>
                   b.puntaje > a.puntaje ? b : a,
