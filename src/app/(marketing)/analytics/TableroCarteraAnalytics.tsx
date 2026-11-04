@@ -2320,6 +2320,40 @@ export default function TableroCarteraAnalytics() {
                 const yPillTotCenter = yTot - 19;
                 const yPillRealCenter = Math.min(baseLineY - 12, yReal + 19);
 
+                /* Capsulas de Corriente y Vencida.
+                   Mas chicas y con borde de su color, para que se lean como
+                   el desglose y no compitan con Total y Real.
+
+                   Vencida va siempre ABAJO: su linea corre muy por debajo
+                   y ahi hay espacio libre todo el anio.
+
+                   Corriente cruza a Real varias veces (en enero esta por
+                   debajo, en octubre por encima), asi que no sirve un lado
+                   fijo: se escoge el lado donde NO choque, y si ninguno
+                   esta libre se corre un poco mas. Sin esto, en los meses
+                   del cruce quedarian dos cifras una encima de otra. */
+                const yCorr = coordsCorriente[i].y;
+                const yVenc = coordsVencida[i].y;
+                const txtCorr = formatMillones(pt.carteraCorriente);
+                const txtVenc = formatMillones(pt.carteraVencida);
+                const wPillCorr = Math.max(40, txtCorr.length * 5.8 + 12);
+                const wPillVenc = Math.max(40, txtVenc.length * 5.8 + 12);
+
+                const chocaCon = (y: number) =>
+                  Math.abs(y - yPillTotCenter) < 17 || Math.abs(y - yPillRealCenter) < 17;
+                const arriba = yCorr - 16;
+                const abajo = yCorr + 16;
+                const yPillCorrBruto = !chocaCon(arriba)
+                  ? arriba
+                  : !chocaCon(abajo)
+                    ? abajo
+                    : arriba - 17;
+                // Que nunca se salga del dibujo por arriba ni se meta en el
+                // eje por abajo: una capsula cortada se ve peor que movida.
+                const yPillCorr = Math.max(12, Math.min(baseLineY - 10, yPillCorrBruto));
+
+                const yPillVenc = Math.min(baseLineY - 10, yVenc + 16);
+
                 return (
                   <g
                     key={pt.id}
@@ -2338,6 +2372,58 @@ export default function TableroCarteraAnalytics() {
                           strokeWidth="1"
                           strokeDasharray="2 2"
                         />
+
+                        {/* Cápsulas del desglose: Corriente y Vencida.
+                            Van primero para que queden POR DEBAJO de las de
+                            Total y Real: si dos se tocan, la que debe
+                            quedar legible es la principal. */}
+                        {hayDesglose && (
+                          <>
+                            <rect
+                              x={x - wPillCorr / 2}
+                              y={yPillCorr - 8}
+                              width={wPillCorr}
+                              height={16}
+                              rx={8}
+                              fill="#FFFFFF"
+                              stroke="#BAE6FD"
+                              strokeWidth="1"
+                              opacity="0.97"
+                            />
+                            <text
+                              x={x}
+                              y={yPillCorr + 3}
+                              textAnchor="middle"
+                              fontSize="8.6"
+                              fontWeight="700"
+                              fill="#0369A1"
+                            >
+                              {txtCorr}
+                            </text>
+
+                            <rect
+                              x={x - wPillVenc / 2}
+                              y={yPillVenc - 8}
+                              width={wPillVenc}
+                              height={16}
+                              rx={8}
+                              fill="#FFFFFF"
+                              stroke="#FECACA"
+                              strokeWidth="1"
+                              opacity="0.97"
+                            />
+                            <text
+                              x={x}
+                              y={yPillVenc + 3}
+                              textAnchor="middle"
+                              fontSize="8.6"
+                              fontWeight="700"
+                              fill="#B91C1C"
+                            >
+                              {txtVenc}
+                            </text>
+                          </>
+                        )}
 
                         {/* Nodo y cápsula superior: Cartera Total */}
                         <circle
