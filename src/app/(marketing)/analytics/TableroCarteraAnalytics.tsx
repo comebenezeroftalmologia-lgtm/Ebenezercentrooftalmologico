@@ -271,6 +271,51 @@ export default function TableroCarteraAnalytics() {
   const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(carteraInitialData.sismaBack.cortes.TODAS.length - 1);
   const [modoTendenciaCartera, setModoTendenciaCartera] = useState<"MES" | "CORTES">("MES");
 
+  /* Cierres mensuales de cartera: como cerro cada mes, traido de la tabla
+     cartera_cierres_mensuales. Se guardan porque pedirselos a SISMA tarda
+     entre 10 y 15 segundos por mes: once meses serian dos minutos de
+     espera en cada visita. */
+  type CierreMes = {
+    anio: number; mes: number; etiqueta: string; fechaCorte: string;
+    carteraCorriente: number; carteraVencida: number; carteraTotal: number;
+    girosPorCruzar: number; carteraReal: number;
+    filasFacturas: number; esMesEnCurso: boolean; calculadoAt: string;
+  };
+  const [cierresTodos, setCierresTodos] = useState<CierreMes[]>([]);
+  const [aniosCierres, setAniosCierres] = useState<number[]>([]);
+  const [anioTendencia, setAnioTendencia] = useState<number>(
+    new Date(Date.now() - 5 * 3600 * 1000).getUTCFullYear(),
+  );
+  const [estadoCierres, setEstadoCierres] = useState<
+    "cargando" | "listo" | "sin-tabla" | "error"
+  >("cargando");
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/cartera/cierres", { cache: "no-store" });
+        const j = await r.json();
+        if (!vivo) return;
+        if (!r.ok || !j.ok) {
+          setEstadoCierres(j?.sinTabla ? "sin-tabla" : "error");
+          return;
+        }
+        setCierresTodos(j.cierres ?? []);
+        setAniosCierres(j.anios ?? []);
+        setEstadoCierres("listo");
+      } catch {
+        if (vivo) setEstadoCierres("error");
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  const cierresMensuales = useMemo(
+    () => cierresTodos.filter((c) => c.anio === anioTendencia).sort((a, b) => a.mes - b.mes),
+    [cierresTodos, anioTendencia],
+  );
+
   // Persiana states for the main cards/boxes
   const [persianaResumenAbierta, setPersianaResumenAbierta] = useState<boolean>(true);
   const [persianaCortesAbierta, setPersianaCortesAbierta] = useState<boolean>(false);
@@ -1837,75 +1882,42 @@ export default function TableroCarteraAnalytics() {
               : pt
           );
 
-    // Serie mensual dinámica para el modo "Por Mes" (toma serieMensualViva de SISMA para todos los años y meses filtrados)
-    const serieMensualViva = datosSismaVivo?.serieMensual;
-    const mesesLabelsFallback = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct"];
+    /* -----------------------------------------------------------------
+       LA TENDENCIA MENSUAL SALE DE LOS CIERRES GUARDADOS.
 
-    const puntosMeses =
-      serieMensualViva && serieMensualViva.length > 0
-        ? serieMensualViva.map((sm, idx) => {
-            const totalLen = serieMensualViva.length;
-            const mostrar =
-              totalLen <= 6 ||
-              idx === 0 ||
-              idx === Math.floor(totalLen * 0.3) ||
-              idx === Math.floor(totalLen * 0.55) ||
-              idx === Math.floor(totalLen * 0.78) ||
-              idx === totalLen - 1;
-            return {
-              id: `mes-${sm.mes}`,
-              idxCorte: idx >= totalLen - 2 ? puntosCortes.length - 1 : 0,
-              etiquetaEje: sm.etiqueta,
-              carteraTotal: sm.carteraTotal,
-              totalCarteraReal: sm.totalCarteraReal,
-              mostrarLabel: mostrar,
-            };
-          })
-        : mesesLabelsFallback.map((mLabel, idx) => {
-            const c0 = puntosCortes[0] || { carteraTotal: 0, totalCarteraReal: 0 };
-            const c1 = puntosCortes[Math.min(1, puntosCortes.length - 1)] || c0;
-            const c2 = puntosCortes[Math.min(2, puntosCortes.length - 1)] || c1;
-            const c3 = puntosCortes[Math.min(3, puntosCortes.length - 1)] || c2;
-            const cFin = puntosTablaCortes[puntosTablaCortes.length - 1] || c3;
+       Aqui habia dos fuentes, y ninguna era un cierre de mes:
 
-            const mapaPorIndice: { tot: number; real: number; idxRef: number }[] = [
-              { tot: c0.carteraTotal, real: c0.totalCarteraReal, idxRef: 0 },
-              {
-                tot: Math.round((c0.carteraTotal + c1.carteraTotal) / 2),
-                real: Math.round((c0.totalCarteraReal + c1.totalCarteraReal) / 2),
-                idxRef: 0,
-              },
-              {
-                tot: Math.round(c0.carteraTotal * 0.3 + c1.carteraTotal * 0.7),
-                real: Math.round(c0.totalCarteraReal * 0.3 + c1.totalCarteraReal * 0.7),
-                idxRef: 1,
-              },
-              { tot: c1.carteraTotal, real: c1.totalCarteraReal, idxRef: 1 },
-              {
-                tot: Math.round((c1.carteraTotal + c2.carteraTotal) / 2),
-                real: Math.round((c1.totalCarteraReal + c2.totalCarteraReal) / 2),
-                idxRef: 1,
-              },
-              { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 },
-              {
-                tot: Math.round((c2.carteraTotal + c3.carteraTotal) / 2),
-                real: Math.round((c2.totalCarteraReal + c3.totalCarteraReal) / 2),
-                idxRef: 2,
-              },
-              { tot: c3.carteraTotal, real: c3.totalCarteraReal, idxRef: 3 },
-              { tot: c2.carteraTotal, real: c2.totalCarteraReal, idxRef: 2 },
-              { tot: cFin.carteraTotal, real: cFin.totalCarteraReal, idxRef: puntosCortes.length - 1 },
-            ];
-            const item = mapaPorIndice[idx];
-            return {
-              id: `mes-${mLabel}`,
-              idxCorte: item.idxRef,
-              etiquetaEje: mLabel,
-              carteraTotal: item.tot,
-              totalCarteraReal: item.real,
-              mostrarLabel: idx === 0 || idx === 3 || idx === 5 || idx === 7 || idx === 9,
-            };
-          });
+       1. serieMensual de SISMA, que es el ACUMULADO POR MES DE FACTURA:
+          de lo que se debe hoy, cuanto viene de facturas hasta cada mes.
+          Por eso solo podia subir. Enero marcaba 52 millones, que no fue
+          la cartera de enero sino lo que todavia se debe de facturas de
+          enero, diez meses despues.
+
+       2. Un respaldo que FABRICABA los diez meses interpolando cuatro
+          cortes: "Febrero = promedio del corte del 9 y el del 23 de
+          septiembre", "Marzo = mezcla 30/70 de esos mismos dos". Se
+          dibujaba mientras SISMA respondia, con el mismo aspecto que lo
+          real y sin un solo aviso. Es lo que gerencia alcanzo a ver.
+
+       Ahora se leen los cierres guardados (tabla cartera_cierres_mensuales),
+       que si son lo que pidio Faber: como cerro la cartera cada mes,
+       Corriente + Vencida = Total, menos Giros = Real.
+
+       Y si no hay cierres, NO SE DIBUJA NADA. La tarjeta lo dice. Un
+       hueco visible es mejor que una curva inventada.
+       ----------------------------------------------------------------- */
+    const puntosMeses = cierresMensuales.map((c, idx) => ({
+      id: `cierre-${c.anio}-${c.mes}`,
+      idxCorte: 0,
+      etiquetaEje: c.etiqueta,
+      carteraTotal: c.carteraTotal,
+      totalCarteraReal: c.carteraReal,
+      mostrarLabel:
+        cierresMensuales.length <= 7 ||
+        idx === 0 ||
+        idx === cierresMensuales.length - 1 ||
+        idx % 2 === 0,
+    }));
 
     const puntosGrafica =
       modoTendenciaCartera === "MES"
@@ -2059,7 +2071,12 @@ export default function TableroCarteraAnalytics() {
                   color: modoTendenciaCartera === "MES" ? "#FFFFFF" : "#0F172A",
                 }}
               >
-                Por Mes (Ene-Oct)
+                {/* El rango sale de los cierres que de verdad hay, no de
+                    un texto fijo. Decia "Ene-Oct" aunque la gráfica
+                    mostrara otra cosa. */}
+                {cierresMensuales.length > 0
+                  ? `Por Mes (${cierresMensuales[0].etiqueta}-${cierresMensuales[cierresMensuales.length - 1].etiqueta} ${anioTendencia})`
+                  : `Por Mes (${anioTendencia})`}
               </button>
               <span className="mx-1.5 font-bold" style={{ color: "#1D58D8" }}>
                 |
@@ -2077,12 +2094,62 @@ export default function TableroCarteraAnalytics() {
                 Por Cortes ({puntosTablaCortes.length} fechas)
               </button>
             </div>
+
+            {/* Selector de ano: solo aparece si hay cierres de mas de un
+                ano guardados. No se ofrece un ano que no tenga datos. */}
+            {modoTendenciaCartera === "MES" && aniosCierres.length > 1 ? (
+              <div
+                className="ml-2 inline-flex items-center gap-1 rounded-full border px-1 py-0.5 text-[11px]"
+                style={{ borderColor: "#DCE5F2", backgroundColor: "#FFFFFF" }}
+              >
+                {aniosCierres.map((a) => (
+                  <button
+                    key={`anio-tend-${a}`}
+                    type="button"
+                    onClick={() => setAnioTendencia(a)}
+                    className="cursor-pointer rounded-full px-2 py-0.5 font-bold transition"
+                    style={{
+                      backgroundColor: anioTendencia === a ? "#1D58D8" : "transparent",
+                      color: anioTendencia === a ? "#FFFFFF" : "#0F172A",
+                    }}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
         {/* CUERPO: GRÁFICA LIMPIA A LA IZQUIERDA + TABLA DE FECHAS DE CORTE A LA DERECHA */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-center">
           <div className="xl:col-span-8">
+            {modoTendenciaCartera === "MES" && puntosGrafica.length === 0 ? (
+              /* Sin cierres guardados NO se dibuja nada. Antes, en este
+                 hueco, se fabricaba una curva interpolando cuatro cortes.
+                 Un espacio vacio que explica por que esta vacio es mejor
+                 que una linea que nadie sabe que es inventada. */
+              <div className="flex h-[240px] flex-col items-center justify-center rounded-[10px] border border-dashed border-[#DCE5F2] bg-[#FAFBFD] px-6 text-center">
+                <p className="text-[13px] font-semibold text-[#0E245E]">
+                  {estadoCierres === "cargando"
+                    ? "Trayendo los cierres mensuales…"
+                    : estadoCierres === "sin-tabla"
+                      ? "Todavía no está creada la tabla de cierres mensuales"
+                      : estadoCierres === "error"
+                        ? "No se pudieron traer los cierres mensuales"
+                        : `No hay cierres mensuales guardados de ${anioTendencia}`}
+                </p>
+                {estadoCierres !== "cargando" ? (
+                  <p className="mt-1.5 max-w-[420px] text-[11.5px] leading-relaxed text-[#5B6B8C]">
+                    Cada punto de esta tendencia es el cierre real de un mes
+                    (Corriente + Vencida = Total, menos Giros = Real), pedido a
+                    SISMA una vez y guardado. Mientras no existan, aquí no se
+                    dibuja nada: antes se mostraba una curva estimada y no había
+                    forma de distinguirla de la real.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
             <svg
               viewBox={`0 0 ${svgW} ${svgH}`}
               className="w-full h-auto select-none overflow-visible"
@@ -2259,6 +2326,7 @@ export default function TableroCarteraAnalytics() {
                 );
               })}
             </svg>
+            )}
           </div>
 
           {/* PANEL DERECHO: TABLA ESTRUCTURADA "FECHAS DE CORTE (EXCEL / SISMA)" */}
