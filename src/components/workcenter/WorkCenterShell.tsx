@@ -22,6 +22,12 @@ const ARCHIVOS_TRABAJO = [
     subtitulo: "Archivo de trabajo · Clave propia",
     href: "/workcenter/liquidador",
   },
+  {
+    id: "cartera",
+    nombre: "Cartera — Mesa de trabajo",
+    subtitulo: "Glosas, devoluciones y anulaciones",
+    href: "/workcenter/cartera",
+  },
 ];
 
 export function WorkCenterShell({

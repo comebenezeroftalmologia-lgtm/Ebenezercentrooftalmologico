@@ -19,7 +19,11 @@ export type Modulo =
   // otro tablero ni entrar con los de "Analytics" en bloque: se asigna
   // persona por persona en /usuarios, como cualquier otro modulo, pero sin
   // que nadie lo herede por error.
-  | "talento_humano";
+  | "talento_humano"
+  // Cartera va aparte por la misma razon que Talento Humano: aqui se registra
+  // la plata glosada y devuelta. La vista de Analytics entraba con el permiso
+  // de "frecuencias"; esta superficie de trabajo se asigna persona por persona.
+  | "cartera";
 
 export type GrupoModulo = "Analytics" | "Procesos";
 
@@ -33,6 +37,7 @@ export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoM
   { slug: "frecuencias", label: "Cartera y Radicación", href: "/cartera", grupo: "Analytics" },
   { slug: "venta_del_dia", label: 'Digiturno y Contact', href: '/digiturno-contact', grupo: "Analytics" },
   { slug: "talento_humano", label: "Talento Humano", href: "/talento-humano", grupo: "Analytics" },
+  { slug: "cartera", label: "Cartera — Mesa de trabajo", href: "/workcenter/cartera", grupo: "Procesos" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
   { slug: "proyectos", label: "Tareas", href: "/proyectos", grupo: "Procesos" },
 ];
