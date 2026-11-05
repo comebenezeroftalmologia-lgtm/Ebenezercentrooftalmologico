@@ -88,7 +88,7 @@ export async function validarAfiliado(documentoCrudo: unknown, canal?: string, n
 
   // Verificación de identidad por nombre (solo voz / bot).
   let verificacion: "coincide" | "parcial" | "no_coincide" | "no_solicitada" = "no_solicitada";
-  if (exigeNombre) {
+  if (exigeNombre || nombre) {
     if (!nombre) {
       return {
         status: 200,
