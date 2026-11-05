@@ -1,4 +1,5 @@
 import { agendarCita, consultarCupos, validarAfiliado } from "@/lib/bot/acciones";
+import { sismaNodeJson } from "@/lib/bot/sisma-citas";
 import type { Herramienta } from "./tipos";
 
 // Herramientas del bot de citas (MutualSer subsidiado + SISMA). Misma lógica que los endpoints /api/bot/**.
@@ -74,6 +75,58 @@ export const herramientasBot: Herramienta[] = [
         observacion: typeof a.observacion === "string" ? a.observacion : undefined,
         canal: "mcp",
       });
+    },
+  },
+  {
+    name: "consultar_catalogo_sisma",
+    description:
+      "Solo lectura: consulta catálogos de SISMA (tipos de documento, zonas, tipos de sangre, orientaciones, países, departamentos, municipios, barrios, contratos) y los permisos de la llave del bot (claves/mi-acceso). Sirve para conocer los códigos válidos al crear pacientes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        recurso: {
+          type: "string",
+          enum: ["mi-acceso", "tipos-documento", "zonas", "tipos-sangre", "orientaciones-sexuales", "paises", "departamentos", "municipios", "barrios", "contratos"],
+          description: "Catálogo a consultar.",
+        },
+        departamento: { type: "string", description: "Opcional (municipios, barrios): código de departamento." },
+        municipio: { type: "string", description: "Opcional (barrios): código de municipio." },
+        nombre: { type: "string", description: "Opcional (municipios, barrios, contratos): texto a buscar en el nombre." },
+        limite: { type: "integer", description: "Opcional: máximo de filas (por defecto 60)." },
+      },
+      required: ["recurso"],
+      additionalProperties: false,
+    },
+    annotations: { title: "Consultar catálogo SISMA", readOnlyHint: true, openWorldHint: true },
+    run: async (a) => {
+      const rutas: Record<string, string> = {
+        "mi-acceso": "/api/claves/mi-acceso",
+        "tipos-documento": "/api/catalogos/tipos-documento",
+        zonas: "/api/catalogos/zonas",
+        "tipos-sangre": "/api/catalogos/tipos-sangre",
+        "orientaciones-sexuales": "/api/catalogos/orientaciones-sexuales",
+        paises: "/api/catalogos/paises",
+        departamentos: "/api/catalogos/departamentos",
+        municipios: "/api/catalogos/municipios",
+        barrios: "/api/catalogos/barrios",
+        contratos: "/api/contratos",
+      };
+      const base = rutas[String(a.recurso ?? "")];
+      if (!base) return { status: 400, body: { error: "recurso no permitido" } };
+      const q = new URLSearchParams();
+      for (const k of ["departamento", "municipio", "nombre"] as const) {
+        const v = typeof a[k] === "string" ? (a[k] as string).trim() : "";
+        if (v) q.set(k, v);
+      }
+      if (a.recurso === "barrios") q.set("limite", String(Math.min(Number(a.limite) || 60, 200)));
+      try {
+        const r = await sismaNodeJson<unknown>(`${base}${q.toString() ? `?${q}` : ""}`);
+        const filas = Array.isArray(r.data) ? r.data : null;
+        const limite = Math.min(Number(a.limite) || 60, 200);
+        return { status: 200, body: { status: r.status, total: filas?.length ?? null, datos: filas ? filas.slice(0, limite) : r.data } };
+      } catch (e) {
+        return { status: 502, body: { error: e instanceof Error && e.message === "SIN_LLAVE" ? "SISMA_NODE_API_KEY no configurada" : "Error con SISMA" } };
+      }
     },
   },
 ];
