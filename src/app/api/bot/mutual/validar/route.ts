@@ -13,12 +13,12 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   if (!llaveBotValida(req)) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  let cuerpo: { documento?: string; canal?: string } = {};
+  let cuerpo: { documento?: string; canal?: string; nombre?: string } = {};
   try {
     cuerpo = await req.json();
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
-  const r = await validarAfiliado(cuerpo.documento, cuerpo.canal);
+  const r = await validarAfiliado(cuerpo.documento, cuerpo.canal, cuerpo.nombre);
   return NextResponse.json(r.body, { status: r.status });
 }

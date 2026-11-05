@@ -9,12 +9,15 @@ export const herramientasBot: Herramienta[] = [
       "Valida si una persona es afiliada activa de MutualSer subsidiado, por número de documento. Devuelve afiliado, activo, nombre de pila, régimen, municipio de afiliación, en_cobertura y accion_sugerida (continuar, no_aplica o derivar_humano). Consulta la base sincronizada desde el Google Sheet.",
     inputSchema: {
       type: "object",
-      properties: { documento: { type: "string", description: "Número de documento, solo dígitos, sin puntos." } },
+      properties: {
+        documento: { type: "string", description: "Número de documento, solo dígitos, sin puntos." },
+        nombre: { type: "string", description: "Opcional: nombre completo dicho por la persona; si se envía se verifica contra nombres y apellidos registrados." },
+      },
       required: ["documento"],
       additionalProperties: false,
     },
     annotations: { title: "Validar afiliado MutualSer", readOnlyHint: true, openWorldHint: false },
-    run: (a) => validarAfiliado(a.documento, "mcp"),
+    run: (a) => validarAfiliado(a.documento, "mcp", a.nombre),
   },
   {
     name: "consultar_cupos",

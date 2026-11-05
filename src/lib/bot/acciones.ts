@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { MUNICIPIOS_ATENDIDOS, normalizarDocumento } from "@/lib/mutualser/afiliados";
 import { FECHA_RE, HORA_RE, sismaNodeJson } from "./sisma-citas";
+import { verificarNombre } from "./nombres";
 
 // Lógica del bot de citas compartida por los endpoints /api/bot/** (Dapta) y por el
 // servidor MCP (/api/mcp). Cada acción devuelve { status, body } para que quien la
@@ -25,17 +26,43 @@ function nombrePila(s: string | null): string {
   return p ? p.charAt(0).toUpperCase() + p.slice(1) : "";
 }
 
-/** Valida si un paciente está activo en la base de afiliados de MutualSer (lo mínimo necesario). */
-export async function validarAfiliado(documentoCrudo: unknown, canal?: string): Promise<Resultado> {
+/** Dapta manda la palabra "undefined" (o "null") cuando una variable no existe. */
+function textoLimpio(v: unknown): string {
+  const t = typeof v === "string" ? v.trim() : "";
+  return /^(undefined|null)$/i.test(t) ? "" : t;
+}
+
+/** ¿El documento ya existe como paciente en SISMA? null = no se pudo saber (SISMA no respondió). */
+async function pacienteEnSisma(documento: string): Promise<boolean | null> {
+  try {
+    const r = await sismaNodeJson<unknown>(`/api/pacientes?${new URLSearchParams({ numId: documento })}`);
+    if (r.status !== 200) return null;
+    return Array.isArray(r.data) && r.data.length > 0;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Valida si un paciente está activo en la base de afiliados de MutualSer (lo mínimo necesario).
+ * Por voz (cualquier canal distinto de "mcp") exige además el nombre completo dicho por la persona:
+ * debe coincidir al menos un nombre y todos los apellidos registrados. Mientras la identidad no
+ * esté verificada NO se devuelve ningún dato del afiliado (ni siquiera el nombre registrado).
+ */
+export async function validarAfiliado(documentoCrudo: unknown, canal?: string, nombreHablado?: unknown): Promise<Resultado> {
   const documento = normalizarDocumento(documentoCrudo);
   if (documento.length < 4 || documento.length > 20) {
     return { status: 400, body: { error: "Documento inválido", afiliado: false } };
   }
+  const nombre = textoLimpio(nombreHablado);
+  const exigeNombre = (canal ?? "bot") !== "mcp";
 
   const admin = createServiceClient();
   const { data, error } = await admin
     .from("mutualser_afiliados")
-    .select("primer_nombre, fecha_nacimiento, regimen, estado, municipio_afiliacion, tipo_doc, fecha_corte")
+    .select(
+      "primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, fecha_nacimiento, regimen, estado, municipio_afiliacion, tipo_doc, fecha_corte",
+    )
     .eq("doc_beneficiario", documento)
     .maybeSingle();
   if (error) return { status: 500, body: { error: error.message } };
@@ -59,19 +86,55 @@ export async function validarAfiliado(documentoCrudo: unknown, canal?: string): 
     };
   }
 
+  // Verificación de identidad por nombre (solo voz / bot).
+  let verificacion: "coincide" | "parcial" | "no_coincide" | "no_solicitada" = "no_solicitada";
+  if (exigeNombre) {
+    if (!nombre) {
+      return {
+        status: 200,
+        body: { afiliado: true, identidad_verificada: false, verificacion_nombre: "falta_nombre", accion_sugerida: "pedir_nombre_completo" },
+      };
+    }
+    verificacion = verificarNombre(nombre, data);
+    if (verificacion !== "coincide") {
+      return {
+        status: 200,
+        body: {
+          afiliado: true,
+          identidad_verificada: false,
+          verificacion_nombre: verificacion,
+          accion_sugerida: "repetir_nombre_completo",
+          mensaje: "El nombre y los apellidos dichos no coinciden con el registro. No reveles el nombre registrado.",
+        },
+      };
+    }
+  }
+
   const enCobertura = !!data.municipio_afiliacion && MUNICIPIOS_ATENDIDOS.has(data.municipio_afiliacion);
+  // Solo vale la pena preguntarle a SISMA si la persona va a poder agendar.
+  const enSisma = activo && enCobertura ? await pacienteEnSisma(documento) : null;
+  const accion = !activo
+    ? "derivar_humano"
+    : !enCobertura
+      ? "no_aplica"
+      : enSisma === false
+        ? "registro_pendiente"
+        : "continuar";
   return {
     status: 200,
     body: {
       afiliado: true,
       activo,
+      identidad_verificada: true,
+      verificacion_nombre: verificacion,
       nombre: nombrePila(data.primer_nombre),
       regimen: data.regimen,
       tipo_documento: data.tipo_doc,
       edad: edadDesde(data.fecha_nacimiento),
       municipio_afiliacion: data.municipio_afiliacion,
       en_cobertura: enCobertura,
-      accion_sugerida: !activo ? "derivar_humano" : enCobertura ? "continuar" : "no_aplica",
+      paciente_en_sisma: enSisma,
+      accion_sugerida: accion,
       corte_base: data.fecha_corte,
     },
   };
