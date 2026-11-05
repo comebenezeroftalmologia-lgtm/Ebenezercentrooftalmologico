@@ -15877,15 +15877,22 @@ try{
   }
 
   function huerfanos(){
+    // agrupa TODO el turno-quirofano, y separa los que no tienen anestesiologo en ningun
+    // paciente (bloque completo sin asignar) de los que solo tienen pacientes sueltos sin el campo
     var A=window.ACTOS||[], B={};
     A.forEach(function(a){
-      if(String(a.anest||"").trim()) return;
       var k=String(a.fecha)+"|"+trn(a.hora)+"|"+(a.quir||"?");
-      var o=B[k]=B[k]||{f:a.fecha, fr:trn(a.hora), q:(a.quir||"?"), cir:{}, acts:[]};
+      var o=B[k]=B[k]||{f:a.fecha, fr:trn(a.hora), q:(a.quir||"?"), cir:{}, anest:{}, acts:[], sin:[]};
       if(a.cirujano) o.cir[a.cirujano]=1;
+      var an=String(a.anest||"").trim();
+      if(an) o.anest[an]=1; else o.sin.push(a);
       o.acts.push(a);
     });
-    return Object.keys(B).sort().map(function(k){ return B[k]; });
+    var todos=Object.keys(B).sort().map(function(k){ return B[k]; }).filter(function(o){ return o.sin.length; });
+    return {
+      completos: todos.filter(function(o){ return !Object.keys(o.anest).length; }),
+      parciales: todos.filter(function(o){ return Object.keys(o.anest).length; })
+    };
   }
 
   function esAnest(med){ return filasAn(med).length>0; }
@@ -15978,18 +15985,28 @@ try{
 
     // bloques sin anestesiologo
     var HU=huerfanos();
-    var HUr=HU.filter(function(b){ return !/REFRACTIVA/i.test(b.q); });
-    if(HU.length){
-      cuerpo.push("<div class=\"ansec\">Bloques de quirofano SIN anestesiologo registrado en la Estadistica &middot; "+HU.length+" bloques</div>");
-      cuerpo.push("<div class=\"anwarn\"><b>Ojo:</b> estos turnos tienen pacientes operados y el campo anestesiologo esta en blanco, asi que el liquidador no los puede asignar a nadie. "
-        + HUr.length + " de ellos son de quirofano (no refractiva). Hay que corregirlos en la Estadistica de cirugia para que se liquiden.</div>");
-      HU.forEach(function(b){
-        cuerpo.push("<div class=\"anj\"><div class=\"anjh\">"+esc(b.f)+" <span class=\"antipo\">"+esc(dsem(b.f))+" "+esc(b.fr)+"</span> &middot; "+esc(b.q)
-          +" &middot; "+b.acts.length+" paciente(s) <span class=\"antipo\">"+esc(Object.keys(b.cir).join(", ").slice(0,70))+"</span>"
-          +"<span class=\"anv\" style=\"color:#8a5a00\">sin asignar</span></div>");
-        b.acts.slice().sort(function(a,b2){ return String(a.hora||"").localeCompare(String(b2.hora||"")); })
-          .forEach(function(a){ cuerpo.push(fila(a.hora, pacNom(a.pac), a.ced||pacCed(a.pac), a.quir, a.cirujano, a.proc, "SIN ANESTESIOLOGO")); });
-      });
+    var HC=HU.completos, HP=HU.parciales;
+    var HCq=HC.filter(function(b){ return !/REFRACTIVA/i.test(b.q); });
+    function pintaBloque(b, modo){
+      var nSin=b.sin.length, nTot=b.acts.length;
+      cuerpo.push("<div class=\"anj\"><div class=\"anjh\">"+esc(b.f)+" <span class=\"antipo\">"+esc(dsem(b.f))+" "+esc(b.fr)+"</span> &middot; "+esc(b.q)
+        +" &middot; "+(modo==="completo" ? (nTot+" paciente(s), ninguno con anestesiologo") : (nSin+" de "+nTot+" paciente(s) sin el campo"))
+        +" <span class=\"antipo\">"+esc(Object.keys(b.cir).join(", ").slice(0,60))
+        +(modo==="parcial" ? " &middot; el turno lo cubre "+esc(Object.keys(b.anest).join(", ").slice(0,40)) : "")+"</span>"
+        +"<span class=\"anv\" style=\"color:#8a5a00\">"+(modo==="completo"?"sin asignar":"campo en blanco")+"</span></div>");
+      b.sin.slice().sort(function(a,b2){ return String(a.hora||"").localeCompare(String(b2.hora||"")); })
+        .forEach(function(a){ cuerpo.push(fila(a.hora, pacNom(a.pac), a.ced||pacCed(a.pac), a.quir, a.cirujano, a.proc, "SIN ANESTESIOLOGO")); });
+    }
+    if(HC.length){
+      cuerpo.push("<div class=\"ansec\">Turnos de quirofano SIN ningun anestesiologo registrado &middot; "+HC.length+" turnos</div>");
+      cuerpo.push("<div class=\"anwarn\"><b>Ojo:</b> en estos turnos se operaron pacientes y ningun registro trae anestesiologo, asi que el liquidador no los puede asignar a nadie. "
+        + HCq.length + " son de quirofano (los de REFRACTIVA normalmente van sin anestesia). Hay que corregirlos en la Estadistica de cirugia para que se liquiden.</div>");
+      HC.forEach(function(b){ pintaBloque(b, "completo"); });
+    }
+    if(HP.length){
+      cuerpo.push("<div class=\"ansec\">Pacientes sueltos sin el campo anestesiologo &middot; "+HP.length+" turnos</div>");
+      cuerpo.push("<div class=\"anwarn\">Estos turnos si tienen anestesiologo, pero algunos pacientes quedaron con el campo vacio. No cambian la jornada; solo falta completar el dato.</div>");
+      HP.forEach(function(b){ pintaBloque(b, "parcial"); });
     }
 
     h.push("<div class=\"anpanel\" data-med=\""+esc(med)+"\"><div class=\"anbar\">");
@@ -16062,19 +16079,21 @@ try{
     h2 = h2r.concat([[]], h2);
 
     var HU=huerfanos();
-    var h3=[[{v:"Bloques de quirofano sin anestesiologo registrado", s:1}],[]];
-    h3.push([H("Fecha"),H("Dia"),H("Turno"),H("Quirofano"),H("Cirujano(s)"),H("Pacientes"),H("Hora"),H("Paciente"),H("Cedula"),H("Procedimiento")]);
-    HU.forEach(function(b){
-      b.acts.forEach(function(a,i){
-        h3.push([S(b.f),S(dsem(b.f)),S(b.fr),S(b.q),S(i?"":Object.keys(b.cir).join(", ")),(i?S(""):N(b.acts.length)),
-          S(a.hora||""),S(pacNom(a.pac)),S(a.ced||pacCed(a.pac)),S(a.proc||"")]);
+    var h3=[[{v:"Pacientes operados sin anestesiologo registrado", s:1}],[]];
+    h3.push([H("Caso"),H("Fecha"),H("Dia"),H("Turno"),H("Quirofano"),H("Cirujano(s)"),H("Anestesiologo del turno"),H("Hora"),H("Paciente"),H("Cedula"),H("Procedimiento")]);
+    [["Turno sin ningun anestesiologo",HU.completos],["Paciente suelto sin el campo",HU.parciales]].forEach(function(par){
+      par[1].forEach(function(b){
+        b.sin.forEach(function(a){
+          h3.push([S(par[0]),S(b.f),S(dsem(b.f)),S(b.fr),S(b.q),S(Object.keys(b.cir).join(", ")),S(Object.keys(b.anest).join(", ")),
+            S(a.hora||""),S(pacNom(a.pac)),S(a.ced||pacCed(a.pac)),S(a.proc||"")]);
+        });
       });
     });
 
     var libro=xLibro([
       {nombre:"Jornadas y pacientes", xml:xHoja(h1,[12,7,7,13,30,14,8,32,13,26,42,22,34])},
       {nombre:"Consultas preanest", xml:xHoja(h2,[12,7,8,30,28,32,13,42,40])},
-      {nombre:"Sin anestesiologo", xml:xHoja(h3,[12,7,7,13,30,10,8,32,13,42])}
+      {nombre:"Sin anestesiologo", xml:xHoja(h3,[30,12,7,7,13,28,26,8,32,13,42])}
     ]);
     var a=document.createElement("a");
     a.href=URL.createObjectURL(libro);
