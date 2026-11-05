@@ -15826,28 +15826,32 @@ try{
    + ".anq{flex:1;min-width:190px;padding:6px 10px;border:1px solid #c9d6e8;border-radius:7px;font:inherit}"
    + ".anbtn{padding:5px 10px;border:1px solid #1e5ba8;background:#fff;color:#1e5ba8;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600}"
    + ".ancnt{font-size:12px;color:#55637a;font-weight:600;white-space:nowrap}"
-   + ".anlist{max-height:600px;overflow:auto;padding:4px 8px 10px}"
-   + ".anj{border-bottom:1px solid #e7eef8;padding:4px 0}"
-   + ".anjh{font-weight:600;font-size:12.5px;color:#1b2a44;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}"
-   + ".anjh .anv{margin-left:auto;font-variant-numeric:tabular-nums;color:#1a7f4b;font-weight:700}"
-   + ".anjh .antipo{font-weight:400;color:#6b7a93;font-size:11.5px}"
-   + ".anr{display:flex;gap:8px;padding:2px 0 2px 18px;font-size:12px;color:#36435c}"
-   + ".anr .ah{width:44px;color:#6b7a93}.anr .ap{flex:1.4;min-width:150px}"
-   + ".anr .acd{width:86px;color:#6b7a93;font-variant-numeric:tabular-nums}"
-   + ".anr .aq{width:88px;color:#6b7a93;font-size:11px}"
-   + ".anr .acir{width:150px;color:#6b7a93;font-size:11px}"
-   + ".anr .apr{flex:1.3;min-width:140px;font-size:11px}"
+   + ".anlist{max-height:620px;overflow:auto;padding:4px 8px 10px}"
+   + ".andia{border:1px solid #e2ebf7;border-radius:9px;background:#fff;margin:8px 0;padding:6px 8px}"
+   + ".andiah{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;border-bottom:1px solid #eef3fa;padding-bottom:5px;margin-bottom:4px}"
+   + ".andiah .fec{font-weight:800;color:#1e3a6b;font-size:14px;letter-spacing:.2px}"
+   + ".andiah .dsm{color:#6b7a93;font-size:11.5px;text-transform:uppercase}"
+   + ".andiah .res{color:#36435c;font-size:11.5px}"
+   + ".andiah .anv{margin-left:auto;font-variant-numeric:tabular-nums;color:#1a7f4b;font-weight:700}"
+   + ".ansubt{font-size:11.5px;font-weight:700;color:#44557a;margin:6px 0 2px 2px}"
+   + ".ansubt.ojo{color:#8a5a00}"
+   + ".anr{display:flex;gap:8px;padding:2px 0 2px 14px;font-size:12px;color:#36435c;border-bottom:1px solid #f4f7fc}"
+   + ".anr .ah{width:42px;color:#6b7a93}.anr .ap{flex:1.4;min-width:140px}"
+   + ".anr .acd{width:84px;color:#6b7a93;font-variant-numeric:tabular-nums}"
+   + ".anr .aq{width:86px;color:#6b7a93;font-size:11px}"
+   + ".anr .acir{width:140px;color:#6b7a93;font-size:11px}"
+   + ".anr .apr{flex:1.3;min-width:130px;font-size:11px}"
+   + ".anr.sinan{background:#fffaf0}"
    + ".anwarn{background:#fff6e6;border:1px solid #f0d9a8;border-radius:8px;margin:8px;padding:8px 10px;font-size:12px;color:#5a4000}"
-   + ".anwarn b{color:#8a5a00}"
-   + ".ansec{margin:12px 8px 4px;font-weight:700;color:#1e3a6b;font-size:12.5px;border-top:1px dashed #cfe0f3;padding-top:9px}"
-   + ".ansub{margin:0 8px 6px;font-size:11.5px;color:#6b7a93}";
+   + ".anwarn b{color:#8a5a00}";
   var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st);
 
   function nz(s){ return String(s==null?"":s).toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim(); }
   function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function mny(n){ return "$ "+(Math.round(Number(n)||0)).toLocaleString("es-CO"); }
   function trn(h){ return (h && String(h) >= "13:00") ? "pm" : "am"; }
-  function dsem(iso){ try{ var d=new Date(String(iso)+"T12:00:00"); return ["dom","lun","mar","mie","jue","vie","sab"][d.getDay()]||""; }catch(e){ return ""; } }
+  function fdmy(iso){ var s=String(iso||"").slice(0,10); var p=s.split("-"); return (p.length===3) ? (p[2]+"/"+p[1]+"/"+p[0]) : s; }
+  function dsem(iso){ try{ var d=new Date(String(iso).slice(0,10)+"T12:00:00"); return ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"][d.getDay()]||""; }catch(e){ return ""; } }
   function pacNom(s){ s=String(s==null?"":s); var i=s.indexOf(":"); return (i>0 && /CC|TI|CE|RC|PA|NU|MS/i.test(s.slice(0,i))) ? s.slice(i+1).trim() : s.trim(); }
   function pacCed(s){ s=String(s==null?"":s); var m=s.match(/(\d{5,})/); return m?m[1]:""; }
 
@@ -15859,26 +15863,17 @@ try{
     return L;
   }
 
-  function consultas(med){
+  function consultasDe(med){
     var toks=nz(med).split(" ").filter(function(x){ return x.length>2; });
-    if(!toks.length) return {};
-    var R=(window.RECORDS||[]).filter(function(r){
+    if(!toks.length) return [];
+    return (window.RECORDS||[]).filter(function(r){
       var m=nz(r.medico); if(!m) return false;
       for(var i=0;i<toks.length;i++){ if(m.indexOf(toks[i])<0) return false; }
       return /CONSULTA/.test(nz(r.detalle)+" "+nz(r.servicio));
     });
-    var dias={};
-    R.forEach(function(r){
-      var d=String(r.fecha||"").slice(0,10);
-      var o=dias[d]=dias[d]||{mut:[],pre:[]};
-      (/MUTUAL/.test(nz(r.empresa))?o.mut:o.pre).push(r);
-    });
-    return dias;
   }
 
   function huerfanos(){
-    // agrupa TODO el turno-quirofano, y separa los que no tienen anestesiologo en ningun
-    // paciente (bloque completo sin asignar) de los que solo tienen pacientes sueltos sin el campo
     var A=window.ACTOS||[], B={};
     A.forEach(function(a){
       var k=String(a.fecha)+"|"+trn(a.hora)+"|"+(a.quir||"?");
@@ -15888,131 +15883,125 @@ try{
       if(an) o.anest[an]=1; else o.sin.push(a);
       o.acts.push(a);
     });
-    var todos=Object.keys(B).sort().map(function(k){ return B[k]; }).filter(function(o){ return o.sin.length; });
-    return {
-      completos: todos.filter(function(o){ return !Object.keys(o.anest).length; }),
-      parciales: todos.filter(function(o){ return Object.keys(o.anest).length; })
-    };
+    return Object.keys(B).sort().map(function(k){ return B[k]; }).filter(function(o){ return o.sin.length; });
   }
 
-  function esAnest(med){ return filasAn(med).length>0; }
+  // ---- arma el mes sectorizado por fecha ----
+  function porFecha(med){
+    var D={}, sinFecha=[];
+    function dia(f){ f=String(f||"").slice(0,10); return D[f]=D[f]||{f:f, jor:[], val:0, qx:[], mut:[], pre:[], sinan:[]}; }
 
-  function fila(h,pac,ced,quir,cir,proc,txtExtra){
-    var txt=nz(pac+" "+ced+" "+proc+" "+cir+" "+(txtExtra||""));
-    return "<div class=\"anr\" data-txt=\""+esc(txt)+"\">"
+    filasAn(med).forEach(function(r){
+      var li=r.lista||[];
+      if(!li.length){ sinFecha.push(r); return; }
+      li.forEach(function(j){
+        var ac=j.actos||[];
+        if(j.f){
+          var o=dia(j.f);
+          o.jor.push({fr:j.fr||"", tipo:j.tipo||"", v:Number(j.v)||0, cir:j.cir||"", n:ac.length, pac:j.pac||""});
+          o.val += Number(j.v)||0;
+        }
+        ac.forEach(function(a){
+          var o2=dia(a.f||j.f);
+          o2.qx.push({hora:a.hora||"", pac:pacNom(a.pac), ced:a.ced||pacCed(a.pac), quir:a.quir||"", cir:a.cir||j.cir||"", proc:a.proc||"", emp:a.emp||"", fr:j.fr||trn(a.hora)});
+        });
+      });
+    });
+
+    consultasDe(med).forEach(function(r){
+      var o=dia(String(r.fecha||"").slice(0,10));
+      var reg={hora:String(r.fecha||"").slice(11,16), pac:pacNom(r.paciente), ced:pacCed(r.paciente),
+               emp:String(r.empresa||""), proc:String(r.detalle||""), contrato:String(r.contrato||"")};
+      (/MUTUAL/.test(nz(r.empresa)) ? o.mut : o.pre).push(reg);
+    });
+
+    huerfanos().forEach(function(b){
+      var o=dia(b.f);
+      o.sinan.push(b);
+    });
+
+    return {dias:Object.keys(D).filter(function(x){return x;}).sort().map(function(k){ return D[k]; }), sinFecha:sinFecha};
+  }
+
+  function fila(h,pac,ced,quir,cir,proc,extra,cls){
+    var txt=nz(pac+" "+ced+" "+proc+" "+cir+" "+(extra||""));
+    return "<div class=\"anr"+(cls?" "+cls:"")+"\" data-txt=\""+esc(txt)+"\">"
       +"<span class=\"ah\">"+esc(h||"")+"</span>"
       +"<span class=\"ap\">"+esc(pac||"")+"</span>"
       +"<span class=\"acd\">"+esc(ced||"")+"</span>"
       +"<span class=\"aq\">"+esc(quir||"")+"</span>"
-      +"<span class=\"acir\">"+esc(String(cir||"").slice(0,30))+"</span>"
-      +"<span class=\"apr\">"+esc(String(proc||"").slice(0,70))+"</span></div>";
+      +"<span class=\"acir\">"+esc(String(cir||"").slice(0,28))+"</span>"
+      +"<span class=\"apr\">"+esc(String(proc||"").slice(0,68))+"</span></div>";
   }
 
   function panelHTML(med){
     var F=filasAn(med); if(!F.length) return "";
-    var h=[], nPac=0, nJor=0, tot=0;
-    var cuerpo=[];
+    var P=porFecha(med), h=[], cuerpo=[], tot=0, nPac=0, nJor=0;
 
-    F.forEach(function(r){
-      tot += Number(r.total)||0;
-      var li = r.lista;
+    P.dias.forEach(function(o){
+      tot += o.val; nJor += o.jor.length;
+      nPac += o.qx.length + o.mut.length + o.pre.length;
+      var resumen=[];
+      if(o.jor.length) resumen.push(o.jor.length+" jornada(s)");
+      if(o.qx.length) resumen.push(o.qx.length+" en quirofano");
+      if(o.mut.length) resumen.push(o.mut.length+" consulta(s) Mutual");
+      if(o.pre.length) resumen.push(o.pre.length+" consulta(s) prepagada/particular");
+      var nsa=0; o.sinan.forEach(function(b){ nsa+=b.sin.length; });
+      if(nsa) resumen.push(nsa+" sin anestesiologo");
 
-      if(li && li.length && li[0] && (li[0].f!==undefined) && (li[0].actos!==undefined || li[0].tipo!==undefined) && /jornada/i.test(String(r.regla||"")+String(r.detalle||"")) && li.length>1){
-        // bloque de jornadas
-        cuerpo.push("<div class=\"ansec\">Jornadas &mdash; "+esc(String(r.regla||""))+" &middot; "+mny(r.total)+"</div>");
-        li.forEach(function(j){
-          nJor++;
-          var ac=j.actos||[];
-          nPac += ac.length;
-          var quir={}; ac.forEach(function(a){ if(a.quir) quir[a.quir]=1; });
-          var qtxt=Object.keys(quir).join(" + ") || "(sin quirofano)";
-          cuerpo.push("<div class=\"anj\"><div class=\"anjh\">"
-            + esc(String(j.f||"")) + " <span class=\"antipo\">" + esc(dsem(j.f)) + " " + esc(String(j.fr||"")) + "</span> &middot; " + esc(qtxt)
-            + " &middot; " + ac.length + " paciente(s)"
-            + " <span class=\"antipo\">" + esc(String(j.tipo||"")) + (j.cir? " &middot; " + esc(String(j.cir).slice(0,60)) : "") + "</span>"
-            + "<span class=\"anv\">" + mny(j.v||0) + "</span></div>");
-          if(!ac.length){
-            cuerpo.push("<div class=\"anr\" data-txt=\"SIN PACIENTES REGISTRADOS\"><span class=\"ah\"></span><span class=\"ap\" style=\"color:#8a5a00\">"
-              + esc(String(j.tipo||"Jornada")) + " &mdash; sin pacientes registrados en la Estadistica</span></div>");
-          }
-          ac.slice().sort(function(a,b){ return String(a.hora||"").localeCompare(String(b.hora||"")); })
-            .forEach(function(a){
-              cuerpo.push(fila(a.hora, pacNom(a.pac), a.ced||pacCed(a.pac), a.quir, a.cir, a.proc, a.emp));
-            });
+      cuerpo.push("<div class=\"andia\"><div class=\"andiah\">"
+        +"<span class=\"fec\">"+esc(fdmy(o.f))+"</span>"
+        +"<span class=\"dsm\">"+esc(dsem(o.f))+"</span>"
+        +"<span class=\"res\">"+esc(resumen.join(" &middot; ").replace(/&amp;middot;/g,"·"))+"</span>"
+        +"<span class=\"anv\">"+mny(o.val)+"</span></div>");
+
+      if(o.jor.length){
+        cuerpo.push("<div class=\"ansubt\">Lo que se liquida este dia</div>");
+        o.jor.forEach(function(j){
+          cuerpo.push(fila(j.fr, (j.tipo||"Jornada")+(j.pac? " — "+pacNom(j.pac) : ""), "", "",
+            String(j.cir||"").slice(0,28), (j.n? j.n+" paciente(s)" : "sin pacientes registrados")+" · "+mny(j.v), "LIQUIDADO"));
         });
-        return;
       }
-
-      // filas sueltas con lista (pacientes extras, festivos, consultas PYP)
-      cuerpo.push("<div class=\"ansec\">"+esc(String(r.detalle||"").slice(0,120))+" &middot; "+mny(r.total)+"</div>");
-      cuerpo.push("<div class=\"ansub\">"+esc(String(r.regla||""))+"</div>");
-      if(li && li.length){
-        li.forEach(function(j){
-          var ac=j.actos||[];
-          if(ac.length){
-            nPac += ac.length;
-            ac.slice().sort(function(a,b){ return String(a.f||"").localeCompare(String(b.f||"")) || String(a.hora||"").localeCompare(String(b.hora||"")); })
-              .forEach(function(a){
-                cuerpo.push(fila(String(a.f||"").slice(5)+" "+(a.hora||""), pacNom(a.pac), a.ced||pacCed(a.pac), a.quir, a.cir, a.proc, a.emp));
-              });
-          } else {
-            nPac += (j.pac?1:0);
-            cuerpo.push(fila(String(j.f||"")+" "+String(j.fr||""), pacNom(j.pac)||String(j.tipo||""), "", "", j.cir, j.tipo, ""));
-          }
+      if(o.qx.length){
+        cuerpo.push("<div class=\"ansubt\">Pacientes en quirofano ("+o.qx.length+")</div>");
+        o.qx.slice().sort(function(a,b){ return String(a.hora||"").localeCompare(String(b.hora||"")); })
+          .forEach(function(a){ cuerpo.push(fila(a.hora, a.pac, a.ced, a.quir, a.cir, a.proc, a.emp)); });
+      }
+      if(o.mut.length){
+        cuerpo.push("<div class=\"ansubt\">Consulta preanestesica Mutual — Sede 2 ("+o.mut.length+")</div>");
+        o.mut.slice().sort(function(a,b){ return String(a.hora||"").localeCompare(String(b.hora||"")); })
+          .forEach(function(r){ cuerpo.push(fila(r.hora, r.pac, r.ced, "Mutual", String(r.emp).slice(0,26), r.proc, r.contrato)); });
+      }
+      if(o.pre.length){
+        cuerpo.push("<div class=\"ansubt\">Consulta preanestesica prepagada / particular — Sede 1 ("+o.pre.length+")</div>");
+        o.pre.slice().sort(function(a,b){ return String(a.hora||"").localeCompare(String(b.hora||"")); })
+          .forEach(function(r){ cuerpo.push(fila(r.hora, r.pac, r.ced, "Prepagada", String(r.emp).slice(0,26), r.proc, r.contrato)); });
+      }
+      if(o.sinan.length){
+        o.sinan.forEach(function(b){
+          var completo = !Object.keys(b.anest).length;
+          cuerpo.push("<div class=\"ansubt ojo\">&#9888; "+esc(b.q)+" "+esc(b.fr)+" &mdash; "
+            + (completo ? b.sin.length+" paciente(s) y NINGUN anestesiologo registrado"
+                        : b.sin.length+" de "+b.acts.length+" paciente(s) sin el campo (el turno lo cubre "+esc(Object.keys(b.anest).join(", ").slice(0,36))+")")
+            + " &middot; "+esc(Object.keys(b.cir).join(", ").slice(0,50))+"</div>");
+          b.sin.slice().sort(function(x,y){ return String(x.hora||"").localeCompare(String(y.hora||"")); })
+            .forEach(function(a){ cuerpo.push(fila(a.hora, pacNom(a.pac), a.ced||pacCed(a.pac), a.quir, a.cirujano, a.proc, "SIN ANESTESIOLOGO", "sinan")); });
         });
-      } else {
-        cuerpo.push("<div class=\"anwarn\">Esta linea no trae el detalle por paciente. Abajo estan los dias de agenda que la sustentan.</div>");
       }
+      cuerpo.push("</div>");
     });
 
-    // consultas preanestesicas por dia
-    var C=consultas(med), ks=Object.keys(C).sort();
-    if(ks.length){
-      var tM=0,tP=0; ks.forEach(function(d){ tM+=C[d].mut.length; tP+=C[d].pre.length; });
-      cuerpo.push("<div class=\"ansec\">Consultas preanestesicas por dia de agenda &middot; "+tM+" Mutual + "+tP+" prepagadas/particulares = "+(tM+tP)+"</div>");
-      cuerpo.push("<div class=\"ansub\">La ficha pacta agendas de 30 pacientes para Sede 2 (Mutual) y de 15 para Sede 1 (prepagadas). El motor hoy solo divide los Mutual; las prepagadas quedan en $0.</div>");
-      ks.forEach(function(d){
-        var o=C[d];
-        cuerpo.push("<div class=\"anj\"><div class=\"anjh\">"+esc(d)+" <span class=\"antipo\">"+esc(dsem(d))+"</span> &middot; "
-          + o.mut.length + " Mutual &middot; " + o.pre.length + " prepagadas/particulares"
-          + " <span class=\"antipo\">" + (o.mut.length>=30? "agenda completa de Sede 2" : (o.mut.length? "agenda Mutual" : "")) + (o.pre.length>=15? " &middot; agenda completa de Sede 1" : "") + "</span></div>");
-        o.mut.concat(o.pre).forEach(function(r){
-          nPac++;
-          cuerpo.push(fila(String(r.fecha||"").slice(11,16), pacNom(r.paciente), pacCed(r.paciente), /MUTUAL/.test(nz(r.empresa))?"Mutual":"Prepagada", String(r.empresa||"").slice(0,26), r.detalle, r.contrato));
-        });
-      });
-    }
-
-    // bloques sin anestesiologo
-    var HU=huerfanos();
-    var HC=HU.completos, HP=HU.parciales;
-    var HCq=HC.filter(function(b){ return !/REFRACTIVA/i.test(b.q); });
-    function pintaBloque(b, modo){
-      var nSin=b.sin.length, nTot=b.acts.length;
-      cuerpo.push("<div class=\"anj\"><div class=\"anjh\">"+esc(b.f)+" <span class=\"antipo\">"+esc(dsem(b.f))+" "+esc(b.fr)+"</span> &middot; "+esc(b.q)
-        +" &middot; "+(modo==="completo" ? (nTot+" paciente(s), ninguno con anestesiologo") : (nSin+" de "+nTot+" paciente(s) sin el campo"))
-        +" <span class=\"antipo\">"+esc(Object.keys(b.cir).join(", ").slice(0,60))
-        +(modo==="parcial" ? " &middot; el turno lo cubre "+esc(Object.keys(b.anest).join(", ").slice(0,40)) : "")+"</span>"
-        +"<span class=\"anv\" style=\"color:#8a5a00\">"+(modo==="completo"?"sin asignar":"campo en blanco")+"</span></div>");
-      b.sin.slice().sort(function(a,b2){ return String(a.hora||"").localeCompare(String(b2.hora||"")); })
-        .forEach(function(a){ cuerpo.push(fila(a.hora, pacNom(a.pac), a.ced||pacCed(a.pac), a.quir, a.cirujano, a.proc, "SIN ANESTESIOLOGO")); });
-    }
-    if(HC.length){
-      cuerpo.push("<div class=\"ansec\">Turnos de quirofano SIN ningun anestesiologo registrado &middot; "+HC.length+" turnos</div>");
-      cuerpo.push("<div class=\"anwarn\"><b>Ojo:</b> en estos turnos se operaron pacientes y ningun registro trae anestesiologo, asi que el liquidador no los puede asignar a nadie. "
-        + HCq.length + " son de quirofano (los de REFRACTIVA normalmente van sin anestesia). Hay que corregirlos en la Estadistica de cirugia para que se liquiden.</div>");
-      HC.forEach(function(b){ pintaBloque(b, "completo"); });
-    }
-    if(HP.length){
-      cuerpo.push("<div class=\"ansec\">Pacientes sueltos sin el campo anestesiologo &middot; "+HP.length+" turnos</div>");
-      cuerpo.push("<div class=\"anwarn\">Estos turnos si tienen anestesiologo, pero algunos pacientes quedaron con el campo vacio. No cambian la jornada; solo falta completar el dato.</div>");
-      HP.forEach(function(b){ pintaBloque(b, "parcial"); });
+    if(P.sinFecha.length){
+      cuerpo.push("<div class=\"anwarn\"><b>Sin fecha asignada:</b> "
+        + P.sinFecha.map(function(r){ return esc(String(r.detalle||"")) + " &middot; " + mny(r.total); }).join(" &nbsp;|&nbsp; ")
+        + ". Esta linea la calcula el motor sobre el total del mes, por eso no cae en un dia; los pacientes que la sustentan estan listados arriba en cada fecha.</div>");
+      P.sinFecha.forEach(function(r){ tot += Number(r.total)||0; });
     }
 
     h.push("<div class=\"anpanel\" data-med=\""+esc(med)+"\"><div class=\"anbar\">");
-    h.push("<span class=\"antit\">Detalle de anestesia &mdash; paciente por paciente</span>");
+    h.push("<span class=\"antit\">Detalle de anestesia por fecha</span>");
     h.push("<input class=\"anq\" placeholder=\"Buscar paciente, cedula, procedimiento o cirujano...\" oninput=\"anFiltrar(this)\">");
-    h.push("<span class=\"ancnt\">"+nJor+" jornadas &middot; "+nPac+" pacientes &middot; "+mny(tot)+"</span>");
+    h.push("<span class=\"ancnt\">"+P.dias.length+" fechas &middot; "+nJor+" jornadas &middot; "+nPac+" pacientes &middot; "+mny(tot)+"</span>");
     h.push("<button class=\"anbtn\" onclick=\"anExcel(this)\">&#11015; Excel del detalle</button>");
     h.push("</div><div class=\"anlist\">");
     h.push(cuerpo.join(""));
@@ -16023,18 +16012,15 @@ try{
   window.anFiltrar = function(el){
     var pan=el.closest(".anpanel"); if(!pan) return;
     var q=nz(el.value||"");
-    pan.querySelectorAll(".anj, .ansec").forEach(function(x){ x.style.display=""; });
     pan.querySelectorAll(".anr").forEach(function(rw){
-      var v=!q||(rw.getAttribute("data-txt")||"").indexOf(q)>=0;
-      rw.style.display=v?"":"none";
+      rw.style.display=(!q||(rw.getAttribute("data-txt")||"").indexOf(q)>=0)?"":"none";
     });
-    if(q){
-      pan.querySelectorAll(".anj").forEach(function(j){
-        var hay=false;
-        j.querySelectorAll(".anr").forEach(function(rw){ if(rw.style.display!=="none") hay=true; });
-        j.style.display=hay?"":"none";
-      });
-    }
+    pan.querySelectorAll(".andia").forEach(function(d){
+      if(!q){ d.style.display=""; return; }
+      var hay=false;
+      d.querySelectorAll(".anr").forEach(function(rw){ if(rw.style.display!=="none") hay=true; });
+      d.style.display=hay?"":"none";
+    });
   };
 
   window.anExcel = function(btn){
@@ -16042,62 +16028,53 @@ try{
     var med=pan.getAttribute("data-med")||"";
     if(typeof xHoja!=="function" || typeof xLibro!=="function"){ alert("No se pudo generar el Excel en esta version."); return; }
     var S=function(v){ return {v:v==null?"":String(v)}; };
-    var B=function(v){ return {v:v==null?"":String(v), s:5}; };
     var N=function(v){ return {v:Math.round(Number(v)||0), t:"n", s:3}; };
     var H=function(v){ return {v:v==null?"":String(v), s:2}; };
+    var P=porFecha(med);
 
-    var F=filasAn(med);
-    var h1=[[{v:"Detalle de anestesia - "+med, s:1}],[]];
-    h1.push([H("Fecha"),H("Dia"),H("Turno"),H("Quirofano"),H("Tipo de jornada"),H("Valor jornada"),H("Hora"),H("Paciente"),H("Cedula"),H("Cirujano"),H("Procedimiento"),H("Empresa"),H("Concepto")]);
-    F.forEach(function(r){
-      var li=r.lista||[];
-      if(!li.length){ h1.push([S(""),S(""),S(""),S(""),S(String(r.detalle||"")),N(r.total),S(""),S("(esta linea no trae detalle por paciente)"),S(""),S(""),S(""),S(""),S(String(r.regla||""))]); return; }
-      li.forEach(function(j){
-        var ac=j.actos||[];
-        if(!ac.length){
-          h1.push([S(j.f||""),S(dsem(j.f)),S(j.fr||""),S(""),S(j.tipo||""),N(j.v||0),S(""),S(pacNom(j.pac)||"(sin pacientes registrados)"),S(""),S(j.cir||""),S(""),S(""),S(String(r.regla||""))]);
-          return;
-        }
-        ac.forEach(function(a){
-          h1.push([S(j.f||a.f||""),S(dsem(j.f||a.f)),S(j.fr||""),S(a.quir||""),S(j.tipo||""),N(j.v||0),S(a.hora||""),S(pacNom(a.pac)),S(a.ced||pacCed(a.pac)),S(a.cir||""),S(a.proc||""),S(a.emp||""),S(String(r.regla||""))]);
-        });
+    var d1=[[{v:"Detalle por fecha - "+med, s:1}],[]];
+    d1.push([H("Fecha"),H("Dia"),H("Concepto"),H("Turno"),H("Hora"),H("Paciente"),H("Cedula"),H("Quirofano / Tipo"),H("Cirujano"),H("Procedimiento / Servicio"),H("Empresa"),H("Valor")]);
+    P.dias.forEach(function(o){
+      o.jor.forEach(function(j){
+        d1.push([S(fdmy(o.f)),S(dsem(o.f)),S("LIQUIDADO"),S(j.fr),S(""),S(j.tipo+(j.pac?" - "+pacNom(j.pac):"")),S(""),S(j.n+" paciente(s)"),S(j.cir),S(""),S(""),N(j.v)]);
       });
-    });
-
-    var C=consultas(med), ks=Object.keys(C).sort();
-    var h2=[[{v:"Consultas preanestesicas - "+med, s:1}],[]];
-    h2.push([H("Fecha"),H("Dia"),H("Hora"),H("Tipo"),H("Empresa"),H("Paciente"),H("Cedula"),H("Detalle"),H("Contrato")]);
-    ks.forEach(function(d){
-      C[d].mut.concat(C[d].pre).forEach(function(r){
-        h2.push([S(d),S(dsem(d)),S(String(r.fecha||"").slice(11,16)),S(/MUTUAL/.test(nz(r.empresa))?"Mutual (Sede 2)":"Prepagada / particular (Sede 1)"),
-          S(r.empresa||""),S(pacNom(r.paciente)),S(pacCed(r.paciente)),S(r.detalle||""),S(r.contrato||"")]);
+      o.qx.forEach(function(a){
+        d1.push([S(fdmy(o.f)),S(dsem(o.f)),S("Quirofano"),S(a.fr),S(a.hora),S(a.pac),S(a.ced),S(a.quir),S(a.cir),S(a.proc),S(a.emp),S("")]);
       });
-    });
-    var h2r=[[{v:"Resumen por dia de agenda", s:1}],[]];
-    h2r.push([H("Fecha"),H("Dia"),H("Mutual (Sede 2)"),H("Prepagadas (Sede 1)"),H("Total")]);
-    ks.forEach(function(d){ h2r.push([S(d),S(dsem(d)),N(C[d].mut.length),N(C[d].pre.length),N(C[d].mut.length+C[d].pre.length)]); });
-    h2 = h2r.concat([[]], h2);
-
-    var HU=huerfanos();
-    var h3=[[{v:"Pacientes operados sin anestesiologo registrado", s:1}],[]];
-    h3.push([H("Caso"),H("Fecha"),H("Dia"),H("Turno"),H("Quirofano"),H("Cirujano(s)"),H("Anestesiologo del turno"),H("Hora"),H("Paciente"),H("Cedula"),H("Procedimiento")]);
-    [["Turno sin ningun anestesiologo",HU.completos],["Paciente suelto sin el campo",HU.parciales]].forEach(function(par){
-      par[1].forEach(function(b){
+      o.mut.forEach(function(r){
+        d1.push([S(fdmy(o.f)),S(dsem(o.f)),S("Consulta Mutual (Sede 2)"),S(""),S(r.hora),S(r.pac),S(r.ced),S("Consulta"),S(""),S(r.proc),S(r.emp),S("")]);
+      });
+      o.pre.forEach(function(r){
+        d1.push([S(fdmy(o.f)),S(dsem(o.f)),S("Consulta prepagada (Sede 1)"),S(""),S(r.hora),S(r.pac),S(r.ced),S("Consulta"),S(""),S(r.proc),S(r.emp),S("")]);
+      });
+      o.sinan.forEach(function(b){
+        var completo=!Object.keys(b.anest).length;
         b.sin.forEach(function(a){
-          h3.push([S(par[0]),S(b.f),S(dsem(b.f)),S(b.fr),S(b.q),S(Object.keys(b.cir).join(", ")),S(Object.keys(b.anest).join(", ")),
-            S(a.hora||""),S(pacNom(a.pac)),S(a.ced||pacCed(a.pac)),S(a.proc||"")]);
+          d1.push([S(fdmy(o.f)),S(dsem(o.f)),S(completo?"SIN ANESTESIOLOGO (turno completo)":"SIN ANESTESIOLOGO (paciente suelto)"),S(b.fr),S(a.hora),
+            S(pacNom(a.pac)),S(a.ced||pacCed(a.pac)),S(b.q),S(a.cirujano||""),S(a.proc||""),S(Object.keys(b.anest).join(", ")),S("")]);
         });
       });
     });
+
+    var d2=[[{v:"Resumen por fecha - "+med, s:1}],[]];
+    d2.push([H("Fecha"),H("Dia"),H("Jornadas"),H("Pacientes quirofano"),H("Consultas Mutual"),H("Consultas prepagadas"),H("Sin anestesiologo"),H("Valor del dia")]);
+    var tv=0;
+    P.dias.forEach(function(o){
+      var nsa=0; o.sinan.forEach(function(b){ nsa+=b.sin.length; });
+      tv+=o.val;
+      d2.push([S(fdmy(o.f)),S(dsem(o.f)),N(o.jor.length),N(o.qx.length),N(o.mut.length),N(o.pre.length),N(nsa),N(o.val)]);
+    });
+    P.sinFecha.forEach(function(r){ tv+=Number(r.total)||0;
+      d2.push([S("(sin fecha)"),S(""),S(""),S(""),S(""),S(""),S(String(r.detalle||"").slice(0,60)),N(r.total)]); });
+    d2.push([{v:"TOTAL",s:5},S(""),S(""),S(""),S(""),S(""),S(""),{v:Math.round(tv),t:"n",s:4}]);
 
     var libro=xLibro([
-      {nombre:"Jornadas y pacientes", xml:xHoja(h1,[12,7,7,13,30,14,8,32,13,26,42,22,34])},
-      {nombre:"Consultas preanest", xml:xHoja(h2,[12,7,8,30,28,32,13,42,40])},
-      {nombre:"Sin anestesiologo", xml:xHoja(h3,[30,12,7,7,13,28,26,8,32,13,42])}
+      {nombre:"Resumen por fecha", xml:xHoja(d2,[13,12,11,20,18,22,18,16])},
+      {nombre:"Detalle por fecha", xml:xHoja(d1,[13,12,30,8,8,32,13,22,26,44,24,14])}
     ]);
     var a=document.createElement("a");
     a.href=URL.createObjectURL(libro);
-    a.download="Detalle anestesia "+String(med).replace(/[^A-Za-z0-9 ]/g,"")+".xlsx";
+    a.download="Detalle por fecha "+String(med).replace(/[^A-Za-z0-9 ]/g,"")+".xlsx";
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
   };
@@ -16108,7 +16085,7 @@ try{
     if(!card || card.querySelector(".anpanel")) return;
     var e=card.querySelector(".doc-name"); if(!e) return;
     var med=(e.textContent||"").trim(); if(!med) return;
-    if(!esAnest(med)) return;
+    if(!filasAn(med).length) return;
     var body=card.querySelector(".doc-body")||card;
     var html=panelHTML(med); if(!html) return;
     var d=document.createElement("div"); d.innerHTML=html;
