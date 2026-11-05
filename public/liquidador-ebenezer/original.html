@@ -15565,7 +15565,12 @@ function excelMedico(h){
         var ac = _acu(h), s = 0;
         ac.forEach(function(a){ s += a.v; });
         R.cierres = R.cierres || [];
-        if(ac.length && s === dif){ ac.forEach(function(a){ R.cierres.push({txt:a.txt, v:a.v}); }); R.total = tab; }
+        var _cl = function(t){ return String(t||"").replace(/^Acuerdo:\s*/,"").replace(/\s+/g," ").trim().slice(0,40); };
+        var ya = R.cierres.map(function(c){ return _cl(c.txt); });
+        var faltan = ac.filter(function(a){ return ya.indexOf(_cl(a.txt)) < 0; });
+        var sf = 0; faltan.forEach(function(a){ sf += a.v; });
+        if(faltan.length && sf === dif){ faltan.forEach(function(a){ R.cierres.push({txt:a.txt, v:a.v}); }); R.total = tab; }
+        else if(ac.length && s === dif){ ac.forEach(function(a){ R.cierres.push({txt:a.txt, v:a.v}); }); R.total = tab; }
         else if(dif !== 0){ R.cierres.push({txt:"Ajustes y acuerdos del mes", v:dif}); R.total = tab; }
       }
     }catch(e){}
