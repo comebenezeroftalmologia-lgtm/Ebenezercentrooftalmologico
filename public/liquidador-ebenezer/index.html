@@ -15562,14 +15562,11 @@ function excelMedico(h){
       if(d){
         var tab = Math.round((d.cir||0)+(d.sed||0)+(d.man||0));
         var dif = tab - Math.round(R.total||0);
-        if(dif !== 0){
-          var ac = _acu(h), s = 0;
-          ac.forEach(function(a){ s += a.v; });
-          R.cierres = R.cierres || [];
-          if(ac.length && s === dif){ ac.forEach(function(a){ R.cierres.push({txt:a.txt, v:a.v}); }); }
-          else { R.cierres.push({txt:"Ajustes y acuerdos del mes", v:dif}); }
-          R.total = tab;
-        }
+        var ac = _acu(h), s = 0;
+        ac.forEach(function(a){ s += a.v; });
+        R.cierres = R.cierres || [];
+        if(ac.length && s === dif){ ac.forEach(function(a){ R.cierres.push({txt:a.txt, v:a.v}); }); R.total = tab; }
+        else if(dif !== 0){ R.cierres.push({txt:"Ajustes y acuerdos del mes", v:dif}); R.total = tab; }
       }
     }catch(e){}
     return R;
@@ -15920,7 +15917,32 @@ try{
       o.sinan.push(b);
     });
 
-    return {dias:Object.keys(D).filter(function(x){return x;}).sort().map(function(k){ return D[k]; }), sinFecha:sinFecha};
+    // acuerdos del mes cargados a mano (quedan con sus pacientes, en su fecha)
+    var acs=[];
+    try{
+      var per=(window.RESULT||{}).periodoInicio||"";
+      var todos=(typeof acVigentes==="function") ? (acVigentes(med, per)||[]) : [];
+      var sede=(document.getElementById("sede")||{}).value || "";
+      var esCir=sede.indexOf("Cirug")===0, esMut=(sede==="Sede 2");
+      todos.forEach(function(a){
+        var bl=String(a.bloque||"");
+        if(sede){ if(esCir){ if(bl!=="cir") return; } else { if(bl!=="sede") return; if((String(a.mutual)==="true")!==esMut) return; } }
+        var pacs=a.pacs||[];
+        var f=(pacs[0]&&pacs[0].f)||"";
+        var o=f?dia(f):null;
+        var ent={txt:String(a.texto||"Acuerdo"), v:Math.round(Number(a.valor)||0), pacs:pacs};
+        if(o){
+          o.jor.push({fr:"", tipo:"ACUERDO · "+ent.txt, v:ent.v, cir:"", n:pacs.length, pac:""});
+          o.val += ent.v;
+          pacs.forEach(function(p){
+            var o2=dia(p.f||f);
+            o2.qx.push({hora:"", pac:String(p.pac||""), ced:"", quir:"acuerdo", cir:"", proc:String(p.srv||""), emp:"", fr:""});
+          });
+        } else { acs.push(ent); }
+      });
+    }catch(e){}
+
+    return {dias:Object.keys(D).filter(function(x){return x;}).sort().map(function(k){ return D[k]; }), sinFecha:sinFecha, acuerdos:acs};
   }
 
   function fila(h,pac,ced,quir,cir,proc,extra,cls){
@@ -15991,6 +16013,11 @@ try{
       cuerpo.push("</div>");
     });
 
+    if(P.acuerdos && P.acuerdos.length){
+      cuerpo.push("<div class=\"anwarn\"><b>Acuerdos sin pacientes asociados:</b> "
+        + P.acuerdos.map(function(a){ return esc(a.txt)+" &middot; "+mny(a.v); }).join(" &nbsp;|&nbsp; ")+"</div>");
+      P.acuerdos.forEach(function(a){ tot += a.v; });
+    }
     if(P.sinFecha.length){
       cuerpo.push("<div class=\"anwarn\"><b>Sin fecha asignada:</b> "
         + P.sinFecha.map(function(r){ return esc(String(r.detalle||"")) + " &middot; " + mny(r.total); }).join(" &nbsp;|&nbsp; ")
