@@ -75,8 +75,10 @@ function sincronizar() {
   }
   const syncId = Utilities.formatDate(new Date(), 'America/Bogota', 'yyyyMMdd-HHmmss');
   const fechaCorte = filas.length && filas[0]['FECHA BASE DE DATOS'] ? filas[0]['FECHA BASE DE DATOS'] : '';
+  let omitidas = 0; // filas que el servidor descarta (documento inválido o sin ESTADO)
   for (let k = 0; k < filas.length; k += TAM_LOTE) {
-    llamar_({ sync_id: syncId, fecha_corte: fechaCorte, filas: filas.slice(k, k + TAM_LOTE) });
+    const r = llamar_({ sync_id: syncId, fecha_corte: fechaCorte, filas: filas.slice(k, k + TAM_LOTE) });
+    omitidas += (r && r.omitidas) || 0;
   }
-  return llamar_({ sync_id: syncId, finalizar: true, esperadas: filas.length });
+  return llamar_({ sync_id: syncId, finalizar: true, esperadas: filas.length - omitidas });
 }

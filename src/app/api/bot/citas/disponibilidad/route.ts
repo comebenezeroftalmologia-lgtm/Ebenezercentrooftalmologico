@@ -21,10 +21,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "fecha debe ser yyyy-MM-dd" }, { status: 400 });
   }
   const q = new URLSearchParams({ fecha });
-  if (b.idEspecialidad) q.set("idEspecialidad", String(b.idEspecialidad));
+  // Dapta manda la palabra "undefined" cuando una variable no existe: solo se aceptan enteros positivos.
+  const entero = (v: unknown) => {
+    const n = Number(v);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  };
+  const idEspecialidad = entero(b.idEspecialidad);
+  const codMedico = entero(b.codMedico);
+  if (idEspecialidad) q.set("idEspecialidad", String(idEspecialidad));
   // Asunto 10 = «Consulta oftalmología general primera vez» (29 médicos; confirmado por TIC).
-  q.set("idAsunto", String(b.idAsunto || 10));
-  if (b.codMedico) q.set("codMedico", String(b.codMedico));
+  q.set("idAsunto", String(entero(b.idAsunto) ?? 10));
+  if (codMedico) q.set("codMedico", String(codMedico));
 
   try {
     const { status, data } = await sismaNodeJson<unknown>(`/api/citas/disponibilidad?${q}`);
