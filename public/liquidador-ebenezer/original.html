@@ -16131,6 +16131,150 @@ try{
 })();
 }catch(__e){ try{ console.warn('panel de anestesia no disponible:', __e && __e.message); }catch(_){} }
 
+try{
+/* ============================================================
+   1) Formato parejo: cédula en las filas de Cirugía
+   2) Tres estados por paciente: entra / pendiente / no se paga
+   ============================================================ */
+(function(){
+  if(window.__estPac) return; window.__estPac = true;
+
+  /* ---------- utilidades ---------- */
+  function nz(s){ return String(s==null?"":s).toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim(); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function mny(n){ return "$ "+(Math.round(Number(n)||0)).toLocaleString("es-CO"); }
+
+  /* ---------- 1. índice de cédulas ---------- */
+  var IDX=null;
+  function idx(){
+    if(IDX) return IDX;
+    IDX={};
+    try{
+      (window.ACTOS||[]).forEach(function(a){
+        var n=nz(a.pac); if(n && a.ced) IDX[n]=String(a.ced);
+      });
+      (window.RECORDS||[]).forEach(function(r){
+        var p=String(r.paciente||""); var m=p.match(/(\d{5,})/); if(!m) return;
+        var i=p.indexOf(":"); var nom=nz(i>0?p.slice(i+1):p);
+        if(nom && !IDX[nom]) IDX[nom]=m[1];
+      });
+    }catch(e){}
+    return IDX;
+  }
+  function conCedula(pac){
+    var s=String(pac||""); if(!s || s.indexOf(":")>0 || /^\s*\d{5,}/.test(s)) return s;
+    var c=idx()[nz(s)];
+    return c ? ("CC - "+c+" : "+s) : s;
+  }
+
+  if(typeof pdfFilasMedico==="function" && !window.__cedEnActa){
+    window.__cedEnActa = true;
+    var _pf = pdfFilasMedico;
+    pdfFilasMedico = function(h){
+      var R=_pf(h);
+      try{ (R.filas||[]).forEach(function(f){ if(f && f.pac) f.pac = conCedula(f.pac); }); }catch(e){}
+      return R;
+    };
+  }
+
+  /* ---------- 2. tres estados por paciente ---------- */
+  var EST={ entra:{t:"Entra en este corte", c:"#1a7f4b", b:"#e6f3ea", i:"✓"},
+            pend: {t:"Pendiente para el próximo corte", c:"#8a5a00", b:"#fff6e6", i:"⏳"},
+            nopaga:{t:"No se paga", c:"#b3261e", b:"#fdeceb", i:"✕"} };
+  var ORDEN=["entra","pend","nopaga"];
+
+  function leer(){ try{ return JSON.parse(localStorage.getItem("liq_estado")||"{}"); }catch(e){ return {}; } }
+  function guardar(k, est, motivo){
+    var L=leer(), cl="EST|"+k;
+    if(est==="entra" && !motivo){ delete L[cl]; }
+    else { L[cl]={est:est, motivo:motivo||"", por:((window.NUBE&&NUBE.perfil&&NUBE.perfil.nombre)||""), fecha:new Date().toLocaleString("es-CO")}; }
+    try{ localStorage.setItem("liq_estado", JSON.stringify(L)); }catch(e){}
+    try{ if(window.NUBE&&NUBE.guardarAjuste) NUBE.guardarAjuste(cl, L[cl]||null); }catch(e){}
+  }
+  window.__estDe = function(k){ var L=leer(), o=L["EST|"+k]; return o?o.est:"entra"; };
+  window.__estInfo = function(k){ var L=leer(); return L["EST|"+k]||null; };
+
+  var CSS=".estb{border:1px solid #c9d6e8;border-radius:6px;width:24px;height:22px;line-height:1;cursor:pointer;font-size:12px;font-weight:700;padding:0;flex:none}"
+   +".pacrow.est-pend{background:#fffaf0}.pacrow.est-nopaga{background:#fdf3f2}"
+   +".estres{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:6px 10px;border-top:1px solid #e6ecf5;font-size:12px;font-weight:600}"
+   +".estres .e1{color:#1a7f4b}.estres .e2{color:#8a5a00}.estres .e3{color:#b3261e}"
+   +".estmot{font-size:10.5px;color:#8a5a00;padding-left:18px}";
+  var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st);
+
+  function pintarFila(rw){
+    var inp=rw.querySelector("input[type=checkbox]"); if(!inp) return;
+    var k=inp.getAttribute("data-k")||"";
+    var b=document.createElement("button");
+    b.type="button"; b.className="estb"; b.setAttribute("data-k",k);
+    inp.parentNode.replaceChild(b,inp);
+    refrescar(b);
+    b.addEventListener("click", function(ev){
+      ev.preventDefault(); ev.stopPropagation();
+      var act=window.__estDe(k), i=ORDEN.indexOf(act);
+      var nue=ORDEN[(i+1)%ORDEN.length];
+      var mot="";
+      if(nue==="nopaga"){
+        mot=prompt("¿Por qué NO se paga este servicio?\n\nQueda firmado con su nombre y cualquiera podrá leerlo.","")||"";
+        if(mot.trim().length<5){ alert("Escriba el motivo: así la próxima persona entiende por qué quedó en cero."); return; }
+      }
+      if(nue==="pend"){ mot=prompt("¿Por qué queda pendiente? (opcional)","")||""; }
+      guardar(k,nue,mot);
+      refrescar(b); totales(b.closest(".pacpanel"));
+    });
+  }
+  function refrescar(b){
+    var k=b.getAttribute("data-k"), e=window.__estDe(k), d=EST[e];
+    b.textContent=d.i; b.style.color=d.c; b.style.background=d.b; b.title=d.t;
+    var rw=b.closest(".pacrow");
+    if(rw){ rw.classList.remove("est-pend","est-nopaga"); if(e!=="entra") rw.classList.add("est-"+e);
+      var inf=window.__estInfo(k), vieja=rw.nextElementSibling;
+      if(vieja && vieja.classList && vieja.classList.contains("estmot")) vieja.remove();
+      if(inf && inf.motivo){ var d2=document.createElement("div"); d2.className="estmot";
+        d2.textContent="↳ "+inf.motivo+" — "+(inf.por||"")+" "+(inf.fecha||""); rw.parentNode.insertBefore(d2, rw.nextSibling); }
+    }
+  }
+  function valorDe(rw){
+    var v=rw.querySelector(".pv"); if(!v) return 0;
+    return Number(String(v.textContent||"").replace(/[^\d-]/g,""))||0;
+  }
+  function totales(pan){
+    if(!pan) return;
+    var t={entra:0,pend:0,nopaga:0}, n={entra:0,pend:0,nopaga:0};
+    pan.querySelectorAll(".pacrow").forEach(function(rw){
+      var b=rw.querySelector(".estb"); if(!b) return;
+      var e=window.__estDe(b.getAttribute("data-k"));
+      t[e]+=valorDe(rw); n[e]++;
+    });
+    var box=pan.querySelector(".estres");
+    if(!box){ box=document.createElement("div"); box.className="estres";
+      var bar=pan.querySelector(".pacbar"); if(bar) bar.parentNode.insertBefore(box, bar.nextSibling); else pan.appendChild(box); }
+    box.innerHTML='<span class="e1">✓ Entra en este corte: '+n.entra+' · '+mny(t.entra)+'</span>'
+      +'<span class="e2">⏳ Pendiente: '+n.pend+' · '+mny(t.pend)+'</span>'
+      +'<span class="e3">✕ No se paga: '+n.nopaga+' · '+mny(t.nopaga)+'</span>';
+  }
+
+  function montar(pan){
+    if(!pan || pan.getAttribute("data-est")==="1") return;
+    pan.setAttribute("data-est","1");
+    pan.querySelectorAll(".pacrow").forEach(pintarFila);
+    totales(pan);
+  }
+  window.__estMontar = montar;
+
+  var obs=new MutationObserver(function(ms){
+    ms.forEach(function(m){
+      Array.prototype.forEach.call(m.addedNodes||[], function(n){
+        if(n.nodeType!==1) return;
+        if(n.classList && n.classList.contains("pacpanel")) montar(n);
+        else if(n.querySelectorAll){ n.querySelectorAll(".pacpanel").forEach(montar); }
+      });
+    });
+  });
+  obs.observe(document.body,{childList:true,subtree:true});
+  document.querySelectorAll(".pacpanel").forEach(montar);
+})();
+}catch(__e2){ try{ console.warn('estados por paciente no disponibles:', __e2 && __e2.message); }catch(_){} }
+
 function pdfTodas(){
   const J=pdfLib(); if(!J||!RESULT) return;
   const doc = new J({unit:'pt', format:'a4'});
