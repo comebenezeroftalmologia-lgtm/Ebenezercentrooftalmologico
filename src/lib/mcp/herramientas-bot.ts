@@ -45,7 +45,7 @@ export const herramientasBot: Herramienta[] = [
   {
     name: "agendar_cita",
     description:
-      "CREA UNA CITA REAL en SISMA para un paciente que ya existe (no crea pacientes). Usar solo después de que la persona haya confirmado expresamente día, hora y médico, y de haber consultado los cupos. Si ya tiene una cita pendiente ese día no agenda otra. Debe enviarse confirmado=true.",
+      "CREA UNA CITA REAL en SISMA (primera vez o más de un año desde la última consulta). Si el afiliado no existe como paciente, lo crea con el celular. Usar solo después de que la persona haya confirmado expresamente día, hora y médico, y de haber consultado los cupos. Si ya tiene una cita pendiente ese día no agenda otra. Debe enviarse confirmado=true.",
     inputSchema: {
       type: "object",
       properties: {
@@ -55,6 +55,9 @@ export const herramientasBot: Herramienta[] = [
         hora: { type: "string", description: "Hora HH:mm en 24 horas del cupo elegido." },
         idAsunto: { type: "integer", description: "Asunto de la cita. Por defecto 10 (consulta general primera vez)." },
         observacion: { type: "string", description: "Opcional: nota para la cita (máx. 200 caracteres)." },
+        celular: { type: "string", description: "Celular (10 dígitos). Obligatorio si el paciente aún no existe en SISMA: se crea." },
+        direccion: { type: "string", description: "Opcional: dirección, para crear al paciente nuevo." },
+        barrio: { type: "string", description: "Opcional: barrio o vereda dicho por la persona." },
         confirmado: { type: "boolean", description: "Debe ser true: indica que la persona confirmó la cita." },
       },
       required: ["documento", "codMedico", "fecha", "hora", "confirmado"],
@@ -73,6 +76,9 @@ export const herramientasBot: Herramienta[] = [
         fecha: String(a.fecha ?? ""),
         hora: String(a.hora ?? ""),
         observacion: typeof a.observacion === "string" ? a.observacion : undefined,
+        celular: typeof a.celular === "string" ? a.celular : undefined,
+        direccion: typeof a.direccion === "string" ? a.direccion : undefined,
+        barrio: typeof a.barrio === "string" ? a.barrio : undefined,
         canal: "mcp",
       });
     },

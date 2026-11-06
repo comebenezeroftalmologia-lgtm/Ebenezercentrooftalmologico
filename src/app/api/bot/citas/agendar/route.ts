@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { llaveBotValida } from "@/lib/bot/sisma-citas";
 import { agendarCita, type EntradaAgendar } from "@/lib/bot/acciones";
 
-// Agenda una cita en SISMA para un paciente YA existente (se busca por documento).
-// Si el paciente no existe, NO lo crea: devuelve paciente_no_encontrado para que el
-// bot lo derive al equipo humano.
-// Requiere: SISMA_NODE_API_KEY con permiso citas.agendar y SISMA_BOT_USER_ID
-// (id del usuario de SISMA que figura como autor de la cita).
-// Body: { documento, tipoId?, codMedico, idAsunto, fecha, hora, canal?, observacion? }
+// Agenda una cita de primera vez (o con más de un año desde la última consulta) en SISMA.
+// Si el paciente no existe y es afiliado activo de MutualSer, lo crea con el celular dado.
+// Requiere: SISMA_NODE_API_KEY con permisos citas.agendar y pacientes.crear, y SISMA_BOT_USER_ID
+// (id del usuario de SISMA que figura como autor).
+// Body: { documento, tipoId?, codMedico, idAsunto, fecha, hora, celular?, direccion?, barrio?, canal?, observacion? }
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
