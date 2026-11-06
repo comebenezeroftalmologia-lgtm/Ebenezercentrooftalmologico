@@ -16311,6 +16311,123 @@ try{
 })();
 }catch(__e2){ try{ console.warn('estados por paciente no disponibles:', __e2 && __e2.message); }catch(_){} }
 
+try{
+(function(){
+  if(window.__guiaLiq) return; window.__guiaLiq = true;
+
+  var CSS=".guiaBtn{padding:6px 12px;border:1px solid #c9d6e8;background:#fff;border-radius:8px;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:#1e3a6b}"
+   +".guiaBtn:hover{background:#eef4ff}"
+   +".guiaOv{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto}"
+   +".guiaBox{background:#fff;max-width:900px;width:100%;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}"
+   +".guiaTop{display:flex;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #e6ecf5;position:sticky;top:0;background:#fff;z-index:2}"
+   +".guiaTop h2{margin:0;font-size:17px;color:#1e3a6b;flex:1}"
+   +".guiaCuerpo{padding:6px 22px 26px;max-height:76vh;overflow:auto;font-size:14px;line-height:1.55;color:#243244}"
+   +".guiaCuerpo h3{color:#1e3a6b;font-size:15.5px;margin:20px 0 6px;border-top:1px solid #eef2f8;padding-top:14px}"
+   +".guiaCuerpo h3:first-of-type{border-top:0;padding-top:4px}"
+   +".guiaCuerpo h4{color:#36435c;font-size:13.5px;margin:12px 0 4px}"
+   +".guiaCuerpo p{margin:6px 0}.guiaCuerpo ul{margin:6px 0 6px 18px;padding:0}.guiaCuerpo li{margin:3px 0}"
+   +".guiaCuerpo b{color:#1b2a44}"
+   +".guiaChip{display:inline-block;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:700}"
+   +".gc-v{background:#e6f3ea;color:#1a7f4b}.gc-a{background:#fff6e6;color:#8a5a00}.gc-r{background:#fdeceb;color:#b3261e}.gc-az{background:#e8f0fe;color:#1e5ba8}"
+   +".guiaNota{background:#f7fbff;border:1px solid #d7e5f7;border-radius:9px;padding:9px 12px;margin:10px 0;font-size:13px}"
+   +".guiaOjo{background:#fff6e6;border:1px solid #f0d9a8;border-radius:9px;padding:9px 12px;margin:10px 0;font-size:13px;color:#5a4000}"
+   +"@media print{body>*{display:none!important}.guiaOv{position:static!important;display:block!important;padding:0;background:#fff}"
+   +".guiaOv{display:block!important}.guiaBox{box-shadow:none;max-width:none}.guiaTop{display:none!important}"
+   +".guiaCuerpo{max-height:none;overflow:visible;padding:0}}";
+  var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st);
+
+  var HTML = ''
+  + '<h3>1. Entrar</h3>'
+  + '<p>Abra <b>www.ebenezer-app.com</b>, entre con su correo y su clave, y escriba su nombre completo cuando el liquidador se lo pida: <b>con ese nombre queda firmado todo lo que haga hoy</b>.</p>'
+
+  + '<h3>2. Los archivos</h3>'
+  + '<p>En la parte de arriba están las cuatro tarjetas. La única obligatoria es el <b>Informe del sistema</b> (.xls). Las <b>Estadísticas de cirugía</b> son necesarias para liquidar quirófanos y anestesia.</p>'
+  + '<p>Puede soltar los archivos sobre su tarjeta o todos juntos en cualquier parte: el tablero los reconoce y los pone donde van. Si ya están guardados en la nube, le aparecen cargados solos y no tiene que subir nada.</p>'
+
+  + '<h3>3. Elegir qué liquidar</h3>'
+  + '<ul>'
+  + '<li><b>¿Qué liquidar?</b> — Sede Principal (particulares y prepagadas), Sede 2 (Mutual) o Cirugía (quirófanos). Cirugía va aparte siempre.</li>'
+  + '<li><b>Período</b> — el mes de cierre va del 26 al 25.</li>'
+  + '<li><b>Corte del mes</b> — <i>1 Inicial</i> y <i>2 Intermedio</i> son internos; <b>3 Final</b> es la definitiva, la que se envía.</li>'
+  + '</ul>'
+  + '<p>Pulse <b>⚡ Liquidar</b>.</p>'
+
+  + '<h3>4. El semáforo de médicos</h3>'
+  + '<ul>'
+  + '<li><span class="guiaChip gc-v">Cuadra</span> Todo cruzó con la ficha técnica. <b>No lo toque.</b></li>'
+  + '<li><span class="guiaChip gc-a">Por revisar</span> Hay servicios sin tarifa o diferencias. <b>Ábralo.</b></li>'
+  + '<li><span class="guiaChip gc-r">Sin tarifa</span> El servicio no está en la ficha. Hay que decidirlo y queda firmado.</li>'
+  + '</ul>'
+
+  + '<h3>5. Revisar paciente por paciente <span class="guiaChip gc-az">nuevo</span></h3>'
+  + '<p>Al abrir un médico sale el panel de pacientes. Cada renglón tiene un botón que rota entre tres estados:</p>'
+  + '<ul>'
+  + '<li><b>✓ Entra en este corte</b> — se paga ahora. Es como arranca todo.</li>'
+  + '<li><b>⏳ Pendiente para el próximo corte</b> — típico de lo que se paga por porcentaje y todavía no ha cerrado facturación. Le pide el motivo (opcional).</li>'
+  + '<li><b>✕ No se paga</b> — le exige escribir el motivo. Queda firmado con su nombre y cualquiera puede leerlo después.</li>'
+  + '</ul>'
+  + '<p>Arriba del panel ve el conteo en vivo: cuántos entran y por cuánto, cuántos quedan pendientes y cuántos no se pagan. <b>El acta del médico descuenta automáticamente los pendientes y los no pagados</b>, y los muestra como renglones aparte para que se vea por qué el total bajó.</p>'
+  + '<div class="guiaNota">El buscador del panel filtra por paciente, cédula o servicio, y puede agrupar por paciente o por servicio.</div>'
+
+  + '<h3>6. Anestesiólogos <span class="guiaChip gc-az">nuevo</span></h3>'
+  + '<p>En la tarjeta de un anestesiólogo sale el <b>Detalle de anestesia por fecha</b>: cada día con sus jornadas, sus pacientes de quirófano (hora, cédula, cirujano, procedimiento) y sus consultas preanestésicas separando Mutual de prepagadas.</p>'
+  + '<div class="guiaOjo"><b>Ojo con las alertas de ese panel.</b> Le marca los turnos de quirófano donde se operaron pacientes y <b>nadie quedó anotado como anestesiólogo</b>, y los pacientes sueltos a los que les falta ese dato. Eso no lo puede liquidar el sistema: hay que corregirlo en la Estadística de cirugía. Si no lo corrige, esas jornadas no se le pagan a nadie.</div>'
+  + '<p>El botón <b>⬇ Excel del detalle</b> baja todo eso en dos hojas para revisarlo o enviarlo.</p>'
+
+  + '<h3>7. Acuerdos y ajustes</h3>'
+  + '<p>Lo que se pacta por fuera de la ficha —una jornada adicional, un paciente extra, un acuerdo del mes— se registra como acuerdo, con su valor, su motivo y sus pacientes. Sale en el acta como renglón propio, firmado con quién lo hizo y cuándo, y se puede quitar sin borrar nada: queda el rastro.</p>'
+  + '<div class="guiaNota">Los acuerdos <b>no se arrastran</b> de un corte al siguiente. Si un acuerdo se repite todos los meses, hay que volver a registrarlo.</div>'
+
+  + '<h3>8. El acta del médico</h3>'
+  + '<p>Desde la tarjeta saca el <b>📄 PDF del acta</b> y el <b>⬇ Excel del acta</b>. Traen una fila por paciente con fecha, cédula, empresa, servicio y el valor, más los acuerdos y los descuentos por pendientes.</p>'
+
+  + '<h3>9. Enviar a contabilidad</h3>'
+  + '<p>Cuando la sede está revisada, se cierra y se envía. En la pestaña <b>Equipo</b> queda el estado del cierre del mes: cuánto dio el sistema, cuánto quedó después de sus cambios, la diferencia, quién lo envió y cuándo. Desde ahí se aprueba o se devuelve a revisión con una nota.</p>'
+  + '<div class="guiaOjo">Una vez enviado, el cierre queda guardado tal cual. Si después se cambia algo en el liquidador, <b>contabilidad no lo ve hasta que la sede se vuelva a cerrar y enviar</b>.</div>'
+
+  + '<h3>10. Resumen del mes y link para los médicos</h3>'
+  + '<p>En <b>Equipo</b> están el <b>📄 Resumen del mes (PDF)</b> y el <b>⬇ Resumen en Excel</b>, con las tres sedes y el total, tomados de los cierres que se enviaron.</p>'
+  + '<p>Y está el link que abren los médicos: <b>www.ebenezer-app.com/honorarios</b>. Cada uno se busca por su nombre, ve sus atenciones paciente por paciente y baja su propio Excel o PDF. También se pueden bajar los de todos, un archivo por médico.</p>'
+
+  + '<h3>11. Reglas que conviene no olvidar</h3>'
+  + '<ul>'
+  + '<li><b>Una agenda no es un médico.</b> Antes de pagarle a un nombre del informe, confirme que es médico y que tiene ficha. Hay usuarios que son de otra persona: lo que va entre paréntesis manda, y hay equivalencias registradas.</li>'
+  + '<li><b>Lo que la ficha paga por paciente</b> no se agrupa, aunque el mismo acto se repita.</li>'
+  + '<li><b>La aprobación es por médico y por sede.</b></li>'
+  + '<li><b>Nada se decide en silencio:</b> todo lo que quede en cero lleva motivo escrito y firmado.</li>'
+  + '</ul>';
+
+  function abrir(){
+    if(document.getElementById("guiaOv")) return;
+    var ov=document.createElement("div"); ov.className="guiaOv"; ov.id="guiaOv";
+    ov.innerHTML='<div class="guiaBox"><div class="guiaTop"><h2>📘 Guía del liquidador</h2>'
+      +'<button class="guiaBtn" type="button" id="guiaImp">🖨 Imprimir / Guardar en PDF</button>'
+      +'<button class="guiaBtn" type="button" id="guiaCer">Cerrar</button></div>'
+      +'<div class="guiaCuerpo">'+HTML+'</div></div>';
+    document.body.appendChild(ov);
+    document.getElementById("guiaCer").onclick=function(){ ov.remove(); };
+    document.getElementById("guiaImp").onclick=function(){ window.print(); };
+    ov.addEventListener("click", function(e){ if(e.target===ov) ov.remove(); });
+  }
+  window.__guiaAbrir = abrir;
+
+  function poner(){
+    if(document.getElementById("btnGuia")) return;
+    var ref=Array.prototype.slice.call(document.querySelectorAll("button"))
+      .filter(function(b){ return /Fichas t[eé]cnicas/i.test(b.textContent||"") && b.offsetParent; })[0];
+    if(!ref) return;
+    var b=document.createElement("button");
+    b.id="btnGuia"; b.type="button"; b.className=ref.className||"guiaBtn";
+    b.textContent="📘 Guía";
+    b.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); abrir(); });
+    ref.parentNode.insertBefore(b, ref);
+  }
+  poner(); setTimeout(poner,800); setTimeout(poner,2500);
+  var mo=new MutationObserver(function(){ poner(); });
+  mo.observe(document.body,{childList:true,subtree:true});
+})();
+}catch(__e3){ try{ console.warn('guia no disponible:', __e3 && __e3.message); }catch(_){} }
+
 function pdfTodas(){
   const J=pdfLib(); if(!J||!RESULT) return;
   const doc = new J({unit:'pt', format:'a4'});
