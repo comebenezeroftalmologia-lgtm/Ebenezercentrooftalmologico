@@ -204,6 +204,8 @@ export type EntradaAgendar = {
   hora?: string;
   canal?: string;
   observacion?: string;
+  /** Nombre completo dicho por la persona: por voz se vuelve a verificar antes de agendar o crear. */
+  nombre?: string;
   /** Solo para pacientes nuevos: se crean en SISMA con estos datos. */
   celular?: string;
   direccion?: string;
@@ -255,6 +257,15 @@ export async function agendarCita(b: EntradaAgendar): Promise<Resultado> {
     await registrarAgendamiento({ ...base, paciente_nuevo: nuevo, resultado: "no_agendada", motivo, datos_por_verificar: verificar, detalle: extra.detalle });
     return { status: 200, body: { agendada: false, motivo, accion_sugerida: accion, ...extra } };
   };
+
+  // Por voz, la identidad (cédula + nombre completo) se verifica de nuevo aquí: este endpoint no confía en
+  // que el paso anterior de la conversación se haya hecho.
+  if ((b.canal ?? "bot") !== "mcp") {
+    const dicho = limpiarTexto(b.nombre);
+    if (!afi || afi.estado !== "AC" || !dicho || verificarNombre(dicho, afi) !== "coincide") {
+      return await no("identidad_no_verificada", "derivar_humano");
+    }
+  }
 
   try {
     const q = new URLSearchParams({ numId: doc });
