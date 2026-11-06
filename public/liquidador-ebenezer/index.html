@@ -16177,6 +16177,42 @@ try{
     };
   }
 
+  /* ---------- 1b. el acta descuenta pendientes y no-pagados ---------- */
+  function sumaPorEstado(med){
+    var L={}; try{ L=JSON.parse(localStorage.getItem("liq_estado")||"{}"); }catch(e){}
+    var res={pend:{n:0,v:0}, nopaga:{n:0,v:0}};
+    if(!Object.keys(L).length) return res;
+    var vis={};
+    (window.DRILL||[]).forEach(function(g){ if(!g||!g.forEach) return;
+      g.forEach(function(r){
+        if(!r||r.med!==med) return;
+        var k=String(r.k||""); if(!k||vis[k]) return; vis[k]=1;
+        var o=L["EST|"+k]; if(!o||!o.est||o.est==="entra") return;
+        var b=res[o.est]; if(!b) return;
+        b.n++; b.v += Number(r.total)||0;
+      });
+    });
+    return res;
+  }
+  window.__estSuma = sumaPorEstado;
+
+  if(typeof pdfFilasMedico==="function" && !window.__estEnActa){
+    window.__estEnActa = true;
+    var _pf2 = pdfFilasMedico;
+    pdfFilasMedico = function(h){
+      var R=_pf2(h);
+      try{
+        var s=sumaPorEstado(h);
+        R.cierres = R.cierres || [];
+        if(s.pend.n){ R.cierres.push({txt:"Pendiente para el proximo corte ("+s.pend.n+" paciente(s))", v:-Math.round(s.pend.v)});
+          R.total = Math.round((R.total||0) - s.pend.v); }
+        if(s.nopaga.n){ R.cierres.push({txt:"No se paga, con motivo firmado ("+s.nopaga.n+" paciente(s))", v:-Math.round(s.nopaga.v)});
+          R.total = Math.round((R.total||0) - s.nopaga.v); }
+      }catch(e){}
+      return R;
+    };
+  }
+
   /* ---------- 2. tres estados por paciente ---------- */
   var EST={ entra:{t:"Entra en este corte", c:"#1a7f4b", b:"#e6f3ea", i:"✓"},
             pend: {t:"Pendiente para el próximo corte", c:"#8a5a00", b:"#fff6e6", i:"⏳"},
