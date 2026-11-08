@@ -218,6 +218,92 @@ function fechaDeLaFoto(sello) {
   }
 }
 
+/* ---------------------------------------------------------------------
+   BARRIDO DE FILAS FANTASMA (08-11-2026)
+
+   El upsert actualiza y agrega, pero nunca quita. Si una reclasificacion
+   mueve un cargo de una UF a otra -- como paso el 03-11-2026 cuando
+   TERAPIA IPL se mando a Apoyo Terapeutico -- la combinacion vieja
+   (fecha + UF + empresa) desaparece del RAW, pero la fila se queda en la
+   tabla con la foto vieja pegada. Nadie la vuelve a tocar.
+
+   Eso dejaba dos tablas que deberian sumar igual dando distinto: Apoyo
+   Terapeutico prepagadas de octubre daba 43 por el detalle diario y 40
+   por los conteos. Las 3 unidades de diferencia eran dos filas huerfanas,
+   del 01-oct y del 14-oct, que ya no existen en el tablero.
+
+   El RAW trae SIEMPRE la historia completa. Entonces, DENTRO del rango
+   que acaba de cargarse, cualquier fila con una foto anterior es por
+   definicion un fantasma. Se borra solo dentro de ese rango: fuera de el
+   no se toca nada, y si el RAW algun dia llegara recortado, lo que quede
+   por fuera sobrevive.
+
+   Antes de borrar se imprime fila por fila lo que se va. Un borrado que
+   no se puede leer despues en el registro es un borrado a ciegas.
+   --------------------------------------------------------------------- */
+/* El barrido no borra sin red. Dos condiciones, siempre:
+
+   1. FRENO. Si lo que va a quitar pasa del 1% de lo que acaba de cargar,
+      NO quita nada, sale en rojo y avisa. Un barrido sano son unas pocas
+      filas; cientos significan que llego una foto incompleta, y en ese
+      caso el error es creerle a la foto, no a la tabla.
+
+   2. COPIA. Antes de borrar, la fila entera se guarda en
+      frecuencias_descartadas. Asi quitar deja de ser definitivo: si
+      alguna vez nos equivocamos, la fila esta completa y se devuelve.
+      Si la copia falla, no se borra. */
+const TOPE_BARRIDO = 0.01;
+
+async function barrerFantasmas(tabla, columnas, filtrar, cargadas) {
+  const base = () => filtrar(supabase.from(tabla)).neq("source_snapshot", sourceSnapshot);
+
+  const { data: fantasmas, error: errBuscar } = await base().select(columnas);
+  if (errBuscar) {
+    console.error(`No se pudo revisar filas huerfanas en ${tabla}:`, errBuscar.message);
+    process.exit(1);
+  }
+  if (!fantasmas?.length) {
+    console.log(`  Sin filas huerfanas en ${tabla}.`);
+    return 0;
+  }
+
+  console.log(`  Filas huerfanas en ${tabla}: ${fantasmas.length} (de ${cargadas} cargadas)`);
+  for (const f of fantasmas) console.log(`    - ${JSON.stringify(f)}`);
+
+  const limite = Math.max(5, Math.floor(cargadas * TOPE_BARRIDO));
+  if (fantasmas.length > limite) {
+    console.error("");
+    console.error(`=== NO SE BARRIO NADA EN ${tabla} ===`);
+    console.error(`Sobran ${fantasmas.length} filas y el tope es ${limite} (1% de ${cargadas}).`);
+    console.error("Tantas sobrando no es una reclasificacion: es una foto");
+    console.error("incompleta. Quitarlas seria borrar datos buenos.");
+    console.error("La tabla queda como estaba. Revise el tablero de origen.");
+    process.exit(1);
+  }
+
+  // Copia antes de borrar. Si esto falla, no se borra nada.
+  const copia = fantasmas.map((f) => ({
+    tabla,
+    fila: f,
+    foto_vieja: f.source_snapshot ?? null,
+    foto_nueva: sourceSnapshot,
+  }));
+  const { error: errCopia } = await supabase.from("frecuencias_descartadas").insert(copia);
+  if (errCopia) {
+    console.error(`No se pudo guardar la copia antes de borrar (${tabla}):`, errCopia.message);
+    console.error("No se borro nada: sin copia no se quita.");
+    process.exit(1);
+  }
+
+  const { error: errBorrar } = await base().delete();
+  if (errBorrar) {
+    console.error(`No se pudieron quitar las huerfanas de ${tabla}:`, errBorrar.message);
+    process.exit(1);
+  }
+  console.log(`  Quitadas ${fantasmas.length} de ${tabla} (copia guardada en frecuencias_descartadas).`);
+  return fantasmas.length;
+}
+
 const BATCH = 500;
 let loaded = 0;
 for (let i = 0; i < rows.length; i += BATCH) {
@@ -286,6 +372,17 @@ for (let i = 0; i < conteoRows.length; i += BATCH) {
   }
   loadedConteos += batch.length;
   console.log(`  ...${loadedConteos}/${conteoRows.length}`);
+}
+
+// Solo se barren los años que vinieron en esta carga.
+const aniosConteos = [...new Set(conteoRows.map((r) => r.year))];
+if (aniosConteos.length) {
+  await barrerFantasmas(
+    "frecuencias_conteos",
+    "year, month_num, uf, grupo, cantidad, valor, source_snapshot",
+    (q) => q.in("year", aniosConteos),
+    conteoRows.length,
+  );
 }
 
 console.log("Listo (conteos).");
@@ -521,6 +618,14 @@ if (diasRows.length) {
     loadedDias += batch.length;
   }
   console.log(`  ...${loadedDias}/${diasRows.length}`);
+
+  // Solo dentro del rango de fechas que acaba de cargarse.
+  await barrerFantasmas(
+    "frecuencias_dias",
+    "fecha, uf, grupo, cantidad, valor, source_snapshot",
+    (q) => q.gte("fecha", fechas[0]).lte("fecha", fechas[fechas.length - 1]),
+    diasRows.length,
+  );
 } else {
   console.warn("AVISO: RAW.dias vino vacío — no se cargó el detalle diario.");
 }
