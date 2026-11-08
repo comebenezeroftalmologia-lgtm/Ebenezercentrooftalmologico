@@ -680,6 +680,19 @@ export default function DigiturnoContactPage() {
                   alarmaA={5}
                   comoSeActualiza="hay que volver a extraer del digiturno y del PBX"
                 />
+                {/* Cuando no se pudo traer el archivo fresco, lo que se
+                    ve es la copia pegada dentro de la plataforma, que
+                    solo cambia al desplegar. Antes esto no se decia y la
+                    copia vieja se veia igualita a la buena. */}
+                {(liveDataset as { esRespaldo?: boolean }).esRespaldo && (
+                  <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-2.5 py-1 text-[11.5px] font-semibold text-[#B91C1C]">
+                    <span aria-hidden="true">⚠</span>
+                    No se pudo traer el archivo del día — está viendo una copia guardada
+                    {(liveDataset as { respaldoMotivo?: string | null }).respaldoMotivo
+                      ? ` (${(liveDataset as { respaldoMotivo?: string | null }).respaldoMotivo})`
+                      : ''}
+                  </div>
+                )}
               </div>
             </div>
           </div>
