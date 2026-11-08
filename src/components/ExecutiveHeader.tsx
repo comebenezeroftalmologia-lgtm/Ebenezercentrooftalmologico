@@ -194,12 +194,19 @@ export function ExecutiveHeader({
   fechaISO,
   selectableDate = false,
   availableDates,
+  frescura,
 }: {
   overline?: string;
   title: string;
   subtitle?: string;
   variant: HeaderVariant;
   rightControls?: React.ReactNode;
+  /* De cuando son los datos de ESTA pantalla.
+     Va aqui arriba, al lado de la fecha de hoy, y no abajo, porque la
+     pildora de la izquierda dice el dia de HOY: puesta sola, al lado de
+     cifras viejas, sugiere que las cifras son de hoy. Que las dos fechas
+     se vean juntas es justamente el punto. */
+  frescura?: React.ReactNode;
   /** Dia que se esta mostrando. Si no viene, se muestra hoy. */
   fechaISO?: string;
   /** Si es true, la pildora de fecha abre un calendario interactivo. */
@@ -242,6 +249,7 @@ export function ExecutiveHeader({
                   <span>{fechaTexto}</span>
                 </span>
               )}
+              {frescura}
             </div>
             <h1 className="text-[30px] font-bold leading-[1.12] tracking-[-0.022em] text-[#0E245E]">
               {title}

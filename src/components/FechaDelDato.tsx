@@ -61,6 +61,21 @@ export function CoberturaDelDato({
   );
 }
 
+/* Para las pantallas que SI consultan su fuente cada vez que se abren.
+   No se les pone una fecha: se dice que son de ahora. La distincion
+   importa -- "en vivo" y "al 18 de septiembre" se leen distinto, y hasta
+   hoy las dos se veian igual de confiables en pantalla. */
+export function DatoEnVivo({ fuente }: { fuente: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-[11.5px] font-semibold text-[#166534]"
+      title={`Esta pantalla consulta ${fuente} cada vez que se abre. No hay copia guardada.`}
+    >
+      En vivo desde {fuente}
+    </span>
+  );
+}
+
 export function FechaDelDato({
   fecha,
   avisaA = 2,
