@@ -1769,6 +1769,274 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
   }
 </style>
 
+
+
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="ebz-native-frecuencias-theme">
+  :root {
+    --bg: #F8FAFC !important;
+    --bg2: #FFFFFF !important;
+    --card: #FFFFFF !important;
+    --card2: #F1F5F9 !important;
+    --line: #E2E8F0 !important;
+    --ink: #0F172A !important;
+    --ink2: #475569 !important;
+    --muted: #64748B !important;
+    --acc: #1D4ED8 !important;
+    --acc2: #0284C7 !important;
+    --accdark: #0E245E !important;
+    --brand: #1D4ED8 !important;
+    --grad: linear-gradient(135deg, #0E245E 0%, #1D4ED8 60%, #2563EB 100%) !important;
+    --shadow: 0 2px 12px rgba(14, 36, 94, 0.05) !important;
+    --r: 16px !important;
+  }
+
+  /* Bloqueo estricto: jamás permite que #gate se cierre solo sin haber dado clic en Entrar */
+  body:not(.ebz-auth-unlocked) #gate {
+    display: flex !important;
+  }
+  body:not(.ebz-auth-unlocked) #nubeGate {
+    display: block !important;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    padding-bottom: 48px !important;
+  }
+
+  h1, h2, h3, .kpi .v, .semtot, .actatop .an, .actatop .at {
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  }
+
+  .wrap {
+    max-width: 1400px !important;
+    padding: 16px 24px !important;
+  }
+
+  /* Encabezado estilo ExecutiveHeader de Frecuencias (conservando todos sus botones e indicadores) */
+  .hero {
+    margin-top: 4px !important;
+    padding: 20px 24px !important;
+    border-radius: 18px !important;
+    background: linear-gradient(115deg, #081A3A 0%, #0E245E 48%, #1D4ED8 100%) !important;
+    box-shadow: 0 10px 28px rgba(14, 36, 94, 0.14) !important;
+    border: 1px solid rgba(96, 165, 250, 0.28) !important;
+    color: #FFFFFF !important;
+  }
+
+  .hero .brand {
+    gap: 16px !important;
+  }
+
+  .hero .logo {
+    width: 64px !important;
+    height: 64px !important;
+    padding: 8px !important;
+    border-radius: 14px !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  .hero h1 {
+    color: #FFFFFF !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .hero h1 .grad {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    color: #93C5FD !important;
+  }
+
+  .hero .sub {
+    color: #DBEAFE !important;
+    font-size: 13px !important;
+    opacity: 0.92 !important;
+  }
+
+  /* Píldoras de estado de nube y barra de usuario (equipo / salir) perfectamente visibles */
+  .hero .npill {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  .hero .userbadge,
+  #userBadge {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    color: #0F172A !important;
+    border-radius: 99px !important;
+    padding: 7px 16px !important;
+    font-size: 12.5px !important;
+    box-shadow: 0 2px 8px rgba(14, 36, 94, 0.08) !important;
+  }
+
+  #userBadge b {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+
+  #userBadge a {
+    color: #1D4ED8 !important;
+    font-weight: 600 !important;
+  }
+
+  #userBadge a:hover {
+    text-decoration: underline !important;
+  }
+
+  /* Paneles y tarjetas al estilo de Frecuencias */
+  .panel {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+    padding: 20px 22px !important;
+  }
+
+  .cg-bloque {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+  }
+
+  .cg-bloque.g2 {
+    background: #F8FAFF !important;
+    border-color: #DCE7F7 !important;
+  }
+
+  .cg-grupo.g2 b {
+    color: #1D4ED8 !important;
+  }
+
+  .carga {
+    background: #FFFFFF !important;
+    border: 1.5px dashed #CBD5E1 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 4px rgba(14, 36, 94, 0.03) !important;
+  }
+
+  .carga:hover {
+    border-color: #2563EB !important;
+    background: #F0F7FF !important;
+  }
+
+  .carga.comparar {
+    border-color: #BFDBFE !important;
+    background: linear-gradient(180deg, #F0F7FF 0%, #FFFFFF 100%) !important;
+  }
+
+  .carga.comparar .cg-tit {
+    color: #0E245E !important;
+  }
+
+  /* KPIs ejecutivos estilo Frecuencias */
+  .kpi {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .kpi::before {
+    background: linear-gradient(90deg, #0E245E 0%, #2563EB 100%) !important;
+    height: 3.5px !important;
+  }
+
+  .kpi .l {
+    color: #64748B !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .kpi .v {
+    color: #0F172A !important;
+  }
+
+  /* Controles, selectores y botones */
+  input[type=text], input[type=search], input[type=password], input[type=email], select, input[type=date] {
+    border: 1px solid #CBD8EE !important;
+    border-radius: 10px !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    font-size: 13.5px !important;
+  }
+
+  input:focus, select:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #0E245E 0%, #1D4ED8 100%) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.18) !important;
+    font-weight: 600 !important;
+  }
+
+  .btn.quiet, .btn.ghost {
+    background: #FFFFFF !important;
+    color: #0E245E !important;
+    border: 1px solid #DCE7F7 !important;
+    box-shadow: 0 1px 3px rgba(14, 36, 94, 0.05) !important;
+  }
+
+  .btn.quiet:hover:not(:disabled), .btn.ghost:hover:not(:disabled) {
+    background: #EBF3FE !important;
+    border-color: #93C5FD !important;
+    color: #1D4ED8 !important;
+  }
+
+  /* Pestañas laterales y tablas */
+  .tabwrap > .tabs {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .tab.active {
+    background: #E6F0FD !important;
+    color: #0E245E !important;
+    border: 1px solid #C9DDFB !important;
+    border-left: 3.5px solid #2563EB !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08) !important;
+    font-weight: 700 !important;
+  }
+
+  .tab.active .tbadge {
+    background: #1D4ED8 !important;
+    color: #FFFFFF !important;
+  }
+
+  /* Ventana de inicio de sesión con contraseña estilo plataforma Ebenezer */
+  #gate {
+    background: rgba(8, 26, 58, 0.62) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .gatecard {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 24px 64px rgba(8, 26, 58, 0.28) !important;
+  }
+
+  .gatecard h2 {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+</style>
+
 </head>
 <body>
 <div id="gate">
@@ -17756,6 +18024,124 @@ try{
   setTimeout(arrancar, 2500); setTimeout(arrancar, 9000);
   try{ document.addEventListener("click", function(ev){
     var t=ev.target; if(t && /Historial/i.test(t.textContent||"") && (t.textContent||"").length<20) setTimeout(arrancar, 400);
+  }, true); }catch(e){}
+})();
+
+
+/* === Valores que se pagan y la ficha no respalda: se cierran escribiendo en la ficha === */
+(function(){
+  if(window.__cvf) return; window.__cvf = true;
+  var CSS=".cvf{margin:0 0 16px;border:1px solid #f0d9a8;background:#fffdf7;border-radius:10px;padding:12px 14px}"
+   +".cvf h3{margin:0 0 4px;font-size:15px;color:#8a5a00}"
+   +".cvf .sub{font-size:12px;color:#6b7a90;margin:0 0 10px}"
+   +".cvf table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff}"
+   +".cvf th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#6b7a90;padding:5px 8px;border-bottom:1px solid #e6ecf5}"
+   +".cvf td{padding:7px 8px;border-bottom:1px solid #f1f5fa;vertical-align:top}"
+   +".cvf .num{text-align:right;white-space:nowrap}"
+   +".cvf .b{border:1px solid #c9d6e8;background:#fff;border-radius:6px;padding:3px 9px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}"
+   +".cvf .b:hover{background:#eef4ff}"
+   +".cvf .hecho{color:#1a7f4b;font-weight:700;font-size:11.5px}"
+   +".cvf .dif{color:#b3261e;font-weight:700}";
+  try{ var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
+  function nz(s){ return String(s==null?"":s).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim(); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function mny(n){ return "$ "+(Math.round(Number(n)||0)).toLocaleString("es-CO"); }
+  function quien(){ try{ return (NUBE.perfil&&NUBE.perfil.nombre)||""; }catch(e){ return ""; } }
+  function fichaDe(med){
+    var k=nz(med), hit=null, nombre=med;
+    try{ var F=window.FICHAS_BASE_V2||{};
+      Object.keys(F).forEach(function(m){ if(nz(m)===k){ hit=F[m]; nombre=m; } }); }catch(e){}
+    return {nombre:nombre, filas:(hit||[]).slice()}; }
+  function pal(s){ return nz(s).split(/[^A-Z0-9]+/).filter(function(w){return w.length>3;}); }
+  function parecido(filas, nombre){
+    var ws=pal(nombre), mejor=null, max=0;
+    filas.forEach(function(f,i){ var c=pal(f.servicio).filter(function(w){return ws.indexOf(w)>=0;}).length;
+      if(c>max){ max=c; mejor={i:i, f:f}; } });
+    return max>0?mejor:null; }
+  function casos(){
+    var out=[], D=[];
+    try{ D=RESULT._datos||[]; }catch(e){ return out; }
+    D.forEach(function(x){
+      var fi=fichaDe(x.m);
+      var vals=fi.filas.map(function(f){ return Math.round(Number(f.valor)||0); });
+      ["cir","sede"].forEach(function(b){
+        var g=(x.d&&x.d[b])||{};
+        Object.keys(g).forEach(function(k){
+          var v=g[k]; if(!v) return;
+          var pago=Math.round(v.pago||0); if(!pago) return;
+          var uf=Number(v.unit)||0, u=Math.round(uf); if(!u) return;
+          if(Math.abs(uf-u)>0.004) return;
+          var r=String(((v.recs||[])[0]||{}).regla||"");
+          if(/^Acuerdo|norma aprendida/i.test(r)) return;
+          if(/jornada|rubro|paquete|incluid/i.test(r)) return;
+          if(vals.indexOf(u)>=0) return;
+          var nombre=String(v.servicio||k).replace(/\|\|.*$/,"");
+          var emp=String(((v.recs||[])[0]||{}).emp || ((v.recs||[])[0]||{}).empresa || "");
+          out.push({med:fi.nombre, servicio:nombre, cant:v.cant||0, unit:u, total:pago,
+                    empresa:emp, cerca:parecido(fi.filas, nombre)});
+        }); }); });
+    out.sort(function(a,b){ return b.total-a.total; });
+    return out; }
+  async function guardar(c, modo, btn){
+    var fi=fichaDe(c.med);
+    var filas=fi.filas.map(function(f){ return Object.assign({}, f); });
+    var reg={ id:"FICHA_"+Date.now().toString(36), medico:fi.nombre, t:new Date().toLocaleString("es-CO"), por:quien(), que:"" };
+    if(modo==="agregar"){
+      filas.push({ servicio:c.servicio, cups:"", tipo:"", valor:c.unit,
+        empresa:(c.empresa||"TODAS LAS EMPRESAS"),
+        seccion:(/MUTUAL/i.test(c.empresa||"")?"MUTUAL SER":"PREPAGADAS Y PARTICULARES"),
+        obs:"Agregado desde el liquidador por "+quien()+" el "+new Date().toLocaleDateString("es-CO") });
+      reg.que="Agregó a la ficha: "+c.servicio+" = "+mny(c.unit);
+    } else {
+      if(!c.cerca) return;
+      filas[c.cerca.i]=Object.assign({}, filas[c.cerca.i], {valor:c.unit,
+        obs:String(filas[c.cerca.i].obs||"")+" · valor actualizado a "+mny(c.unit)+" por "+quien()+" el "+new Date().toLocaleDateString("es-CO")});
+      reg.que="Cambió en la ficha: "+filas[c.cerca.i].servicio+" de "+mny(c.cerca.f.valor)+" a "+mny(c.unit);
+    }
+    btn.disabled=true; btn.textContent="guardando…";
+    try{
+      await NUBE.guardarFicha(fi.nombre, filas, reg);
+      try{ await NUBE.audit({accion:"FICHA EDITADA", periodo:"", parte:"", detalle:reg.que.slice(0,160)}); }catch(e){}
+      try{ window.FICHAS_BASE_V2[fi.nombre]=filas; }catch(e){}
+      btn.parentNode.innerHTML='<span class="hecho">✓ escrito en la ficha</span>';
+    }catch(e){ btn.disabled=false; btn.textContent="reintentar";
+      alert("No se pudo guardar en la ficha: "+(e.message||e)); } }
+  function pintar(){
+    var sec=document.getElementById("sec-fichas"); if(!sec) return;
+    var vieja=sec.querySelector(".cvf"); if(vieja) vieja.remove();
+    var L=casos();
+    var box=document.createElement("div"); box.className="cvf";
+    if(!L.length){
+      box.innerHTML='<h3>✓ Todos los valores pagados están respaldados por la ficha</h3><p class="sub">No hay nada que decidir en esta liquidación.</p>';
+      sec.insertBefore(box, sec.firstChild); return; }
+    var tot=L.reduce(function(a,c){return a+c.total;},0);
+    box.innerHTML='<h3>⚠ '+L.length+' valor(es) que se están pagando y la ficha no respalda — '+mny(tot)+'</h3>'
+      +'<p class="sub">Ese valor sale del código del aplicativo, no de la ficha. Decida aquí cuál rige: lo que escriba queda en la ficha, firmado y con fecha, y de ahí en adelante el aplicativo paga por la ficha.</p>'
+      +'<table><thead><tr><th>Médico</th><th>Qué se hizo</th><th class="num">Veces</th><th class="num">Se paga c/u</th><th>La ficha dice</th><th class="num">Total del mes</th><th>Decisión</th></tr></thead><tbody>'
+      +L.map(function(c,i){
+        var dice = c.cerca ? esc(String(c.cerca.f.servicio).slice(0,34))+' = <b class="dif">'+mny(c.cerca.f.valor)+'</b>'
+                           : '<i style="color:#6b7a90">no tiene ese renglón</i>';
+        var btn = c.cerca ? '<button class="b" data-i="'+i+'" data-m="cambiar">Poner '+mny(c.unit)+' en la ficha</button>'
+                          : '<button class="b" data-i="'+i+'" data-m="agregar">Agregar a la ficha</button>';
+        return '<tr><td><b>'+esc(c.med)+'</b></td><td>'+esc(c.servicio.slice(0,42))
+          +(c.empresa?'<div style="font-size:10.5px;color:#6b7a90">'+esc(c.empresa)+'</div>':'')+'</td>'
+          +'<td class="num">'+c.cant+'</td><td class="num"><b>'+mny(c.unit)+'</b></td>'
+          +'<td>'+dice+'</td><td class="num">'+mny(c.total)+'</td><td>'+btn+'</td></tr>'; }).join("")
+      +'</tbody></table>';
+    sec.insertBefore(box, sec.firstChild);
+    box.addEventListener("click", function(ev){
+      var b=ev.target.closest(".b"); if(!b) return;
+      var c=L[+b.getAttribute("data-i")], modo=b.getAttribute("data-m");
+      var txt = modo==="agregar"
+        ? "¿Agregar a la ficha de "+c.med+" el renglón:\n\n"+c.servicio+" = "+mny(c.unit)+"\n\nQueda firmado con su nombre."
+        : "¿Cambiar en la ficha de "+c.med+" el valor de:\n\n"+c.cerca.f.servicio+"\nde "+mny(c.cerca.f.valor)+" a "+mny(c.unit)+"\n\nQueda firmado con su nombre.";
+      if(!confirm(txt)) return;
+      guardar(c, modo, b); }); }
+  window.__cvfPintar = pintar;
+  function arrancar(){ try{ if(window.RESULT&&RESULT._datos) pintar(); }catch(e){ console.warn("cvf", e); } }
+  setTimeout(arrancar, 3000); setTimeout(arrancar, 10000);
+  try{ document.addEventListener("click", function(ev){
+    var t=ev.target; if(t && /Fichas t[eé]cnicas/i.test(t.textContent||"") && (t.textContent||"").length<26) setTimeout(arrancar, 500);
   }, true); }catch(e){}
 })();
 
