@@ -116,7 +116,7 @@ export async function POST(req: Request) {
   }
 
   const admin = createServiceClient();
-  const fila = { ...limpio.fila, actualizado_por: me.id };
+  const fila: Record<string, unknown> = { ...limpio.fila, actualizado_por: me.id };
   const { data, error } = await admin.from(limpio.tabla.tabla).insert(fila).select().single();
 
   if (error) {
@@ -129,8 +129,9 @@ export async function POST(req: Request) {
 
   // Un retiro apaga al empleado. Antes esto se hacia a mano en el Excel
   // y se olvidaba: quedaba gente retirada contando como planta activa.
-  if (slug === "retiros" && fila.num_documento) {
-    await admin.from("th_empleados").update({ activo: false }).eq("num_documento", fila.num_documento);
+  const doc = typeof fila.num_documento === "string" ? fila.num_documento : null;
+  if (slug === "retiros" && doc) {
+    await admin.from("th_empleados").update({ activo: false }).eq("num_documento", doc);
   }
 
   return NextResponse.json({ ok: true, fila: data });
