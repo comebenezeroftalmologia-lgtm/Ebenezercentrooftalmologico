@@ -1,13 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Loader2, Plus, Search, X } from "lucide-react";
 
-// Mesa de trabajo de Cartera.
-//
-// Aqui se registra y se resuelve; la vista de Analytics (/cartera) sigue
-// siendo solo para mirar. Todo lo que se escribe aqui va a la base de datos
-// compartida y queda en el historial con autor y fecha.
+/* ---------------------------------------------------------------------
+   MESA DE TRABAJO DE CARTERA — GLOSAS Y DEVOLUCIONES
+
+   POR QUE ES UNA CUADRICULA Y NO UNA FICHA
+
+   Facturacion viene de un Excel. Alli uno se para en una celda, escribe,
+   da Enter y sigue; no abre un formulario por cada fila. La version
+   anterior de esta pantalla era lista-a-la-izquierda y ficha-a-la-derecha,
+   que es comodo para revisar de a una y pesimo para diligenciar cien.
+   Aqui se diligencia. Por eso manda la cuadricula.
+
+   La ficha no desaparece: se abre con doble clic sobre una fila, que es
+   cuando de verdad hace falta — ver una factura completa con todas sus
+   glosas y lo que suman.
+
+   LO QUE LA PANTALLA HACE Y EL EXCEL NO
+
+   1. VALOR ACEPTADO. El Excel no tiene esa columna, asi que hoy nadie
+      puede responder cuanto nos aceptaron de lo glosado, ni distinguir
+      una aceptacion parcial de una total. Aqui es una celda mas, y
+      parcial/total se calcula solo comparandola con lo glosado.
+
+   2. GUARDA SOLO. Se escribe en la celda y al salir de ella se guarda,
+      con el nombre de quien lo hizo y la fecha, en la base compartida.
+      No hay boton "guardar todo" ni archivo que alguien tenga que volver
+      a subir.
+
+   3. AVISA, NO CORRIGE. Si lo glosado de una factura supera lo radicado,
+      o si el valor aceptado supera lo glosado, lo marca y deja el dato
+      como lo escribio quien sabe del tema.
+   --------------------------------------------------------------------- */
 
 type Glosa = {
   id: string;
@@ -18,6 +44,7 @@ type Glosa = {
   fechaRadicacion: string;
   valorRadicado: number;
   valorGlosado: number;
+  valorAceptado: number | null;
   motivoGlosa: string;
   observacionInterna: string;
   notaCredito: string;
@@ -35,16 +62,36 @@ const ESTADOS = [
   { id: "LEGALIZADA", etiqueta: "Legalizada" },
 ];
 
-const COLOR: Record<string, { fondo: string; texto: string; borde: string }> = {
-  PENDIENTE:   { fondo: "#FFF7E8", texto: "#8A5A00", borde: "#E8C98A" },
-  RESPONDIDA:  { fondo: "#EEF4FD", texto: "#1D4ED8", borde: "#B9CDF2" },
-  ACEPTADA:    { fondo: "#EFF4DC", texto: "#4E6B08", borde: "#C2D487" },
-  NO_ACEPTADA: { fondo: "#E8F0F8", texto: "#0E4C7E", borde: "#A9C4DE" },
-  LEGALIZADA:  { fondo: "#F1F3F5", texto: "#475569", borde: "#CBD5E1" },
+const ETIQUETA: Record<string, string> = Object.fromEntries(
+  ESTADOS.map((e) => [e.id, e.etiqueta]),
+);
+
+/* Pastillas de estado en la paleta de la plataforma: navy para lo que
+   falta, verde de marca para lo aceptado, azul para lo no aceptado.
+   Se distinguen por claridad ademas de por tono, no solo por color. */
+const PASTILLA: Record<string, string> = {
+  PENDIENTE: "border-[#DCE8FA] bg-[#EEF4FD] text-[#1A3174]",
+  RESPONDIDA: "border-[#C7CDE0] bg-[#F4F6FB] text-[#3B4F8D]",
+  ACEPTADA: "border-[#BFE0CC] bg-[#DCEEE3] text-[#146138]",
+  NO_ACEPTADA: "border-[#BBD2F0] bg-[#E7ECFE] text-[#13359B]",
+  LEGALIZADA: "border-[#D8DEE9] bg-[#F1F3F7] text-[#47597A]",
 };
 
-const pesos = (n: number) =>
-  "$" + Math.round(n || 0).toLocaleString("es-CO");
+const pesos = (n: number) => "$" + Math.round(n || 0).toLocaleString("es-CO");
+
+const soloNumero = (s: string) => {
+  const n = Number(String(s).replace(/[^0-9]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Parcial, total o nada — deducido, nunca un campo aparte que se contradiga. */
+function clasePago(g: Glosa): { texto: string; clase: string } | null {
+  if (g.valorAceptado === null || g.valorAceptado === undefined) return null;
+  if (g.valorAceptado <= 0) return { texto: "nada", clase: "text-[#64748B]" };
+  if (g.valorGlosado > 0 && g.valorAceptado >= g.valorGlosado)
+    return { texto: "total", clase: "text-[#146138]" };
+  return { texto: "parcial", clase: "text-[#B45309]" };
+}
 
 export function CarteraWorkspace({
   usuario,
@@ -53,236 +100,265 @@ export function CarteraWorkspace({
 }) {
   const [glosas, setGlosas] = useState<Glosa[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState("");
+  const [fallo, setFallo] = useState("");
   const [aviso, setAviso] = useState("");
   const [busqueda, setBusqueda] = useState("");
-  const [soloPendientes, setSoloPendientes] = useState(true);
-  const [seleccion, setSeleccion] = useState<string | null>(null);
+  const [filtroEstado, setFiltroEstado] = useState<"TODAS" | "SIN_RESOLVER" | string>(
+    "SIN_RESOLVER",
+  );
   const [guardando, setGuardando] = useState<string | null>(null);
+  const [guardado, setGuardado] = useState<string | null>(null);
+  const [fichaDe, setFichaDe] = useState<string | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
 
-  const cargar = useCallback(async () => {
+  const traer = useCallback(async () => {
     setCargando(true);
-    setError("");
+    setFallo("");
     try {
-      const res = await fetch("/api/cartera/registros", { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
-        setError(json?.error || "No se pudo leer la base de datos.");
-        return;
-      }
-      setGlosas((json.glosas || []) as Glosa[]);
-    } catch {
-      setError("Sin conexion con la base de datos.");
+      const r = await fetch("/api/cartera/registros", { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setGlosas((j.glosas || []) as Glosa[]);
+    } catch (e) {
+      // Una lista vacia por fallo se lee como "no hay registros", que es otra
+      // cosa. Por eso el fallo se dice con todas las letras.
+      setFallo(e instanceof Error ? e.message : "Sin conexion con la base.");
     } finally {
       setCargando(false);
     }
   }, []);
 
   useEffect(() => {
-    void cargar();
-  }, [cargar]);
+    void traer();
+  }, [traer]);
 
   const avisar = (m: string) => {
     setAviso(m);
-    window.setTimeout(() => setAviso(""), 4000);
+    window.setTimeout(() => setAviso(""), 3500);
   };
 
-  const guardar = async (fila: Partial<Glosa>, accion: "CREAR" | "EDITAR") => {
-    setGuardando(String(fila.id ?? "nueva"));
-    try {
-      const res = await fetch("/api/cartera/registros", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entidad: "glosas", accion, fila }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
-        avisar("NO SE GUARDO: " + (json?.error || res.statusText));
+  /** Guarda una fila completa. Devuelve true solo si la base confirmo. */
+  const guardar = useCallback(
+    async (fila: Partial<Glosa>, accion: "CREAR" | "EDITAR") => {
+      const marca = String(fila.id ?? "nueva");
+      setGuardando(marca);
+      try {
+        const r = await fetch("/api/cartera/registros", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entidad: "glosas", accion, fila }),
+        });
+        const j = await r.json();
+        if (!r.ok || !j.ok) {
+          avisar("NO SE GUARDO: " + (j?.error || r.statusText));
+          return false;
+        }
+        await traer();
+        setGuardado(marca);
+        window.setTimeout(() => setGuardado(null), 1800);
+        return true;
+      } catch {
+        avisar("NO SE GUARDO: sin conexion.");
         return false;
+      } finally {
+        setGuardando(null);
       }
-      await cargar();
-      avisar(accion === "CREAR" ? "Glosa registrada." : "Cambio guardado.");
-      return true;
-    } catch {
-      avisar("NO SE GUARDO: sin conexion.");
-      return false;
-    } finally {
-      setGuardando(null);
-    }
-  };
+    },
+    [traer],
+  );
 
-  const filtradas = useMemo(() => {
+  /* ---- cifras del encabezado ---- */
+  const cifras = useMemo(() => {
+    let sinResolver = 0;
+    let valorSinResolver = 0;
+    let glosado = 0;
+    let aceptado = 0;
+    for (const g of glosas) {
+      glosado += g.valorGlosado || 0;
+      if (g.estado === "PENDIENTE") {
+        sinResolver += 1;
+        valorSinResolver += g.valorGlosado || 0;
+      }
+      if (g.valorAceptado !== null && g.valorAceptado !== undefined) {
+        aceptado += g.valorAceptado;
+      }
+    }
+    return { sinResolver, valorSinResolver, glosado, aceptado };
+  }, [glosas]);
+
+  const visibles = useMemo(() => {
     const q = busqueda.trim().toUpperCase();
     return glosas.filter((g) => {
-      if (soloPendientes && g.estado !== "PENDIENTE") return false;
+      if (filtroEstado === "SIN_RESOLVER" && g.estado !== "PENDIENTE") return false;
+      if (filtroEstado !== "TODAS" && filtroEstado !== "SIN_RESOLVER" && g.estado !== filtroEstado)
+        return false;
       if (!q) return true;
       return (
         g.factura.toUpperCase().includes(q) ||
         g.empresa.toUpperCase().includes(q) ||
-        (g.motivoGlosa || "").toUpperCase().includes(q)
+        (g.motivoGlosa || "").toUpperCase().includes(q) ||
+        (g.notaCredito || "").toUpperCase().includes(q)
       );
     });
-  }, [glosas, busqueda, soloPendientes]);
+  }, [glosas, busqueda, filtroEstado]);
 
-  const pendientes = glosas.filter((g) => g.estado === "PENDIENTE");
-  const valorPendiente = pendientes.reduce((a, g) => a + (g.valorGlosado || 0), 0);
-  const activa = glosas.find((g) => g.id === seleccion) || null;
-  const hermanas = activa ? glosas.filter((g) => g.factura === activa.factura) : [];
+  const hermanas = useMemo(
+    () => (fichaDe ? glosas.filter((g) => g.factura === fichaDe) : []),
+    [glosas, fichaDe],
+  );
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F6F8FA]">
-      <div className="mx-auto max-w-[1360px] px-6 pb-24 pt-6">
-        {/* encabezado */}
-        <div className="mb-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-            WORKCENTER · CARTERA
-          </p>
-          <h1 className="mt-1.5 font-display text-[28px] font-semibold leading-tight text-[#0F1F2C]">
-            Mesa de trabajo de glosas
-          </h1>
-          <p className="mt-1 text-[13px] text-[#5B6B79]">
-            Lo que registres aqui queda en la base compartida, con tu nombre y la fecha.
+    <div className="flex h-full flex-col gap-4 overflow-y-auto pb-10">
+      {/* ---------- encabezado ---------- */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eb-label text-[11px] text-[#64748B]">WorkCenter · Cartera</p>
+          <h2 className="mt-1 text-[22px] font-bold leading-tight text-[#0E245E]">
+            Glosas y devoluciones
+          </h2>
+          <p className="mt-0.5 text-[12px] text-[#64748B]">
+            Se escribe en la celda y se guarda solo, con tu nombre y la fecha.
             {usuario.esAdmin ? " Entras como administrador." : ""}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setNuevaAbierta(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D58D8] px-3 py-1.5 text-[12.5px] font-semibold text-white transition hover:bg-[#1747B0]"
+        >
+          <Plus className="h-3.5 w-3.5" /> Nueva glosa
+        </button>
+      </div>
 
-        {/* cifras */}
-        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Tarjeta titulo="Glosas sin resolver" valor={String(pendientes.length)} pie="esperan desenlace" />
-          <Tarjeta titulo="Plata sin clasificar" valor={pesos(valorPendiente)} pie="de glosas pendientes" destacar />
-          <Tarjeta titulo="Registradas en total" valor={String(glosas.length)} pie="glosas y devoluciones" />
+      {/* ---------- cifras ---------- */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Cifra titulo="Sin resolver" valor={String(cifras.sinResolver)} pie="esperan desenlace" />
+        <Cifra
+          titulo="Plata sin resolver"
+          valor={pesos(cifras.valorSinResolver)}
+          pie="de glosas pendientes"
+          destacar
+        />
+        <Cifra titulo="Glosado en total" valor={pesos(cifras.glosado)} pie={`${glosas.length} registros`} />
+        <Cifra
+          titulo="Aceptado"
+          valor={pesos(cifras.aceptado)}
+          pie={
+            cifras.glosado > 0
+              ? `${Math.round((cifras.aceptado / cifras.glosado) * 100)}% de lo glosado`
+              : "sin datos"
+          }
+        />
+      </div>
+
+      {fallo && (
+        <div className="flex items-start gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-3 py-2 text-[12.5px] font-semibold text-[#B91C1C]">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            No se pudieron traer los datos: {fallo}. La cuadricula esta vacia porque fallo la
+            consulta, no porque no haya registros. Nada de lo que escribas se va a guardar mientras
+            esto no se resuelva.
+          </span>
+        </div>
+      )}
+
+      {/* ---------- cuadricula ---------- */}
+      <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            <Pestana activa={filtroEstado === "SIN_RESOLVER"} onClick={() => setFiltroEstado("SIN_RESOLVER")}>
+              Sin resolver
+            </Pestana>
+            <Pestana activa={filtroEstado === "TODAS"} onClick={() => setFiltroEstado("TODAS")}>
+              Todas
+            </Pestana>
+            {ESTADOS.filter((e) => e.id !== "PENDIENTE").map((e) => (
+              <Pestana key={e.id} activa={filtroEstado === e.id} onClick={() => setFiltroEstado(e.id)}>
+                {e.etiqueta}
+              </Pestana>
+            ))}
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94A3B8]" />
+            <label htmlFor="cartera-buscar" className="sr-only">
+              Buscar por factura, empresa, motivo o nota credito
+            </label>
+            <input
+              id="cartera-buscar"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Factura, empresa, motivo…"
+              className="w-56 rounded-lg border border-[#DCE8FA] py-1.5 pl-8 pr-2 text-[12.5px] outline-none focus:border-[#1D58D8]"
+            />
+          </div>
         </div>
 
-        {error && (
-          <div className="mb-4 flex items-start gap-2.5 rounded-[12px] border border-[#E8C2BE] bg-[#FDF4F3] px-4 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#9E2A20]" />
-            <div className="text-[13px] text-[#7A2219]">
-              <strong className="font-semibold">{error}</strong>
-              <p className="mt-0.5 text-[#9E4A42]">
-                Nada de lo que escribas se va a guardar mientras esto no se resuelva.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-          {/* columna izquierda: la cola de trabajo */}
-          <div className="rounded-[14px] border border-[#DCE4EC] bg-white">
-            <div className="border-b border-[#EDF1F5] p-3.5">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A98A6]" />
-                <input
-                  id="cartera-busqueda"
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Factura, empresa o motivo…"
-                  className="w-full rounded-[9px] border border-[#D7DFE8] bg-[#FBFCFD] py-2 pl-9 pr-3 text-[13px] text-[#0F1F2C] outline-none focus:border-[#0E4C7E]"
-                />
-              </div>
-              <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-[12.5px] text-[#475569]">
-                <input
-                  id="cartera-solo-pendientes"
-                  type="checkbox"
-                  checked={soloPendientes}
-                  onChange={(e) => setSoloPendientes(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-[#0E4C7E]"
-                />
-                Mostrar solo las que faltan por resolver
-              </label>
-            </div>
-
-            <div className="max-h-[560px] overflow-y-auto">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[12.5px]">
+            <thead>
+              <tr className="border-b border-[#E2EBF8] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">
+                <th className="py-2 pr-3">Factura</th>
+                <th className="py-2 pr-3">Empresa</th>
+                <th className="py-2 pr-3">Tipo</th>
+                <th className="py-2 pr-3 text-right">Radicado</th>
+                <th className="py-2 pr-3 text-right">Glosado</th>
+                <th className="py-2 pr-3">Motivo</th>
+                <th className="py-2 pr-3">Desenlace</th>
+                <th className="py-2 pr-3 text-right">Aceptado</th>
+                <th className="py-2 pr-3">Nota crédito</th>
+                <th className="py-2 pr-3">Observación</th>
+                <th className="py-2 pr-3">Facturador</th>
+                <th className="w-6 py-2" />
+              </tr>
+            </thead>
+            <tbody>
               {cargando && (
-                <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-[#64748B]">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
-                </div>
+                <tr>
+                  <td colSpan={12} className="py-8 text-center text-[#94A3B8]">
+                    <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />
+                    Cargando…
+                  </td>
+                </tr>
               )}
-              {!cargando && filtradas.length === 0 && (
-                <p className="px-4 py-10 text-center text-[13px] text-[#64748B]">
-                  {glosas.length === 0
-                    ? "No hay glosas en la base todavia."
-                    : "Nada coincide con lo que buscas."}
-                </p>
+              {!cargando && visibles.length === 0 && !fallo && (
+                <tr>
+                  <td colSpan={12} className="py-8 text-center text-[#94A3B8]">
+                    {glosas.length === 0
+                      ? "Todavía no hay glosas en la base."
+                      : "Nada coincide con el filtro."}
+                  </td>
+                </tr>
               )}
-              {filtradas.slice(0, 300).map((g) => {
-                const c = COLOR[g.estado] || COLOR.PENDIENTE;
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setSeleccion(g.id)}
-                    className={`block w-full border-b border-[#F1F4F7] px-4 py-3 text-left transition hover:bg-[#F8FAFC] ${
-                      seleccion === g.id ? "bg-[#F2F7FC]" : ""
-                    }`}
-                  >
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="font-mono text-[13px] font-semibold text-[#0E4C7E]">
-                        {g.factura}
-                      </span>
-                      <span className="font-mono text-[12.5px] tabular-nums text-[#0F1F2C]">
-                        {pesos(g.valorGlosado)}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 truncate text-[12.5px] text-[#475569]">
-                      {g.empresa} · {g.motivoGlosa || "sin motivo registrado"}
-                    </p>
-                    <span
-                      className="mt-1.5 inline-block rounded-[5px] border px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide"
-                      style={{ background: c.fondo, color: c.texto, borderColor: c.borde }}
-                    >
-                      {ESTADOS.find((e) => e.id === g.estado)?.etiqueta || g.estado}
-                    </span>
-                  </button>
-                );
-              })}
-              {filtradas.length > 300 && (
-                <p className="px-4 py-3 text-center text-[12px] text-[#8A98A6]">
-                  Mostrando 300 de {filtradas.length}. Afina la busqueda.
-                </p>
-              )}
-            </div>
-          </div>
+              {visibles.slice(0, 400).map((g) => (
+                <FilaGlosa
+                  key={g.id}
+                  glosa={g}
+                  guardando={guardando === g.id}
+                  guardado={guardado === g.id}
+                  onGuardar={guardar}
+                  onFicha={() => setFichaDe(g.factura)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-          {/* columna derecha: la ficha */}
-          <div className="rounded-[14px] border border-[#DCE4EC] bg-white">
-            {!activa && (
-              <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center">
-                <p className="text-[14px] font-medium text-[#0F1F2C]">
-                  Elige una glosa de la izquierda
-                </p>
-                <p className="max-w-[46ch] text-[13px] text-[#64748B]">
-                  Se abre la ficha de su factura con todas las glosas que tenga, y desde ahi
-                  defines el desenlace de cada una.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setNuevaAbierta(true)}
-                  className="mt-1 inline-flex items-center gap-1.5 rounded-[9px] bg-[#0E4C7E] px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0B3D66]"
-                >
-                  <Plus className="h-4 w-4" /> Registrar una glosa nueva
-                </button>
-              </div>
-            )}
-
-            {activa && (
-              <FichaFactura
-                activa={activa}
-                hermanas={hermanas}
-                guardando={guardando}
-                onGuardar={guardar}
-                onCerrar={() => setSeleccion(null)}
-                onNueva={() => setNuevaAbierta(true)}
-              />
-            )}
-          </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[#64748B]">
+          <span>
+            {visibles.length > 400
+              ? `Mostrando 400 de ${visibles.length} filas. Afina el filtro.`
+              : `${visibles.length} de ${glosas.length} filas`}
+          </span>
+          <span>Doble clic sobre una fila para ver la factura completa.</span>
         </div>
       </div>
 
+      {fichaDe && hermanas.length > 0 && (
+        <FichaFactura factura={fichaDe} glosas={hermanas} onCerrar={() => setFichaDe(null)} />
+      )}
+
       {nuevaAbierta && (
         <ModalNueva
-          facturaSugerida={activa?.factura || ""}
-          empresaSugerida={activa?.empresa || ""}
           guardando={guardando === "nueva"}
           onCerrar={() => setNuevaAbierta(false)}
           onGuardar={async (fila) => {
@@ -293,7 +369,7 @@ export function CarteraWorkspace({
       )}
 
       {aviso && (
-        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-[10px] bg-[#0F1F2C] px-4 py-2.5 text-[13px] font-medium text-white shadow-lg">
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-[#0E245E] px-4 py-2.5 text-[12.5px] font-semibold text-white shadow-[0_12px_28px_rgba(14,36,94,0.18)]">
           {aviso}
         </div>
       )}
@@ -301,94 +377,356 @@ export function CarteraWorkspace({
   );
 }
 
-function Tarjeta({
-  titulo, valor, pie, destacar,
-}: { titulo: string; valor: string; pie: string; destacar?: boolean }) {
+/* ====================================================================== */
+
+function Pestana({
+  activa,
+  onClick,
+  children,
+}: {
+  activa: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition ${
+        activa
+          ? "bg-[#0E245E] text-white"
+          : "border border-[#DCE8FA] bg-white text-[#47597A] hover:border-[#94A3B8]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Cifra({
+  titulo,
+  valor,
+  pie,
+  destacar,
+}: {
+  titulo: string;
+  valor: string;
+  pie: string;
+  destacar?: boolean;
+}) {
   return (
     <div
-      className="rounded-[13px] border bg-white px-4 py-3.5"
-      style={{ borderColor: destacar ? "#C2D487" : "#DCE4EC" }}
+      className={`rounded-[14px] border bg-white px-4 py-3 shadow-[0_1px_6px_rgba(14,36,94,0.03)] ${
+        destacar ? "border-[#BBD2F0]" : "border-[#E2EBF8]"
+      }`}
     >
-      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#64748B]">{titulo}</p>
-      <p className="mt-1.5 font-display text-[26px] font-semibold leading-none tabular-nums text-[#0F1F2C]">
+      <p className="eb-label text-[10.5px] text-[#64748B]">{titulo}</p>
+      <p className="mt-1.5 font-cifra text-[22px] font-semibold leading-none text-[#0E245E]">
         {valor}
       </p>
-      <p className="mt-1.5 text-[12px] text-[#7A8794]">{pie}</p>
+      <p className="mt-1.5 text-[11.5px] text-[#94A3B8]">{pie}</p>
     </div>
   );
 }
 
-function FichaFactura({
-  activa, hermanas, guardando, onGuardar, onCerrar, onNueva,
+/* ---------------------------------------------------------------------
+   UNA FILA DE LA CUADRICULA
+
+   El estado vive aqui y no arriba a proposito: mientras alguien escribe en
+   una celda, la fila no se pisa con lo que llegue de la base. Al salir de
+   la celda (onBlur) se compara con lo guardado y solo entonces se manda.
+   --------------------------------------------------------------------- */
+function FilaGlosa({
+  glosa,
+  guardando,
+  guardado,
+  onGuardar,
+  onFicha,
 }: {
-  activa: Glosa;
-  hermanas: Glosa[];
-  guardando: string | null;
+  glosa: Glosa;
+  guardando: boolean;
+  guardado: boolean;
   onGuardar: (fila: Partial<Glosa>, accion: "CREAR" | "EDITAR") => Promise<boolean>;
-  onCerrar: () => void;
-  onNueva: () => void;
+  onFicha: () => void;
 }) {
-  const totalGlosado = hermanas.reduce((a, g) => a + (g.valorGlosado || 0), 0);
-  const excede = activa.valorRadicado > 0 && totalGlosado > activa.valorRadicado;
+  const [estado, setEstado] = useState(glosa.estado);
+  const [aceptado, setAceptado] = useState(
+    glosa.valorAceptado === null || glosa.valorAceptado === undefined
+      ? ""
+      : String(Math.round(glosa.valorAceptado)),
+  );
+  const [nota, setNota] = useState(glosa.notaCredito || "");
+  const [obs, setObs] = useState(glosa.observacionInterna || "");
+
+  // Si la base cambia (otra persona, o el refresco tras guardar) la fila se
+  // sincroniza. El ref evita mandar de nuevo lo que acaba de llegar.
+  const ultimo = useRef({ estado: glosa.estado, aceptado: "", nota: "", obs: "" });
+  useEffect(() => {
+    const a =
+      glosa.valorAceptado === null || glosa.valorAceptado === undefined
+        ? ""
+        : String(Math.round(glosa.valorAceptado));
+    setEstado(glosa.estado);
+    setAceptado(a);
+    setNota(glosa.notaCredito || "");
+    setObs(glosa.observacionInterna || "");
+    ultimo.current = {
+      estado: glosa.estado,
+      aceptado: a,
+      nota: glosa.notaCredito || "",
+      obs: glosa.observacionInterna || "",
+    };
+  }, [glosa.id, glosa.estado, glosa.valorAceptado, glosa.notaCredito, glosa.observacionInterna]);
+
+  const enviar = (parcial: Partial<Glosa>) => {
+    void onGuardar({ ...glosa, estado, notaCredito: nota, observacionInterna: obs, ...parcial }, "EDITAR");
+  };
+
+  /** Al salir de una celda: si cambio, se guarda. Si no, no se molesta a la base. */
+  const salir = () => {
+    const u = ultimo.current;
+    if (aceptado === u.aceptado && nota === u.nota && obs === u.obs) return;
+    ultimo.current = { ...u, aceptado, nota, obs };
+    enviar({
+      valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado),
+      notaCredito: nota,
+      observacionInterna: obs,
+    });
+  };
+
+  /* Al elegir desenlace se propone el valor aceptado, porque es lo que pasa
+     el 99% de las veces. Queda editable: la aceptacion parcial se escribe
+     encima. */
+  const cambiarEstado = (nuevo: string) => {
+    setEstado(nuevo);
+    let propuesta = aceptado;
+    if (nuevo === "ACEPTADA" && aceptado.trim() === "") propuesta = String(Math.round(glosa.valorGlosado));
+    if (nuevo === "NO_ACEPTADA") propuesta = "0";
+    if (nuevo === "PENDIENTE") propuesta = "";
+    setAceptado(propuesta);
+    ultimo.current = { estado: nuevo, aceptado: propuesta, nota, obs };
+    enviar({
+      estado: nuevo,
+      valorAceptado: propuesta.trim() === "" ? null : soloNumero(propuesta),
+    });
+  };
+
+  const vista: Glosa = {
+    ...glosa,
+    valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado),
+  };
+  const clase = clasePago(vista);
+  const excedeAceptado =
+    vista.valorAceptado !== null && glosa.valorGlosado > 0 && vista.valorAceptado > glosa.valorGlosado;
+
+  const celdaInput =
+    "w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-[12.5px] outline-none hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white";
 
   return (
-    <div>
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EDF1F5] bg-[#FAFCFD] px-5 py-4">
-        <div className="min-w-0">
-          <p className="font-mono text-[19px] font-semibold text-[#0F1F2C]">{activa.factura}</p>
-          <p className="mt-0.5 text-[12.5px] text-[#5B6B79]">
-            {activa.empresa}
-            {activa.fechaRadicacion ? ` · radicada ${activa.fechaRadicacion}` : ""}
-            {activa.facturador ? ` · ${activa.facturador}` : ""}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCerrar}
-          className="rounded-[7px] border border-[#D7DFE8] p-1.5 text-[#64748B] transition hover:bg-white"
-          aria-label="Cerrar ficha"
+    <tr
+      onDoubleClick={onFicha}
+      className={`border-b border-[#F1F5F9] align-top transition ${
+        guardando ? "bg-[#F6F9FE]" : "hover:bg-[#F8FAFC]"
+      }`}
+    >
+      <td className="py-1.5 pr-3">
+        <span className="font-cifra text-[12.5px] font-semibold text-[#0E245E]">{glosa.factura}</span>
+      </td>
+      <td className="py-1.5 pr-3 text-[#47597A]">{glosa.empresa || "—"}</td>
+      <td className="py-1.5 pr-3">
+        <span className="eb-label text-[10px] text-[#64748B]">
+          {glosa.tipoGlosa === "DEVOLUCION" ? "Devolución" : "Glosa"}
+        </span>
+      </td>
+      <td className="py-1.5 pr-3 text-right font-cifra text-[#47597A]">{pesos(glosa.valorRadicado)}</td>
+      <td className="py-1.5 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
+        {pesos(glosa.valorGlosado)}
+      </td>
+      <td className="max-w-[260px] py-1.5 pr-3">
+        <span className="line-clamp-2 text-[#47597A]" title={glosa.motivoGlosa}>
+          {glosa.motivoGlosa || "—"}
+        </span>
+      </td>
+
+      <td className="py-1.5 pr-3">
+        <label htmlFor={`est-${glosa.id}`} className="sr-only">
+          Desenlace de la glosa {glosa.factura}
+        </label>
+        <select
+          id={`est-${glosa.id}`}
+          value={estado}
+          onChange={(e) => cambiarEstado(e.target.value)}
+          className={`rounded-[6px] border px-1.5 py-1 text-[11.5px] font-semibold outline-none ${
+            PASTILLA[estado] || PASTILLA.PENDIENTE
+          }`}
         >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+          {ESTADOS.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.etiqueta}
+            </option>
+          ))}
+        </select>
+      </td>
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-[#EDF1F5] px-5 py-4 sm:grid-cols-4">
-        <Dato etiqueta="Valor radicado" valor={pesos(activa.valorRadicado)} />
-        <Dato etiqueta="Total glosado" valor={pesos(totalGlosado)} alerta={excede} />
-        <Dato etiqueta="Glosas" valor={String(hermanas.length)} />
-        <Dato etiqueta="Elaboracion" valor={activa.fechaFactura || "—"} />
-      </div>
+      <td className="py-1.5 pr-3 text-right">
+        <label htmlFor={`ace-${glosa.id}`} className="sr-only">
+          Valor aceptado de la glosa {glosa.factura}
+        </label>
+        <input
+          id={`ace-${glosa.id}`}
+          value={aceptado}
+          onChange={(e) => setAceptado(e.target.value)}
+          onBlur={salir}
+          inputMode="numeric"
+          placeholder="—"
+          className={`${celdaInput} text-right font-cifra`}
+        />
+        {clase && (
+          <span className={`block pr-1.5 text-[10px] font-semibold uppercase ${clase.clase}`}>
+            {clase.texto}
+          </span>
+        )}
+        {excedeAceptado && (
+          <span className="block pr-1.5 text-[10px] font-semibold text-[#B45309]">
+            ⚠ supera lo glosado
+          </span>
+        )}
+      </td>
 
-      {excede && (
-        <div className="flex items-start gap-2 border-b border-[#EDF1F5] bg-[#FDF8F3] px-5 py-2.5 text-[12.5px] text-[#8A5A00]">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Lo glosado supera el valor de la factura. Verifica antes de cerrar.
-        </div>
-      )}
+      <td className="py-1.5 pr-3">
+        <label htmlFor={`nc-${glosa.id}`} className="sr-only">
+          Nota crédito de la glosa {glosa.factura}
+        </label>
+        <input
+          id={`nc-${glosa.id}`}
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          onBlur={salir}
+          placeholder="—"
+          className={`${celdaInput} font-cifra`}
+        />
+      </td>
 
-      <div className="px-5 py-4">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
-            Glosas de esta factura
-          </p>
+      <td className="min-w-[200px] py-1.5 pr-3">
+        <label htmlFor={`ob-${glosa.id}`} className="sr-only">
+          Observación de la glosa {glosa.factura}
+        </label>
+        <input
+          id={`ob-${glosa.id}`}
+          value={obs}
+          onChange={(e) => setObs(e.target.value)}
+          onBlur={salir}
+          placeholder="—"
+          className={celdaInput}
+        />
+      </td>
+
+      <td className="py-1.5 pr-3 text-[#64748B]">{glosa.facturador || "—"}</td>
+
+      <td className="py-1.5 text-right">
+        {guardando && <Loader2 className="inline h-3.5 w-3.5 animate-spin text-[#1D58D8]" />}
+        {!guardando && guardado && <Check className="inline h-3.5 w-3.5 text-[#21814B]" />}
+      </td>
+    </tr>
+  );
+}
+
+/* ---------------------------------------------------------------------
+   LA FICHA (doble clic)
+
+   Solo muestra. No se edita aqui para no tener dos caminos de guardado que
+   despues se contradigan: se edita en la cuadricula, que es donde se
+   trabaja. Esto responde la pregunta que la cuadricula no responde de un
+   vistazo: cuanto suman todas las glosas de una misma factura.
+   --------------------------------------------------------------------- */
+function FichaFactura({
+  factura,
+  glosas,
+  onCerrar,
+}: {
+  factura: string;
+  glosas: Glosa[];
+  onCerrar: () => void;
+}) {
+  const base = glosas[0];
+  const totalGlosado = glosas.reduce((a, g) => a + (g.valorGlosado || 0), 0);
+  const totalAceptado = glosas.reduce((a, g) => a + (g.valorAceptado ?? 0), 0);
+  const sinResolver = glosas.filter((g) => g.estado === "PENDIENTE");
+  const excede = base.valorRadicado > 0 && totalGlosado > base.valorRadicado;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E245E]/40 p-4"
+      role="dialog"
+      aria-label={`Factura ${factura}`}
+    >
+      <div className="max-h-[88vh] w-full max-w-[720px] overflow-y-auto rounded-[14px] border border-[#E2EBF8] bg-white shadow-[0_24px_60px_rgba(14,36,94,0.18)]">
+        <div className="flex items-start justify-between gap-3 border-b border-[#E2EBF8] px-5 py-4">
+          <div className="min-w-0">
+            <p className="eb-label text-[10.5px] text-[#64748B]">
+              {base.empresa}
+              {base.facturador ? ` · ${base.facturador}` : ""}
+            </p>
+            <p className="mt-1 font-cifra text-[24px] font-bold leading-none text-[#0E245E]">
+              {factura}
+            </p>
+          </div>
           <button
             type="button"
-            onClick={onNueva}
-            className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#D7DFE8] px-2.5 py-1.5 text-[12.5px] font-semibold text-[#0E4C7E] transition hover:bg-[#F2F7FC]"
+            onClick={onCerrar}
+            aria-label="Cerrar"
+            className="rounded-lg border border-[#DCE8FA] p-1.5 text-[#47597A] transition hover:bg-[#F8FAFC]"
           >
-            <Plus className="h-3.5 w-3.5" /> Nueva
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="space-y-2.5">
-          {hermanas.map((g) => (
-            <LineaGlosa
-              key={g.id}
-              glosa={g}
-              guardando={guardando === g.id}
-              onGuardar={onGuardar}
-            />
-          ))}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-[#E2EBF8] px-5 py-4 sm:grid-cols-4">
+          <Dato etiqueta="Radicado" valor={pesos(base.valorRadicado)} />
+          <Dato etiqueta="Glosado" valor={pesos(totalGlosado)} alerta={excede} />
+          <Dato etiqueta="Aceptado" valor={pesos(totalAceptado)} />
+          <Dato etiqueta="Glosas" valor={`${glosas.length} · ${sinResolver.length} sin resolver`} />
+        </div>
+
+        {excede && (
+          <div className="flex items-start gap-2 border-b border-[#E2EBF8] bg-[#FFFBEB] px-5 py-2.5 text-[12px] font-semibold text-[#B45309]">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Lo glosado supera el valor radicado de la factura. Verifícalo antes de cerrar.
+          </div>
+        )}
+
+        <div className="px-5 py-4">
+          <p className="eb-label mb-2 text-[10.5px] text-[#64748B]">Glosas de esta factura</p>
+          <div className="divide-y divide-[#F1F5F9]">
+            {glosas.map((g) => {
+              const c = clasePago(g);
+              return (
+                <div key={g.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5">
+                  <span
+                    className={`rounded-[6px] border px-1.5 py-0.5 text-[10.5px] font-semibold ${
+                      PASTILLA[g.estado] || PASTILLA.PENDIENTE
+                    }`}
+                  >
+                    {ETIQUETA[g.estado] || g.estado}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[12.5px] text-[#47597A]">
+                    {g.motivoGlosa || "Sin motivo registrado"}
+                  </span>
+                  <span className="font-cifra text-[13px] font-semibold text-[#0E245E]">
+                    {pesos(g.valorGlosado)}
+                  </span>
+                  {c && (
+                    <span className={`text-[10.5px] font-semibold uppercase ${c.clase}`}>
+                      {c.texto} {g.valorAceptado ? pesos(g.valorAceptado) : ""}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-[11.5px] text-[#64748B]">
+            Para cambiar un desenlace, ciérrala y edítalo en la cuadrícula.
+          </p>
         </div>
       </div>
     </div>
@@ -398,10 +736,11 @@ function FichaFactura({
 function Dato({ etiqueta, valor, alerta }: { etiqueta: string; valor: string; alerta?: boolean }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#8A98A6]">{etiqueta}</p>
+      <p className="eb-label text-[10px] text-[#94A3B8]">{etiqueta}</p>
       <p
-        className="mt-0.5 text-[14px] font-medium tabular-nums"
-        style={{ color: alerta ? "#9E2A20" : "#0F1F2C" }}
+        className={`mt-0.5 font-cifra text-[14px] font-semibold ${
+          alerta ? "text-[#B91C1C]" : "text-[#0E245E]"
+        }`}
       >
         {valor}
       </p>
@@ -409,159 +748,59 @@ function Dato({ etiqueta, valor, alerta }: { etiqueta: string; valor: string; al
   );
 }
 
-function LineaGlosa({
-  glosa, guardando, onGuardar,
-}: {
-  glosa: Glosa;
-  guardando: boolean;
-  onGuardar: (fila: Partial<Glosa>, accion: "CREAR" | "EDITAR") => Promise<boolean>;
-}) {
-  const [estado, setEstado] = useState(glosa.estado);
-  const [obs, setObs] = useState(glosa.observacionInterna || "");
-  const [nota, setNota] = useState(glosa.notaCredito || "");
-
-  useEffect(() => {
-    setEstado(glosa.estado);
-    setObs(glosa.observacionInterna || "");
-    setNota(glosa.notaCredito || "");
-  }, [glosa.id, glosa.estado, glosa.observacionInterna, glosa.notaCredito]);
-
-  const cambiado =
-    estado !== glosa.estado ||
-    obs !== (glosa.observacionInterna || "") ||
-    nota !== (glosa.notaCredito || "");
-  const c = COLOR[estado] || COLOR.PENDIENTE;
-
-  return (
-    <div className="rounded-[11px] border border-[#E4EAF0] bg-[#FCFDFE] p-3.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="min-w-0 flex-1 text-[13.5px] text-[#0F1F2C]">
-          {glosa.motivoGlosa || "Sin motivo registrado"}
-        </p>
-        <span className="font-mono text-[13px] font-semibold tabular-nums text-[#0F1F2C]">
-          {pesos(glosa.valorGlosado)}
-        </span>
-      </div>
-      <p className="mt-0.5 text-[11.5px] uppercase tracking-wide text-[#8A98A6]">
-        {glosa.tipoGlosa === "DEVOLUCION" ? "Devolucion" : "Glosa"}
-      </p>
-
-      <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-[170px_minmax(0,1fr)]">
-        <div>
-          <label
-            htmlFor={`estado-${glosa.id}`}
-            className="mb-1 block text-[10px] font-bold uppercase tracking-[0.1em] text-[#8A98A6]"
-          >
-            Desenlace
-          </label>
-          <select
-            id={`estado-${glosa.id}`}
-            value={estado}
-            onChange={(e) => setEstado(e.target.value)}
-            className="w-full rounded-[8px] border px-2.5 py-1.5 text-[13px] font-semibold outline-none"
-            style={{ background: c.fondo, color: c.texto, borderColor: c.borde }}
-          >
-            {ESTADOS.map((e) => (
-              <option key={e.id} value={e.id}>{e.etiqueta}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label
-            htmlFor={`obs-${glosa.id}`}
-            className="mb-1 block text-[10px] font-bold uppercase tracking-[0.1em] text-[#8A98A6]"
-          >
-            Observacion
-          </label>
-          <input
-            id={`obs-${glosa.id}`}
-            value={obs}
-            onChange={(e) => setObs(e.target.value)}
-            placeholder="Que se hizo con esta glosa…"
-            className="w-full rounded-[8px] border border-[#D7DFE8] bg-white px-2.5 py-1.5 text-[13px] outline-none focus:border-[#0E4C7E]"
-          />
-        </div>
-      </div>
-
-      <div className="mt-2.5 flex flex-wrap items-end justify-between gap-2.5">
-        <div className="min-w-[180px] flex-1">
-          <label
-            htmlFor={`nota-${glosa.id}`}
-            className="mb-1 block text-[10px] font-bold uppercase tracking-[0.1em] text-[#8A98A6]"
-          >
-            Nota credito
-          </label>
-          <input
-            id={`nota-${glosa.id}`}
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder="N/A"
-            className="w-full rounded-[8px] border border-[#D7DFE8] bg-white px-2.5 py-1.5 text-[13px] outline-none focus:border-[#0E4C7E]"
-          />
-        </div>
-        <button
-          type="button"
-          disabled={!cambiado || guardando}
-          onClick={() =>
-            void onGuardar(
-              { ...glosa, estado, observacionInterna: obs, notaCredito: nota },
-              "EDITAR"
-            )
-          }
-          className="inline-flex items-center gap-1.5 rounded-[8px] px-3.5 py-2 text-[13px] font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-[#C3CCD6]"
-          style={cambiado && !guardando ? { background: "#0E4C7E" } : undefined}
-        >
-          {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          {guardando ? "Guardando…" : cambiado ? "Guardar" : "Sin cambios"}
-        </button>
-      </div>
-    </div>
-  );
-}
+/* ====================================================================== */
 
 function ModalNueva({
-  facturaSugerida, empresaSugerida, guardando, onCerrar, onGuardar,
+  guardando,
+  onCerrar,
+  onGuardar,
 }: {
-  facturaSugerida: string;
-  empresaSugerida: string;
   guardando: boolean;
   onCerrar: () => void;
   onGuardar: (fila: Partial<Glosa>) => void;
 }) {
   const [f, setF] = useState({
-    factura: facturaSugerida,
-    empresa: empresaSugerida,
+    factura: "",
+    empresa: "",
     tipoGlosa: "GLOSA",
     motivoGlosa: "",
     valorGlosado: "",
     observacionInterna: "",
+    notaCredito: "",
     estado: "PENDIENTE",
   });
   const completo = f.factura.trim() !== "" && f.motivoGlosa.trim() !== "";
 
+  const campo =
+    "w-full rounded-lg border border-[#DCE8FA] px-2.5 py-2 text-[12.5px] outline-none focus:border-[#1D58D8]";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F1F2C]/45 p-4">
-      <div className="w-full max-w-[560px] rounded-[14px] border border-[#DCE4EC] bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#EDF1F5] px-5 py-3.5">
-          <p className="text-[15px] font-semibold text-[#0F1F2C]">Registrar glosa</p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E245E]/40 p-4"
+      role="dialog"
+      aria-label="Registrar glosa"
+    >
+      <div className="w-full max-w-[560px] rounded-[14px] border border-[#E2EBF8] bg-white shadow-[0_24px_60px_rgba(14,36,94,0.18)]">
+        <div className="flex items-center justify-between border-b border-[#E2EBF8] px-5 py-3.5">
+          <p className="text-[15px] font-bold text-[#0E245E]">Registrar glosa</p>
           <button
             type="button"
             onClick={onCerrar}
-            className="rounded-[7px] p-1.5 text-[#64748B] transition hover:bg-[#F1F4F7]"
             aria-label="Cerrar"
+            className="rounded-lg p-1.5 text-[#47597A] transition hover:bg-[#F1F5F9]"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 gap-3.5 px-5 py-4 sm:grid-cols-2">
-          <Campo id="nf" etiqueta="Numero de factura">
+          <Campo id="nf" etiqueta="Número de factura">
             <input
               id="nf"
               value={f.factura}
               onChange={(e) => setF({ ...f, factura: e.target.value.toUpperCase() })}
               placeholder="FCOE00000"
-              className="w-full rounded-[8px] border border-[#D7DFE8] px-2.5 py-2 font-mono text-[13px] outline-none focus:border-[#0E4C7E]"
+              className={`${campo} font-cifra`}
             />
           </Campo>
           <Campo id="emp" etiqueta="Empresa">
@@ -569,7 +808,7 @@ function ModalNueva({
               id="emp"
               value={f.empresa}
               onChange={(e) => setF({ ...f, empresa: e.target.value.toUpperCase() })}
-              className="w-full rounded-[8px] border border-[#D7DFE8] px-2.5 py-2 text-[13px] outline-none focus:border-[#0E4C7E]"
+              className={campo}
             />
           </Campo>
           <Campo id="tipo" etiqueta="Tipo">
@@ -577,10 +816,10 @@ function ModalNueva({
               id="tipo"
               value={f.tipoGlosa}
               onChange={(e) => setF({ ...f, tipoGlosa: e.target.value })}
-              className="w-full rounded-[8px] border border-[#D7DFE8] px-2.5 py-2 text-[13px] outline-none focus:border-[#0E4C7E]"
+              className={campo}
             >
               <option value="GLOSA">Glosa</option>
-              <option value="DEVOLUCION">Devolucion</option>
+              <option value="DEVOLUCION">Devolución</option>
             </select>
           </Campo>
           <Campo id="val" etiqueta="Valor glosado">
@@ -588,8 +827,9 @@ function ModalNueva({
               id="val"
               value={f.valorGlosado}
               onChange={(e) => setF({ ...f, valorGlosado: e.target.value })}
+              inputMode="numeric"
               placeholder="0"
-              className="w-full rounded-[8px] border border-[#D7DFE8] px-2.5 py-2 text-[13px] tabular-nums outline-none focus:border-[#0E4C7E]"
+              className={`${campo} font-cifra`}
             />
           </Campo>
           <div className="sm:col-span-2">
@@ -598,38 +838,44 @@ function ModalNueva({
                 id="mot"
                 value={f.motivoGlosa}
                 onChange={(e) => setF({ ...f, motivoGlosa: e.target.value })}
-                placeholder="Por que la glosaron"
-                className="w-full rounded-[8px] border border-[#D7DFE8] px-2.5 py-2 text-[13px] outline-none focus:border-[#0E4C7E]"
+                placeholder="Por qué la glosaron"
+                className={campo}
               />
             </Campo>
           </div>
           <div className="sm:col-span-2">
-            <Campo id="obs2" etiqueta="Observacion">
+            <Campo id="obs2" etiqueta="Observación interna">
               <input
                 id="obs2"
                 value={f.observacionInterna}
                 onChange={(e) => setF({ ...f, observacionInterna: e.target.value })}
-                className="w-full rounded-[8px] border border-[#D7DFE8] px-2.5 py-2 text-[13px] outline-none focus:border-[#0E4C7E]"
+                className={campo}
               />
             </Campo>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2.5 border-t border-[#EDF1F5] px-5 py-3.5">
+        <div className="flex justify-end gap-2.5 border-t border-[#E2EBF8] px-5 py-3.5">
           <button
             type="button"
             onClick={onCerrar}
-            className="rounded-[8px] border border-[#D7DFE8] px-3.5 py-2 text-[13px] font-semibold text-[#475569] transition hover:bg-[#F8FAFC]"
+            className="rounded-lg border border-[#DCE8FA] px-3.5 py-2 text-[12.5px] font-semibold text-[#47597A] transition hover:bg-[#F8FAFC]"
           >
             Cancelar
           </button>
           <button
             type="button"
             disabled={!completo || guardando}
-            onClick={() => onGuardar({ ...f, valorGlosado: Number(String(f.valorGlosado).replace(/[^0-9]/g, "")) || 0 })}
-            className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#0E4C7E] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0B3D66] disabled:cursor-not-allowed disabled:bg-[#C3CCD6]"
+            onClick={() =>
+              onGuardar({
+                ...f,
+                valorGlosado: soloNumero(f.valorGlosado),
+                valorAceptado: null,
+              })
+            }
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D58D8] px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#C7CDE0]"
           >
-            {guardando && <Loader2 className="h-4 w-4 animate-spin" />}
+            {guardando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Guardar
           </button>
         </div>
@@ -638,10 +884,18 @@ function ModalNueva({
   );
 }
 
-function Campo({ id, etiqueta, children }: { id: string; etiqueta: string; children: React.ReactNode }) {
+function Campo({
+  id,
+  etiqueta,
+  children,
+}: {
+  id: string;
+  etiqueta: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-[10px] font-bold uppercase tracking-[0.1em] text-[#8A98A6]">
+      <label htmlFor={id} className="eb-label mb-1 block text-[10px] text-[#94A3B8]">
         {etiqueta}
       </label>
       {children}

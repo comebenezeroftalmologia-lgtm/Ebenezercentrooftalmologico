@@ -91,7 +91,7 @@ export async function GET() {
       "cf_empresas(nombre), cf_responsables(nombre)"
     ),
     db.from("cf_glosas").select(
-      "id, tipo, motivo_texto, observacion, valor_glosado, estado, fecha_glosa, nota_credito, " +
+      "id, tipo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, " +
       "cf_facturas(numero, anio, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
       "empresa_nombre_original, cf_empresas(nombre)), " +
       "facturador:cf_responsables!cf_glosas_facturador_id_fkey(nombre), " +
@@ -171,6 +171,13 @@ export async function GET() {
       valorRadicado: Number(f.valor_radicado) || 0,
       valorFactura: Number(f.valor_radicado) || 0,
       valorGlosado: Number(r.valor_glosado) || 0,
+      // null se conserva como null a proposito: "sin resolver" no es "cero
+      // aceptado". Si se volviera 0 la pantalla mostraria "no aceptada" en
+      // glosas que nadie ha mirado.
+      valorAceptado:
+        r.valor_aceptado === null || r.valor_aceptado === undefined
+          ? null
+          : Number(r.valor_aceptado),
       motivoGlosa: (r.motivo_texto as string) || "",
       facturador: ((r.facturador as Fila | null)?.nombre as string) || "",
       responsableAceptacion: ((r.aceptacion as Fila | null)?.nombre as string) || "",
@@ -322,6 +329,13 @@ export async function POST(request: Request) {
         motivo_texto: txt(fila.motivoGlosa),
         observacion: txt(fila.observacionInterna),
         valor_glosado: num(fila.valorGlosado),
+        // Nullable de verdad: sin desenlace definido se guarda null, no 0.
+        valor_aceptado:
+          fila.valorAceptado === null ||
+          fila.valorAceptado === undefined ||
+          fila.valorAceptado === ""
+            ? null
+            : num(fila.valorAceptado),
         estado: ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(estado)
           ? estado
           : "PENDIENTE",
