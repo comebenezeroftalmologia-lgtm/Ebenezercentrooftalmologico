@@ -388,6 +388,15 @@ export default function TableroCarteraAnalytics() {
     }[];
   } | null>(carteraInitialData.sismaBack.datosSismaVivo);
 
+  /* Cuando SISMA no entrega los giros, la Cartera Real NO se muestra.
+     Una franja de advertencia encima del numero no basta: alguien le
+     toma pantallazo a la cifra, la pega en un informe, y el aviso se
+     queda atras. Un numero que no se puede calcular no se pinta. */
+  const sinGiros = Boolean(datosSismaVivo?.girosIncompletos);
+  const realCOP = (v: number) => (sinGiros ? "No disponible" : formatCOP(v));
+  const realMillones = (v: number) => (sinGiros ? "—" : formatMillones(v));
+
+
   // 6 Top Bar Filters
   const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
   const [filtroAnio, setFiltroAnio] = useState<string>("TODOS");
@@ -1862,6 +1871,10 @@ export default function TableroCarteraAnalytics() {
     const ultimoCorteLista = puntosCortes[puntosCortes.length - 1];
     const puntosTablaCortes: PuntoCorteTabla[] =
       datosSismaVivo &&
+      // Sin giros, el punto "vivo" llevaria una Cartera Real que es la
+      // Total disfrazada. No se agrega a la curva: mejor que falte el
+      // punto de hoy a que la linea verde mienta.
+      !sinGiros &&
       ultimoCorteLista &&
       datosSismaVivo.fechaCorte.slice(0, 10) !== ultimoCorteLista.fechaRaw
         ? [
@@ -2643,7 +2656,7 @@ export default function TableroCarteraAnalytics() {
                         {formatMillones(c.carteraTotal)}
                       </div>
                       <div className="col-span-3 text-right font-mono font-bold">
-                        {formatMillones(c.totalCarteraReal)}
+                        {realMillones(c.totalCarteraReal)}
                       </div>
                     </div>
                   );
@@ -4923,7 +4936,7 @@ export default function TableroCarteraAnalytics() {
                   <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">NETO</span>
                 </div>
                 <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#065F46" }}>
-                  {formatCOP(corteSeleccionado.totalCarteraReal)}
+                  {realCOP(corteSeleccionado.totalCarteraReal)}
                 </div>
                 <div className="text-[11px] mt-1 font-medium" style={{ color: "#047857" }}>
                   Saldo real neto por cobrar
@@ -5201,7 +5214,7 @@ export default function TableroCarteraAnalytics() {
                                   Total Cartera Real
                                 </span>
                                 <span className="font-mono font-extrabold" style={{ color: "#059669" }}>
-                                  {formatCOP(corte.totalCarteraReal)}
+                                  {realCOP(corte.totalCarteraReal)}
                                 </span>
                               </div>
                               <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
@@ -5324,7 +5337,7 @@ export default function TableroCarteraAnalytics() {
                           </td>
                           {listaCortesActiva.map((c) => (
                             <td key={c.fechaCorte} className="p-3 text-right font-mono font-extrabold text-base" style={{ color: "#047857" }}>
-                              {formatCOP(c.totalCarteraReal)}
+                              {realCOP(c.totalCarteraReal)}
                             </td>
                           ))}
                         </tr>
