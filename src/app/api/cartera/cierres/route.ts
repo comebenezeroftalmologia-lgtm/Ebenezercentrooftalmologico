@@ -124,6 +124,17 @@ export async function POST(req: Request) {
         fallos.push({ mes: `${anio}-${String(mes).padStart(2, "0")}`, motivo: j.error || `HTTP ${r.status}` });
         continue;
       }
+      // Si los giros por cruzar no llegaron, la Cartera Real de ese mes
+      // es en realidad la Total. Guardarla seria dejar escrito para
+      // siempre un cierre inflado, y despues nadie sabria distinguirlo
+      // de uno bueno. Mejor que falte el mes a que mienta.
+      if (j.girosIncompletos) {
+        fallos.push({
+          mes: `${anio}-${String(mes).padStart(2, "0")}`,
+          motivo: `no llegaron los giros por cruzar (${j.girosMotivo ?? "sin detalle"}): no se guarda para no dejar un cierre inflado`,
+        });
+        continue;
+      }
       const rc = j.resumenCorte;
       // Se toman las cifras TAL COMO las devuelve la ruta de SISMA, sin
       // recalcular ninguna. Si aqui volvieramos a restar giros por nuestra
