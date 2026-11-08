@@ -673,13 +673,28 @@ export default function DigiturnoContactPage() {
               {/* Esta pantalla NO consulta el digiturno cada vez: lee un
                   archivo que hay que regenerar. Se dice de cuando es. */}
               <div className="mt-1.5">
+                {/* La fecha del ARCHIVO, no la de la ultima consulta.
+                    Antes se mostraba `updatedAt`, que se vuelve "ahora"
+                    apenas el Contact Center trae su mes en vivo: el
+                    08-11-2026 decia "hoy" con un digiturno parado desde
+                    el 27 de octubre. */}
                 <FechaDelDato
-                  fecha={(liveDataset as { updatedAt?: string }).updatedAt || (rawData as { updatedAt?: string }).updatedAt}
-                  queEs="Datos"
+                  fecha={
+                    (liveDataset as { archivoActualizadoAt?: string }).archivoActualizadoAt ||
+                    (rawData as { updatedAt?: string }).updatedAt
+                  }
+                  queEs="Extracción del digiturno"
                   avisaA={2}
                   alarmaA={5}
                   comoSeActualiza="hay que volver a extraer del digiturno y del PBX"
                 />
+                {/* El Contact Center sí se consulta en vivo: va aparte,
+                    para que no preste su frescura al digiturno. */}
+                {(liveDataset as { liveCloudSync?: boolean }).liveCloudSync && (
+                  <span className="ml-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-[11.5px] font-semibold text-[#166534]">
+                    Contact Center en vivo
+                  </span>
+                )}
                 {/* Cuando no se pudo traer el archivo fresco, lo que se
                     ve es la copia pegada dentro de la plataforma, que
                     solo cambia al desplegar. Antes esto no se decia y la
