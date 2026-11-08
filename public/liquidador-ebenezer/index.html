@@ -697,6 +697,274 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
 @keyframes uiflashc{0%{box-shadow:0 0 0 4px rgba(30,91,168,.45)}100%{box-shadow:0 0 0 0 rgba(30,91,168,0)}}
 
 </style>
+
+
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="ebz-native-frecuencias-theme">
+  :root {
+    --bg: #F8FAFC !important;
+    --bg2: #FFFFFF !important;
+    --card: #FFFFFF !important;
+    --card2: #F1F5F9 !important;
+    --line: #E2E8F0 !important;
+    --ink: #0F172A !important;
+    --ink2: #475569 !important;
+    --muted: #64748B !important;
+    --acc: #1D4ED8 !important;
+    --acc2: #0284C7 !important;
+    --accdark: #0E245E !important;
+    --brand: #1D4ED8 !important;
+    --grad: linear-gradient(135deg, #0E245E 0%, #1D4ED8 60%, #2563EB 100%) !important;
+    --shadow: 0 2px 12px rgba(14, 36, 94, 0.05) !important;
+    --r: 16px !important;
+  }
+
+  /* Bloqueo estricto: jamás permite que #gate se cierre solo sin haber dado clic en Entrar */
+  body:not(.ebz-auth-unlocked) #gate {
+    display: flex !important;
+  }
+  body:not(.ebz-auth-unlocked) #nubeGate {
+    display: block !important;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    padding-bottom: 48px !important;
+  }
+
+  h1, h2, h3, .kpi .v, .semtot, .actatop .an, .actatop .at {
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  }
+
+  .wrap {
+    max-width: 1400px !important;
+    padding: 16px 24px !important;
+  }
+
+  /* Encabezado estilo ExecutiveHeader de Frecuencias (conservando todos sus botones e indicadores) */
+  .hero {
+    margin-top: 4px !important;
+    padding: 20px 24px !important;
+    border-radius: 18px !important;
+    background: linear-gradient(115deg, #081A3A 0%, #0E245E 48%, #1D4ED8 100%) !important;
+    box-shadow: 0 10px 28px rgba(14, 36, 94, 0.14) !important;
+    border: 1px solid rgba(96, 165, 250, 0.28) !important;
+    color: #FFFFFF !important;
+  }
+
+  .hero .brand {
+    gap: 16px !important;
+  }
+
+  .hero .logo {
+    width: 64px !important;
+    height: 64px !important;
+    padding: 8px !important;
+    border-radius: 14px !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  .hero h1 {
+    color: #FFFFFF !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .hero h1 .grad {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    color: #93C5FD !important;
+  }
+
+  .hero .sub {
+    color: #DBEAFE !important;
+    font-size: 13px !important;
+    opacity: 0.92 !important;
+  }
+
+  /* Píldoras de estado de nube y barra de usuario (equipo / salir) perfectamente visibles */
+  .hero .npill {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  .hero .userbadge,
+  #userBadge {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    color: #0F172A !important;
+    border-radius: 99px !important;
+    padding: 7px 16px !important;
+    font-size: 12.5px !important;
+    box-shadow: 0 2px 8px rgba(14, 36, 94, 0.08) !important;
+  }
+
+  #userBadge b {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+
+  #userBadge a {
+    color: #1D4ED8 !important;
+    font-weight: 600 !important;
+  }
+
+  #userBadge a:hover {
+    text-decoration: underline !important;
+  }
+
+  /* Paneles y tarjetas al estilo de Frecuencias */
+  .panel {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+    padding: 20px 22px !important;
+  }
+
+  .cg-bloque {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+  }
+
+  .cg-bloque.g2 {
+    background: #F8FAFF !important;
+    border-color: #DCE7F7 !important;
+  }
+
+  .cg-grupo.g2 b {
+    color: #1D4ED8 !important;
+  }
+
+  .carga {
+    background: #FFFFFF !important;
+    border: 1.5px dashed #CBD5E1 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 4px rgba(14, 36, 94, 0.03) !important;
+  }
+
+  .carga:hover {
+    border-color: #2563EB !important;
+    background: #F0F7FF !important;
+  }
+
+  .carga.comparar {
+    border-color: #BFDBFE !important;
+    background: linear-gradient(180deg, #F0F7FF 0%, #FFFFFF 100%) !important;
+  }
+
+  .carga.comparar .cg-tit {
+    color: #0E245E !important;
+  }
+
+  /* KPIs ejecutivos estilo Frecuencias */
+  .kpi {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .kpi::before {
+    background: linear-gradient(90deg, #0E245E 0%, #2563EB 100%) !important;
+    height: 3.5px !important;
+  }
+
+  .kpi .l {
+    color: #64748B !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .kpi .v {
+    color: #0F172A !important;
+  }
+
+  /* Controles, selectores y botones */
+  input[type=text], input[type=search], input[type=password], input[type=email], select, input[type=date] {
+    border: 1px solid #CBD8EE !important;
+    border-radius: 10px !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    font-size: 13.5px !important;
+  }
+
+  input:focus, select:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #0E245E 0%, #1D4ED8 100%) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.18) !important;
+    font-weight: 600 !important;
+  }
+
+  .btn.quiet, .btn.ghost {
+    background: #FFFFFF !important;
+    color: #0E245E !important;
+    border: 1px solid #DCE7F7 !important;
+    box-shadow: 0 1px 3px rgba(14, 36, 94, 0.05) !important;
+  }
+
+  .btn.quiet:hover:not(:disabled), .btn.ghost:hover:not(:disabled) {
+    background: #EBF3FE !important;
+    border-color: #93C5FD !important;
+    color: #1D4ED8 !important;
+  }
+
+  /* Pestañas laterales y tablas */
+  .tabwrap > .tabs {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .tab.active {
+    background: #E6F0FD !important;
+    color: #0E245E !important;
+    border: 1px solid #C9DDFB !important;
+    border-left: 3.5px solid #2563EB !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08) !important;
+    font-weight: 700 !important;
+  }
+
+  .tab.active .tbadge {
+    background: #1D4ED8 !important;
+    color: #FFFFFF !important;
+  }
+
+  /* Ventana de inicio de sesión con contraseña estilo plataforma Ebenezer */
+  #gate {
+    background: rgba(8, 26, 58, 0.62) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .gatecard {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 24px 64px rgba(8, 26, 58, 0.28) !important;
+  }
+
+  .gatecard h2 {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+</style>
+
 </head>
 <body>
 <div id="gate">
@@ -16427,6 +16695,164 @@ try{
   mo.observe(document.body,{childList:true,subtree:true});
 })();
 }catch(__e3){ try{ console.warn('guia no disponible:', __e3 && __e3.message); }catch(_){} }
+
+
+/* === Vista por servicio: qué hizo, de dónde sale el valor, dónde se hizo, listo por servicio === */
+(function(){
+  if(window.__srvVista) return; window.__srvVista = true;
+  var CSS=".srvp{border-top:1px solid #e6ecf5;padding:8px 0 2px}"
+   +".srvh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;font-weight:700;padding:0 10px 8px;color:#36435c}"
+   +".srvh .ok{color:#1a7f4b}.srvh .warn{color:#b3261e}"
+   +".srvt{width:100%;border-collapse:collapse;font-size:12.5px}"
+   +".srvt th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#6b7a90;padding:4px 8px;border-bottom:1px solid #e6ecf5;font-weight:700}"
+   +".srvt td{padding:6px 8px;border-bottom:1px solid #f1f5fa;vertical-align:top}"
+   +".srvt .num{text-align:right;white-space:nowrap}"
+   +".srvr{cursor:pointer}.srvr:hover{background:#f7fbff}.srvr.listo{background:#f3faf5}"
+   +".chip{display:inline-block;padding:1px 6px;border-radius:5px;font-size:11px;font-weight:700;white-space:nowrap}"
+   +".c-ok{background:#e6f3ea;color:#1a7f4b}.c-no{background:#fdeceb;color:#b3261e}.c-gris{background:#eef2f8;color:#4a5b73}"
+   +".srvb{border:1px solid #c9d6e8;background:#fff;border-radius:6px;padding:2px 8px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}"
+   +".srvb.on{background:#e6f3ea;border-color:#9ccfb0;color:#1a7f4b}"
+   +".srvsub{background:#fbfdff}.srvsub table{width:100%;border-collapse:collapse;font-size:12px}"
+   +".srvsub td{padding:3px 8px;border-bottom:1px solid #f1f5fa}"
+   +".srvver{font-size:11.5px;color:#1e5ba8;cursor:pointer;padding:6px 10px;display:inline-block}";
+  try{ var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
+  function nz(s){ return String(s==null?"":s).toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim(); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function mny(n){ return "$ "+(Math.round(Number(n)||0)).toLocaleString("es-CO"); }
+  function per(){ try{ return RESULT.periodoInicio||""; }catch(e){ return ""; } }
+  function leerL(){ try{ return JSON.parse(localStorage.getItem("liq_listos")||"{}"); }catch(e){ return {}; } }
+  function clv(med,srv){ return "LISTO|"+per()+"|"+med+"|"+String(srv).slice(0,60); }
+  function estaListo(med,srv){ return !!leerL()[clv(med,srv)]; }
+  function poner(med,srv,on){ var L=leerL(), k=clv(med,srv);
+    if(on) L[k]={por:((window.NUBE&&NUBE.perfil&&NUBE.perfil.nombre)||""), fecha:new Date().toLocaleString("es-CO")}; else delete L[k];
+    try{ localStorage.setItem("liq_listos", JSON.stringify(L)); }catch(e){}
+    try{ if(window.NUBE&&NUBE.guardarAjuste) NUBE.guardarAjuste(k, L[k]||null); }catch(e){} }
+  var IDX=null;
+  function actosIdx(){ if(IDX) return IDX; IDX={};
+    try{ (window.ACTOS||[]).forEach(function(a){
+      var c=(String(a.ced||"").match(/(\d{5,})/)||[])[1] || (String(a.pac||"").match(/(\d{5,})/)||[])[1];
+      if(c) IDX[c+"|"+String(a.fecha||"").slice(0,10)]=1; }); }catch(e){} return IDX; }
+  function donde(recs, servicio){
+    if(/CONSULTA/i.test(servicio||"")) return null;
+    var I=actosIdx(), q=0, n=0;
+    (recs||[]).forEach(function(r){ var c=(String(r.paciente||"").match(/(\d{5,})/)||[])[1]; if(!c) return;
+      n++; if(I[c+"|"+String(r.fecha||"").slice(0,10)]) q++; });
+    if(!n) return null;
+    if(q===n) return {t:"quirófano", cls:"c-gris"};
+    if(q===0) return {t:"consultorio", cls:"c-gris"};
+    return {t:q+" en quirófano · "+(n-q)+" en consultorio", cls:"c-no"}; }
+  var FV={};
+  function pactados(med){
+    var k=nz(med); if(FV[k]) return FV[k];
+    var out=[];
+    try{ var F=window.FICHAS_BASE_V2||{};
+      Object.keys(F).forEach(function(m){ if(nz(m)!==k) return;
+        (F[m]||[]).forEach(function(r){ var v=Math.round(Number(r.valor)||0);
+          if(v) out.push({v:v, s:"ficha · "+String(r.servicio||"")}); }); }); }catch(e){}
+    try{ if(typeof REGLAS_MES!=="undefined"){ Object.keys(REGLAS_MES).forEach(function(m){ if(nz(m)!==k) return;
+      var R=REGLAS_MES[m]||{};
+      ["rubro","adicCons","adicCir","valor","adic"].forEach(function(p){ var v=Math.round(Number(R[p])||0);
+        if(v) out.push({v:v, s:"rubro mensual"}); }); }); } }catch(e){}
+    try{ if(typeof REGLAS_DOC!=="undefined"){ Object.keys(REGLAS_DOC).forEach(function(m){ if(nz(m)!==k) return;
+      var R=REGLAS_DOC[m]||{};
+      if(R.anest) ["jornada","extra","extraEsp","coordinacion"].forEach(function(p){ var v=Math.round(Number(R.anest[p])||0);
+        if(v) out.push({v:v, s:"pactado · "+p}); });
+      if(R.consP) ["v","extra"].forEach(function(p){ var v=Math.round(Number(R.consP[p])||0);
+        if(v) out.push({v:v, s:"pactado · consulta"}); });
+      (R.cirFijas||[]).forEach(function(c){ ["P","M","M1"].forEach(function(p){ var v=Math.round(Number(c[p])||0);
+        if(v) out.push({v:v, s:"pactado · cirugía"}); }); }); }); } }catch(e){}
+    FV[k]=out; return out; }
+  function fuente(med, g){
+    var r=String(g.regla||""), uf=Number(g.unit)||0, u=Math.round(uf);
+    if(/^Acuerdo/i.test(r))        return {t:"acuerdo firmado", ok:true};
+    if(/norma aprendida/i.test(r)) return {t:"norma firmada", ok:true};
+    if(/sin regla|sin tarifa/i.test(r)) return {t:"SIN TARIFA", ok:false};
+    if(!u)                         return {t:"sin valor", ok:true};
+    if(Math.abs(uf-u)>0.004 || /%|porcent/i.test(r)) return {t:"% de lo facturado", ok:true};
+    var f=pactados(med).filter(function(x){ return x.v===u; })[0];
+    if(f) return {t:f.s.slice(0,34), ok:true};
+    if(/jornada|rubro|paquete|incluid/i.test(r)) return {t:r.slice(0,30), ok:true};
+    return {t:"NO está en la ficha"+(r?" · "+r.slice(0,22):""), ok:false}; }
+  function grupos(med){
+    var D=[]; try{ D=RESULT._datos||[]; }catch(e){}
+    var x=null; for(var i=0;i<D.length;i++){ if(nz(D[i].m)===nz(med)){ x=D[i]; break; } }
+    if(!x) return [];
+    var out=[];
+    ["cir","sede"].forEach(function(b){ var g=(x.d&&x.d[b])||{};
+      Object.keys(g).forEach(function(k){ var v=g[k]; if(!v) return;
+        out.push({ nombre:String(v.servicio||k).replace(/\|\|.*$/,""), bloque:(b==="cir"?"Cirugía":(v.sedeScope||"Sede")),
+          cant:v.cant||0, unit:v.unit||0, pago:v.pago||0, recs:v.recs||[],
+          regla:((v.recs||[])[0]||{}).regla || v.servicio || "" }); }); });
+    out.sort(function(a,b){ return (b.pago||0)-(a.pago||0); }); return out; }
+  function medDeTarjeta(pan){ var c=pan.closest(".doc-card"); if(!c) return "";
+    return String(c.id||"").replace(/^doc-/,"").replace(/_/g," "); }
+  function montar(pan){
+    try{
+    if(!pan || pan.getAttribute("data-srv")==="1") return;
+    var med=medDeTarjeta(pan); if(!med) return;
+    var G=grupos(med); if(!G.length) return;
+    pan.setAttribute("data-srv","1");
+    var nPac=G.reduce(function(a,g){return a+(g.recs||[]).length;},0);
+    var fuera=G.filter(function(g){ return !fuente(med,g).ok; });
+    var tot=G.reduce(function(a,g){return a+(g.pago||0);},0);
+    var box=document.createElement("div"); box.className="srvp";
+    var filas=G.map(function(g,i){ var f=fuente(med,g), d=donde(g.recs,g.nombre), L=estaListo(med,g.nombre);
+      return '<tr class="srvr'+(L?" listo":"")+'" data-i="'+i+'">'
+        +'<td><b>'+esc(g.nombre)+'</b> <span class="chip c-gris">'+esc(g.bloque)+'</span></td>'
+        +'<td class="num">'+g.cant+'</td><td class="num">'+(g.unit?mny(g.unit):"—")+'</td>'
+        +'<td><span class="chip '+(f.ok?"c-ok":"c-no")+'">'+esc(f.t)+'</span></td>'
+        +'<td>'+(d?'<span class="chip '+d.cls+'">'+esc(d.t)+'</span>':'')+'</td>'
+        +'<td class="num"><b>'+mny(g.pago)+'</b></td>'
+        +'<td class="num"><button type="button" class="srvb'+(L?" on":"")+'" data-l="'+i+'">'+(L?"✓ listo":"listo")+'</button></td>'
+        +'</tr><tr class="srvsub" data-sub="'+i+'" style="display:none"><td colspan="7"></td></tr>'; }).join("");
+    box.innerHTML='<div class="srvh"><span>'+G.length+" servicio(s) · "+nPac+" paciente(s) · "+mny(tot)+'</span>'
+      +(fuera.length?'<span class="warn">⚠ '+fuera.length+" con valor que no está en la ficha</span>":'<span class="ok">✓ todos los valores están en la ficha</span>')
+      +'<span class="srvcnt" style="color:#6b7a90"></span></div>'
+      +'<table class="srvt"><tr><th>Qué hizo</th><th class="num">Cant.</th><th class="num">Valor c/u</th><th>De dónde sale</th><th>Dónde se hizo</th><th class="num">Total</th><th></th></tr>'
+      +filas+'</table><span class="srvver">ver la lista completa de pacientes ▾</span>';
+    var lista=pan.querySelector(".paclist");
+    if(lista) lista.style.display="none";
+    pan.insertBefore(box, lista||null);
+    function cuenta(){ var n=G.filter(function(g){return estaListo(med,g.nombre);}).length;
+      var c=box.querySelector(".srvcnt"); if(c) c.textContent=" · "+n+" de "+G.length+" listos"; }
+    cuenta();
+    box.addEventListener("click", function(ev){
+      var b=ev.target.closest(".srvb");
+      if(b){ ev.stopPropagation(); var i=+b.getAttribute("data-l"), g=G[i], on=!estaListo(med,g.nombre);
+        poner(med,g.nombre,on); b.classList.toggle("on",on); b.textContent=on?"✓ listo":"listo";
+        b.closest("tr").classList.toggle("listo",on); cuenta(); return; }
+      var v=ev.target.closest(".srvver");
+      if(v && lista){ var ab=lista.style.display==="none"; lista.style.display=ab?"":"none";
+        v.textContent=ab?"ocultar la lista completa ▴":"ver la lista completa de pacientes ▾"; return; }
+      var r=ev.target.closest(".srvr");
+      if(r){ var i2=r.getAttribute("data-i"), sub=box.querySelector('[data-sub="'+i2+'"]'); if(!sub) return;
+        if(sub.style.display==="none"){
+          if(!sub.getAttribute("data-ok")){ var g2=G[+i2];
+            sub.firstElementChild.innerHTML='<table>'+(g2.recs||[]).map(function(x){
+              return "<tr><td>"+esc(String(x.fecha||"").slice(0,10))+"</td><td>"+esc(String(x.paciente||""))+"</td><td>"+esc(String(x.emp||x.empresa||""))+"</td><td>"+esc(String(x.detalle||g2.nombre).slice(0,70))+'</td><td class="num">'+mny(x.total)+"</td></tr>"; }).join("")+"</table>";
+            sub.setAttribute("data-ok","1"); }
+          sub.style.display=""; } else sub.style.display="none"; } });
+    var q=pan.querySelector(".pacq");
+    if(q){ q.placeholder="Buscar paciente, cédula o servicio…";
+      q.addEventListener("input", function(){ var t=nz(q.value);
+        box.querySelectorAll("tr.srvr").forEach(function(tr){ var i=tr.getAttribute("data-i"), g=G[+i];
+          var hay = !t || nz(g.nombre).indexOf(t)>=0 || (g.recs||[]).some(function(x){ return nz(x.paciente).indexOf(t)>=0 || nz(x.detalle).indexOf(t)>=0; });
+          tr.style.display=hay?"":"none";
+          var sub=box.querySelector('[data-sub="'+i+'"]'); if(sub && !hay) sub.style.display="none"; }); }); }
+    pan.querySelectorAll("input[placeholder]").forEach(function(inp){
+      if(inp!==q && /paciente/i.test(inp.placeholder||"")) inp.style.display="none"; });
+    }catch(__e){ console.warn("srvVista", __e); }
+  }
+  window.__srvMontar=montar;
+  try{
+    var obs=new MutationObserver(function(ms){ ms.forEach(function(m){ Array.prototype.forEach.call(m.addedNodes||[], function(n){
+      if(n.nodeType!==1) return;
+      if(n.classList && n.classList.contains("pacpanel")) montar(n);
+      else if(n.querySelectorAll) n.querySelectorAll(".pacpanel").forEach(montar); });}); });
+    obs.observe(document.body,{childList:true,subtree:true});
+    document.querySelectorAll(".pacpanel").forEach(montar);
+  }catch(e){}
+})();
 
 function pdfTodas(){
   const J=pdfLib(); if(!J||!RESULT) return;
