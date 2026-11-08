@@ -201,6 +201,31 @@ export async function GET(req: NextRequest) {
       Boolean(diasHasta) ||
       diasSemParam.length > 0;
 
+    /* ---------------------------------------------------------------
+       GIROS POR CRUZAR: SI NO LLEGAN, SE DICE.
+       Escrito el 08-11-2026.
+
+       Aqui las dos consultas de giros terminaban en `.catch(() => null)`
+       y nadie preguntaba despues si habian llegado. Si SISMA fallaba en
+       esas dos, el calculo seguia tan tranquilo:
+
+           procesarAuxiliar(null) -> no suma nada
+           anticiposPorCruzar = 0
+           totalCarteraReal = carteraTotal - 0 = carteraTotal
+
+       Es decir: la Cartera Real salia IGUAL a la Total, mas alta de lo
+       que es, sin un solo aviso. Y es la cifra de plata que mira
+       gerencia. Es el mismo defecto que nos tuvo tres semanas cargando
+       una foto del 13 de octubre, pero en el peor sitio posible.
+
+       Ahora se anota cual fallo y por que, y se devuelve la bandera
+       `girosIncompletos` para que la pantalla lo diga en rojo en vez de
+       mostrar un numero que no es. Las cifras se siguen entregando --
+       cartera corriente, vencida y total si son buenas -- lo que se
+       marca es que la RESTA no se puede confiar.
+       --------------------------------------------------------------- */
+    const fallosGiros: string[] = [];
+
     // Consultamos en paralelo cartera-edades y las cuentas de giros por cruzar en auxiliar-abierto
     const [edadesData, aux1301, aux2501] = await Promise.all([
       fetchSismaJson<CarteraEdadesResponse>(
@@ -208,10 +233,16 @@ export async function GET(req: NextRequest) {
       ),
       fetchSismaJson<AuxiliarAbiertoResponse>(
         `/api/contabilidad/auxiliar-abierto?desde=${desde}&hasta=${corte}&cuentaDesde=1301250602&cuentaHasta=1301250602&formato=json`
-      ).catch(() => null),
+      ).catch((e) => {
+        fallosGiros.push(`cuenta 1301250602: ${e instanceof Error ? e.message : "no respondio"}`);
+        return null;
+      }),
       fetchSismaJson<AuxiliarAbiertoResponse>(
         `/api/contabilidad/auxiliar-abierto?desde=${desde}&hasta=${corte}&cuentaDesde=2501010602&cuentaHasta=2501010607&formato=json`
-      ).catch(() => null),
+      ).catch((e) => {
+        fallosGiros.push(`cuentas 2501010602-607: ${e instanceof Error ? e.message : "no respondio"}`);
+        return null;
+      }),
     ]);
 
     const cumpleFiltroEntidad = (razonSocial: string): boolean => {
@@ -456,6 +487,13 @@ export async function GET(req: NextRequest) {
     const anticiposPorCruzar = sumaGirosCuentas;
     const totalCarteraReal = Math.round(carteraTotal - anticiposPorCruzar);
 
+    // Si alguna de las dos consultas de giros no llego, la resta de
+    // arriba esta hecha con un cero que no es un cero medido.
+    const girosIncompletos = fallosGiros.length > 0;
+    if (girosIncompletos) {
+      console.error("CARTERA: no llegaron los giros por cruzar ->", fallosGiros.join(" | "));
+    }
+
     // Serie mensual real (Ene a Oct/Dic) calculada directamente por el mes real de las facturas filtradas
     const incluyeAnioActual =
       aniosParam.length === 0 ||
@@ -567,7 +605,13 @@ export async function GET(req: NextRequest) {
         glosasPendientesGestionar: 0,
         anticiposPorCruzar,
         totalCarteraReal,
+        // Cuando esto viene en true, la Cartera Real de arriba es
+        // simplemente la Total: los giros no se pudieron restar.
+        girosIncompletos,
+        girosMotivo: girosIncompletos ? fallosGiros.join(" | ") : null,
       },
+      girosIncompletos,
+      girosMotivo: girosIncompletos ? fallosGiros.join(" | ") : null,
       edades: {
         porVencer: Math.round(t.porVencer || 0),
         d30: Math.round(t.d30 || 0),
