@@ -3,6 +3,8 @@ import { ArrowDown, ArrowUp, CalendarClock, LineChart, Percent, Target, Wallet }
 import Link from "next/link";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
+import { FechaDelDato } from "@/components/FechaDelDato";
+import { ultimoDatoOportunidades } from "@/lib/frescura";
 import { KpiCard } from "@/components/KpiCard";
 import { ServiceFilter } from "@/components/ServiceFilter";
 import { StageFunnelChart } from "@/components/StageFunnelChart";
@@ -68,6 +70,7 @@ export default async function LeadsPage({
     serviciosAgendadosLog,
     ventasCandidatas,
     cirugiaExitosaDates,
+    ultimoDato,
   ] = await Promise.all([
     listServices(),
     getOpportunities({ pipeline: "generacion_leads", from, to, serviceId }),
@@ -76,6 +79,7 @@ export default async function LeadsPage({
     getServiciosAgendadosLog(),
     getVentasCandidatas({ pipeline: "generacion_leads", serviceId }),
     getCirugiaExitosaEntryDates(),
+    ultimoDatoOportunidades(),
   ]);
   const gasto = adStats.spend;
 
@@ -124,7 +128,7 @@ export default async function LeadsPage({
 
   return (
     <div className="pb-12">
-      <ExecutiveHeader overline="TABLEROS · EMBUDO COMERCIAL" title="Clientes Potenciales" subtitle="Captación, conversión y seguimiento de pacientes." variant="leads" rightControls={<div className="flex flex-wrap items-end gap-2.5"><ServiceFilter services={services} /><DateRangePicker from={from} to={to} otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }} /><ServiciosAgendadosButton rows={serviciosAgendadosLog} serviceNames={serviceNames} /></div>} />
+      <ExecutiveHeader overline="TABLEROS · EMBUDO COMERCIAL" title="Clientes Potenciales" subtitle="Captación, conversión y seguimiento de pacientes." variant="leads" frescura={<FechaDelDato fecha={ultimoDato} queEs="Último lead" avisaA={2} alarmaA={5} comoSeActualiza="entra del CRM" />} rightControls={<div className="flex flex-wrap items-end gap-2.5"><ServiceFilter services={services} /><DateRangePicker from={from} to={to} otherParams={{ servicio: searchParams.servicio, estado: searchParams.estado }} /><ServiciosAgendadosButton rows={serviciosAgendadosLog} serviceNames={serviceNames} /></div>} />
 
       <StatusCards
         counts={counts}
