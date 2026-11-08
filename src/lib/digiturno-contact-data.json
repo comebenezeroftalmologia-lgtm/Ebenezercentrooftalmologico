@@ -4367,6 +4367,189 @@
           "duracionMin": 3.9
         }
       ]
+    },
+    {
+      "year": 2026,
+      "monthNum": 11,
+      "month": "Noviembre",
+      "lines": [
+        {
+          "id": "506012",
+          "name": "Mutual Subsidiado",
+          "isMutual": true,
+          "recibidas": 2007,
+          "contestadas": 396,
+          "perdidas": 1611,
+          "esperaMin": 11.8,
+          "slaPct": 0.1,
+          "agents": [
+            {
+              "id": "1003",
+              "name": "Maria Angelica",
+              "timbradas": 218,
+              "contestadas": 201,
+              "perdidas": 17,
+              "duracionMin": 4.7
+            },
+            {
+              "id": "1018",
+              "name": "Karen Tatiana",
+              "timbradas": 203,
+              "contestadas": 195,
+              "perdidas": 8,
+              "duracionMin": 3.9
+            }
+          ]
+        },
+        {
+          "id": "506013",
+          "name": "Mutual Contributivo",
+          "isMutual": true,
+          "recibidas": 446,
+          "contestadas": 219,
+          "perdidas": 227,
+          "esperaMin": 7.5,
+          "slaPct": 3.59,
+          "agents": [
+            {
+              "id": "1003",
+              "name": "Maria Angelica",
+              "timbradas": 125,
+              "contestadas": 118,
+              "perdidas": 7,
+              "duracionMin": 5.7
+            },
+            {
+              "id": "1018",
+              "name": "Karen Tatiana",
+              "timbradas": 105,
+              "contestadas": 101,
+              "perdidas": 4,
+              "duracionMin": 3.8
+            }
+          ]
+        },
+        {
+          "id": "506014",
+          "name": "PYP (Particular y Prepagada) y Ecopetrol",
+          "isMutual": false,
+          "recibidas": 300,
+          "contestadas": 279,
+          "perdidas": 21,
+          "esperaMin": 0.5,
+          "slaPct": 80.33,
+          "agents": [
+            {
+              "id": "1005",
+              "name": "Yuranis Castañeda",
+              "timbradas": 206,
+              "contestadas": 162,
+              "perdidas": 44,
+              "duracionMin": 2.7
+            },
+            {
+              "id": "1001",
+              "name": "Fabiola Bustos",
+              "timbradas": 106,
+              "contestadas": 84,
+              "perdidas": 22,
+              "duracionMin": 3.5
+            },
+            {
+              "id": "1018",
+              "name": "Karen Tatiana",
+              "timbradas": 29,
+              "contestadas": 23,
+              "perdidas": 6,
+              "duracionMin": 6.8
+            },
+            {
+              "id": "1003",
+              "name": "Maria Angelica",
+              "timbradas": 11,
+              "contestadas": 10,
+              "perdidas": 1,
+              "duracionMin": 3.6
+            }
+          ]
+        },
+        {
+          "id": "506015",
+          "name": "Cirugía Refractiva",
+          "isMutual": false,
+          "recibidas": 20,
+          "contestadas": 16,
+          "perdidas": 4,
+          "esperaMin": 0.4,
+          "slaPct": 70.0,
+          "agents": [
+            {
+              "id": "1005",
+              "name": "Yuranis Castañeda",
+              "timbradas": 11,
+              "contestadas": 10,
+              "perdidas": 1,
+              "duracionMin": 2.2
+            },
+            {
+              "id": "1001",
+              "name": "Fabiola Bustos",
+              "timbradas": 5,
+              "contestadas": 4,
+              "perdidas": 1,
+              "duracionMin": 3.6
+            },
+            {
+              "id": "1018",
+              "name": "Karen Tatiana",
+              "timbradas": 3,
+              "contestadas": 2,
+              "perdidas": 1,
+              "duracionMin": 1.7
+            }
+          ]
+        }
+      ],
+      "agents": [
+        {
+          "id": "1003",
+          "name": "Maria Angelica",
+          "timbradas": 354,
+          "contestadas": 329,
+          "perdidas": 25,
+          "duracionMin": 5.0
+        },
+        {
+          "id": "1018",
+          "name": "Karen Tatiana",
+          "timbradas": 340,
+          "contestadas": 321,
+          "perdidas": 19,
+          "duracionMin": 4.1
+        },
+        {
+          "id": "1005",
+          "name": "Yuranis Castañeda",
+          "timbradas": 217,
+          "contestadas": 172,
+          "perdidas": 45,
+          "duracionMin": 2.7
+        },
+        {
+          "id": "1001",
+          "name": "Fabiola Bustos",
+          "timbradas": 111,
+          "contestadas": 88,
+          "perdidas": 23,
+          "duracionMin": 3.5
+        }
+      ]
     }
-  ]
+  ],
+  "_parcial": {
+    "intento": "2026-11-08 13:22:20",
+    "digiturno": "FALLO",
+    "contactCenter": "ok",
+    "nota": "La fecha de arriba NO se movio: hay datos sin actualizar."
+  }
 }
