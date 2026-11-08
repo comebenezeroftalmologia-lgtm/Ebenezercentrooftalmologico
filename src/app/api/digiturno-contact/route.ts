@@ -47,7 +47,27 @@ function parseHmsToMin(val: unknown): number {
   return Math.round((Number(s) / 60) * 10) / 10 || 0;
 }
 
-async function fetchLatestCloudJson(): Promise<typeof rawData> {
+/* ---------------------------------------------------------------------
+   EL RESPALDO SE USA, PERO SE DICE.
+   Escrito el 08-11-2026.
+
+   Aqui habia un `catch {}` pelado: si la descarga fallaba por lo que
+   fuera -- red caida, archivo movido, tiempo agotado -- se devolvia sin
+   mas la copia que viene pegada dentro del build. Esa copia solo cambia
+   cuando se vuelve a desplegar la plataforma, asi que puede tener
+   semanas, y en pantalla se veia idéntica a la buena.
+
+   Es la misma falla que nos tuvo del 18-oct al 8-nov recargando una foto
+   del 13 de octubre: un respaldo callado no protege, cambia una falla
+   visible por datos viejos que parecen nuevos.
+
+   Ahora se devuelve tambien de DONDE salio el dato y por que, para que
+   la pantalla pueda decirlo y quede en el registro del servidor.
+   --------------------------------------------------------------------- */
+type OrigenDigiturno = { datos: typeof rawData; esRespaldo: boolean; motivo: string | null };
+
+async function fetchLatestCloudJson(): Promise<OrigenDigiturno> {
+  let motivo: string;
   try {
     const res = await fetch(
       'https://raw.githubusercontent.com/comebenezeroftalmologia-lgtm/Ebenezercentrooftalmologico/main/src/lib/digiturno-contact-data.json',
@@ -56,11 +76,17 @@ async function fetchLatestCloudJson(): Promise<typeof rawData> {
     if (res.ok) {
       const data = await res.json();
       if (data && Array.isArray(data.digiturnoMonthly) && Array.isArray(data.contactCenterMonthly)) {
-        return data;
+        return { datos: data, esRespaldo: false, motivo: null };
       }
+      motivo = 'el archivo llego pero sin las listas que se esperaban';
+    } else {
+      motivo = `el archivo respondio HTTP ${res.status}`;
     }
-  } catch {}
-  return rawData;
+  } catch (e) {
+    motivo = e instanceof Error ? e.message : 'no se pudo descargar el archivo';
+  }
+  console.error('DIGITURNO: se usa la copia pegada en el build ->', motivo);
+  return { datos: rawData, esRespaldo: true, motivo };
 }
 
 function cleanAgentName(raw: unknown): string {
@@ -261,7 +287,8 @@ async function fetchLiveCurrentMonthQueues(existingMonth?: (typeof rawData.conta
 
 export async function GET() {
   try {
-    const latestJson = await fetchLatestCloudJson();
+    const origen = await fetchLatestCloudJson();
+    const latestJson = origen.datos;
     const baseMonths = [...(latestJson.contactCenterMonthly || [])];
     const now = new Date();
     const curYr = now.getFullYear();
@@ -282,8 +309,19 @@ export async function GET() {
       updatedAt: liveMonth ? new Date().toISOString() : latestJson.updatedAt,
       liveCloudSync: Boolean(liveMonth),
       contactCenterMonthly: baseMonths,
+      // De donde salio esto. La pantalla lo muestra; callarlo fue el
+      // defecto que encontramos el 08-11-2026.
+      esRespaldo: origen.esRespaldo,
+      respaldoMotivo: origen.motivo,
     });
-  } catch {
-    return NextResponse.json(rawData);
+  } catch (e) {
+    // Ni siquiera el camino normal funciono. Se entrega la copia pegada
+    // en el build, pero marcada: antes salia identica a la buena.
+    console.error('DIGITURNO: fallo todo el armado, se entrega la copia del build ->', e);
+    return NextResponse.json({
+      ...rawData,
+      esRespaldo: true,
+      respaldoMotivo: e instanceof Error ? e.message : 'fallo el armado de la respuesta',
+    });
   }
 }
