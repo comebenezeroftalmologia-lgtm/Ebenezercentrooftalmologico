@@ -123,6 +123,71 @@ console.log(`Filas a cargar: ${rows.length} (fuente: ${sourceSnapshot})`);
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
+/* ---------------------------------------------------------------------
+   CANDADO: NUNCA PISAR DATOS NUEVOS CON DATOS VIEJOS.
+   Agregado el 08-11-2026.
+
+   Entre el 18 de octubre y el 8 de noviembre, el sincronizador perdio el
+   token, cayo a una copia local congelada del 13-10 09:35 y la cargo
+   cuarenta veces seguidas. Cada corrida borraba lo bueno y dejaba lo
+   viejo. Las cuarenta salieron en verde.
+
+   Ya se arreglo el respaldo silencioso que lo causo, pero eso solo tapa
+   ESE camino. Este candado no depende de por donde venga el problema:
+   compara la fecha de la foto que llega contra la que ya esta guardada y,
+   si la que llega es mas vieja, no carga nada.
+
+   Se puede saltar a proposito con FORZAR_CARGA_VIEJA=1, para cuando de
+   verdad haya que volver atras. A proposito y a mano, no por descuido.
+   --------------------------------------------------------------------- */
+function fechaDeLaFoto(sello) {
+  const m = String(sello ?? "").match(/(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  if (!m) return null;
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] ?? 0), +(m[5] ?? 0)));
+}
+
+{
+  const fechaNueva = fechaDeLaFoto(sourceSnapshot);
+  const { data: previas } = await supabase
+    .from("frecuencias_mensual")
+    .select("source_snapshot")
+    .limit(2000);
+
+  let selloGuardado = null;
+  let fechaGuardada = null;
+  for (const p of previas ?? []) {
+    const f = fechaDeLaFoto(p.source_snapshot);
+    if (f && (!fechaGuardada || f > fechaGuardada)) {
+      fechaGuardada = f;
+      selloGuardado = p.source_snapshot;
+    }
+  }
+
+  if (!fechaNueva) {
+    console.warn(`Aviso: la foto que llega no trae fecha legible ("${sourceSnapshot}").`);
+    console.warn("No se puede comparar con lo guardado; se carga igual.");
+  } else if (fechaGuardada && fechaNueva < fechaGuardada) {
+    const dias = Math.round((fechaGuardada - fechaNueva) / 86400000);
+    console.error("");
+    console.error("=== NO SE CARGO NADA: LA FOTO QUE LLEGA ES MAS VIEJA ===");
+    console.error(`  ya guardado : ${selloGuardado}`);
+    console.error(`  intentando  : ${sourceSnapshot}`);
+    console.error(`  son ${dias} dia(s) hacia atras.`);
+    console.error("");
+    console.error("Cargarla borraria datos buenos y los dejaria pareciendo nuevos.");
+    console.error("Casi siempre esto significa que la fuente real no se pudo leer");
+    console.error("y algo entrego una copia vieja en su lugar.");
+    console.error("");
+    console.error("Si de verdad quiere volver atras: FORZAR_CARGA_VIEJA=1");
+    if (env.FORZAR_CARGA_VIEJA !== "1") process.exit(1);
+    console.warn("!! FORZAR_CARGA_VIEJA=1: se carga la foto vieja a proposito.");
+  } else if (fechaGuardada && fechaNueva.getTime() === fechaGuardada.getTime()) {
+    console.log(`La foto es la misma que ya estaba (${sourceSnapshot}). Se recarga igual.`);
+  } else if (fechaGuardada) {
+    console.log(`Foto nueva: ${selloGuardado}  ->  ${sourceSnapshot}`);
+  }
+}
+
 const BATCH = 500;
 let loaded = 0;
 for (let i = 0; i < rows.length; i += BATCH) {
