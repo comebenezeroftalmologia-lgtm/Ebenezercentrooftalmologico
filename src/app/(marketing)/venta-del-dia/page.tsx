@@ -1,5 +1,6 @@
 import { requireModuloAccess } from "@/lib/auth";
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
+import { DatoEnVivo } from "@/components/FechaDelDato";
 import { AlertTriangle } from "lucide-react";
 import { formatNumber } from "@/lib/text";
 import {
@@ -73,7 +74,7 @@ export default async function VentaDelDia({
   const d = await calcularVentaDelDia({ fecha, sede });
 
   const encabezado = (
-    <ExecutiveHeader overline="TABLEROS · OPERACIÓN CLÍNICA" title="Venta del Día" subtitle="Atención diaria, oportunidad de primera vez y programación de cirugía." variant="analytics" rightControls={<Controles fecha={fecha} sede={sede} />} />
+    <ExecutiveHeader overline="TABLEROS · OPERACIÓN CLÍNICA" title="Venta del Día" subtitle="Atención diaria, oportunidad de primera vez y programación de cirugía." variant="analytics" frescura={d.fetchError ? undefined : <DatoEnVivo fuente="SISMA" />} rightControls={<Controles fecha={fecha} sede={sede} />} />
   );
 
   if (d.fetchError) {
