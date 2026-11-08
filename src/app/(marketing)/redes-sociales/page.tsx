@@ -2,6 +2,8 @@ import { requireModuloAccess } from "@/lib/auth";
 import { Eye, Image as ImageIcon, TrendingUp, UserCheck, Users, Zap } from "lucide-react";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
+import { FechaDelDato } from "@/components/FechaDelDato";
+import { ultimoDatoRedes } from "@/lib/frescura";
 import { FollowerHistoryChart } from "@/components/FollowerHistoryChart";
 import { MetricCard } from "@/components/MetricCard";
 import { PlatformChips } from "@/components/PlatformChips";
@@ -52,6 +54,7 @@ export default async function RedesSocialesPage({
     profileViews,
     accountsEngaged,
     totalInteractions,
+    ultimoDato,
   ] = await Promise.all([
     getSocialStatsSeries({ platform: "instagram", metric: "followers", from, to }),
     getSocialStatsSeries({ platform: "facebook", metric: "followers", from, to }),
@@ -63,6 +66,7 @@ export default async function RedesSocialesPage({
     getSocialStatsSum({ platform: "instagram", metric: "profile_views", from, to }),
     getSocialStatsSum({ platform: "instagram", metric: "accounts_engaged", from, to }),
     getSocialStatsSum({ platform: "instagram", metric: "total_interactions", from, to }),
+    ultimoDatoRedes(),
   ]);
 
   const igCurrent = igFollowersLatest?.value ?? 0;
@@ -95,7 +99,7 @@ export default async function RedesSocialesPage({
 
   return (
     <div className="pb-12">
-      <ExecutiveHeader overline="TABLEROS · EMBUDO COMERCIAL" title="Redes Sociales" subtitle="Pauta, alcance digital e interacción de comunidad." variant="redes_sociales" rightControls={<DateRangePicker from={from} to={to} otherParams={{ red: searchParams.red }} />} />
+      <ExecutiveHeader overline="TABLEROS · EMBUDO COMERCIAL" title="Redes Sociales" subtitle="Pauta, alcance digital e interacción de comunidad." variant="redes_sociales" frescura={<FechaDelDato fecha={ultimoDato} queEs="Métricas" avisaA={3} alarmaA={10} comoSeActualiza="las trae la carga de redes sociales" />} rightControls={<DateRangePicker from={from} to={to} otherParams={{ red: searchParams.red }} />} />
 
       <div className="mb-6">
         <PlatformChips followers={chipsData} />
