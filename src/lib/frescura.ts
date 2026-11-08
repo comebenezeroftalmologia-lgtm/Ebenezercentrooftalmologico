@@ -40,7 +40,10 @@ async function ultimaFecha(tabla: string, columna: string): Promise<string | nul
       console.warn(`frescura(${tabla}.${columna}):`, error.message);
       return null;
     }
-    const fila = (data ?? [])[0] as Record<string, unknown> | undefined;
+    // Doble casteo a proposito: como la columna llega por parametro,
+    // supabase-js no puede saber la forma de la fila y la tipa como un
+    // error generico. Pasar por unknown es la via que TypeScript exige.
+    const fila = (data ?? [])[0] as unknown as Record<string, unknown> | undefined;
     const v = fila?.[columna];
     return typeof v === "string" && v.trim() ? v : null;
   } catch (e) {
