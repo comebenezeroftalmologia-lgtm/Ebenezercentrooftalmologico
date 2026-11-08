@@ -335,6 +335,12 @@ export default function TableroCarteraAnalytics() {
     corteISO: string;
     fechaCorte: string;
     filasFacturas: number;
+    /* Viene en true cuando SISMA no entrego los giros por cruzar. En ese
+       caso la Cartera Real que se muestra es, en realidad, la Total: la
+       resta se hizo contra un cero que nadie midio. Se avisa arriba en
+       rojo; callarlo fue el defecto que encontramos el 08-11-2026. */
+    girosIncompletos?: boolean;
+    girosMotivo?: string | null;
     edades: {
       porVencer: number;
       d30: number;
@@ -3706,6 +3712,26 @@ export default function TableroCarteraAnalytics() {
 
   return (
     <div className="space-y-6" style={{ color: "#0E245E" }}>
+      {/* GIROS QUE NO LLEGARON — va de primero, antes de cualquier cifra.
+          Si SISMA no entrego los giros por cruzar, la Cartera Real que se
+          ve abajo es la Total sin restar nada: mas alta de lo que es.
+          Antes esto pasaba en silencio. */}
+      {datosSismaVivo?.girosIncompletos && (
+        <div
+          className="rounded-xl border px-5 py-3.5 text-[13px] font-semibold"
+          style={{ backgroundColor: "#FEF2F2", borderColor: "#FCA5A5", color: "#B91C1C" }}
+        >
+          ⚠️ SISMA no entregó los giros por cruzar. La <strong>Cartera Real</strong> que
+          aparece abajo está SIN restar los giros — es decir, igual a la Total y más alta
+          de lo que realmente es. No la use hasta que esto se resuelva.
+          {datosSismaVivo.girosMotivo && (
+            <span className="block mt-1 font-medium opacity-80">
+              Detalle: {datosSismaVivo.girosMotivo}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* NOTIFICACIÓN FLOTANTE */}
       {notificacion && (
         <div
