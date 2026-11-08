@@ -163,6 +163,36 @@ function fechaDeLaFoto(sello) {
     }
   }
 
+  /* Segunda red: la foto tambien tiene que ser RECIENTE, no solo mas
+     nueva que la guardada. Si el motor se congela (le paso en octubre:
+     el certificado de SISMA vencio y dejo de bajar datos cinco dias),
+     el sincronizador recibiria siempre la misma foto vieja y el candado
+     de arriba la dejaria pasar por no ser "mas vieja". Aqui se corta.
+
+     Tres dias habiles de margen: la facturacion se registra despues de
+     atender, un lunes carga el viernes, y los festivos existen. */
+  const DIAS_TOLERADOS = Number(env.DIAS_TOLERADOS ?? 4);
+  if (fechaNueva) {
+    const hoy = new Date();
+    const atraso = Math.floor((hoy - fechaNueva) / 86400000);
+    if (atraso > DIAS_TOLERADOS) {
+      console.error("");
+      console.error("=== NO SE CARGO NADA: LA FOTO ESTA VIEJA ===");
+      console.error(`  foto   : ${sourceSnapshot}`);
+      console.error(`  atraso : ${atraso} dias`);
+      console.error("");
+      console.error("La foto que llega no es mas vieja que la guardada, pero ya");
+      console.error("tiene demasiados dias. Eso suele significar que el MOTOR dejo");
+      console.error("de producir datos nuevos (en octubre de 2026 fue el certificado");
+      console.error("de SISMA, vencido, y el motor estuvo cinco dias sin descargar).");
+      console.error("");
+      console.error("Revise primero el motor, no este sincronizador.");
+      console.error("Si sabe que el atraso es normal: DIAS_TOLERADOS=<n>");
+      if (env.FORZAR_CARGA_VIEJA !== "1") process.exit(1);
+      console.warn("!! FORZAR_CARGA_VIEJA=1: se carga igual.");
+    }
+  }
+
   if (!fechaNueva) {
     console.warn(`Aviso: la foto que llega no trae fecha legible ("${sourceSnapshot}").`);
     console.warn("No se puede comparar con lo guardado; se carga igual.");
