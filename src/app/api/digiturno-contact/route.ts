@@ -309,6 +309,13 @@ export async function GET() {
       updatedAt: liveMonth ? new Date().toISOString() : latestJson.updatedAt,
       liveCloudSync: Boolean(liveMonth),
       contactCenterMonthly: baseMonths,
+      /* La fecha REAL del archivo, sin pisar.
+         `updatedAt` se vuelve "ahora" en cuanto el Contact Center trae su
+         mes en vivo, y eso tapaba que el DIGITURNO puede estar mucho mas
+         atrasado: el 08-11-2026 la pantalla decia "datos de hoy" con un
+         extractor que no corria desde el 27 de octubre. Son dos fuentes
+         distintas y cada una tiene que responder por su fecha. */
+      archivoActualizadoAt: latestJson.updatedAt,
       // De donde salio esto. La pantalla lo muestra; callarlo fue el
       // defecto que encontramos el 08-11-2026.
       esRespaldo: origen.esRespaldo,
