@@ -255,9 +255,15 @@ function fechaDeLaFoto(sello) {
 const TOPE_BARRIDO = 0.01;
 
 async function barrerFantasmas(tabla, columnas, filtrar, cargadas) {
-  const base = () => filtrar(supabase.from(tabla)).neq("source_snapshot", sourceSnapshot);
+  // Ojo con el orden: en supabase-js los filtros (.gte, .in, .neq) solo
+  // existen DESPUES de .select() o .delete(); sobre la tabla pelada no
+  // estan. Por eso se construye la consulta primero y se filtra encima.
+  const buscar = () =>
+    filtrar(supabase.from(tabla).select(columnas)).neq("source_snapshot", sourceSnapshot);
+  const borrar = () =>
+    filtrar(supabase.from(tabla).delete()).neq("source_snapshot", sourceSnapshot);
 
-  const { data: fantasmas, error: errBuscar } = await base().select(columnas);
+  const { data: fantasmas, error: errBuscar } = await buscar();
   if (errBuscar) {
     console.error(`No se pudo revisar filas huerfanas en ${tabla}:`, errBuscar.message);
     process.exit(1);
@@ -295,7 +301,7 @@ async function barrerFantasmas(tabla, columnas, filtrar, cargadas) {
     process.exit(1);
   }
 
-  const { error: errBorrar } = await base().delete();
+  const { error: errBorrar } = await borrar();
   if (errBorrar) {
     console.error(`No se pudieron quitar las huerfanas de ${tabla}:`, errBorrar.message);
     process.exit(1);
