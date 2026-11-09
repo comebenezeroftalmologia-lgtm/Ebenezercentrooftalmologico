@@ -546,7 +546,7 @@ export function CarteraWorkspace({
                   {glosas.length === 0 ? "Todavía no hay glosas en la base." : "Nada coincide con el filtro."}
                 </td></tr>
               )}
-              {visibles.slice(0, 400).map((g) => (
+              {visibles.slice(0, 150).map((g) => (
                 <FilaGlosa
                   key={g.id}
                   glosa={g}
@@ -564,8 +564,8 @@ export function CarteraWorkspace({
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[#64748B]">
           <span>
-            {visibles.length > 400
-              ? `Mostrando 400 de ${visibles.length} filas. Afina el filtro.`
+            {visibles.length > 150
+              ? `Mostrando 150 de ${visibles.length} filas. Usa los filtros para acotar.`
               : `${visibles.length} de ${glosas.length} filas`}
           </span>
           <span>La flecha de la izquierda abre la fila completa. Doble clic abre la factura.</span>
@@ -795,6 +795,10 @@ function FilaGlosa({
   onFicha: () => void;
 }) {
   const [abierta, setAbierta] = useState(false);
+  // Las 109 causales NO se pintan en cada fila: con 150 filas serian 16.000
+  // elementos y la pantalla se arrastra. Cada fila pinta solo la causal que
+  // tiene, y la lista completa aparece cuando se toca el desplegable.
+  const [listaCausales, setListaCausales] = useState(false);
   const [estado, setEstado] = useState(glosa.estado);
   const [aceptado, setAceptado] = useState(
     glosa.valorAceptado == null ? "" : String(Math.round(glosa.valorAceptado)),
@@ -893,6 +897,8 @@ function FilaGlosa({
           <select
             id={`cau-${glosa.id}`}
             value={codigo}
+            onFocus={() => setListaCausales(true)}
+            onMouseDown={() => setListaCausales(true)}
             onChange={(e) => { setCodigo(e.target.value); enviar({ motivoCodigo: e.target.value }); }}
             title={causal ? `${causal.codigo} · ${causal.familia} · ${causal.nombre}` : "Sin clasificar"}
             className={`max-w-[120px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11.5px] font-semibold outline-none ${
@@ -902,9 +908,13 @@ function FilaGlosa({
             }`}
           >
             <option value="">sin causal</option>
-            {causales.map((c) => (
-              <option key={c.codigo} value={c.codigo}>{c.codigo} · {c.nombre}</option>
-            ))}
+            {listaCausales ? (
+              causales.map((c) => (
+                <option key={c.codigo} value={c.codigo}>{c.codigo} · {c.nombre}</option>
+              ))
+            ) : codigo ? (
+              <option value={codigo}>{codigo}{causal ? ` · ${causal.nombre}` : ""}</option>
+            ) : null}
           </select>
         </td>
         <td className="py-1.5 pr-3 text-right font-cifra text-[#47597A]">{pesos(glosa.valorRadicado)}</td>
