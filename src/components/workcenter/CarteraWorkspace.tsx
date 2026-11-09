@@ -156,6 +156,10 @@ export function CarteraWorkspace({
   const [fFamilia, setFFamilia] = useState("");
   const [soloSinCausal, setSoloSinCausal] = useState(false);
 
+  /* Dos vistas sobre los MISMOS filtros. Se abre en la cuadricula porque esto
+     es una mesa de trabajo, no un tablero de consulta: lo primero es resolver
+     glosas. El resumen esta a un clic para cuando hay que mirar el conjunto. */
+  const [vista, setVista] = useState<"cuadricula" | "resumen">("cuadricula");
   const [guardando, setGuardando] = useState<string | null>(null);
   const [guardado, setGuardado] = useState<string | null>(null);
   const [fichaDe, setFichaDe] = useState<string | null>(null);
@@ -272,22 +276,38 @@ export function CarteraWorkspace({
     const porFamilia: Record<string, number> = {};
     const porEmpresa: Record<string, number> = {};
     const porCausal: Record<string, number> = {};
+    const porAnio: Record<string, number> = {};
+    const porFacturador: Record<string, number> = {};
+    const porEstado: Record<string, number> = {};
+    const porClase: Record<string, number> = {};
     for (const g of visibles) {
       glosado += g.valorGlosado || 0;
       if (g.valorAceptado != null) aceptado += g.valorAceptado;
       if (g.estado === "PENDIENTE") { sinResolver++; valorSinResolver += g.valorGlosado || 0; }
       if (!g.motivoCodigo) sinCausal++;
+      const v = g.valorGlosado || 0;
       const fam = causalPorCodigo[g.motivoCodigo]?.familia || "Sin clasificar";
-      porFamilia[fam] = (porFamilia[fam] || 0) + (g.valorGlosado || 0);
-      if (g.empresa) porEmpresa[g.empresa] = (porEmpresa[g.empresa] || 0) + (g.valorGlosado || 0);
-      if (g.motivoCodigo) porCausal[g.motivoCodigo] = (porCausal[g.motivoCodigo] || 0) + (g.valorGlosado || 0);
+      porFamilia[fam] = (porFamilia[fam] || 0) + v;
+      if (g.empresa) porEmpresa[g.empresa] = (porEmpresa[g.empresa] || 0) + v;
+      if (g.motivoCodigo) porCausal[g.motivoCodigo] = (porCausal[g.motivoCodigo] || 0) + v;
+      porAnio[g.anio || "sin año"] = (porAnio[g.anio || "sin año"] || 0) + v;
+      porFacturador[g.facturador || "sin facturador"] = (porFacturador[g.facturador || "sin facturador"] || 0) + v;
+      porEstado[g.estado] = (porEstado[g.estado] || 0) + v;
+      const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "— sin definir —";
+      porClase[cl] = (porClase[cl] || 0) + v;
     }
-    const orden = (o: Record<string, number>) =>
-      Object.entries(o).sort((a, b) => b[1] - a[1]);
+    const orden = (o: Record<string, number>) => Object.entries(o).sort((a, b) => b[1] - a[1]);
     return {
       glosado, aceptado, sinResolver, valorSinResolver, sinCausal,
-      familias: orden(porFamilia), empresas: orden(porEmpresa).slice(0, 6),
-      causales: orden(porCausal).slice(0, 6),
+      familias: orden(porFamilia),
+      empresas: orden(porEmpresa),
+      causales: orden(porCausal),
+      // El año va en su orden natural, no por plata: una serie de tiempo
+      // ordenada por tamaño no se puede leer.
+      anios: Object.entries(porAnio).sort((a, b) => a[0].localeCompare(b[0])),
+      facturadores: orden(porFacturador),
+      estados: orden(porEstado),
+      clases: orden(porClase),
     };
   }, [visibles, causalPorCodigo]);
 
@@ -368,7 +388,88 @@ export function CarteraWorkspace({
         </div>
       </div>
 
-      {/* ---------- métricas de lo filtrado ---------- */}
+      {/* ---------- filtros: valen igual para las dos vistas ----------
+           Van arriba y fuera de las dos vistas a proposito: filtrar por
+           COLSANITAS y pasar de la cuadricula al resumen tiene que seguir
+           mostrando COLSANITAS, no volver al total. */}
+      <div className="rounded-[14px] border border-[#E2EBF8] bg-white px-4 py-3 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="f-est" className="sr-only">Filtrar por desenlace</label>
+          <select id="f-est" value={fEstado} onChange={(e) => setFEstado(e.target.value)} className={sel}>
+            <option value="SIN_RESOLVER">Sin resolver</option>
+            <option value="TODAS">Todos los desenlaces</option>
+            {ESTADOS.filter((e) => e.id !== "PENDIENTE").map((e) => (
+              <option key={e.id} value={e.id}>{e.etiqueta}</option>
+            ))}
+          </select>
+
+          <label htmlFor="f-emp" className="sr-only">Filtrar por empresa</label>
+          <select id="f-emp" value={fEmpresa} onChange={(e) => setFEmpresa(e.target.value)} className={sel}>
+            <option value="">Todas las empresas</option>
+            {empresasEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+
+          <label htmlFor="f-anio" className="sr-only">Filtrar por año</label>
+          <select id="f-anio" value={fAnio} onChange={(e) => setFAnio(e.target.value)} className={sel}>
+            <option value="">Todos los años</option>
+            {cat.anios.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+
+          <label htmlFor="f-fact" className="sr-only">Filtrar por facturador</label>
+          <select id="f-fact" value={fFacturador} onChange={(e) => setFFacturador(e.target.value)} className={sel}>
+            <option value="">Todos los facturadores</option>
+            {facturadoresEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+
+          <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-[#47597A]">
+            <input
+              type="checkbox"
+              checked={soloSinCausal}
+              onChange={(e) => setSoloSinCausal(e.target.checked)}
+              className="h-3.5 w-3.5 accent-[#1D58D8]"
+            />
+            Solo sin causal
+          </label>
+
+          <div className="relative ml-auto">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94A3B8]" />
+            <label htmlFor="cartera-buscar" className="sr-only">Buscar</label>
+            <input
+              id="cartera-buscar"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Factura, motivo, nota, observación…"
+              className="w-64 rounded-lg border border-[#DCE8FA] py-1.5 pl-8 pr-2 text-[12.5px] outline-none focus:border-[#1D58D8]"
+            />
+          </div>
+
+          {hayFiltro && (
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="inline-flex items-center gap-1 rounded-lg border border-[#DCE8FA] px-2.5 py-1.5 text-[12px] font-semibold text-[#47597A] hover:border-[#94A3B8]"
+            >
+              <X className="h-3 w-3" /> Quitar filtros
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ---------- las dos vistas ---------- */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Pestana activa={vista === "cuadricula"} onClick={() => setVista("cuadricula")}>
+          Cuadrícula
+        </Pestana>
+        <Pestana activa={vista === "resumen"} onClick={() => setVista("resumen")}>
+          Resumen
+        </Pestana>
+        <span className="ml-2 font-cifra text-[11.5px] text-[#94A3B8]">
+          {visibles.length} de {glosas.length} glosas · {pesos(m.glosado)}
+        </span>
+      </div>
+
+      {/* ---------- RESUMEN ---------- */}
+      {vista === "resumen" && (
       <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
           <Cifra titulo="Glosado" valor={pesos(m.glosado)} pie={`${visibles.length} registros`} />
@@ -433,20 +534,46 @@ export function CarteraWorkspace({
           <div className="mt-5 grid gap-5 border-t border-[#F1F5F9] pt-4 md:grid-cols-2">
             <Ranking
               titulo="Empresas con más glosa"
-              filas={m.empresas}
+              filas={m.empresas.slice(0, 8)}
               total={m.glosado}
               onClick={(k) => setFEmpresa(fEmpresa === k ? "" : k)}
               activo={fEmpresa}
             />
             <Ranking
               titulo="Causales más frecuentes"
-              filas={m.causales}
+              filas={m.causales.slice(0, 8)}
               total={m.glosado}
               etiqueta={(k) => `${k} · ${causalPorCodigo[k]?.nombre || ""}`}
             />
           </div>
         )}
+
+        {m.glosado > 0 && (
+          <div className="mt-5 grid gap-5 border-t border-[#F1F5F9] pt-4 md:grid-cols-2">
+            <Ranking
+              titulo="Por año"
+              filas={m.anios}
+              total={m.glosado}
+              onClick={(k) => setFAnio(fAnio === k ? "" : k)}
+              activo={fAnio}
+            />
+            <Ranking
+              titulo="Por facturador"
+              filas={m.facturadores.slice(0, 8)}
+              total={m.glosado}
+              onClick={(k) => setFFacturador(fFacturador === k ? "" : k)}
+              activo={fFacturador}
+            />
+            <Ranking
+              titulo="Por desenlace"
+              filas={m.estados.map(([k, v]) => [ETIQUETA[k] || k, v] as [string, number])}
+              total={m.glosado}
+            />
+            <Ranking titulo="Por clase" filas={m.clases} total={m.glosado} />
+          </div>
+        )}
       </div>
+      )}
 
       {fallo && (
         <div className="flex items-start gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-3 py-2 text-[12.5px] font-semibold text-[#B91C1C]">
@@ -479,74 +606,9 @@ export function CarteraWorkspace({
         />
       )}
 
-      {/* ---------- cuadrícula ---------- */}
+      {/* ---------- CUADRÍCULA ---------- */}
+      {vista === "cuadricula" && (
       <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <Pestana activa={fEstado === "SIN_RESOLVER"} onClick={() => setFEstado("SIN_RESOLVER")}>
-            Sin resolver
-          </Pestana>
-          <Pestana activa={fEstado === "TODAS"} onClick={() => setFEstado("TODAS")}>
-            Todas
-          </Pestana>
-          {ESTADOS.filter((e) => e.id !== "PENDIENTE").map((e) => (
-            <Pestana key={e.id} activa={fEstado === e.id} onClick={() => setFEstado(e.id)}>
-              {e.etiqueta}
-            </Pestana>
-          ))}
-        </div>
-
-        <div className="mb-3 flex flex-wrap items-center gap-2 border-y border-[#F1F5F9] py-2.5">
-          <label htmlFor="f-emp" className="sr-only">Filtrar por empresa</label>
-          <select id="f-emp" value={fEmpresa} onChange={(e) => setFEmpresa(e.target.value)} className={sel}>
-            <option value="">Todas las empresas</option>
-            {empresasEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-
-          <label htmlFor="f-anio" className="sr-only">Filtrar por año</label>
-          <select id="f-anio" value={fAnio} onChange={(e) => setFAnio(e.target.value)} className={sel}>
-            <option value="">Todos los años</option>
-            {cat.anios.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-
-          <label htmlFor="f-fact" className="sr-only">Filtrar por facturador</label>
-          <select id="f-fact" value={fFacturador} onChange={(e) => setFFacturador(e.target.value)} className={sel}>
-            <option value="">Todos los facturadores</option>
-            {facturadoresEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-
-          <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-[#47597A]">
-            <input
-              type="checkbox"
-              checked={soloSinCausal}
-              onChange={(e) => setSoloSinCausal(e.target.checked)}
-              className="h-3.5 w-3.5 accent-[#1D58D8]"
-            />
-            Solo sin causal
-          </label>
-
-          <div className="relative ml-auto">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94A3B8]" />
-            <label htmlFor="cartera-buscar" className="sr-only">Buscar</label>
-            <input
-              id="cartera-buscar"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Factura, motivo, nota, observación…"
-              className="w-64 rounded-lg border border-[#DCE8FA] py-1.5 pl-8 pr-2 text-[12.5px] outline-none focus:border-[#1D58D8]"
-            />
-          </div>
-
-          {hayFiltro && (
-            <button
-              type="button"
-              onClick={limpiarFiltros}
-              className="inline-flex items-center gap-1 rounded-lg border border-[#DCE8FA] px-2.5 py-1.5 text-[12px] font-semibold text-[#47597A] hover:border-[#94A3B8]"
-            >
-              <X className="h-3 w-3" /> Quitar filtros
-            </button>
-          )}
-        </div>
-
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[12.5px]">
             <thead>
@@ -602,6 +664,7 @@ export function CarteraWorkspace({
           <span>La flecha de la izquierda abre la fila completa. Doble clic abre la factura.</span>
         </div>
       </div>
+      )}
 
       {fichaDe && hermanas.length > 0 && (
         <FichaFactura
