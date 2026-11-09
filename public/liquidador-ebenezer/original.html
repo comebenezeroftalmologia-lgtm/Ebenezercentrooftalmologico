@@ -2573,6 +2573,271 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
   }
 </style>
 
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="ebz-native-frecuencias-theme">
+  :root {
+    --bg: #F8FAFC !important;
+    --bg2: #FFFFFF !important;
+    --card: #FFFFFF !important;
+    --card2: #F1F5F9 !important;
+    --line: #E2E8F0 !important;
+    --ink: #0F172A !important;
+    --ink2: #475569 !important;
+    --muted: #64748B !important;
+    --acc: #1D4ED8 !important;
+    --acc2: #0284C7 !important;
+    --accdark: #0E245E !important;
+    --brand: #1D4ED8 !important;
+    --grad: linear-gradient(135deg, #0E245E 0%, #1D4ED8 60%, #2563EB 100%) !important;
+    --shadow: 0 2px 12px rgba(14, 36, 94, 0.05) !important;
+    --r: 16px !important;
+  }
+
+  /* Bloqueo estricto: jamás permite que #gate se cierre solo sin haber dado clic en Entrar */
+  body:not(.ebz-auth-unlocked) #gate {
+    display: flex !important;
+  }
+  body:not(.ebz-auth-unlocked) #nubeGate {
+    display: block !important;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    padding-bottom: 48px !important;
+  }
+
+  h1, h2, h3, .kpi .v, .semtot, .actatop .an, .actatop .at {
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  }
+
+  .wrap {
+    max-width: 1400px !important;
+    padding: 16px 24px !important;
+  }
+
+  /* Encabezado estilo ExecutiveHeader de Frecuencias (conservando todos sus botones e indicadores) */
+  .hero {
+    margin-top: 4px !important;
+    padding: 20px 24px !important;
+    border-radius: 18px !important;
+    background: linear-gradient(115deg, #081A3A 0%, #0E245E 48%, #1D4ED8 100%) !important;
+    box-shadow: 0 10px 28px rgba(14, 36, 94, 0.14) !important;
+    border: 1px solid rgba(96, 165, 250, 0.28) !important;
+    color: #FFFFFF !important;
+  }
+
+  .hero .brand {
+    gap: 16px !important;
+  }
+
+  .hero .logo {
+    width: 64px !important;
+    height: 64px !important;
+    padding: 8px !important;
+    border-radius: 14px !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  .hero h1 {
+    color: #FFFFFF !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .hero h1 .grad {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    color: #93C5FD !important;
+  }
+
+  .hero .sub {
+    color: #DBEAFE !important;
+    font-size: 13px !important;
+    opacity: 0.92 !important;
+  }
+
+  /* Píldoras de estado de nube y barra de usuario (equipo / salir) perfectamente visibles */
+  .hero .npill {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  .hero .userbadge,
+  #userBadge {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    color: #0F172A !important;
+    border-radius: 99px !important;
+    padding: 7px 16px !important;
+    font-size: 12.5px !important;
+    box-shadow: 0 2px 8px rgba(14, 36, 94, 0.08) !important;
+  }
+
+  #userBadge b {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+
+  #userBadge a {
+    color: #1D4ED8 !important;
+    font-weight: 600 !important;
+  }
+
+  #userBadge a:hover {
+    text-decoration: underline !important;
+  }
+
+  /* Paneles y tarjetas al estilo de Frecuencias */
+  .panel {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+    padding: 20px 22px !important;
+  }
+
+  .cg-bloque {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+  }
+
+  .cg-bloque.g2 {
+    background: #F8FAFF !important;
+    border-color: #DCE7F7 !important;
+  }
+
+  .cg-grupo.g2 b {
+    color: #1D4ED8 !important;
+  }
+
+  .carga {
+    background: #FFFFFF !important;
+    border: 1.5px dashed #CBD5E1 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 4px rgba(14, 36, 94, 0.03) !important;
+  }
+
+  .carga:hover {
+    border-color: #2563EB !important;
+    background: #F0F7FF !important;
+  }
+
+  .carga.comparar {
+    border-color: #BFDBFE !important;
+    background: linear-gradient(180deg, #F0F7FF 0%, #FFFFFF 100%) !important;
+  }
+
+  .carga.comparar .cg-tit {
+    color: #0E245E !important;
+  }
+
+  /* KPIs ejecutivos estilo Frecuencias */
+  .kpi {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .kpi::before {
+    background: linear-gradient(90deg, #0E245E 0%, #2563EB 100%) !important;
+    height: 3.5px !important;
+  }
+
+  .kpi .l {
+    color: #64748B !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .kpi .v {
+    color: #0F172A !important;
+  }
+
+  /* Controles, selectores y botones */
+  input[type=text], input[type=search], input[type=password], input[type=email], select, input[type=date] {
+    border: 1px solid #CBD8EE !important;
+    border-radius: 10px !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    font-size: 13.5px !important;
+  }
+
+  input:focus, select:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #0E245E 0%, #1D4ED8 100%) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.18) !important;
+    font-weight: 600 !important;
+  }
+
+  .btn.quiet, .btn.ghost {
+    background: #FFFFFF !important;
+    color: #0E245E !important;
+    border: 1px solid #DCE7F7 !important;
+    box-shadow: 0 1px 3px rgba(14, 36, 94, 0.05) !important;
+  }
+
+  .btn.quiet:hover:not(:disabled), .btn.ghost:hover:not(:disabled) {
+    background: #EBF3FE !important;
+    border-color: #93C5FD !important;
+    color: #1D4ED8 !important;
+  }
+
+  /* Pestañas laterales y tablas */
+  .tabwrap > .tabs {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .tab.active {
+    background: #E6F0FD !important;
+    color: #0E245E !important;
+    border: 1px solid #C9DDFB !important;
+    border-left: 3.5px solid #2563EB !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08) !important;
+    font-weight: 700 !important;
+  }
+
+  .tab.active .tbadge {
+    background: #1D4ED8 !important;
+    color: #FFFFFF !important;
+  }
+
+  /* Ventana de inicio de sesión con contraseña estilo plataforma Ebenezer */
+  #gate {
+    background: rgba(8, 26, 58, 0.62) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .gatecard {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 24px 64px rgba(8, 26, 58, 0.28) !important;
+  }
+
+  .gatecard h2 {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+</style>
+
 </head>
 <body>
 <div id="gate">
@@ -18723,6 +18988,158 @@ try{
   try{ document.addEventListener("click", function(ev){
     var t=ev.target; if(t && /Fichas t[eé]cnicas/i.test(t.textContent||"") && (t.textContent||"").length<26) setTimeout(arrancar, 500);
   }, true); }catch(e){}
+})();
+
+
+/* === Dos descargas más: todos los médicos en un Excel general, y el resumen ===
+   No quita ninguna de las que ya existían: las agrega al mismo menú.
+   En la hoja de detalle el nombre del médico va ARRIBA de sus pacientes, para que
+   nadie lea el nombre de un total y crea que lo de abajo es suyo. === */
+(function(){
+  if(window.__xlsTodos) return; window.__xlsTodos = true;
+  if(typeof xHoja !== "function" || typeof xLibro !== "function") return;
+
+  function puedeBajar(){
+    try{ return (typeof puede!=="function") || puede("subir_informe") || (typeof cgEsAdmin==="function" && cgEsAdmin()); }
+    catch(e){ return true; }
+  }
+  function sedeHoy(){ try{ return (document.getElementById("sede")||{}).value || ""; }catch(e){ return ""; } }
+  function perTexto(){ try{ return (typeof pdfPeriodoTexto==="function") ? pdfPeriodoTexto() : ""; }catch(e){ return ""; } }
+
+  var MAPA = {S2:"mut", S1:"pyp", CIR:"cir"};
+  var T  = function(v){ return {v:String(v==null?"":v), t:"s", s:1}; };
+  var S  = function(v){ return {v:String(v==null?"":v), t:"s"}; };
+  var HD = function(v){ return {v:String(v==null?"":v), t:"s", s:2}; };
+  var N5 = function(v){ return {v:String(v==null?"":v), t:"s", s:5}; };
+  var M  = function(v){ return {v:Math.round(v||0), t:"n", s:3}; };
+  var MB = function(v){ return {v:Math.round(v||0), t:"n", s:4}; };
+  var E  = function(){ return {v:"", t:"s"}; };
+
+  /* Hoja 1 — el resumen de las tres sedes, tal como quedó en los cierres */
+  async function filasResumen(){
+    var acc = {}, hay = false;
+    try{
+      var per = (typeof nubePeriodoActual==="function") ? nubePeriodoActual() : "";
+      var C = (window.NUBE && NUBE.leerCierres) ? await NUBE.leerCierres(per) : null;
+      var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){ return C[k]; }) : []);
+      arr.forEach(function(c){
+        var col = MAPA[String(c.parte||"")]; if(!col) return;
+        hay = true;
+        var pm = c.porMedico || {};
+        Object.keys(pm).forEach(function(m){
+          var v = pm[m];
+          var n = (typeof v==="object" && v) ? (v.total||v.tot||0) : v;
+          n = Math.round(Number(n)||0); if(!n) return;
+          (acc[m] = acc[m] || {mut:0,pyp:0,cir:0})[col] += n;
+        });
+      });
+    }catch(e){}
+    if(!hay) return null;
+    var meds = Object.keys(acc).sort(function(a,b){
+      var ta=acc[a].mut+acc[a].pyp+acc[a].cir, tb=acc[b].mut+acc[b].pyp+acc[b].cir;
+      return tb-ta || a.localeCompare(b);
+    });
+    var filas = [
+      [S("HONORARIOS MÉDICOS")],
+      [T("Resumen del mes")],
+      [S(perTexto())],
+      [S("Sale de los cierres guardados de este mes, no de la pantalla")],
+      [],
+      [HD("N"),HD("Especialista"),HD("Mutual"),HD("P y P"),HD("Cirugía"),HD("Total")]
+    ];
+    var tm=0, tp=0, tc=0;
+    meds.forEach(function(m,i){
+      var a=acc[m], t=a.mut+a.pyp+a.cir;
+      tm+=a.mut; tp+=a.pyp; tc+=a.cir;
+      filas.push([S(i+1), S(m), M(a.mut), M(a.pyp), M(a.cir), MB(t)]);
+    });
+    filas.push([]);
+    filas.push([E(), N5("TOTAL ("+meds.length+" médicos)"), MB(tm), MB(tp), MB(tc), MB(tm+tp+tc)]);
+    return {filas:filas, anchos:[5,34,16,16,16,18]};
+  }
+
+  /* Hoja 2 — todos los médicos de la sede liquidada, paciente por paciente */
+  function filasDetalle(){
+    var D = (window.RESULT && RESULT._datos) || [];
+    if(!D.length) return null;
+    var meds = D.map(function(x){ return x.m; }).sort(function(a,b){ return String(a).localeCompare(String(b)); });
+    var filas = [
+      [S("HONORARIOS MÉDICOS")],
+      [T("Detalle de todos los médicos — "+sedeHoy())],
+      [S(perTexto())],
+      [S("El nombre del médico va ARRIBA de sus pacientes. Para las otras sedes, liquide esa sede y descargue otra vez.")],
+      []
+    ];
+    var gran=0, nreg=0;
+    meds.forEach(function(m){
+      var R;
+      try{ R = pdfFilasMedico(m); }catch(e){ R = null; }
+      if(!R) return;
+      var fil = (R.filas||[]).filter(function(r){ return Math.round(r.v||0) !== 0; });
+      var tot = Math.round(R.total||0);
+      filas.push([T(m), T("↓ lo que sigue es de este médico"), E(), E(), E(), E(), N5("VALOR A FACTURAR"), MB(tot)]);
+      filas.push([HD("Médico"),HD("N"),HD("Fecha"),HD("Empresa"),HD("Tipo"),HD("Paciente"),HD("Servicio"),HD("Honorario")]);
+      fil.forEach(function(r,i){
+        filas.push([S(m), S(i+1), S(r.f), S(r.emp), S(r.tipo), S(r.pac), S(r.det), M(r.v)]);
+      });
+      (R.cierres||[]).forEach(function(c){
+        filas.push([S(m), E(), E(), E(), E(), E(), N5(c.txt), M(c.v)]);
+      });
+      filas.push([E(), E(), E(), E(), E(), E(), N5("TOTAL DE "+m), MB(tot)]);
+      filas.push([]);
+      gran += tot; nreg += fil.length;
+    });
+    filas.push([E(), E(), E(), E(), E(), E(),
+                N5("TOTAL "+sedeHoy()+" ("+meds.length+" médicos · "+nreg+" registros)"), MB(gran)]);
+    return {filas:filas, anchos:[26,7,11,24,11,30,42,14]};
+  }
+
+  async function excelTodos(){
+    if(!puedeBajar()){ alert("Su perfil solo consulta: no puede descargar el Excel."); return; }
+    var det = filasDetalle();
+    if(!det){ alert("Primero liquide: todavía no hay resultados en pantalla."); return; }
+    var res = null;
+    try{ res = await filasResumen(); }catch(e){ res = null; }
+    var hojas = [];
+    if(res) hojas.push({nombre:"Resumen", xml:xHoja(res.filas, res.anchos)});
+    hojas.push({nombre:"Detalle", xml:xHoja(det.filas, det.anchos)});
+    var blob = xLibro(hojas);
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Honorarios " + (sedeHoy().replace(/[^\wÁÉÍÓÚÑáéíóúñ ]/g,"").trim() || "liquidacion") + ".xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+  }
+  window.excelTodos = excelTodos;
+
+  /* agrega las dos opciones a los menús de descarga que ya existen, sin quitar ninguna */
+  function enganchar(){
+    var cajas = document.querySelectorAll(".dlbox");
+    for(var i=0; i<cajas.length; i++){
+      var caja = cajas[i];
+      if(caja.getAttribute("data-xls2") === "1") continue;
+      caja.setAttribute("data-xls2", "1");
+      var a1 = document.createElement("a");
+      a1.textContent = "⬇ Todos los médicos (Excel)";
+      a1.onclick = function(){ try{ excelTodos(); }catch(e){ alert("No se pudo generar el Excel: "+(e.message||e)); } };
+      var a2 = document.createElement("a");
+      a2.textContent = "⬇ Resumen del mes (Excel)";
+      a2.onclick = function(){
+        try{
+          if(typeof excelResumenSedes === "function") excelResumenSedes();
+          else alert("El resumen en Excel no está disponible en esta versión.");
+        }catch(e){ alert("No se pudo generar el resumen: "+(e.message||e)); }
+      };
+      caja.appendChild(a1); caja.appendChild(a2);
+    }
+  }
+  window.__xlsTodosEnganchar = enganchar;
+  try{ enganchar(); }catch(e){}
+  setTimeout(function(){ try{ enganchar(); }catch(e){} }, 2500);
+  setTimeout(function(){ try{ enganchar(); }catch(e){} }, 9000);
+  try{
+    document.addEventListener("click", function(){ setTimeout(function(){ try{ enganchar(); }catch(e){} }, 150); }, true);
+  }catch(e){}
 })();
 
 function pdfTodas(){
