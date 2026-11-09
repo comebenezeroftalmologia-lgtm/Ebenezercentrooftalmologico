@@ -2838,6 +2838,271 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
   }
 </style>
 
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="ebz-native-frecuencias-theme">
+  :root {
+    --bg: #F8FAFC !important;
+    --bg2: #FFFFFF !important;
+    --card: #FFFFFF !important;
+    --card2: #F1F5F9 !important;
+    --line: #E2E8F0 !important;
+    --ink: #0F172A !important;
+    --ink2: #475569 !important;
+    --muted: #64748B !important;
+    --acc: #1D4ED8 !important;
+    --acc2: #0284C7 !important;
+    --accdark: #0E245E !important;
+    --brand: #1D4ED8 !important;
+    --grad: linear-gradient(135deg, #0E245E 0%, #1D4ED8 60%, #2563EB 100%) !important;
+    --shadow: 0 2px 12px rgba(14, 36, 94, 0.05) !important;
+    --r: 16px !important;
+  }
+
+  /* Bloqueo estricto: jamás permite que #gate se cierre solo sin haber dado clic en Entrar */
+  body:not(.ebz-auth-unlocked) #gate {
+    display: flex !important;
+  }
+  body:not(.ebz-auth-unlocked) #nubeGate {
+    display: block !important;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    padding-bottom: 48px !important;
+  }
+
+  h1, h2, h3, .kpi .v, .semtot, .actatop .an, .actatop .at {
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  }
+
+  .wrap {
+    max-width: 1400px !important;
+    padding: 16px 24px !important;
+  }
+
+  /* Encabezado estilo ExecutiveHeader de Frecuencias (conservando todos sus botones e indicadores) */
+  .hero {
+    margin-top: 4px !important;
+    padding: 20px 24px !important;
+    border-radius: 18px !important;
+    background: linear-gradient(115deg, #081A3A 0%, #0E245E 48%, #1D4ED8 100%) !important;
+    box-shadow: 0 10px 28px rgba(14, 36, 94, 0.14) !important;
+    border: 1px solid rgba(96, 165, 250, 0.28) !important;
+    color: #FFFFFF !important;
+  }
+
+  .hero .brand {
+    gap: 16px !important;
+  }
+
+  .hero .logo {
+    width: 64px !important;
+    height: 64px !important;
+    padding: 8px !important;
+    border-radius: 14px !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  .hero h1 {
+    color: #FFFFFF !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .hero h1 .grad {
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    color: #93C5FD !important;
+  }
+
+  .hero .sub {
+    color: #DBEAFE !important;
+    font-size: 13px !important;
+    opacity: 0.92 !important;
+  }
+
+  /* Píldoras de estado de nube y barra de usuario (equipo / salir) perfectamente visibles */
+  .hero .npill {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  .hero .userbadge,
+  #userBadge {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    color: #0F172A !important;
+    border-radius: 99px !important;
+    padding: 7px 16px !important;
+    font-size: 12.5px !important;
+    box-shadow: 0 2px 8px rgba(14, 36, 94, 0.08) !important;
+  }
+
+  #userBadge b {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+
+  #userBadge a {
+    color: #1D4ED8 !important;
+    font-weight: 600 !important;
+  }
+
+  #userBadge a:hover {
+    text-decoration: underline !important;
+  }
+
+  /* Paneles y tarjetas al estilo de Frecuencias */
+  .panel {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+    padding: 20px 22px !important;
+  }
+
+  .cg-bloque {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+  }
+
+  .cg-bloque.g2 {
+    background: #F8FAFF !important;
+    border-color: #DCE7F7 !important;
+  }
+
+  .cg-grupo.g2 b {
+    color: #1D4ED8 !important;
+  }
+
+  .carga {
+    background: #FFFFFF !important;
+    border: 1.5px dashed #CBD5E1 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 4px rgba(14, 36, 94, 0.03) !important;
+  }
+
+  .carga:hover {
+    border-color: #2563EB !important;
+    background: #F0F7FF !important;
+  }
+
+  .carga.comparar {
+    border-color: #BFDBFE !important;
+    background: linear-gradient(180deg, #F0F7FF 0%, #FFFFFF 100%) !important;
+  }
+
+  .carga.comparar .cg-tit {
+    color: #0E245E !important;
+  }
+
+  /* KPIs ejecutivos estilo Frecuencias */
+  .kpi {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .kpi::before {
+    background: linear-gradient(90deg, #0E245E 0%, #2563EB 100%) !important;
+    height: 3.5px !important;
+  }
+
+  .kpi .l {
+    color: #64748B !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .kpi .v {
+    color: #0F172A !important;
+  }
+
+  /* Controles, selectores y botones */
+  input[type=text], input[type=search], input[type=password], input[type=email], select, input[type=date] {
+    border: 1px solid #CBD8EE !important;
+    border-radius: 10px !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    font-size: 13.5px !important;
+  }
+
+  input:focus, select:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #0E245E 0%, #1D4ED8 100%) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.18) !important;
+    font-weight: 600 !important;
+  }
+
+  .btn.quiet, .btn.ghost {
+    background: #FFFFFF !important;
+    color: #0E245E !important;
+    border: 1px solid #DCE7F7 !important;
+    box-shadow: 0 1px 3px rgba(14, 36, 94, 0.05) !important;
+  }
+
+  .btn.quiet:hover:not(:disabled), .btn.ghost:hover:not(:disabled) {
+    background: #EBF3FE !important;
+    border-color: #93C5FD !important;
+    color: #1D4ED8 !important;
+  }
+
+  /* Pestañas laterales y tablas */
+  .tabwrap > .tabs {
+    background: #FFFFFF !important;
+    border: 1px solid #E6EEF8 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(14, 36, 94, 0.04) !important;
+  }
+
+  .tab.active {
+    background: #E6F0FD !important;
+    color: #0E245E !important;
+    border: 1px solid #C9DDFB !important;
+    border-left: 3.5px solid #2563EB !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08) !important;
+    font-weight: 700 !important;
+  }
+
+  .tab.active .tbadge {
+    background: #1D4ED8 !important;
+    color: #FFFFFF !important;
+  }
+
+  /* Ventana de inicio de sesión con contraseña estilo plataforma Ebenezer */
+  #gate {
+    background: rgba(8, 26, 58, 0.62) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .gatecard {
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F7 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 24px 64px rgba(8, 26, 58, 0.28) !important;
+  }
+
+  .gatecard h2 {
+    color: #0E245E !important;
+    font-weight: 700 !important;
+  }
+</style>
+
 </head>
 <body>
 <div id="gate">
@@ -19139,6 +19404,199 @@ try{
   setTimeout(function(){ try{ enganchar(); }catch(e){} }, 9000);
   try{
     document.addEventListener("click", function(){ setTimeout(function(){ try{ enganchar(); }catch(e){} }, 150); }, true);
+  }catch(e){}
+})();
+
+
+/* === Armar la página de los médicos desde la liquidación ===
+   La página de los médicos es un archivo estático: los datos van pegados dentro.
+   Esto los vuelve a armar desde lo que está liquidado en pantalla, para que lo que
+   se edite aquí quede en el link.
+   Dos pasos, porque la página necesita las tres sedes y aquí se liquida de una en una:
+     1. «Guardar esta sede»  — guarda la sede liquidada (queda en este navegador)
+     2. «Armar la página»    — pide la página actual, le cambia los datos y la baja
+   === */
+(function(){
+  if(window.__armarHon) return; window.__armarHon = true;
+
+  var LLAVE = "hon_armar_v1";
+  var SEDES = ["Sede 2", "Sede Principal", "Cirugía"];
+
+  var CSS = ".ahon{margin:14px 0;border:1px solid #cfe0f5;background:#f6faff;border-radius:10px;padding:12px 14px}"
+    + ".ahon h3{margin:0 0 4px;font-size:15px;color:#1e3a6b}"
+    + ".ahon .sub{font-size:12px;color:#6b7a90;margin:0 0 10px}"
+    + ".ahon table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff}"
+    + ".ahon th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#6b7a90;padding:5px 8px;border-bottom:1px solid #e6ecf5}"
+    + ".ahon td{padding:6px 8px;border-bottom:1px solid #f1f5fa}"
+    + ".ahon .num{text-align:right;white-space:nowrap}"
+    + ".ahon .b{border:1px solid #c9d6e8;background:#fff;border-radius:7px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;margin:8px 8px 0 0}"
+    + ".ahon .b.p{background:#294e9d;color:#fff;border-color:#294e9d}"
+    + ".ahon .b:disabled{opacity:.5;cursor:default}"
+    + ".ahon .ok{color:#1a7f4b;font-weight:700}"
+    + ".ahon .no{color:#8a5a00}";
+  try{ var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
+
+  function mny(n){ return "$ " + (Math.round(Number(n)||0)).toLocaleString("es-CO"); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function sedeHoy(){ try{ return (document.getElementById("sede")||{}).value || ""; }catch(e){ return ""; } }
+  function quien(){ try{ return (typeof USUARIO!=="undefined" && USUARIO && USUARIO.nombre) || ""; }catch(e){ return ""; } }
+  function perTexto(){ try{ return (typeof pdfPeriodoTexto==="function") ? pdfPeriodoTexto() : ""; }catch(e){ return ""; } }
+  function perClave(){ try{ return (RESULT && RESULT.periodoInicio) ? RESULT.periodoInicio : ""; }catch(e){ return ""; } }
+
+  function leer(){
+    try{ return JSON.parse(localStorage.getItem(LLAVE) || "{}") || {}; }catch(e){ return {}; }
+  }
+  function guardar(o){
+    try{ localStorage.setItem(LLAVE, JSON.stringify(o)); }catch(e){ alert("No se pudo guardar: "+(e.message||e)); }
+  }
+
+  /* lo que se guarda de la sede liquidada */
+  function recoger(){
+    var D = (window.RESULT && RESULT._datos) || [];
+    if(!D.length) return null;
+    var sede = sedeHoy();
+    if(!sede) return null;
+    var med = {}, total = 0;
+    D.forEach(function(x){
+      var R;
+      try{ R = pdfFilasMedico(x.m); }catch(e){ R = null; }
+      if(!R) return;
+      var t = Math.round(R.total||0);
+      var f = (R.filas||[]).filter(function(r){ return Math.round(r.v||0) !== 0; })
+        .map(function(r){ return [sede, String(r.f||""), String(r.emp||""), String(r.tipo||""),
+                                  String(r.pac||""), String(r.det||""), Math.round(r.v||0)]; });
+      (R.cierres||[]).forEach(function(c){
+        f.push([sede, "", "", "", "", String(c.txt||"Ajuste"), Math.round(c.v||0)]);
+      });
+      if(!t && !f.length) return;
+      med[x.m] = {t:t, f:f};
+      total += t;
+    });
+    return {sede:sede, total:total, medicos:med, por:quien(),
+            el:new Date().toISOString(), periodo:perClave(), periodoTexto:perTexto()};
+  }
+
+  /* arma el objeto que la página de los médicos espera */
+  function construir(G){
+    var meta = [], medicos = {};
+    SEDES.forEach(function(s){
+      var g = G[s]; if(!g) return;
+      meta.push({sede:s, total:Math.round(g.total||0), por:g.por||"", el:g.el||""});
+      Object.keys(g.medicos||{}).forEach(function(m){
+        var d = medicos[m] = medicos[m] || {t:0, s:{}, f:[]};
+        d.s[s] = Math.round(g.medicos[m].t||0);
+        d.t += Math.round(g.medicos[m].t||0);
+        d.f = d.f.concat(g.medicos[m].f||[]);
+      });
+    });
+    Object.keys(medicos).forEach(function(m){
+      if(!medicos[m].t && !(medicos[m].f||[]).length) delete medicos[m];
+    });
+    var per = "";
+    SEDES.forEach(function(s){ if(G[s] && G[s].periodoTexto) per = G[s].periodoTexto; });
+    return {periodo:per, meta:meta, medicos:medicos};
+  }
+
+  /* control: el detalle de cada médico tiene que sumar su total */
+  function revisar(datos){
+    var malos = [];
+    Object.keys(datos.medicos).forEach(function(m){
+      var d = datos.medicos[m];
+      var sf = Math.round((d.f||[]).reduce(function(a,r){ return a + (Number(r[6])||0); }, 0));
+      var ss = Math.round(Object.keys(d.s).reduce(function(a,k){ return a + (Number(d.s[k])||0); }, 0));
+      if(sf !== Math.round(d.t) || ss !== Math.round(d.t)) malos.push({med:m, total:Math.round(d.t), filas:sf, sedes:ss});
+    });
+    return malos;
+  }
+
+  async function bajar(){
+    var G = leer();
+    var hay = SEDES.filter(function(s){ return !!G[s]; });
+    if(!hay.length){ alert("Primero guarde al menos una sede."); return; }
+    var datos = construir(G);
+    var malos = revisar(datos);
+    if(malos.length){
+      var txt = malos.slice(0,6).map(function(x){ return "· "+x.med+": total "+mny(x.total)+", renglones "+mny(x.filas)+", sedes "+mny(x.sedes); }).join("\n");
+      if(!confirm("Hay "+malos.length+" médico(s) donde el detalle no suma el total:\n\n"+txt+"\n\n¿Armar la página de todos modos?")) return;
+    }
+    var html;
+    try{
+      var r = await fetch("/honorarios?plantilla="+Date.now(), {cache:"no-store"});
+      html = await r.text();
+    }catch(e){ alert("No se pudo traer la página actual: "+(e.message||e)); return; }
+
+    var ini = html.indexOf('id="datos"');
+    if(ini < 0){ alert("La página de los médicos cambió de forma: no se halló el bloque de datos. Avíseme."); return; }
+    var a = html.indexOf(">", ini); if(a < 0){ alert("No se pudo leer el bloque de datos."); return; }
+    var b = html.indexOf("<\/" + "script>", a); if(b < 0){ alert("No se pudo leer el bloque de datos."); return; }
+    var nuevo = html.slice(0, a+1) + JSON.stringify(datos) + html.slice(b);
+
+    var A = document.createElement("a");
+    A.href = URL.createObjectURL(new Blob([nuevo], {type:"text/html"}));
+    A.download = "index.html";
+    document.body.appendChild(A); A.click(); A.remove();
+    setTimeout(function(){ URL.revokeObjectURL(A.href); }, 4000);
+
+    try{
+      if(typeof NUBE!=="undefined" && NUBE.audit) NUBE.audit({accion:"PAGINA DE MEDICOS ARMADA",
+        periodo:(typeof nubePeriodoActual==="function"?nubePeriodoActual():"")||"—", parte:"",
+        detalle:hay.join(" + ")+" · "+Object.keys(datos.medicos).length+" médicos"});
+    }catch(e){}
+    alert("Listo: se bajó «index.html» con "+hay.join(" + ")+".\n\n"
+        + Object.keys(datos.medicos).length+" médicos.\n\n"
+        + "Ese archivo va en el repositorio, en public/honorarios/. Al subirlo, el link queda actualizado.");
+  }
+
+  function pintar(){
+    var sec = document.getElementById("sec-historial"); if(!sec) return;
+    var vieja = sec.querySelector(".ahon"); if(vieja) vieja.remove();
+    var G = leer();
+    var box = document.createElement("div"); box.className = "ahon";
+    var filas = SEDES.map(function(s){
+      var g = G[s];
+      return "<tr><td><b>"+esc(s)+"</b></td>"
+        + "<td>"+(g ? '<span class="ok">guardada</span>' : '<span class="no">falta</span>')+"</td>"
+        + '<td class="num">'+(g ? mny(g.total) : "—")+"</td>"
+        + "<td>"+(g ? esc(Object.keys(g.medicos||{}).length+" médicos · "+(g.por||"")) : "")+"</td>"
+        + "<td>"+(g ? esc(String(g.el||"").slice(0,16).replace("T"," ")) : "")+"</td></tr>";
+    }).join("");
+    var hay = SEDES.filter(function(s){ return !!G[s]; }).length;
+    box.innerHTML = "<h3>🔄 Armar la página de los médicos</h3>"
+      + '<p class="sub">Lo que usted edite aquí entra al link cuando arme la página. '
+      + 'Guarde cada sede cuando la tenga liquidada; con las tres, arme el archivo.</p>'
+      + "<table><thead><tr><th>Sede</th><th>Estado</th><th class='num'>Total</th><th>Quién</th><th>Cuándo</th></tr></thead>"
+      + "<tbody>"+filas+"</tbody></table>"
+      + '<button class="b p" id="ahonGuardar">💾 Guardar esta sede ('+esc(sedeHoy()||"ninguna")+")</button>"
+      + '<button class="b" id="ahonBajar"'+(hay?"":" disabled")+">⬇ Armar la página ("+hay+" de 3)</button>"
+      + '<button class="b" id="ahonLimpiar"'+(hay?"":" disabled")+">🗑 Empezar de nuevo</button>";
+    var hp = document.getElementById("histPanel");
+    sec.insertBefore(box, hp || sec.firstChild);
+
+    var bg = document.getElementById("ahonGuardar");
+    if(bg) bg.onclick = function(){
+      var d = recoger();
+      if(!d){ alert("Primero liquide una sede: no hay resultados en pantalla."); return; }
+      var G2 = leer(); G2[d.sede] = d; guardar(G2);
+      alert("Guardada "+d.sede+": "+Object.keys(d.medicos).length+" médicos, "+mny(d.total)+".");
+      pintar();
+    };
+    var bb = document.getElementById("ahonBajar");
+    if(bb) bb.onclick = function(){ bajar(); };
+    var bl = document.getElementById("ahonLimpiar");
+    if(bl) bl.onclick = function(){
+      if(!confirm("¿Borrar lo guardado de las tres sedes y empezar de nuevo?")) return;
+      try{ localStorage.removeItem(LLAVE); }catch(e){}
+      pintar();
+    };
+  }
+  window.__armarHonPintar = pintar;
+  setTimeout(pintar, 1200);
+  setTimeout(pintar, 5000);
+  try{
+    document.addEventListener("click", function(ev){
+      var t = ev.target;
+      if(t && /Historial/i.test(t.textContent||"") && (t.textContent||"").length < 20) setTimeout(pintar, 300);
+    }, true);
   }catch(e){}
 })();
 
