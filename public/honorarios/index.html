@@ -668,7 +668,7 @@ window.hoExcelGeneral=function(b){
     var r=honFilasResumen(), d=honFilasDetalle();
     bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)},
                 {nombre:'Detalle', xml:hoja(d.filas,d.anchos)}]),
-          'Honorarios todos los medicos '+limpia(D.periodo||'')+'.xlsx');
+          'Honorarios todos los medicos.xlsx');
   }catch(e){ alert('No se pudo generar el Excel: '+(e.message||e)); }
   fin();
 };
@@ -677,7 +677,7 @@ window.hoResumenExcel=function(b){
   try{
     var r=honFilasResumen();
     bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)}]),
-          'Resumen honorarios '+limpia(D.periodo||'')+'.xlsx');
+          'Resumen honorarios.xlsx');
   }catch(e){ alert('No se pudo generar el resumen: '+(e.message||e)); }
   fin();
 };
