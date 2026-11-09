@@ -615,6 +615,96 @@ function ponerBotonesMedico(){
     +'</div>';
   ref.parentNode.insertBefore(d, ref.nextSibling);
 }
+
+/* === Dos descargas más: todos los médicos en UN solo Excel, y solo el resumen.
+   No quita las que ya estaban (que bajan un archivo por médico).
+   En el detalle, el nombre del médico va ARRIBA de sus pacientes, para que nadie
+   lea el nombre de un total y crea que lo de abajo es suyo. === */
+function honFilasResumen(){
+  var seds={};
+  MEDS.forEach(function(m){ Object.keys((D.medicos[m]||{s:{}}).s||{}).forEach(function(s){ seds[s]=1; }); });
+  var cols=Object.keys(seds).sort();
+  var res=[[{b:'HONORARIOS MÉDICOS'}],[{b:'Resumen de todos los médicos'}],[D.periodo||''],[]];
+  res.push([{b:'N'},{b:'Especialista'}].concat(cols.map(function(c){ return {b:c}; })).concat([{b:'Total'}]));
+  var tot={}, gran=0;
+  var ord=MEDS.slice().sort(function(a,b){
+    var ta=Math.round((D.medicos[a]||{}).t||0), tb=Math.round((D.medicos[b]||{}).t||0);
+    return tb-ta || String(a).localeCompare(String(b));
+  });
+  ord.forEach(function(m,i){
+    var d=D.medicos[m]||{t:0,s:{}};
+    var fila=[i+1, tit(m)];
+    cols.forEach(function(c){ var v=Math.round((d.s||{})[c]||0); fila.push(v); tot[c]=(tot[c]||0)+v; });
+    var t=Math.round(d.t||0); fila.push(t); gran+=t;
+    res.push(fila);
+  });
+  res.push([]);
+  res.push(['', {b:'TOTAL ('+ord.length+' médicos)'}]
+    .concat(cols.map(function(c){ return {b:tot[c]||0}; })).concat([{b:gran}]));
+  return {filas:res, anchos:[5,30].concat(cols.map(function(){ return 17; })).concat([18])};
+}
+function honFilasDetalle(){
+  var det=[[{b:'HONORARIOS MÉDICOS'}],[{b:'Detalle de todos los médicos'}],[D.periodo||''],
+           ['El nombre del médico va ARRIBA de sus pacientes.'],[]];
+  var gran=0, n=0;
+  MEDS.forEach(function(m){
+    var d=D.medicos[m]||{t:0,s:{},f:[]};
+    var t=Math.round(d.t||0);
+    det.push([{b:tit(m)}, {b:'↓ lo que sigue es de este médico'}, '', '', '', {b:'VALOR A FACTURAR'}, {b:t}]);
+    det.push([{b:'Médico'},{b:'Sede'},{b:'Fecha'},{b:'Empresa'},{b:'Uf'},{b:'Paciente'},{b:'Servicio'},{b:'Honorario'}]);
+    (d.f||[]).forEach(function(r){
+      det.push([tit(m), r[0], r[1], r[2], r[3], r[4], r[5], Math.round(r[6]||0)]); n++;
+    });
+    det.push(['','','','','','',{b:'TOTAL DE '+tit(m)}, {b:t}]);
+    det.push([]);
+    gran+=t;
+  });
+  det.push(['','','','','','',{b:'TOTAL GENERAL ('+MEDS.length+' médicos · '+n+' registros)'},{b:gran}]);
+  return {filas:det, anchos:[26,13,12,24,20,32,46,14]};
+}
+window.hoExcelGeneral=function(b){
+  var fin=avisar(b,'armando…');
+  try{
+    var r=honFilasResumen(), d=honFilasDetalle();
+    bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)},
+                {nombre:'Detalle', xml:hoja(d.filas,d.anchos)}]),
+          'Honorarios todos los medicos '+limpia(D.periodo||'')+'.xlsx');
+  }catch(e){ alert('No se pudo generar el Excel: '+(e.message||e)); }
+  fin();
+};
+window.hoResumenExcel=function(b){
+  var fin=avisar(b,'armando…');
+  try{
+    var r=honFilasResumen();
+    bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)}]),
+          'Resumen honorarios '+limpia(D.periodo||'')+'.xlsx');
+  }catch(e){ alert('No se pudo generar el resumen: '+(e.message||e)); }
+  fin();
+};
+function ponerBotonesGenerales(){
+  var cont=document.querySelector('#hoTodos .hobtns');
+  if(!cont || cont.getAttribute('data-gen')==='1') return;
+  cont.setAttribute('data-gen','1');
+  var b1=document.createElement('button');
+  b1.className='hobtn p'; b1.type='button';
+  b1.innerHTML='&#11015; Todos en UN solo Excel';
+  b1.onclick=function(){ window.hoExcelGeneral(b1); };
+  var b2=document.createElement('button');
+  b2.className='hobtn'; b2.type='button';
+  b2.innerHTML='&#11015; Solo el resumen (Excel)';
+  b2.onclick=function(){ window.hoResumenExcel(b2); };
+  cont.appendChild(b1); cont.appendChild(b2);
+  var nota=document.querySelector('#hoTodos .honota');
+  if(nota && nota.getAttribute('data-gen')!=='1'){
+    nota.setAttribute('data-gen','1');
+    nota.innerHTML+=' <b>Las dos nuevas bajan un solo archivo.</b>';
+  }
+}
+setTimeout(ponerBotonesGenerales,250);
+setTimeout(ponerBotonesGenerales,1500);
+setTimeout(ponerBotonesGenerales,5000);
+document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,120); }, true);
+
 ponerBotonesLista(); ponerBotonesMedico();
 
 /* recordar qué médico está abierto */
