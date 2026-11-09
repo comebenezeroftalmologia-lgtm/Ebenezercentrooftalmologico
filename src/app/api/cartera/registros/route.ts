@@ -27,6 +27,28 @@ const fecha = (v: unknown) => {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null;
 };
 
+/**
+ * Busca un nombre en un catalogo (cf_empresas, cf_responsables) y, si no
+ * existe, lo crea.
+ *
+ * Antes no se creaba: si alguien escribia una EPS que no estaba en el
+ * catalogo, la glosa quedaba con el nombre escrito pero sin enlace, y esa
+ * glosa no sumaba por empresa en ningun lado. Fallaba en silencio, que es
+ * la peor forma de fallar.
+ */
+async function idCatalogo(
+  db: ReturnType<typeof createServiceClient>,
+  tabla: "cf_empresas" | "cf_responsables",
+  nombre: unknown
+): Promise<string | null> {
+  const n = txt(nombre)?.trim();
+  if (!n) return null;
+  const { data } = await db.from(tabla).select("id").ilike("nombre", n).maybeSingle();
+  if (data?.id) return data.id as string;
+  const ins = await db.from(tabla).insert({ nombre: n }).select("id").maybeSingle();
+  return (ins.data?.id as string) ?? null;
+}
+
 /** Registra el cambio en cf_historial. Nunca interrumpe la operacion. */
 async function anotar(
   db: ReturnType<typeof createServiceClient>,
@@ -91,7 +113,7 @@ export async function GET() {
       "cf_empresas(nombre), cf_responsables(nombre)"
     ),
     db.from("cf_glosas").select(
-      "id, tipo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, " +
+      "id, tipo, alcance, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, " +
       "cf_facturas(numero, anio, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
       "empresa_nombre_original, cf_empresas(nombre)), " +
       "facturador:cf_responsables!cf_glosas_facturador_id_fkey(nombre), " +
@@ -184,6 +206,9 @@ export async function GET() {
       observacionInterna: (r.observacion as string) || "",
       notaCredito: (r.nota_credito as string) || "",
       tipoGlosa: (r.tipo as string) || "GLOSA",
+      // null = todavia sin definir. No se rellena con un valor por defecto:
+      // la pantalla lo muestra en blanco para que se note.
+      alcance: (r.alcance as string) || "",
       estado: (r.estado as string) || "PENDIENTE",
     };
   });
@@ -205,9 +230,31 @@ export async function GET() {
     estado: (r.estado as string) || "PENDIENTE",
   }));
 
+  // Catalogos para los desplegables de la mesa. Los motivos no salen de
+  // cf_motivos (que exige codigo y categoria) sino de lo que Facturacion ya
+  // escribio: asi la lista refleja el trabajo real y no hay catalogo que
+  // alguien tenga que mantener aparte. Lo que se escriba nuevo aparece en la
+  // lista la proxima vez, solo.
+  const unicos = (xs: (string | undefined)[]) =>
+    Array.from(new Set(xs.filter((x): x is string => !!x && x.trim() !== "").map((x) => x.trim())))
+      .sort((a, b) => a.localeCompare(b, "es"));
+
+  const catalogos = {
+    empresas: unicos([
+      ...filasGlosa.map((g) => g.empresa),
+      ...anuladas.map((a) => a.empresa),
+    ]),
+    responsables: unicos([
+      ...filasGlosa.map((g) => g.facturador),
+      ...filasGlosa.map((g) => g.responsableAceptacion),
+    ]),
+    motivos: unicos(filasGlosa.map((g) => g.motivoGlosa)),
+  };
+
   return NextResponse.json({
     ok: true,
     origen: "base de datos",
+    catalogos,
     anuladas,
     legalizadas,
     glosas: filasGlosa,
@@ -306,10 +353,9 @@ export async function POST(request: Request) {
       if (!numero) {
         return NextResponse.json({ ok: false, error: "Falta el numero de factura" }, { status: 400 });
       }
-      const { data: empresa } = await db
-        .from("cf_empresas").select("id").eq("nombre", txt(fila.empresa) ?? "").maybeSingle();
+      const empresaId = await idCatalogo(db, "cf_empresas", fila.empresa);
       const facturaId = await idFactura(db, numero, {
-        empresa_id: empresa?.id ?? null,
+        empresa_id: empresaId,
         empresa_nombre_original: txt(fila.empresaOriginal) ?? txt(fila.empresa),
         valor_radicado: num(fila.valorRadicado),
         fecha_elaboracion: fecha(fila.fechaFactura),
@@ -317,15 +363,16 @@ export async function POST(request: Request) {
       });
       if (!facturaId) throw new Error("No se pudo resolver la factura de la glosa");
 
-      const { data: fact } = await db
-        .from("cf_responsables").select("id").eq("nombre", txt(fila.facturador) ?? "").maybeSingle();
-      const { data: acep } = await db
-        .from("cf_responsables").select("id").eq("nombre", txt(fila.responsableAceptacion) ?? "").maybeSingle();
+      const factId = await idCatalogo(db, "cf_responsables", fila.facturador);
+      const acepId = await idCatalogo(db, "cf_responsables", fila.responsableAceptacion);
 
       const estado = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
       const valores = {
         factura_id: facturaId,
         tipo: String(fila.tipoGlosa || "GLOSA").toUpperCase().startsWith("DEVOL") ? "DEVOLUCION" : "GLOSA",
+        alcance: ["PARCIAL", "TOTAL"].includes(String(fila.alcance || "").toUpperCase())
+          ? String(fila.alcance).toUpperCase()
+          : null,
         motivo_texto: txt(fila.motivoGlosa),
         observacion: txt(fila.observacionInterna),
         valor_glosado: num(fila.valorGlosado),
@@ -341,8 +388,8 @@ export async function POST(request: Request) {
           : "PENDIENTE",
         fecha_glosa: fecha(fila.fechaRadicacion),
         nota_credito: txt(fila.notaCredito),
-        facturador_id: fact?.id ?? null,
-        responsable_aceptacion_id: acep?.id ?? null,
+        facturador_id: factId,
+        responsable_aceptacion_id: acepId,
       };
 
       const existente = esNuevo

@@ -51,7 +51,26 @@ type Glosa = {
   facturador: string;
   responsableAceptacion: string;
   tipoGlosa: string;
+  /** PARCIAL, TOTAL o "" cuando nadie lo ha definido todavia. */
+  alcance: string;
   estado: string;
+};
+
+type Catalogos = { empresas: string[]; responsables: string[]; motivos: string[] };
+
+/* Las tres categorias con las que trabaja Facturacion. Son la combinacion de
+   dos campos de la base (tipo y alcance), pero en la pantalla es un solo
+   desplegable, que es como se piensa el problema. */
+const CLASES = [
+  { id: "", etiqueta: "— sin definir —", tipo: "GLOSA", alcance: "" },
+  { id: "GLOSA|PARCIAL", etiqueta: "Glosa parcial", tipo: "GLOSA", alcance: "PARCIAL" },
+  { id: "GLOSA|TOTAL", etiqueta: "Glosa total", tipo: "GLOSA", alcance: "TOTAL" },
+  { id: "DEVOLUCION|TOTAL", etiqueta: "Devolución", tipo: "DEVOLUCION", alcance: "TOTAL" },
+];
+
+const claseDe = (g: { tipoGlosa: string; alcance: string }) => {
+  if (g.tipoGlosa === "DEVOLUCION") return "DEVOLUCION|TOTAL";
+  return g.alcance ? `GLOSA|${g.alcance}` : "";
 };
 
 const ESTADOS = [
@@ -99,6 +118,11 @@ export function CarteraWorkspace({
   usuario: { id: string; nombre: string; esAdmin: boolean };
 }) {
   const [glosas, setGlosas] = useState<Glosa[]>([]);
+  const [catalogos, setCatalogos] = useState<Catalogos>({
+    empresas: [],
+    responsables: [],
+    motivos: [],
+  });
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState("");
   const [aviso, setAviso] = useState("");
@@ -119,6 +143,7 @@ export function CarteraWorkspace({
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.error || `HTTP ${r.status}`);
       setGlosas((j.glosas || []) as Glosa[]);
+      if (j.catalogos) setCatalogos(j.catalogos as Catalogos);
     } catch (e) {
       // Una lista vacia por fallo se lee como "no hay registros", que es otra
       // cosa. Por eso el fallo se dice con todas las letras.
@@ -209,6 +234,19 @@ export function CarteraWorkspace({
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto pb-10">
+      {/* Listas de los desplegables. Van una sola vez y las usan todas las
+          filas por id. Se arman con lo que Facturacion ya escribio, asi que
+          no hay catalogo que mantener: lo nuevo entra solo. */}
+      <datalist id="cat-empresas">
+        {catalogos.empresas.map((x) => <option key={x} value={x} />)}
+      </datalist>
+      <datalist id="cat-motivos">
+        {catalogos.motivos.map((x) => <option key={x} value={x} />)}
+      </datalist>
+      <datalist id="cat-responsables">
+        {catalogos.responsables.map((x) => <option key={x} value={x} />)}
+      </datalist>
+
       {/* ---------- encabezado ---------- */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
@@ -299,7 +337,7 @@ export function CarteraWorkspace({
               <tr className="border-b border-[#E2EBF8] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">
                 <th className="py-2 pr-3">Factura</th>
                 <th className="py-2 pr-3">Empresa</th>
-                <th className="py-2 pr-3">Tipo</th>
+                <th className="py-2 pr-3">Clase</th>
                 <th className="py-2 pr-3 text-right">Radicado</th>
                 <th className="py-2 pr-3 text-right">Glosado</th>
                 <th className="py-2 pr-3">Motivo</th>
@@ -457,10 +495,12 @@ function FilaGlosa({
   );
   const [nota, setNota] = useState(glosa.notaCredito || "");
   const [obs, setObs] = useState(glosa.observacionInterna || "");
+  const [motivo, setMotivo] = useState(glosa.motivoGlosa || "");
+  const [clase, setClase] = useState(claseDe(glosa));
 
   // Si la base cambia (otra persona, o el refresco tras guardar) la fila se
   // sincroniza. El ref evita mandar de nuevo lo que acaba de llegar.
-  const ultimo = useRef({ estado: glosa.estado, aceptado: "", nota: "", obs: "" });
+  const ultimo = useRef({ aceptado: "", nota: "", obs: "", motivo: "" });
   useEffect(() => {
     const a =
       glosa.valorAceptado === null || glosa.valorAceptado === undefined
@@ -470,28 +510,57 @@ function FilaGlosa({
     setAceptado(a);
     setNota(glosa.notaCredito || "");
     setObs(glosa.observacionInterna || "");
+    setMotivo(glosa.motivoGlosa || "");
+    setClase(claseDe(glosa));
     ultimo.current = {
-      estado: glosa.estado,
       aceptado: a,
       nota: glosa.notaCredito || "",
       obs: glosa.observacionInterna || "",
+      motivo: glosa.motivoGlosa || "",
     };
-  }, [glosa.id, glosa.estado, glosa.valorAceptado, glosa.notaCredito, glosa.observacionInterna]);
+  }, [
+    glosa.id,
+    glosa.estado,
+    glosa.valorAceptado,
+    glosa.notaCredito,
+    glosa.observacionInterna,
+    glosa.motivoGlosa,
+    glosa.tipoGlosa,
+    glosa.alcance,
+  ]);
 
   const enviar = (parcial: Partial<Glosa>) => {
-    void onGuardar({ ...glosa, estado, notaCredito: nota, observacionInterna: obs, ...parcial }, "EDITAR");
+    void onGuardar(
+      {
+        ...glosa,
+        estado,
+        notaCredito: nota,
+        observacionInterna: obs,
+        motivoGlosa: motivo,
+        ...parcial,
+      },
+      "EDITAR",
+    );
   };
 
   /** Al salir de una celda: si cambio, se guarda. Si no, no se molesta a la base. */
   const salir = () => {
     const u = ultimo.current;
-    if (aceptado === u.aceptado && nota === u.nota && obs === u.obs) return;
-    ultimo.current = { ...u, aceptado, nota, obs };
+    if (aceptado === u.aceptado && nota === u.nota && obs === u.obs && motivo === u.motivo) return;
+    ultimo.current = { aceptado, nota, obs, motivo };
     enviar({
       valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado),
       notaCredito: nota,
       observacionInterna: obs,
+      motivoGlosa: motivo,
     });
+  };
+
+  /** Glosa parcial, glosa total o devolucion: un solo desplegable, dos campos. */
+  const cambiarClase = (id: string) => {
+    const c = CLASES.find((x) => x.id === id) || CLASES[0];
+    setClase(id);
+    enviar({ tipoGlosa: c.tipo, alcance: c.alcance });
   };
 
   /* Al elegir desenlace se propone el valor aceptado, porque es lo que pasa
@@ -504,7 +573,7 @@ function FilaGlosa({
     if (nuevo === "NO_ACEPTADA") propuesta = "0";
     if (nuevo === "PENDIENTE") propuesta = "";
     setAceptado(propuesta);
-    ultimo.current = { estado: nuevo, aceptado: propuesta, nota, obs };
+    ultimo.current = { aceptado: propuesta, nota, obs, motivo };
     enviar({
       estado: nuevo,
       valorAceptado: propuesta.trim() === "" ? null : soloNumero(propuesta),
@@ -515,7 +584,9 @@ function FilaGlosa({
     ...glosa,
     valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado),
   };
-  const clase = clasePago(vista);
+  // Ojo: esto es si la ACEPTACION fue parcial o total, que es distinto de la
+  // clase de la glosa (parcial/total/devolucion) que se elige arriba.
+  const pago = clasePago(vista);
   const excedeAceptado =
     vista.valorAceptado !== null && glosa.valorGlosado > 0 && vista.valorAceptado > glosa.valorGlosado;
 
@@ -534,18 +605,42 @@ function FilaGlosa({
       </td>
       <td className="py-1.5 pr-3 text-[#47597A]">{glosa.empresa || "—"}</td>
       <td className="py-1.5 pr-3">
-        <span className="eb-label text-[10px] text-[#64748B]">
-          {glosa.tipoGlosa === "DEVOLUCION" ? "Devolución" : "Glosa"}
-        </span>
+        <label htmlFor={`cla-${glosa.id}`} className="sr-only">
+          Clase de la glosa {glosa.factura}
+        </label>
+        <select
+          id={`cla-${glosa.id}`}
+          value={clase}
+          onChange={(e) => cambiarClase(e.target.value)}
+          className={`rounded-[6px] border px-1.5 py-1 text-[11.5px] font-semibold outline-none ${
+            clase === "" ? "border-[#E2EBF8] bg-white text-[#94A3B8]" : "border-[#DCE8FA] bg-[#F8FAFC] text-[#1A3174]"
+          }`}
+        >
+          {CLASES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.etiqueta}
+            </option>
+          ))}
+        </select>
       </td>
       <td className="py-1.5 pr-3 text-right font-cifra text-[#47597A]">{pesos(glosa.valorRadicado)}</td>
       <td className="py-1.5 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
         {pesos(glosa.valorGlosado)}
       </td>
-      <td className="max-w-[260px] py-1.5 pr-3">
-        <span className="line-clamp-2 text-[#47597A]" title={glosa.motivoGlosa}>
-          {glosa.motivoGlosa || "—"}
-        </span>
+      <td className="min-w-[220px] max-w-[300px] py-1.5 pr-3">
+        <label htmlFor={`mot-${glosa.id}`} className="sr-only">
+          Motivo de la glosa {glosa.factura}
+        </label>
+        <input
+          id={`mot-${glosa.id}`}
+          list="cat-motivos"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          onBlur={salir}
+          placeholder="—"
+          title={motivo}
+          className={celdaInput}
+        />
       </td>
 
       <td className="py-1.5 pr-3">
@@ -581,9 +676,9 @@ function FilaGlosa({
           placeholder="—"
           className={`${celdaInput} text-right font-cifra`}
         />
-        {clase && (
-          <span className={`block pr-1.5 text-[10px] font-semibold uppercase ${clase.clase}`}>
-            {clase.texto}
+        {pago && (
+          <span className={`block pr-1.5 text-[10px] font-semibold uppercase ${pago.clase}`}>
+            {pago.texto}
           </span>
         )}
         {excedeAceptado && (
@@ -762,7 +857,7 @@ function ModalNueva({
   const [f, setF] = useState({
     factura: "",
     empresa: "",
-    tipoGlosa: "GLOSA",
+    clase: "",
     motivoGlosa: "",
     valorGlosado: "",
     observacionInterna: "",
@@ -806,20 +901,25 @@ function ModalNueva({
           <Campo id="emp" etiqueta="Empresa">
             <input
               id="emp"
+              list="cat-empresas"
               value={f.empresa}
               onChange={(e) => setF({ ...f, empresa: e.target.value.toUpperCase() })}
+              placeholder="Elige una o escribe la nueva"
               className={campo}
             />
           </Campo>
-          <Campo id="tipo" etiqueta="Tipo">
+          <Campo id="clase" etiqueta="Clase">
             <select
-              id="tipo"
-              value={f.tipoGlosa}
-              onChange={(e) => setF({ ...f, tipoGlosa: e.target.value })}
+              id="clase"
+              value={f.clase}
+              onChange={(e) => setF({ ...f, clase: e.target.value })}
               className={campo}
             >
-              <option value="GLOSA">Glosa</option>
-              <option value="DEVOLUCION">Devolución</option>
+              {CLASES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.etiqueta}
+                </option>
+              ))}
             </select>
           </Campo>
           <Campo id="val" etiqueta="Valor glosado">
@@ -836,9 +936,10 @@ function ModalNueva({
             <Campo id="mot" etiqueta="Motivo">
               <input
                 id="mot"
+                list="cat-motivos"
                 value={f.motivoGlosa}
                 onChange={(e) => setF({ ...f, motivoGlosa: e.target.value })}
-                placeholder="Por qué la glosaron"
+                placeholder="Elige uno de los que ya se usan o escribe uno nuevo"
                 className={campo}
               />
             </Campo>
@@ -866,13 +967,16 @@ function ModalNueva({
           <button
             type="button"
             disabled={!completo || guardando}
-            onClick={() =>
+            onClick={() => {
+              const c = CLASES.find((x) => x.id === f.clase) || CLASES[0];
               onGuardar({
                 ...f,
+                tipoGlosa: c.tipo,
+                alcance: c.alcance,
                 valorGlosado: soloNumero(f.valorGlosado),
                 valorAceptado: null,
-              })
-            }
+              });
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D58D8] px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#C7CDE0]"
           >
             {guardando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
