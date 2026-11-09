@@ -218,6 +218,20 @@ export function CarteraWorkspace({
     [traer],
   );
 
+  /* Los FILTROS listan a todos los que aparecen en los datos, activos o no.
+     Es distinto de los desplegables de captura, que solo ofrecen los activos:
+     si YULEIBIS se desactiva, no debe ofrecerse para glosas nuevas, pero sus
+     300 glosas siguen ahi y hay que poder filtrarlas. Confundir las dos listas
+     deja registros historicos sin forma de encontrarlos. */
+  const empresasEnDatos = useMemo(
+    () => Array.from(new Set(glosas.map((g) => g.empresa).filter(Boolean))).sort((a, b) => a.localeCompare(b, "es")),
+    [glosas],
+  );
+  const facturadoresEnDatos = useMemo(
+    () => Array.from(new Set(glosas.map((g) => g.facturador).filter(Boolean))).sort((a, b) => a.localeCompare(b, "es")),
+    [glosas],
+  );
+
   const causalPorCodigo = useMemo(() => {
     const m: Record<string, Causal> = {};
     for (const c of cat.causales) m[c.codigo] = c;
@@ -485,7 +499,7 @@ export function CarteraWorkspace({
           <label htmlFor="f-emp" className="sr-only">Filtrar por empresa</label>
           <select id="f-emp" value={fEmpresa} onChange={(e) => setFEmpresa(e.target.value)} className={sel}>
             <option value="">Todas las empresas</option>
-            {cat.empresas.map((x) => <option key={x} value={x}>{x}</option>)}
+            {empresasEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
 
           <label htmlFor="f-anio" className="sr-only">Filtrar por año</label>
@@ -497,7 +511,7 @@ export function CarteraWorkspace({
           <label htmlFor="f-fact" className="sr-only">Filtrar por facturador</label>
           <select id="f-fact" value={fFacturador} onChange={(e) => setFFacturador(e.target.value)} className={sel}>
             <option value="">Todos los facturadores</option>
-            {cat.responsables.map((x) => <option key={x} value={x}>{x}</option>)}
+            {facturadoresEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
 
           <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-[#47597A]">
