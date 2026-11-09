@@ -55,7 +55,7 @@ async function anotar(
   entidad: "factura" | "glosa" | "pendiente",
   entidadId: string,
   facturaNumero: string | null,
-  accion: "CREAR" | "EDITAR" | "CAMBIO_ESTADO",
+  accion: "CREAR" | "EDITAR" | "CAMBIO_ESTADO" | "CLASIFICAR",
   detalle: Fila,
   userId: string | null,
   userNombre: string | null
@@ -105,7 +105,7 @@ export async function GET() {
 
   const db = createServiceClient();
 
-  const [facturas, glosas, pendientes] = await Promise.all([
+  const [facturas, glosas, pendientes, causales] = await Promise.all([
     db.from("cf_facturas").select(
       "id, numero, anio, periodo, fecha_elaboracion, fecha_radicacion, fecha_anulacion, " +
       "valor_radicado, copagos, valor_glosa_devolucion, estado, motivo_anulacion_texto, rips, " +
@@ -113,7 +113,7 @@ export async function GET() {
       "cf_empresas(nombre), cf_responsables(nombre)"
     ),
     db.from("cf_glosas").select(
-      "id, tipo, alcance, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, " +
+      "id, tipo, alcance, motivo_codigo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, " +
       "cf_facturas(numero, anio, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
       "empresa_nombre_original, cf_empresas(nombre)), " +
       "facturador:cf_responsables!cf_glosas_facturador_id_fkey(nombre), " +
@@ -124,6 +124,7 @@ export async function GET() {
       "unidad_funcional, cups, descripcion, medico, autorizacion, cantidad, valor_servicio, " +
       "estado, observaciones, empresa_nombre_original, cf_empresas(nombre), cf_responsables(nombre)"
     ),
+    db.from("cf_causales").select("codigo, familia, nombre").eq("activo", true).order("codigo"),
   ]);
 
   if (facturas.error || glosas.error || pendientes.error) {
@@ -200,6 +201,10 @@ export async function GET() {
         r.valor_aceptado === null || r.valor_aceptado === undefined
           ? null
           : Number(r.valor_aceptado),
+      // La causal de la norma y el texto que escribio Facturacion son dos
+      // cosas distintas y las dos se conservan: el codigo para medir, el
+      // texto porque es el que cuenta que paso de verdad.
+      motivoCodigo: (r.motivo_codigo as string) || "",
       motivoGlosa: (r.motivo_texto as string) || "",
       facturador: ((r.facturador as Fila | null)?.nombre as string) || "",
       responsableAceptacion: ((r.aceptacion as Fila | null)?.nombre as string) || "",
@@ -249,6 +254,8 @@ export async function GET() {
       ...filasGlosa.map((g) => g.responsableAceptacion),
     ]),
     motivos: unicos(filasGlosa.map((g) => g.motivoGlosa)),
+    causales: (causales.data || []) as { codigo: string; familia: string; nombre: string }[],
+    anios: unicos(filasGlosa.map((g) => g.anio)),
   };
 
   return NextResponse.json({
@@ -347,6 +354,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, id });
     }
 
+    // ---- clasificar en lote por texto de motivo ----
+    //
+    // 217 glosas quedaron sin causal y son solo 122 redacciones distintas: la
+    // misma frase repetida muchas veces. Clasificarlas una por una seria
+    // teclear lo mismo 217 veces. Esto aplica un codigo a todas las que
+    // compartan exactamente el mismo texto.
+    if (entidad === "glosas-lote") {
+      const texto = txt(fila.motivoGlosa);
+      const codigo = txt(fila.motivoCodigo);
+      if (!texto || !codigo) {
+        return NextResponse.json(
+          { ok: false, error: "Falta el texto del motivo o el codigo" },
+          { status: 400 }
+        );
+      }
+      const { data: afectadas, error } = await db
+        .from("cf_glosas")
+        .update({ motivo_codigo: codigo })
+        .eq("motivo_texto", texto)
+        .is("motivo_codigo", null)
+        .select("id");
+      if (error) throw new Error(error.message);
+      const ids = (afectadas || []).map((x) => x.id as string);
+      for (const id of ids) {
+        await anotar(db, "glosa", id, "", "CLASIFICAR", { codigo, texto }, uid, unombre);
+      }
+      return NextResponse.json({ ok: true, afectadas: ids.length });
+    }
+
     // ---- glosas ----
     if (entidad === "glosas") {
       const numero = String(fila.factura || "").trim().toUpperCase().replace(/\s+/g, "");
@@ -373,6 +409,7 @@ export async function POST(request: Request) {
         alcance: ["PARCIAL", "TOTAL"].includes(String(fila.alcance || "").toUpperCase())
           ? String(fila.alcance).toUpperCase()
           : null,
+        motivo_codigo: txt(fila.motivoCodigo),
         motivo_texto: txt(fila.motivoGlosa),
         observacion: txt(fila.observacionInterna),
         valor_glosado: num(fila.valorGlosado),
