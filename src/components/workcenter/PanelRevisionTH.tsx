@@ -74,7 +74,7 @@ export function PanelRevisionTH({
 
   if (cargando && !datos) {
     return (
-      <div className="rounded-[12px] border border-[#E2EBF8] bg-[#F8FAFF] px-3.5 py-2.5 text-[12.5px] text-[#64748B]">
+      <div className="shrink-0 rounded-[12px] border border-[#E2EBF8] bg-[#F8FAFF] px-3.5 py-2.5 text-[12.5px] text-[#64748B]">
         Revisando la base…
       </div>
     );
@@ -82,7 +82,7 @@ export function PanelRevisionTH({
 
   if (fallo) {
     return (
-      <div className="flex items-start gap-2 rounded-[12px] border border-[#FCA5A5] bg-[#FEF2F2] px-3.5 py-2.5">
+      <div className="flex shrink-0 items-start gap-2 rounded-[12px] border border-[#FCA5A5] bg-[#FEF2F2] px-3.5 py-2.5">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#B91C1C]" />
         <div className="min-w-0 flex-1 text-[12.5px]">
           <p className="font-bold text-[#B91C1C]">No se pudo revisar la base.</p>
@@ -105,7 +105,7 @@ export function PanelRevisionTH({
 
   if (datos.total === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-[12px] border border-[#BBF7D0] bg-[#F0FDF4] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#166534]">
+      <div className="flex shrink-0 items-center gap-2 rounded-[12px] border border-[#BBF7D0] bg-[#F0FDF4] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#166534]">
         <Check className="h-4 w-4 shrink-0" />
         No hay datos por revisar. Todo lo que la base puede comprobar está completo.
       </div>
@@ -115,7 +115,7 @@ export function PanelRevisionTH({
   const g = datos.porGravedad;
 
   return (
-    <div className="overflow-hidden rounded-[12px] border border-[#E2EBF8] bg-white shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
+    <div className="shrink-0 overflow-hidden rounded-[12px] border border-[#E2EBF8] bg-white shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
       <div className="flex items-center gap-2.5 px-3.5 py-2.5">
         <AlertTriangle
           className={`h-4 w-4 shrink-0 ${g.alta ? "text-[#B91C1C]" : "text-[#B45309]"}`}
@@ -158,7 +158,7 @@ export function PanelRevisionTH({
       </div>
 
       {abierto && (
-        <div className="border-t border-[#EEF3FB] p-2.5">
+        <div className="max-h-[55vh] overflow-y-auto border-t border-[#EEF3FB] p-2.5">
           <div className="flex flex-col gap-1.5">
             {datos.hallazgos.map((h) => {
               const c = COLOR[h.gravedad];
