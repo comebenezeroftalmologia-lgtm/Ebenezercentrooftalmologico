@@ -23,9 +23,14 @@ export type Modulo =
   // Cartera va aparte por la misma razon que Talento Humano: aqui se registra
   // la plata glosada y devuelta. La vista de Analytics entraba con el permiso
   // de "frecuencias"; esta superficie de trabajo se asigna persona por persona.
-  | "cartera";
+  | "cartera"
+  // Módulo Clínico. Dos permisos aparte: ver la agenda, y configurar los
+  // recordatorios de citas (quién puede cambiar a qué pacientes se llama o
+  // escribe, y con qué texto). Se asignan persona por persona en /usuarios.
+  | "clinico_agenda"
+  | "clinico_recordatorios";
 
-export type GrupoModulo = "Analytics" | "Procesos";
+export type GrupoModulo = "Analytics" | "Procesos" | "Clínico";
 
 export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoModulo }[] = [
   { slug: "leads", label: "Generación de Clientes Potenciales", href: "/leads", grupo: "Analytics" },
@@ -40,6 +45,8 @@ export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoM
   { slug: "cartera", label: "Cartera — Mesa de trabajo", href: "/workcenter/cartera", grupo: "Procesos" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
   { slug: "proyectos", label: "Tareas", href: "/proyectos", grupo: "Procesos" },
+  { slug: "clinico_agenda", label: "Clínico — Agenda", href: "/clinico/agenda", grupo: "Clínico" },
+  { slug: "clinico_recordatorios", label: "Clínico — Configurar recordatorios", href: "/clinico/recordatorios", grupo: "Clínico" },
 ];
 
 export function moduloLabel(slug: Modulo): string {
@@ -50,5 +57,6 @@ export function modulosPorGrupo(lista: typeof MODULOS = MODULOS): Record<GrupoMo
   return {
     Analytics: lista.filter((m) => m.grupo === "Analytics"),
     Procesos: lista.filter((m) => m.grupo === "Procesos"),
+    Clínico: lista.filter((m) => m.grupo === "Clínico"),
   };
 }

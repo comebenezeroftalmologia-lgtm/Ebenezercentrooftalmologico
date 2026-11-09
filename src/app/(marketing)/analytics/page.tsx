@@ -37,6 +37,8 @@ const SUBTITULOS: Record<Modulo, string> = {
   proyectos: "Espacios de trabajo, tableros Kanban y seguimiento de iniciativas.",
   talento_humano: "Planta, retiros, ausentismo, clima y desempeño del personal.",
   cartera: "Mesa de trabajo de glosas, devoluciones y anulaciones, en WorkCenter.",
+  clinico_agenda: "Agenda de citas cargada desde SISMA.",
+  clinico_recordatorios: "Reglas de recordatorio de citas por llamada y WhatsApp.",
 };
 
 function IconoTarjeta({ slug }: { slug: Modulo }) {

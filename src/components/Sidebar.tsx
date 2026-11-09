@@ -23,6 +23,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Stethoscope,
   Target,
   UserCircle,
   Users,
@@ -135,6 +136,8 @@ export function RielGlobal({
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug));
   const procesosPermitido = allowed.has("procesos") || isAdmin;
   const proyectosPermitido = allowed.has("proyectos") || isAdmin;
+  const clinicoPermitido = allowed.has("clinico_agenda") || allowed.has("clinico_recordatorios") || isAdmin;
+  const clinicoHref = allowed.has("clinico_agenda") || isAdmin ? "/clinico/agenda" : "/clinico/recordatorios";
 
   const pathname = usePathname();
   const router = useRouter();
@@ -170,6 +173,7 @@ export function RielGlobal({
   const enInicio = pathname === "/";
   const enProcesos = pathname === "/procesos" || pathname.startsWith("/procesos/");
   const enProyectos = pathname === "/proyectos" || pathname.startsWith("/proyectos/");
+  const enClinico = pathname === "/clinico" || pathname.startsWith("/clinico/");
   const enWorkCenter = pathname === "/workcenter" || pathname.startsWith("/workcenter/");
   const enUsuarios = pathname === "/usuarios" || pathname.startsWith("/usuarios/");
   const enPerfil = pathname === "/perfil" || pathname.startsWith("/perfil/");
@@ -205,6 +209,14 @@ export function RielGlobal({
             {enAnalytics && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <BarChart2 className="h-[19px] w-[19px]" strokeWidth={1.75} />
             <span className="text-[10.5px] leading-none tracking-tight">Analytics</span>
+          </Link>
+        )}
+
+        {clinicoPermitido && (
+          <Link href={clinicoHref} className={itemClass(enClinico)} title="Clínico">
+            {enClinico && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
+            <Stethoscope className="h-[19px] w-[19px]" strokeWidth={1.75} />
+            <span className="text-[10.5px] leading-none tracking-tight">Clínico</span>
           </Link>
         )}
 
