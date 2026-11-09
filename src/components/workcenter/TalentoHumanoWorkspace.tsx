@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, X, Pencil, Trash2, AlertTriangle, Check } from "lucide-react";
 import { TABLAS_TH, type Campo, type TablaTH } from "@/lib/talentoHumanoTablas";
+import { PanelRevisionTH } from "@/components/workcenter/PanelRevisionTH";
 
 /* ---------------------------------------------------------------------
    MESA DE TRABAJO DE TALENTO HUMANO
@@ -65,6 +66,25 @@ export function TalentoHumanoWorkspace({ esAdmin }: { esAdmin: boolean }) {
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  // Sube cada vez que algo se guarda o se borra: es la señal para que la
+  // franja de "datos por revisar" vuelva a calcularse. Si acaban de
+  // arreglar una fecha, el pendiente tiene que desaparecer en el acto.
+  const [revision, setRevision] = useState(0);
+
+  // Lo que el panel de revisión quiere dejar escrito en el buscador al
+  // llegar a otra pestaña. Va en un ref y no en estado porque el efecto
+  // que limpia el buscador al cambiar de tabla se lo comeria.
+  const buscarAlLlegar = useRef<string | null>(null);
+
+  function irA(destino: string, buscar?: string) {
+    if (destino === slug) {
+      setBusqueda(buscar ?? "");
+      return;
+    }
+    buscarAlLlegar.current = buscar ?? null;
+    setSlug(destino);
+  }
+
   const traer = useCallback(async () => {
     setCargando(true);
     setFallo(null);
@@ -84,7 +104,11 @@ export function TalentoHumanoWorkspace({ esAdmin }: { esAdmin: boolean }) {
   }, [slug]);
 
   useEffect(() => { traer(); }, [traer]);
-  useEffect(() => { setBusqueda(""); setEditando(null); }, [slug]);
+  useEffect(() => {
+    setBusqueda(buscarAlLlegar.current ?? "");
+    buscarAlLlegar.current = null;
+    setEditando(null);
+  }, [slug]);
 
   const nombreArea = useCallback(
     (id: unknown) => areas.find((a) => a.id === Number(id))?.nombre ?? "—",
@@ -115,6 +139,7 @@ export function TalentoHumanoWorkspace({ esAdmin }: { esAdmin: boolean }) {
       if (!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
       setEditando(null);
       setAviso(esEdicion ? "Cambios guardados." : `Se agregó el ${tabla.singular}.`);
+      setRevision((v) => v + 1);
       await traer();
     } catch (e) {
       setAviso(e instanceof Error ? e.message : "No se pudo guardar.");
@@ -130,6 +155,7 @@ export function TalentoHumanoWorkspace({ esAdmin }: { esAdmin: boolean }) {
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
       setAviso("Registro borrado.");
+      setRevision((v) => v + 1);
       await traer();
     } catch (e) {
       setAviso(e instanceof Error ? e.message : "No se pudo borrar.");
@@ -168,6 +194,10 @@ export function TalentoHumanoWorkspace({ esAdmin }: { esAdmin: boolean }) {
 
   return (
     <div className="flex h-full flex-col gap-4">
+      {/* Datos por revisar. Sale de la base, no de una lista escrita a
+          mano: cuando el dato queda bien, el pendiente desaparece solo. */}
+      <PanelRevisionTH recargar={revision} onIr={irA} />
+
       {/* Pestañas: una por tabla */}
       <div className="flex flex-wrap gap-1.5">
         {TABLAS_TH.map((t) => (
