@@ -105,7 +105,7 @@ export async function GET() {
 
   const db = createServiceClient();
 
-  const [facturas, glosas, pendientes, causales] = await Promise.all([
+  const [facturas, glosas, pendientes, causales, empresasCat, responsablesCat] = await Promise.all([
     db.from("cf_facturas").select(
       "id, numero, anio, periodo, fecha_elaboracion, fecha_radicacion, fecha_anulacion, " +
       "valor_radicado, copagos, valor_glosa_devolucion, estado, motivo_anulacion_texto, rips, " +
@@ -125,6 +125,8 @@ export async function GET() {
       "estado, observaciones, empresa_nombre_original, cf_empresas(nombre), cf_responsables(nombre)"
     ),
     db.from("cf_causales").select("codigo, familia, nombre").eq("activo", true).order("codigo"),
+    db.from("cf_empresas").select("nombre").eq("activo", true).order("nombre"),
+    db.from("cf_responsables").select("nombre").eq("activo", true).order("nombre"),
   ]);
 
   if (facturas.error || glosas.error || pendientes.error) {
@@ -244,15 +246,12 @@ export async function GET() {
     Array.from(new Set(xs.filter((x): x is string => !!x && x.trim() !== "").map((x) => x.trim())))
       .sort((a, b) => a.localeCompare(b, "es"));
 
+  // Empresas y facturadores salen del catalogo (solo los activos), no de lo
+  // que haya escrito en las glosas: asi uno recien creado aparece de una, y
+  // uno desactivado deja de ofrecerse sin que su historico se toque.
   const catalogos = {
-    empresas: unicos([
-      ...filasGlosa.map((g) => g.empresa),
-      ...anuladas.map((a) => a.empresa),
-    ]),
-    responsables: unicos([
-      ...filasGlosa.map((g) => g.facturador),
-      ...filasGlosa.map((g) => g.responsableAceptacion),
-    ]),
+    empresas: unicos((empresasCat.data || []).map((x) => x.nombre as string)),
+    responsables: unicos((responsablesCat.data || []).map((x) => x.nombre as string)),
     motivos: unicos(filasGlosa.map((g) => g.motivoGlosa)),
     causales: (causales.data || []) as { codigo: string; familia: string; nombre: string }[],
     anios: unicos(filasGlosa.map((g) => g.anio)),

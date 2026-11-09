@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Tags,
+  Users,
   X,
 } from "lucide-react";
 
@@ -160,6 +161,7 @@ export function CarteraWorkspace({
   const [fichaDe, setFichaDe] = useState<string | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [clasificarAbierto, setClasificarAbierto] = useState(false);
+  const [catalogosAbierto, setCatalogosAbierto] = useState(false);
 
   const traer = useCallback(async () => {
     setCargando(true);
@@ -337,6 +339,13 @@ export function CarteraWorkspace({
           </button>
           <button
             type="button"
+            onClick={() => setCatalogosAbierto((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#DCE8FA] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#47597A] transition hover:border-[#94A3B8]"
+          >
+            <Users className="h-3.5 w-3.5" /> Facturadores y empresas
+          </button>
+          <button
+            type="button"
             onClick={() => setNuevaAbierta(true)}
             className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D58D8] px-3 py-1.5 text-[12.5px] font-semibold text-white transition hover:bg-[#1747B0]"
           >
@@ -434,6 +443,14 @@ export function CarteraWorkspace({
             esto no se resuelva.
           </span>
         </div>
+      )}
+
+      {catalogosAbierto && (
+        <PanelCatalogos
+          esAdmin={usuario.esAdmin}
+          onCerrar={() => setCatalogosAbierto(false)}
+          onCambio={(msg) => { avisar(msg); void traer(); }}
+        />
       )}
 
       {clasificarAbierto && (
@@ -678,6 +695,247 @@ function Ranking({
         ))}
       </div>
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------------
+   PANEL DE CATALOGOS — facturadores y empresas
+
+   Antes no habia donde verlos ni corregirlos, y asi fue como quedaron
+   "ERIKA" y "ERIKA ALZATE" como dos personas. La columna de usos es la que
+   manda: dice si se puede eliminar o si toca desactivar o fusionar.
+   --------------------------------------------------------------------- */
+type ItemCat = { id: string; nombre: string; activo: boolean; usos: number };
+
+function PanelCatalogos({
+  esAdmin, onCerrar, onCambio,
+}: {
+  esAdmin: boolean;
+  onCerrar: () => void;
+  onCambio: (mensaje: string) => void;
+}) {
+  const [empresas, setEmpresas] = useState<ItemCat[]>([]);
+  const [responsables, setResponsables] = useState<ItemCat[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [cual, setCual] = useState<"cf_responsables" | "cf_empresas">("cf_responsables");
+
+  const traer = useCallback(async () => {
+    setCargando(true); setFallo("");
+    try {
+      const r = await fetch("/api/cartera/catalogos", { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setEmpresas(j.empresas || []);
+      setResponsables(j.responsables || []);
+    } catch (e) {
+      setFallo(e instanceof Error ? e.message : "No se pudo leer el catálogo.");
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => { void traer(); }, [traer]);
+
+  const accion = async (cuerpo: Record<string, unknown>) => {
+    setOcupado(true);
+    try {
+      const r = await fetch("/api/cartera/catalogos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tabla: cual, ...cuerpo }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) { onCambio("NO SE PUDO: " + (j?.error || r.statusText)); return false; }
+      await traer();
+      onCambio(j.mensaje || "Listo.");
+      return true;
+    } catch {
+      onCambio("NO SE PUDO: sin conexión.");
+      return false;
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const filas = cual === "cf_empresas" ? empresas : responsables;
+  const titulo = cual === "cf_empresas" ? "empresas" : "facturadores";
+
+  return (
+    <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-[15px] font-bold text-[#0E245E]">Facturadores y empresas</h3>
+          <p className="mt-0.5 max-w-[86ch] text-[12px] text-[#64748B]">
+            Corregir un nombre arregla todas sus glosas de una, porque están enlazadas por
+            identificador y no por el texto. Eliminar solo procede cuando no tiene registros; si los
+            tiene, se desactiva o se fusiona con el correcto.
+          </p>
+        </div>
+        <button type="button" onClick={onCerrar} aria-label="Cerrar el panel"
+          className="rounded-lg border border-[#DCE8FA] p-1.5 text-[#47597A] hover:bg-[#F8FAFC]">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <Pestana activa={cual === "cf_responsables"} onClick={() => setCual("cf_responsables")}>
+          Facturadores ({responsables.length})
+        </Pestana>
+        <Pestana activa={cual === "cf_empresas"} onClick={() => setCual("cf_empresas")}>
+          Empresas ({empresas.length})
+        </Pestana>
+        <NuevoCat ocupado={ocupado} titulo={titulo} onCrear={(n) => accion({ accion: "CREAR", nombre: n })} />
+      </div>
+
+      {fallo && (
+        <div className="mb-3 flex items-start gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-3 py-2 text-[12.5px] font-semibold text-[#B91C1C]">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {fallo}
+        </div>
+      )}
+
+      <div className="max-h-[420px] overflow-y-auto">
+        <table className="w-full border-collapse text-[12.5px]">
+          <thead>
+            <tr className="border-b border-[#E2EBF8] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">
+              <th className="py-2 pr-3">Nombre</th>
+              <th className="py-2 pr-3 text-right">Registros</th>
+              <th className="py-2 pr-3">Estado</th>
+              <th className="py-2 pr-3">Fusionar con</th>
+              <th className="w-24 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {cargando && (
+              <tr><td colSpan={5} className="py-6 text-center text-[#94A3B8]">
+                <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" /> Cargando…
+              </td></tr>
+            )}
+            {!cargando && filas.map((f) => (
+              <FilaCat
+                key={f.id} item={f} filas={filas} esAdmin={esAdmin} ocupado={ocupado} accion={accion}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function NuevoCat({
+  ocupado, titulo, onCrear,
+}: { ocupado: boolean; titulo: string; onCrear: (n: string) => Promise<boolean> }) {
+  const [n, setN] = useState("");
+  return (
+    <div className="ml-auto flex items-center gap-1.5">
+      <label htmlFor="nuevo-cat" className="sr-only">Nombre del nuevo</label>
+      <input
+        id="nuevo-cat" value={n} onChange={(e) => setN(e.target.value.toUpperCase())}
+        placeholder={`Agregar a ${titulo}…`}
+        className="w-52 rounded-lg border border-[#DCE8FA] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#1D58D8]"
+      />
+      <button
+        type="button" disabled={!n.trim() || ocupado}
+        onClick={async () => { if (await onCrear(n.trim())) setN(""); }}
+        className="inline-flex items-center gap-1 rounded-lg bg-[#1D58D8] px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#C7CDE0]"
+      >
+        <Plus className="h-3.5 w-3.5" /> Agregar
+      </button>
+    </div>
+  );
+}
+
+function FilaCat({
+  item, filas, esAdmin, ocupado, accion,
+}: {
+  item: ItemCat;
+  filas: ItemCat[];
+  esAdmin: boolean;
+  ocupado: boolean;
+  accion: (c: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const [nombre, setNombre] = useState(item.nombre);
+  const [hacia, setHacia] = useState("");
+  useEffect(() => { setNombre(item.nombre); }, [item.nombre]);
+  const cambiado = nombre.trim() !== item.nombre && nombre.trim() !== "";
+
+  return (
+    <tr className={`border-b border-[#F1F5F9] align-middle ${item.activo ? "" : "bg-[#FAFBFC]"}`}>
+      <td className="py-2 pr-3">
+        <label htmlFor={`cat-${item.id}`} className="sr-only">Nombre</label>
+        <input
+          id={`cat-${item.id}`} value={nombre} onChange={(e) => setNombre(e.target.value.toUpperCase())}
+          className={`w-full max-w-[280px] rounded-lg border px-2 py-1.5 text-[12.5px] outline-none focus:border-[#1D58D8] ${
+            cambiado ? "border-[#1D58D8] bg-[#F6F9FE]" : "border-transparent hover:border-[#DCE8FA]"
+          } ${item.activo ? "text-[#0E245E]" : "text-[#94A3B8] line-through"}`}
+        />
+      </td>
+      <td className="py-2 pr-3 text-right font-cifra text-[#47597A]">{item.usos}</td>
+      <td className="py-2 pr-3">
+        <span className={`rounded-pill border px-2 py-0.5 text-[10.5px] font-semibold ${
+          item.activo ? "border-[#BFE0CC] bg-[#DCEEE3] text-[#146138]" : "border-[#D8DEE9] bg-[#F1F3F7] text-[#47597A]"
+        }`}>
+          {item.activo ? "Activo" : "Inactivo"}
+        </span>
+      </td>
+      <td className="py-2 pr-3">
+        {esAdmin && item.usos > 0 && (
+          <div className="flex items-center gap-1.5">
+            <label htmlFor={`fus-${item.id}`} className="sr-only">Fusionar con</label>
+            <select
+              id={`fus-${item.id}`} value={hacia} onChange={(e) => setHacia(e.target.value)}
+              className="max-w-[190px] rounded-lg border border-[#DCE8FA] px-2 py-1.5 text-[12px] outline-none focus:border-[#1D58D8]"
+            >
+              <option value="">—</option>
+              {filas.filter((x) => x.id !== item.id).map((x) => (
+                <option key={x.id} value={x.id}>{x.nombre}</option>
+              ))}
+            </select>
+            <button
+              type="button" disabled={!hacia || ocupado}
+              onClick={() => accion({ accion: "FUSIONAR", id: item.id, haciaId: hacia })}
+              className="rounded-lg border border-[#DCE8FA] px-2 py-1.5 text-[12px] font-semibold text-[#47597A] transition hover:border-[#94A3B8] disabled:cursor-not-allowed disabled:text-[#C7CDE0]"
+            >
+              Fusionar
+            </button>
+          </div>
+        )}
+      </td>
+      <td className="py-2 text-right">
+        <div className="flex items-center justify-end gap-1.5">
+          {cambiado && (
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => accion({ accion: "RENOMBRAR", id: item.id, nombre: nombre.trim() })}
+              className="rounded-lg bg-[#1D58D8] px-2.5 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#1747B0]"
+            >
+              Guardar
+            </button>
+          )}
+          {!cambiado && (
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => accion({ accion: item.activo ? "DESACTIVAR" : "ACTIVAR", id: item.id })}
+              className="rounded-lg border border-[#DCE8FA] px-2.5 py-1.5 text-[12px] font-semibold text-[#47597A] transition hover:border-[#94A3B8]"
+            >
+              {item.activo ? "Desactivar" : "Activar"}
+            </button>
+          )}
+          {esAdmin && item.usos === 0 && !cambiado && (
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => accion({ accion: "ELIMINAR", id: item.id })}
+              title="Se puede eliminar porque no tiene registros asociados"
+              className="rounded-lg border border-[#FCA5A5] px-2.5 py-1.5 text-[12px] font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2]"
+            >
+              Eliminar
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }
 
