@@ -1273,21 +1273,31 @@ function FilaGlosa({
             value={codigo}
             onFocus={() => setListaCausales(true)}
             onMouseDown={() => setListaCausales(true)}
-            onChange={(e) => { setCodigo(e.target.value); enviar({ motivoCodigo: e.target.value }); }}
+            onChange={(e) => {
+              setCodigo(e.target.value);
+              // Se vuelve a plegar para que la celda muestre el codigo solo y
+              // no la descripcion larga de la opcion recien elegida.
+              setListaCausales(false);
+              enviar({ motivoCodigo: e.target.value });
+            }}
             title={causal ? `${causal.codigo} · ${causal.familia} · ${causal.nombre}` : "Sin clasificar"}
-            className={`max-w-[120px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11.5px] font-semibold outline-none ${
+            className={`w-[104px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11.5px] font-semibold outline-none ${
               codigo
                 ? "border-[#DCE8FA] bg-[#F8FAFC] text-[#1A3174]"
                 : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E]"
             }`}
           >
             <option value="">sin causal</option>
+            {/* Plegada, la celda muestra SOLO el codigo: es lo que identifica
+                la causal y lo que pide la EPS. La descripcion completa esta en
+                el tooltip, en la fila desplegada y en la lista al abrirla;
+                metida en la celda solo cabe recortada y no se lee. */}
             {listaCausales ? (
               causales.map((c) => (
                 <option key={c.codigo} value={c.codigo}>{c.codigo} · {c.nombre}</option>
               ))
             ) : codigo ? (
-              <option value={codigo}>{codigo}{causal ? ` · ${causal.nombre}` : ""}</option>
+              <option value={codigo}>{codigo}</option>
             ) : null}
           </select>
         </td>
