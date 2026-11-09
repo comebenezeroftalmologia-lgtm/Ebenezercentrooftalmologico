@@ -121,6 +121,18 @@ const soloNumero = (s: string) => {
   const n = Number(String(s).replace(/[^0-9]/g, ""));
   return Number.isFinite(n) ? n : 0;
 };
+const MESES = [
+  ["01", "Enero"], ["02", "Febrero"], ["03", "Marzo"], ["04", "Abril"],
+  ["05", "Mayo"], ["06", "Junio"], ["07", "Julio"], ["08", "Agosto"],
+  ["09", "Septiembre"], ["10", "Octubre"], ["11", "Noviembre"], ["12", "Diciembre"],
+];
+
+/* El mes sale de la fecha de elaboracion de la factura, que es la unica
+   fecha que casi todas traen. Las que no la tienen quedan fuera al filtrar
+   por mes, y por eso el desplegable avisa cuantas son. */
+const mesDe = (g: { fechaFactura: string }) =>
+  g.fechaFactura && g.fechaFactura.length >= 7 ? g.fechaFactura.slice(5, 7) : "";
+
 const fecha = (s: string) => {
   if (!s) return "—";
   const [a, m, d] = s.slice(0, 10).split("-");
@@ -152,6 +164,7 @@ export function CarteraWorkspace({
   const [fEstado, setFEstado] = useState("SIN_RESOLVER");
   const [fEmpresa, setFEmpresa] = useState("");
   const [fAnio, setFAnio] = useState("");
+  const [fMes, setFMes] = useState("");
   const [fFacturador, setFFacturador] = useState("");
   const [fFamilia, setFFamilia] = useState("");
   const [soloSinCausal, setSoloSinCausal] = useState(false);
@@ -251,6 +264,7 @@ export function CarteraWorkspace({
       if (fEstado !== "TODAS" && fEstado !== "SIN_RESOLVER" && g.estado !== fEstado) return false;
       if (fEmpresa && g.empresa !== fEmpresa) return false;
       if (fAnio && g.anio !== fAnio) return false;
+      if (fMes && mesDe(g) !== fMes) return false;
       if (fFacturador && g.facturador !== fFacturador) return false;
       if (soloSinCausal && g.motivoCodigo) return false;
       if (fFamilia) {
@@ -268,8 +282,20 @@ export function CarteraWorkspace({
       );
     });
   }, [
-    glosas, busqueda, fEstado, fEmpresa, fAnio, fFacturador, fFamilia, soloSinCausal, causalPorCodigo,
+    glosas, busqueda, fEstado, fEmpresa, fAnio, fMes, fFacturador, fFamilia, soloSinCausal, causalPorCodigo,
   ]);
+
+  /* Cuantas glosas hay por mes, para que el desplegable muestre el conteo y
+     no ofrezca meses vacios. */
+  const mesesEnDatos = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const g of glosas) {
+      const m2 = mesDe(g);
+      if (m2) c[m2] = (c[m2] || 0) + 1;
+    }
+    return c;
+  }, [glosas]);
+  const sinFecha = useMemo(() => glosas.filter((g) => !mesDe(g)).length, [glosas]);
 
   const m = useMemo(() => {
     let glosado = 0, aceptado = 0, sinResolver = 0, valorSinResolver = 0, sinCausal = 0;
@@ -331,10 +357,10 @@ export function CarteraWorkspace({
   );
 
   const limpiarFiltros = () => {
-    setFEmpresa(""); setFAnio(""); setFFacturador(""); setFFamilia("");
+    setFEmpresa(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
     setSoloSinCausal(false); setBusqueda("");
   };
-  const hayFiltro = !!(fEmpresa || fAnio || fFacturador || fFamilia || soloSinCausal || busqueda);
+  const hayFiltro = !!(fEmpresa || fAnio || fMes || fFacturador || fFamilia || soloSinCausal || busqueda);
 
   const sel =
     "rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12.5px] text-[#47597A] outline-none focus:border-[#1D58D8]";
@@ -415,6 +441,14 @@ export function CarteraWorkspace({
             {cat.anios.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
 
+          <label htmlFor="f-mes" className="sr-only">Filtrar por mes de elaboración</label>
+          <select id="f-mes" value={fMes} onChange={(e) => setFMes(e.target.value)} className={sel}>
+            <option value="">Todos los meses</option>
+            {MESES.filter(([n]) => mesesEnDatos[n]).map(([n, nombre]) => (
+              <option key={n} value={n}>{nombre} ({mesesEnDatos[n]})</option>
+            ))}
+          </select>
+
           <label htmlFor="f-fact" className="sr-only">Filtrar por facturador</label>
           <select id="f-fact" value={fFacturador} onChange={(e) => setFFacturador(e.target.value)} className={sel}>
             <option value="">Todos los facturadores</option>
@@ -466,6 +500,11 @@ export function CarteraWorkspace({
         <span className="ml-2 font-cifra text-[11.5px] text-[#94A3B8]">
           {visibles.length} de {glosas.length} glosas · {pesos(m.glosado)}
         </span>
+        {fMes && sinFecha > 0 && (
+          <span className="text-[11.5px] text-[#B45309]">
+            {sinFecha} glosas quedan fuera: no tienen fecha de elaboración.
+          </span>
+        )}
       </div>
 
       {/* ---------- RESUMEN ---------- */}
