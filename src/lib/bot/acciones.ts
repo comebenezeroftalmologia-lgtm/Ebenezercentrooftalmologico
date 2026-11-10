@@ -46,13 +46,39 @@ async function pacienteEnSisma(documento: string): Promise<boolean | null> {
 }
 
 /**
+ * Documentos a un solo error de distancia del dictado (un dígito de más, de menos, cambiado o dos
+ * dígitos seguidos invertidos). Sirve cuando la transcripción de voz agrega o cambia un dígito.
+ * Solo aplica a documentos numéricos; devuelve a lo sumo unos 250 candidatos.
+ */
+function documentosCercanos(doc: string): string[] {
+  if (!/^\d{6,12}$/.test(doc)) return [];
+  const out = new Set<string>();
+  for (let i = 0; i < doc.length; i++) {
+    out.add(doc.slice(0, i) + doc.slice(i + 1)); // un dígito de más
+    for (let d = 0; d <= 9; d++) {
+      const c = String(d);
+      if (c !== doc[i]) out.add(doc.slice(0, i) + c + doc.slice(i + 1)); // un dígito cambiado
+    }
+    if (i < doc.length - 1 && doc[i] !== doc[i + 1]) {
+      out.add(doc.slice(0, i) + doc[i + 1] + doc[i] + doc.slice(i + 2)); // dos dígitos invertidos
+    }
+  }
+  for (let i = 0; i <= doc.length; i++) {
+    for (let d = 0; d <= 9; d++) out.add(doc.slice(0, i) + String(d) + doc.slice(i)); // un dígito de menos
+  }
+  out.delete(doc);
+  return [...out].filter((c) => c.length >= 6 && c.length <= 12);
+}
+
+/**
  * Valida si un paciente está activo en la base de afiliados de MutualSer (lo mínimo necesario).
  * Por voz (cualquier canal distinto de "mcp") exige además el nombre completo dicho por la persona:
  * debe coincidir al menos un nombre y todos los apellidos registrados. Mientras la identidad no
  * esté verificada NO se devuelve ningún dato del afiliado (ni siquiera el nombre registrado).
  */
 export async function validarAfiliado(documentoCrudo: unknown, canal?: string, nombreHablado?: unknown): Promise<Resultado> {
-  const documento = normalizarDocumento(documentoCrudo);
+  const documentoDictado = normalizarDocumento(documentoCrudo);
+  let documento = documentoDictado;
   if (documento.length < 4 || documento.length > 20) {
     return { status: 400, body: { error: "Documento inválido", afiliado: false } };
   }
@@ -60,14 +86,32 @@ export async function validarAfiliado(documentoCrudo: unknown, canal?: string, n
   const exigeNombre = (canal ?? "bot") !== "mcp";
 
   const admin = createServiceClient();
-  const { data, error } = await admin
-    .from("mutualser_afiliados")
-    .select(
-      "primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, fecha_nacimiento, regimen, estado, municipio_afiliacion, tipo_doc, fecha_corte",
-    )
-    .eq("doc_beneficiario", documento)
-    .maybeSingle();
-  if (error) return { status: 500, body: { error: error.message } };
+  const COLUMNAS_AFILIADO =
+    "primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, fecha_nacimiento, regimen, estado, municipio_afiliacion, tipo_doc, fecha_corte";
+  const busqueda = await admin.from("mutualser_afiliados").select(COLUMNAS_AFILIADO).eq("doc_beneficiario", documento).maybeSingle();
+  let data = busqueda.data;
+  if (busqueda.error) return { status: 500, body: { error: busqueda.error.message } };
+
+  // Por voz, la transcripción a veces agrega, quita o cambia un dígito. Si el documento no existe
+  // pero hay UN afiliado a un solo error de distancia cuyo nombre completo coincide, se usa ese
+  // (nunca solo por parecido del número) y se avisa con documento_corregido.
+  let corregido = false;
+  if (!data && exigeNombre && nombre) {
+    const cercanos = documentosCercanos(documento);
+    if (cercanos.length) {
+      const { data: filas, error: errCercanos } = await admin
+        .from("mutualser_afiliados")
+        .select(`doc_beneficiario, ${COLUMNAS_AFILIADO}`)
+        .in("doc_beneficiario", cercanos);
+      if (errCercanos) return { status: 500, body: { error: errCercanos.message } };
+      const coinciden = (filas ?? []).filter((f) => verificarNombre(nombre, f) === "coincide");
+      if (coinciden.length === 1) {
+        documento = coinciden[0].doc_beneficiario;
+        data = coinciden[0];
+        corregido = true;
+      }
+    }
+  }
 
   const activo = data?.estado === "AC";
   await admin.from("mutualser_validaciones").insert({
@@ -138,6 +182,13 @@ export async function validarAfiliado(documentoCrudo: unknown, canal?: string, n
       paciente_en_sisma: enSisma,
       accion_sugerida: accion,
       corte_base: data.fecha_corte,
+      ...(corregido
+        ? {
+            documento_corregido: documento,
+            aviso_documento:
+              "El número dictado tenía un error; usa documento_corregido como cédula del paciente en las siguientes herramientas. No se lo menciones a la persona.",
+          }
+        : {}),
     },
   };
 }
@@ -310,7 +361,26 @@ export async function agendarCita(b: EntradaAgendar): Promise<Resultado> {
         const est = String(c.estado ?? c.Estado ?? "").toUpperCase();
         return est === "P" || est === "CC";
       });
-      if (pendiente) return await no("cita_duplicada", "derivar_humano", {}, pacienteNuevo, avisos);
+      if (pendiente) {
+        // Si es la MISMA cita que el bot acaba de agendar (el agente de voz a veces repite la llamada a la
+        // herramienta), se responde como agendada sin registrar un segundo intento ni crear otra cita.
+        const hace10min = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { data: previa } = await admin
+          .from("bot_agendamientos")
+          .select("id, detalle")
+          .eq("documento", doc)
+          .eq("fecha_cita", fecha)
+          .eq("hora_cita", hora)
+          .eq("cod_medico", codMedico)
+          .eq("resultado", "agendada")
+          .gte("created_at", hace10min)
+          .limit(1)
+          .maybeSingle();
+        if (previa) {
+          return { status: 200, body: { agendada: true, fecha, hora, paciente_nuevo: false, ya_agendada: true, detalle: previa.detalle } };
+        }
+        return await no("cita_duplicada", "derivar_humano", {}, pacienteNuevo, avisos);
+      }
     }
 
     const r = await sismaNodeJson<unknown>("/api/citas", {
