@@ -1933,11 +1933,10 @@ export default function TableroCarteraAnalytics() {
       totalCarteraReal: c.carteraReal,
       carteraCorriente: c.carteraCorriente,
       carteraVencida: c.carteraVencida,
-      mostrarLabel:
-        cierresMensuales.length <= 7 ||
-        idx === 0 ||
-        idx === cierresMensuales.length - 1 ||
-        idx % 2 === 0,
+      /* Antes se saltaba un mes de por medio cuando habia mas de siete:
+         la cifra que faltaba se iba a buscar a la tabla de abajo. Ya no
+         hay tabla, asi que todos los meses tienen que decir lo suyo. */
+      mostrarLabel: true,
     }));
 
     const puntosGrafica =
@@ -1956,17 +1955,19 @@ export default function TableroCarteraAnalytics() {
 
     const n = puntosGrafica.length;
     const svgW = 680;
-    /* Mas alto que antes (258). Con cuatro series y su cifra, el alto
-       viejo obligaba a amontonar las capsulas: se corrigio el dibujo tres
-       veces y el problema no era donde ponerlas sino que no cabian. Con
-       264px utiles en vez de 152, las lineas se separan solas y cada
-       cifra se queda al lado de la suya. */
-    const svgH = 268;
-    const padL = 44;
-    const padR = 44;
-    const padT = 36;
-    const baseLineY = 236;
-    const yFloor = 196; // Piso de la curva 38px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
+    /* La tabla que iba debajo se quito: las cuatro cifras de cada mes se
+       leen ahora DENTRO del dibujo. Ese espacio se le devolvio al alto de
+       la grafica, que paso de 268 a 356. No es un capricho de tamanio:
+       con cuatro cifras por mes, el alto manda. Cuanto mas separadas van
+       las lineas, menos tiene que correrse cada capsula para no chocar
+       con la vecina, y una cifra que no se corrio es una cifra que se lee
+       pegada a su propia linea. */
+    const svgH = 356;
+    const padL = 38;
+    const padR = 38;
+    const padT = 34;
+    const baseLineY = 322;
+    const yFloor = 276; // Piso de la curva 46px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
     const plotW = svgW - padL - padR;
     const plotH = yFloor - padT;
 
@@ -2021,10 +2022,11 @@ export default function TableroCarteraAnalytics() {
     const pathReal = construirCurvaSuave(coordsReal);
 
     /* Corriente y Vencida: las dos partes que suman el Total.
-       Van como lineas finas y SIN capsula de valor. Con once meses, cuatro
-       capsulas por punto taparian los nombres de los meses, y lo que Faber
-       pidió fue justamente que los meses se vean claros. El valor exacto
-       sigue disponible al pasar el mouse por encima. */
+       Van como lineas finas y punteadas, con su cifra en capsula chica y
+       del color de su linea. Durante un tiempo se dibujaron sin cifra,
+       porque cuatro numeros por mes se amontonaban; el arreglo no era
+       quitar dos de los cuatro sino darle alto a la grafica y separar las
+       capsulas en bloque, que es lo que se hace mas abajo. */
     const coordsCorriente = puntosGrafica.map((p, i) => ({
       x: getX(i),
       y: getYRaw(p.carteraCorriente),
@@ -2332,105 +2334,148 @@ export default function TableroCarteraAnalytics() {
                 strokeWidth="2.5"
               />
 
-              {/* Puntos, cápsulas de cifras por encima de las curvas y etiquetas del Eje X */}
+              {/* LAS CUATRO CIFRAS DEL MES, DENTRO DEL DIBUJO.
+
+                  Antes esto se resolvia con una tabla debajo de la
+                  grafica. Funcionaba, pero obligaba a mirar dos veces:
+                  la forma arriba y el numero abajo.
+
+                  Meter cuatro cifras por mes dentro del dibujo tiene un
+                  solo problema de verdad: que se tapen entre ellas. Se
+                  resuelve de una manera y no a parches:
+
+                    1. Cada cifra pide el lugar donde se entiende sola
+                       -- la de arriba encima de su punto, la de abajo
+                       debajo del suyo.
+                    2. Se ordenan de arriba a abajo y se separan hasta
+                       dejar SEPARACION entre una y la siguiente.
+                    3. Si la pila se sale por abajo, se sube entera; si
+                       entonces se sale por arriba, se baja entera.
+
+                  Al separarlas en bloque nunca quedan dos encima, por
+                  mas que las lineas se junten. Lo que antes se hacia
+                  puntuando posiciones una por una fallaba justo cuando
+                  mas falta hacia: en los meses donde las curvas se
+                  tocan.
+
+                  Y cuando una cifra tuvo que correrse de su punto, se
+                  le dibuja un hilo punteado hasta el: asi nunca hay
+                  duda de a cual linea pertenece. */}
               {puntosGrafica.map((pt, i) => {
                 const x = getX(i);
                 const yTot = coordsTotal[i].y;
                 const yReal = coordsReal[i].y;
-                const txtTotal = formatMillones(pt.carteraTotal);
-                const txtReal = formatMillones(pt.totalCarteraReal);
-                const wPillTot = Math.max(46, txtTotal.length * 6.5 + 14);
-                const wPillReal = Math.max(46, txtReal.length * 6.5 + 14);
-                const yPillTotCenter = yTot - 19;
-                const yPillRealCenter = Math.min(baseLineY - 12, yReal + 19);
-
-                /* Capsulas de Corriente y Vencida.
-                   Mas chicas y con borde de su color, para que se lean como
-                   el desglose y no compitan con Total y Real.
-
-                   Vencida va siempre ABAJO: su linea corre muy por debajo
-                   y ahi hay espacio libre todo el anio.
-
-                   Corriente cruza a Real varias veces (en enero esta por
-                   debajo, en octubre por encima), asi que no sirve un lado
-                   fijo: se escoge el lado donde NO choque, y si ninguno
-                   esta libre se corre un poco mas. Sin esto, en los meses
-                   del cruce quedarian dos cifras una encima de otra. */
                 const yCorr = coordsCorriente[i].y;
                 const yVenc = coordsVencida[i].y;
+
+                const SEPARACION = 20.5; // de centro a centro
+                const TECHO = 13;
+                const PISO = baseLineY - 12;
+
+                type Capsula = {
+                  k: string;
+                  ancla: number;   // el punto al que pertenece
+                  deseado: number; // donde le gustaria estar
+                  y: number;       // donde termina
+                  texto: string;
+                  ancho: number;
+                  fondo: string;
+                  borde: string;
+                  color: string;
+                  fuente: number;
+                  peso: number;
+                };
+
+                const anchoDe = (t: string, f: number, minimo: number) =>
+                  Math.max(minimo, t.length * f + 12);
+
+                const txtTotal = formatMillones(pt.carteraTotal);
+                const txtReal = formatMillones(pt.totalCarteraReal);
                 const txtCorr = formatMillones(pt.carteraCorriente);
                 const txtVenc = formatMillones(pt.carteraVencida);
-                const wPillCorr = Math.max(40, txtCorr.length * 5.8 + 12);
-                const wPillVenc = Math.max(40, txtVenc.length * 5.8 + 12);
 
-                const yPillVencCalc = Math.min(baseLineY - 10, yVenc + 16);
+                const capsulas: Capsula[] = [
+                  {
+                    k: "tot",
+                    ancla: yTot,
+                    deseado: yTot - 19,
+                    y: 0,
+                    texto: txtTotal,
+                    ancho: anchoDe(txtTotal, 5.9, 42),
+                    fondo: "#FFFFFF",
+                    borde: "#C3D9FA",
+                    color: "#0E245E",
+                    fuente: 10,
+                    peso: 800,
+                  },
+                  {
+                    k: "real",
+                    ancla: yReal,
+                    deseado: yReal + 19,
+                    y: 0,
+                    texto: txtReal,
+                    ancho: anchoDe(txtReal, 5.9, 42),
+                    fondo: "#FFFFFF",
+                    borde: "#A7E8CD",
+                    color: "#065F46",
+                    fuente: 10,
+                    peso: 800,
+                  },
+                ];
 
-                /* Corriente se coloca esquivando las OTRAS TRES capsulas,
-                   no solo Total y Real. Al principio se me olvido Vencida
-                   y en enero las dos quedaron una encima de la otra: en
-                   enero Corriente marca 2.036M y Vencida 1.790M, casi la
-                   misma altura. Lo mismo paso en septiembre contra Real.
+                /* Corriente y Vencida son el desglose: van con el color
+                   de su linea y mas chicas, para que se lean como lo que
+                   son y no compitan con Total y Real. */
+                if (hayDesglose) {
+                  capsulas.push({
+                    k: "corr",
+                    ancla: yCorr,
+                    deseado: yCorr - 17,
+                    y: 0,
+                    texto: txtCorr,
+                    ancho: anchoDe(txtCorr, 5.3, 36),
+                    fondo: "#F0F9FF",
+                    borde: "#7DD3FC",
+                    color: "#0369A1",
+                    fuente: 9,
+                    peso: 700,
+                  });
+                  capsulas.push({
+                    k: "venc",
+                    ancla: yVenc,
+                    deseado: yVenc + 17,
+                    y: 0,
+                    texto: txtVenc,
+                    ancho: anchoDe(txtVenc, 5.3, 36),
+                    fondo: "#FEF2F2",
+                    borde: "#FCA5A5",
+                    color: "#B91C1C",
+                    fuente: 9,
+                    peso: 700,
+                  });
+                }
 
-                   Se prueban cuatro posiciones, de la mas natural a la mas
-                   forzada, y se toma la primera que quede libre. */
-                const ocupadas = [yPillTotCenter, yPillRealCenter, yPillVencCalc];
-                /* Se puntea cada posicion posible por lo LEJOS que queda de
-                   la capsula mas cercana, y gana la mas despejada.
+                // 1. de arriba a abajo, separandolas
+                const pila = [...capsulas].sort((p1, p2) => p1.deseado - p2.deseado);
+                let anterior = -Infinity;
+                for (const c of pila) {
+                  c.y = Math.max(c.deseado, anterior + SEPARACION);
+                  anterior = c.y;
+                }
+                // 2. si la pila se paso del piso, baja entera
+                const sobra = pila[pila.length - 1].y - PISO;
+                if (sobra > 0) for (const c of pila) c.y -= sobra;
+                // 3. y si al subirla se salio por el techo, baja lo justo
+                const falta = TECHO - pila[0].y;
+                if (falta > 0) for (const c of pila) c.y += falta;
+                // 4. ultimo seguro: ninguna fuera del dibujo
+                for (const c of pila) c.y = Math.max(TECHO, Math.min(PISO, c.y));
 
-                   Antes se tomaba "la primera libre" y, si ninguna lo
-                   estaba, se usaba una fija a ciegas. Eso fue justo lo que
-                   paso en enero: Total y Real casi se tocan (3.827 y 3.747),
-                   las cuatro opciones chocaban, y la de rescate aterrizo
-                   encima de la verde, a dos pixeles. Elegir la mas
-                   despejada nunca se queda sin respuesta.
-
-                   El desempate suma una penalizacion por alejarse del punto:
-                   entre dos huecos igual de buenos, gana el mas cercano a
-                   su propia linea, que es donde se entiende a que serie
-                   pertenece la cifra. */
-                const desplazamientos: number[] = [];
-                // Con la grafica mas alta ya no hace falta mandar la
-                // capsula lejos: con +-48 sobra, y asi nunca se despega
-                // tanto de su linea que uno dude de a cual pertenece.
-                for (let d = -48; d <= 48; d += 4) desplazamientos.push(d);
-                /* Tambien hay que esquivar los PUNTOS, no solo las capsulas.
-                   En septiembre la capsula de Corriente quedo bien separada
-                   de las otras tres capsulas y aun asi se veia tapada: lo
-                   que le caia encima era el circulo verde de Cartera Real,
-                   que no estaba en la cuenta. Un punto pide menos espacio
-                   que una capsula, por eso va con su propia medida. */
-                const puntos = [yTot, yReal, yVenc];
-                const candidatas = desplazamientos.map((d) => {
-                  const y = Math.max(12, Math.min(baseLineY - 10, yCorr + d));
-                  const holgCapsulas = Math.min(...ocupadas.map((o) => Math.abs(y - o)));
-                  const holgPuntos = Math.min(...puntos.map((o) => Math.abs(y - o)));
-                  // Las holguras se tapan: pasado cierto punto ya no
-                  // estorban a nadie y lo que importa es quedar cerca de
-                  // su propia linea, que es lo que explica la cifra.
-                  return {
-                    y,
-                    puntaje:
-                      Math.min(holgCapsulas, 22) +
-                      Math.min(holgPuntos, 14) -
-                      Math.abs(d) / 10,
-                  };
-                });
-                const yPillCorrBruto = candidatas.reduce((a, b) =>
-                  b.puntaje > a.puntaje ? b : a,
-                ).y;
-                // Que nunca se salga del dibujo por arriba ni se meta en el
-                // eje por abajo: una capsula cortada se ve peor que movida.
-                const yPillCorr = Math.max(12, Math.min(baseLineY - 10, yPillCorrBruto));
-
-                const yPillVenc = yPillVencCalc;
-
-                /* En el primer y el ultimo mes la capsula se sale por el
-                   borde: va centrada en el punto, y el punto esta pegado
-                   al margen. Se corre hacia adentro lo necesario. */
+                /* En el primer y el ultimo mes la capsula se saldria por
+                   el borde: va centrada en el punto y el punto esta
+                   pegado al margen. Se corre hacia adentro lo necesario. */
                 const dentro = (w: number) =>
                   Math.max(w / 2 + 2, Math.min(svgW - w / 2 - 2, x));
-                const xCorr = dentro(wPillCorr);
-                const xVenc = dentro(wPillVenc);
 
                 return (
                   <g
@@ -2440,86 +2485,74 @@ export default function TableroCarteraAnalytics() {
                   >
                     {pt.mostrarLabel && (
                       <>
-                        {/* Conector sutil cuando los dos puntos están cercanos */}
-                        <line
-                          x1={x}
-                          y1={yTot + 4}
-                          x2={x}
-                          y2={yReal - 4}
-                          stroke="#94A3B8"
-                          strokeWidth="1"
-                          strokeDasharray="2 2"
-                        />
-
-                        {/* Cápsulas del desglose: Corriente y Vencida.
-                            Van primero para que queden POR DEBAJO de las de
-                            Total y Real: si dos se tocan, la que debe
-                            quedar legible es la principal. */}
-                        {/* Nodo y cápsula superior: Cartera Total */}
+                        {/* Nodos de las dos series principales */}
                         <circle
                           cx={x}
                           cy={yTot}
-                          r={4.8}
+                          r={4.6}
                           fill="#1D58D8"
                           stroke="#FFFFFF"
                           strokeWidth="1.6"
                         >
                           <title>{`${pt.etiquetaEje} · Cartera Total: ${formatCOP(pt.carteraTotal)}`}</title>
                         </circle>
-                        <rect
-                          x={x - wPillTot / 2}
-                          y={yPillTotCenter - 10}
-                          width={wPillTot}
-                          height={20}
-                          rx={10}
-                          fill="#FFFFFF"
-                          stroke="#DBEAFE"
-                          strokeWidth="1"
-                          filter="url(#sombraCapsulaTendencia)"
-                        />
-                        <text
-                          x={x}
-                          y={yPillTotCenter + 3.6}
-                          textAnchor="middle"
-                          fontSize="10"
-                          fontWeight="800"
-                          fill="#0E245E"
-                        >
-                          {txtTotal}
-                        </text>
-
-                        {/* Nodo y cápsula inferior: Cartera Real */}
                         <circle
                           cx={x}
                           cy={yReal}
-                          r={4.8}
+                          r={4.6}
                           fill="#059669"
                           stroke="#FFFFFF"
                           strokeWidth="1.6"
                         >
                           <title>{`${pt.etiquetaEje} · Cartera Real: ${formatCOP(pt.totalCarteraReal)}`}</title>
                         </circle>
-                        <rect
-                          x={x - wPillReal / 2}
-                          y={yPillRealCenter - 10}
-                          width={wPillReal}
-                          height={20}
-                          rx={10}
-                          fill="#FFFFFF"
-                          stroke="#D1FAE5"
-                          strokeWidth="1"
-                          filter="url(#sombraCapsulaTendencia)"
-                        />
-                        <text
-                          x={x}
-                          y={yPillRealCenter + 3.6}
-                          textAnchor="middle"
-                          fontSize="10"
-                          fontWeight="800"
-                          fill="#065F46"
-                        >
-                          {txtReal}
-                        </text>
+
+                        {/* El desglose va primero: si dos se rozan, la que
+                            tiene que quedar legible es la principal. */}
+                        {capsulas
+                          .slice()
+                          .sort((p1, p2) => (p1.fuente === p2.fuente ? 0 : p1.fuente - p2.fuente))
+                          .map((c) => {
+                            const cx = dentro(c.ancho);
+                            const corrida = Math.abs(c.y - c.ancla) > 13;
+                            return (
+                              <g key={`${pt.id}-${c.k}`}>
+                                {corrida ? (
+                                  <line
+                                    x1={x}
+                                    y1={c.ancla}
+                                    x2={cx}
+                                    y2={c.y}
+                                    stroke={c.borde}
+                                    strokeWidth="1"
+                                    strokeDasharray="2 2.5"
+                                    opacity="0.85"
+                                  />
+                                ) : null}
+                                <rect
+                                  x={cx - c.ancho / 2}
+                                  y={c.y - 9.5}
+                                  width={c.ancho}
+                                  height={19}
+                                  rx={9.5}
+                                  fill={c.fondo}
+                                  stroke={c.borde}
+                                  strokeWidth="1"
+                                  filter="url(#sombraCapsulaTendencia)"
+                                />
+                                <text
+                                  x={cx}
+                                  y={c.y + 3.4}
+                                  textAnchor="middle"
+                                  fontSize={c.fuente}
+                                  fontWeight={c.peso}
+                                  fill={c.color}
+                                >
+                                  {c.texto}
+                                </text>
+                              </g>
+                            );
+                          })}
                       </>
                     )}
 
@@ -2539,71 +2572,6 @@ export default function TableroCarteraAnalytics() {
               })}
             </svg>
             )}
-
-            {/* TABLA DEL DESGLOSE, DEBAJO DE LA GRAFICA.
-                Cuatro cifras flotando sobre las curvas nunca quedan claras:
-                siempre hay duda de cual pertenece a cual, y con once meses
-                se enciman. Aqui cada fila lleva su nombre y su color, y
-                cada columna su mes: no hay forma de confundirse. */}
-            {modoTendenciaCartera === "MES" && cierresMensuales.length > 0 ? (
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full border-collapse text-[10.5px]">
-                  <thead>
-                    <tr>
-                      <th className="sticky left-0 bg-white px-2 py-1.5 text-left font-semibold text-[#5B6B8C]">
-                        Millones
-                      </th>
-                      {cierresMensuales.map((c) => (
-                        <th
-                          key={`th-${c.mes}`}
-                          className="px-1.5 py-1.5 text-right font-semibold text-[#0E245E]"
-                        >
-                          {c.etiqueta}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { k: "carteraCorriente", n: "Corriente", c: "#38BDF8", t: "#0369A1" },
-                      { k: "carteraVencida", n: "Vencida", c: "#DC2626", t: "#B91C1C" },
-                      { k: "carteraTotal", n: "Total", c: "#1D58D8", t: "#0E245E" },
-                      { k: "carteraReal", n: "Real", c: "#059669", t: "#065F46" },
-                    ].map((fila, idx) => (
-                      <tr
-                        key={fila.k}
-                        style={{ backgroundColor: idx % 2 ? "#F8FAFC" : "#FFFFFF" }}
-                      >
-                        <td
-                          className="sticky left-0 whitespace-nowrap px-2 py-1 font-bold"
-                          style={{
-                            color: fila.t,
-                            backgroundColor: idx % 2 ? "#F8FAFC" : "#FFFFFF",
-                          }}
-                        >
-                          <span
-                            className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
-                            style={{ backgroundColor: fila.c }}
-                          />
-                          {fila.n}
-                        </td>
-                        {cierresMensuales.map((c) => (
-                          <td
-                            key={`${fila.k}-${c.mes}`}
-                            className="whitespace-nowrap px-1.5 py-1 text-right font-mono font-semibold"
-                            style={{ color: fila.t }}
-                          >
-                            {Math.round(
-                              (c[fila.k as keyof typeof c] as number) / 1_000_000,
-                            ).toLocaleString("es-CO")}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
           </div>
 
           {/* PANEL DERECHO: TABLA ESTRUCTURADA "FECHAS DE CORTE (EXCEL / SISMA)" */}

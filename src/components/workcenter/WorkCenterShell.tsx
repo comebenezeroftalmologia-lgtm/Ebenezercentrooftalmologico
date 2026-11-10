@@ -28,6 +28,12 @@ const ARCHIVOS_TRABAJO = [
     subtitulo: "Glosas, devoluciones y anulaciones",
     href: "/workcenter/cartera",
   },
+  {
+    id: "talento-humano",
+    nombre: "Talento Humano — Base de datos",
+    subtitulo: "Planta, ausentismos, cursos y capacitaciones",
+    href: "/workcenter/talento-humano",
+  },
 ];
 
 export function WorkCenterShell({
