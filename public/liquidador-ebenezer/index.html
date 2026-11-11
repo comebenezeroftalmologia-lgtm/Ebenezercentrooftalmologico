@@ -20199,10 +20199,18 @@ try{
   };
 
   window.__fichaAudit = [];
+  /* Cada liquidación llama aquí miles de veces seguidas. Si entre dos llamadas pasa
+     más de un segundo y medio, es que empezó otra liquidación: la lista arranca de cero.
+     (Antes se borraba al apretar el botón, y como el motor calcula de una, se borraba
+     JUSTO DESPUÉS de haberla llenado: la lista salía siempre vacía.) */
+  var ultima = 0;
   var _orig = v4CirFija;
   v4CirFija = function(cfg, proc, emp, q){
     var r = _orig.apply(this, arguments);
     try{
+      var ahora = Date.now();
+      if(ahora - ultima > 1500) window.__fichaAudit = [];
+      ultima = ahora;
       if(!r || !r.src) return r;
       var med = MED_DE.get(cfg);
       if(!med) return r;
@@ -20342,8 +20350,7 @@ try{
   try{
     var b = document.getElementById("btnCalc");
     if(b) b.addEventListener("click", function(){
-      window.__fichaAudit = [];                 /* cada liquidación empieza su propia cuenta */
-      setTimeout(pintar, 7000); setTimeout(pintar, 18000);
+      setTimeout(pintar, 7000); setTimeout(pintar, 18000); setTimeout(pintar, 35000);
     });
   }catch(e){}
   try{
