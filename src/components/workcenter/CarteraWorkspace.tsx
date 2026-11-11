@@ -356,8 +356,13 @@ export function CarteraWorkspace({
   }, [glosas]);
 
   const facturadoresEnDatos = useMemo(
-    () => Array.from(new Set(glosas.map((g) => g.facturador || g.responsableRespuesta).filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b, "es")),
+    () => Array.from(
+      new Set(
+        glosas
+          .map((g) => g.facturador || g.responsableRespuesta)
+          .filter((x): x is string => !!x),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "es")),
     [glosas],
   );
 
