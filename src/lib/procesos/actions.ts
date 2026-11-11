@@ -32,14 +32,14 @@ export async function loginAction(
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
-    return { error: "Ingresa correo y contraseÃ±a." };
+    return { error: "Ingresa correo y contraseña." };
   }
 
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: "Correo o contraseÃ±a incorrectos." };
+    return { error: "Correo o contraseña incorrectos." };
   }
 
   redirect("/");
@@ -57,7 +57,7 @@ export async function establecerPasswordInicialAction(
 ): Promise<{ error: string | null }> {
   const user = await requireAppUser();
   const password = String(formData.get("password") ?? "");
-  if (password.length < 8) return { error: "La contraseÃ±a debe tener al menos 8 caracteres." };
+  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
 
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.updateUser({ password });
@@ -75,8 +75,8 @@ export async function cambiarPasswordAction(
   const password = String(formData.get("password") ?? "");
   const confirmar = String(formData.get("confirmar") ?? "");
 
-  if (password.length < 8) return { error: "La contraseÃ±a debe tener al menos 8 caracteres." };
-  if (password !== confirmar) return { error: "Las contraseÃ±as no coinciden." };
+  if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
+  if (password !== confirmar) return { error: "Las contraseñas no coinciden." };
 
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.updateUser({ password });
@@ -90,7 +90,7 @@ export async function solicitarRecuperacionAction(
   formData: FormData
 ): Promise<{ error: string | null; ok?: boolean }> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!EMAIL_PATTERN.test(email)) return { error: "Ingresa un correo vÃ¡lido." };
+  if (!EMAIL_PATTERN.test(email)) return { error: "Ingresa un correo válido." };
 
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -101,7 +101,7 @@ export async function solicitarRecuperacionAction(
   return { error: null, ok: true };
 }
 
-// --- AdministraciÃ³n de usuarios (solo admin) ---------------------------
+// --- Administración de usuarios (solo admin) ---------------------------
 
 export async function invitarUsuarioAction(
   _prevState: { error: string | null; ok?: boolean },
@@ -291,7 +291,7 @@ export async function crearAreaAction(
 ): Promise<{ error: string | null }> {
   await requireAdmin();
   const nombre = String(formData.get("nombre") ?? "").trim();
-  if (!nombre) return { error: "Falta el nombre del Ã¡rea." };
+  if (!nombre) return { error: "Falta el nombre del área." };
 
   const supabase = createServiceClient();
   const { data, error } = await supabase
@@ -300,7 +300,7 @@ export async function crearAreaAction(
     .select("id")
     .single();
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe un Ã¡rea con ese nombre." };
+    if (error.code === "23505") return { error: "Ya existe un área con ese nombre." };
     return { error: error.message };
   }
 
@@ -309,7 +309,7 @@ export async function crearAreaAction(
   redirect(`/procesos/areas/${data.id}`);
 }
 
-// --- Asignaciones de Ã¡rea (lÃ­der / colaborador) ------------------------
+// --- Asignaciones de área (líder / colaborador) ------------------------
 
 export async function asignarLiderAction(areaId: string, userId: string) {
   const admin = await requireAdmin();
@@ -440,7 +440,7 @@ export async function crearTareaAction(
   const slaHorasRaw = String(formData.get("slaHoras") ?? "").trim();
   const slaHoras = slaHorasRaw ? Number(slaHorasRaw) : null;
   if (slaHoras !== null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
-    return { error: "El SLA debe ser un nÃºmero de horas mayor a 0." };
+    return { error: "El SLA debe ser un número de horas mayor a 0." };
   }
   const relacionarConTareaId = String(formData.get("relacionarConTareaId") ?? "").trim() || null;
   const relacionarNota = String(formData.get("relacionarNota") ?? "").trim() || null;
@@ -474,7 +474,7 @@ export async function crearTareaAction(
     });
     if (relError) {
       revalidatePath(`/procesos/actividades/${actividadId}`);
-      return { error: `La tarea se creÃ³, pero no se pudo relacionar: ${relError.message}`, ok: true };
+      return { error: `La tarea se creó, pero no se pudo relacionar: ${relError.message}`, ok: true };
     }
   }
 
@@ -524,7 +524,7 @@ export async function actualizarTareaAction(
   const slaHorasRaw = String(formData.get("slaHoras") ?? "").trim();
   const slaHoras = slaHorasRaw ? Number(slaHorasRaw) : null;
   if (slaHoras !== null && (!Number.isFinite(slaHoras) || slaHoras <= 0)) {
-    return { error: "El SLA debe ser un nÃºmero de horas mayor a 0." };
+    return { error: "El SLA debe ser un número de horas mayor a 0." };
   }
   if (!nombre) return { error: "Falta el nombre de la tarea." };
 
@@ -597,7 +597,7 @@ export async function eliminarRelacionTareaAction(relacionId: string, tareaId: s
   revalidatePath(`/procesos/tareas/${tareaId}`);
 }
 
-// --- BÃºsqueda para relacionar tareas -----------------------------------
+// --- Búsqueda para relacionar tareas -----------------------------------
 
 export async function buscarTareasParaRelacionarAction(query: string, excluirTareaId?: string) {
   await requireAppUser();

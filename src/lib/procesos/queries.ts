@@ -14,12 +14,12 @@ import type {
   TareaRelacionada,
 } from "@/lib/procesos/types";
 
-const AREA_SIAU_NOMBRE = "AtenciÃ³n al Usuario (SIAU)";
+const AREA_SIAU_NOMBRE = "Atención al Usuario (SIAU)";
 let siauSeedPromise: Promise<void> | null = null;
 
 /**
- * Garantiza de forma idempotente que exista el Ã¡rea "AtenciÃ³n al Usuario (SIAU)"
- * y que tenga asignado a Pedro Herrera (o el administrador activo) como lÃ­der.
+ * Garantiza de forma idempotente que exista el área "Atención al Usuario (SIAU)"
+ * y que tenga asignado a Pedro Herrera (o el administrador activo) como líder.
  */
 async function ensureAreaSiauSeeded(): Promise<void> {
   if (siauSeedPromise) return siauSeedPromise;

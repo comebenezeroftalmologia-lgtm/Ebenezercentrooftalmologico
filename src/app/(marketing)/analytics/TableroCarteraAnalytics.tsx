@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import carteraInitialData from "@/lib/cartera-data.json";
 import { FechaDelDato } from "@/components/FechaDelDato";
-import { normalizarEmpresaYNit, CAUSAS_NORMATIVAS } from "@/components/workcenter/CarteraWorkspace";
+import { normalizarEmpresaYNit, CAUSAS_NORMATIVAS, causaNormativaDe } from "@/components/workcenter/CarteraWorkspace";
 
 type CorteSismaBack = {
   fechaCorte: string;
@@ -52,25 +52,23 @@ type GlosaRow = {
   anio: string;
   factura: string;
   fechaRadicacion: string;
+  fechaNotificacionGlosa?: string;
   valorRadicado: number;
   valorFactura: number;
-  valorGlosado: number;
-  // Lo que la empresa aceptó pagar de la glosa. La API ya lo entrega
-  // (valor_aceptado) y el tablero lo suma; faltaba declararlo aquí.
-  valorAceptado?: number | null;
   valorFacturado?: number;
-  fechaNotificacionGlosa?: string;
+  valorGlosado: number;
+  valorAceptado?: number | null;
   motivoCodigo?: string;
-  responsableRespuesta?: string;
-  responsable?: string;
-  tipoGlosa?: string;
-  alcance?: string;
-  estado?: string;
   motivoGlosa: string;
   facturador: string;
   responsableAceptacion: string;
+  responsableRespuesta?: string;
+  responsable?: string;
   observacionInterna: string;
   notaCredito: string;
+  tipoGlosa?: string;
+  alcance?: string;
+  estado?: string;
 };
 
 type PendienteRow = {
@@ -5388,11 +5386,17 @@ export default function TableroCarteraAnalytics() {
       {/* CUADRO 2: DASHBOARD EJECUTIVO · GLOSAS, DEVOLUCIONES Y FACTURACIÓN */}
       {/* ===================================================================== */}
       {(() => {
-        const totFacturado = glosasFiltradas.reduce((a, g) => a + (g.valorFactura || g.valorRadicado || 0), 0);
+        const totFacturado = glosasFiltradas.reduce(
+          (a, g) => a + (g.valorFacturado || g.valorFactura || g.valorRadicado || 0),
+          0
+        );
         const totGlosado = glosasFiltradas.reduce((a, g) => a + (g.valorGlosado || 0), 0);
         const totAceptado = glosasFiltradas.reduce((a, g) => a + (g.valorAceptado ?? 0), 0);
-        const glosasPend = glosasFiltradas.filter((g) => g.subtabla === "PENDIENTE" || !g.subtabla);
+        const glosasPend = glosasFiltradas.filter(
+          (g) => (g.estado || g.subtabla || "PENDIENTE") === "PENDIENTE"
+        );
         const valPend = glosasPend.reduce((a, g) => a + (g.valorGlosado || 0), 0);
+        const totAnuladasMonto = anuladasFiltradas.reduce((a, r) => a + (r.valorRadicado || 0), 0);
 
         // Agrupación por Causa Normativa (FA, TA, SO, AU, CO)
         const porCausaNorma: Record<string, { monto: number; cantidad: number }> = {
@@ -5406,9 +5410,9 @@ export default function TableroCarteraAnalytics() {
         let cantOtrasCausas = 0;
 
         for (const g of glosasFiltradas) {
-          const cod = (g.motivoCodigo || "").trim().toUpperCase().slice(0, 2);
+          const cod = causaNormativaDe(g.motivoCodigo);
           const v = g.valorGlosado || 0;
-          if (porCausaNorma[cod]) {
+          if (cod && porCausaNorma[cod]) {
             porCausaNorma[cod].monto += v;
             porCausaNorma[cod].cantidad += 1;
           } else {
@@ -5417,33 +5421,40 @@ export default function TableroCarteraAnalytics() {
           }
         }
 
-        // Agrupación unificada por NIT de Empresas
+        // Agrupación unificada por NIT real de Empresas (SISMA Contabilidad)
         const porEmpresaNit: Record<string, { nit: string; nombre: string; monto: number; glosas: number }> = {};
         for (const g of glosasFiltradas) {
           const info = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
-          if (!porEmpresaNit[info.nombre]) {
-            porEmpresaNit[info.nombre] = { nit: info.nit, nombre: info.nombre, monto: 0, glosas: 0 };
+          const clave = info.nombre || "SIN EMPRESA";
+          if (!porEmpresaNit[clave]) {
+            porEmpresaNit[clave] = { nit: info.nit, nombre: clave, monto: 0, glosas: 0 };
           }
-          porEmpresaNit[info.nombre].monto += (g.valorGlosado || 0);
-          porEmpresaNit[info.nombre].glosas += 1;
+          porEmpresaNit[clave].monto += g.valorGlosado || 0;
+          porEmpresaNit[clave].glosas += 1;
         }
         const topEmpresas = Object.values(porEmpresaNit).sort((a, b) => b.monto - a.monto);
         const maxEmpMonto = topEmpresas[0]?.monto || 1;
 
-        // Agrupación por Responsable
+        // Agrupación por Responsable real de responder la glosa (sin inventar por empresa)
         const porResp: Record<string, { monto: number; glosas: number }> = {};
         for (const g of glosasFiltradas) {
-          const r = normalizarResponsableReal(g.facturador || g.responsable, g.empresa);
+          const r =
+            (g.responsableRespuesta || g.responsableAceptacion || "").trim().toUpperCase() ||
+            "SIN ASIGNAR EN WORKCENTER";
           if (!porResp[r]) porResp[r] = { monto: 0, glosas: 0 };
-          porResp[r].monto += (g.valorGlosado || 0);
+          porResp[r].monto += g.valorGlosado || 0;
           porResp[r].glosas += 1;
         }
         const topResponsables = Object.entries(porResp).sort((a, b) => b[1].monto - a[1].monto);
         const maxRespMonto = topResponsables[0]?.[1]?.monto || 1;
 
-        // Conteo de Notas Crédito
-        const conNC = glosasFiltradas.filter((g) => g.notaCredito && g.notaCredito.trim() !== "" && g.notaCredito.trim().toUpperCase() !== "N/A");
+        // Conteo de Notas Crédito y pendientes de diligenciar NC / N/A
+        const conNC = glosasFiltradas.filter((g) => {
+          const nc = (g.notaCredito || "").trim().toUpperCase();
+          return Boolean(nc && nc !== "N/A" && nc !== "NA" && nc !== "NO APLICA");
+        });
         const valNC = conNC.reduce((a, g) => a + (g.valorGlosado || 0), 0);
+        const sinDiligenciarNC = glosasFiltradas.filter((g) => !(g.notaCredito || "").trim()).length;
 
         return (
           <div
@@ -5489,8 +5500,8 @@ export default function TableroCarteraAnalytics() {
               </div>
             </div>
 
-            {/* 4 KPIs Ejecutivos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* 5 KPIs Ejecutivos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
               <div className="p-4 rounded-xl border bg-[#F8FAFC]" style={{ borderColor: "#E2ECF8" }}>
                 <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
                   Total Glosado Notificado
@@ -5499,7 +5510,7 @@ export default function TableroCarteraAnalytics() {
                   {formatCOP(totGlosado)}
                 </div>
                 <div className="mt-1 text-[11.5px] text-[#64748B]">
-                  {glosasFiltradas.length} glosas en el período activo
+                  {glosasFiltradas.length} glosas · Facturado base: {formatMillones(totFacturado)}
                 </div>
               </div>
 
@@ -5511,13 +5522,13 @@ export default function TableroCarteraAnalytics() {
                   {formatCOP(valPend)}
                 </div>
                 <div className="mt-1 text-[11.5px] text-[#1D4ED8] font-semibold">
-                  {glosasPend.length} glosas esperan respuesta ({totGlosado > 0 ? Math.round((valPend / totGlosado) * 100) : 0}%)
+                  {glosasPend.length} esperan respuesta ({totGlosado > 0 ? Math.round((valPend / totGlosado) * 100) : 0}%)
                 </div>
               </div>
 
               <div className="p-4 rounded-xl border bg-[#ECFDF5]/60" style={{ borderColor: "#A7F3D0" }}>
                 <div className="text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
-                  Valor Aceptado / En Trámite
+                  Valor Aceptado
                 </div>
                 <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#059669]">
                   {formatCOP(totAceptado)}
@@ -5535,7 +5546,19 @@ export default function TableroCarteraAnalytics() {
                   {formatCOP(valNC)}
                 </div>
                 <div className="mt-1 text-[11.5px] text-[#5B21B6] font-semibold">
-                  {conNC.length} glosas con N° de NC registrada
+                  {conNC.length} con N° NC · {sinDiligenciarNC} sin N°/N/A
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-[#FFF1F2]/60" style={{ borderColor: "#FECDD3" }}>
+                <div className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider">
+                  Facturas Anuladas / Reempl.
+                </div>
+                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#BE123C]">
+                  {anuladasFiltradas.length}
+                </div>
+                <div className="mt-1 text-[11.5px] text-[#BE123C] font-semibold">
+                  Monto: {formatMillones(totAnuladasMonto)}
                 </div>
               </div>
             </div>
@@ -5600,6 +5623,18 @@ export default function TableroCarteraAnalytics() {
                   );
                 })}
               </div>
+              {cantOtrasCausas > 0 && (
+                <div className="pt-1 flex flex-wrap items-center justify-between text-[11.5px] text-[#64748B] border-t border-[#E2ECF8]">
+                  <span>
+                    Devoluciones / Otras causales o pendientes de clasificar en WorkCenter:{" "}
+                    <strong className="text-[#0E245E]">{cantOtrasCausas} registros</strong>
+                  </span>
+                  <span className="font-mono font-bold text-[#0E245E]">
+                    {formatCOP(montoOtrasCausas)} (
+                    {totGlosado > 0 ? Math.round((montoOtrasCausas / totGlosado) * 100) : 0}%)
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* SECCIÓN 2: TOP EMPRESAS POR NIT Y GESTIÓN POR RESPONSABLE */}
@@ -5611,7 +5646,7 @@ export default function TableroCarteraAnalytics() {
                     <h4 className="text-[13px] font-bold text-[#0E245E]">
                       Empresas con Mayor Glosa (Unificadas por NIT)
                     </h4>
-                    <p className="text-[11px] text-[#64748B]">Entidades canónicas sin duplicidades</p>
+                    <p className="text-[11px] text-[#64748B]">Entidades canónicas verificadas con NIT contable SISMA</p>
                   </div>
                   <span className="text-[11px] font-semibold text-[#1D58D8]">
                     {topEmpresas.length} entidades
@@ -5627,8 +5662,8 @@ export default function TableroCarteraAnalytics() {
                         <div className="flex items-center justify-between text-xs">
                           <div className="min-w-0 flex-1 truncate pr-2">
                             <span className="font-bold text-[#0F172A]">{emp.nombre}</span>
-                            {emp.nit !== "S/N" && (
-                              <span className="ml-1.5 text-[10px] font-mono text-[#64748B] bg-slate-100 px-1.5 py-0.2 rounded">
+                            {emp.nit && (
+                              <span className="ml-1.5 text-[10px] font-mono text-[#64748B] bg-slate-100 px-1.5 py-0.5 rounded">
                                 NIT: {emp.nit}
                               </span>
                             )}

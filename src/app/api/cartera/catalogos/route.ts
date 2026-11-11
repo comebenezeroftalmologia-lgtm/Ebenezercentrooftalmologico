@@ -50,6 +50,28 @@ const REFERENCIAS: Record<Tabla, { tabla: string; col: string }[]> = {
 const esTabla = (x: unknown): x is Tabla =>
   x === "cf_empresas" || x === "cf_responsables";
 
+const limpiarUtf8 = (s: string): string => {
+  if (!s || (!s.includes("Ã") && !s.includes("Â") && !s.includes("ã"))) return s;
+  try {
+    const bytes = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) {
+      const code = s.charCodeAt(i);
+      if (code > 255) throw new Error("non-latin1");
+      bytes[i] = code;
+    }
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return s
+      .replace(/Ã‘/g, "Ñ").replace(/Ã±/g, "ñ")
+      .replace(/Ã\u0081/g, "Á").replace(/Ã¡/g, "á")
+      .replace(/Ã‰/g, "É").replace(/Ã©/g, "é")
+      .replace(/Ã\u008d/g, "Í").replace(/Ã­/g, "í")
+      .replace(/Ã“/g, "Ó").replace(/Ã³/g, "ó")
+      .replace(/Ãš/g, "Ú").replace(/Ãº/g, "ú")
+      .replace(/Ãœ/g, "Ü").replace(/Ã¼/g, "ü");
+  }
+};
+
 async function contarUso(
   db: ReturnType<typeof createServiceClient>,
   tabla: Tabla,
@@ -90,7 +112,7 @@ export async function GET() {
     for (const f of data || []) {
       filas.push({
         id: f.id as string,
-        nombre: f.nombre as string,
+        nombre: limpiarUtf8(String(f.nombre ?? "")),
         activo: f.activo as boolean,
         usos: await contarUso(db, tabla, f.id as string),
       });

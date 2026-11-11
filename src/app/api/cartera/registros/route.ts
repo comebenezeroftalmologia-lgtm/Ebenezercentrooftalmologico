@@ -15,7 +15,32 @@ export const dynamic = "force-dynamic";
 
 type Fila = Record<string, unknown>;
 
-const txt = (v: unknown) => (v === null || v === undefined || v === "" ? null : String(v));
+const limpiarUtf8 = (s: string): string => {
+  if (!s || (!s.includes("Ã") && !s.includes("Â") && !s.includes("ã"))) return s;
+  return s
+    .replace(/tecnologÃ-as/gi, "tecnologías")
+    .replace(/dÃ-as/gi, "días")
+    .replace(/Ã‘|Ã\x91|ã\x91/g, "Ñ")
+    .replace(/Ã±|ã±/g, "ñ")
+    .replace(/Ã\x81/g, "Á")
+    .replace(/Ã\x89/g, "É")
+    .replace(/Ã\x8d|Ã•/g, "Í")
+    .replace(/Ã\x93/g, "Ó")
+    .replace(/Ã\x9a/g, "Ú")
+    .replace(/Ã¡|ã¡/g, "á")
+    .replace(/Ã©|ã©/g, "é")
+    .replace(/Ã­|Ã\xad|ã­/g, "í")
+    .replace(/Ã³|ã³/g, "ó")
+    .replace(/Ãº|ãº/g, "ú")
+    .replace(/Ã¼/g, "ü")
+    .replace(/Â·/g, "·")
+    .replace(/Â°/g, "°")
+    .replace(/Â¿/g, "¿")
+    .replace(/Â¡/g, "¡");
+};
+
+const strLimpio = (v: unknown): string => (v === null || v === undefined ? "" : limpiarUtf8(String(v)));
+const txt = (v: unknown) => (v === null || v === undefined || v === "" ? null : limpiarUtf8(String(v)));
 const num = (v: unknown) => {
   if (v === null || v === undefined || v === "") return 0;
   const n = Number(String(v).replace(/[^0-9.-]/g, ""));
@@ -24,8 +49,59 @@ const num = (v: unknown) => {
 const fecha = (v: unknown) => {
   const s = txt(v);
   if (!s) return null;
-  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s.trim());
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return null;
 };
+
+const esNotaCreditoValida = (v: unknown): boolean => {
+  const s = String(v ?? "").trim().toUpperCase();
+  if (!s) return false;
+  if (s === "N/A" || s === "NA" || s === "NO APLICA") return true;
+  return /\d/.test(s);
+};
+
+const CAUSALES_NORMATIVAS_BASE: { codigo: string; familia: string; nombre: string }[] = [
+  {
+    codigo: "FA",
+    familia: "Facturación",
+    nombre: "Diferencias en cantidades de servicios, errores administrativos o copagos mal calculados.",
+  },
+  {
+    codigo: "TA",
+    familia: "Tarifas",
+    nombre: "Diferencias entre los valores cobrados y los precios pactados en el contrato o fijados por ley.",
+  },
+  {
+    codigo: "SO",
+    familia: "Soportes",
+    nombre: "Inconsistencia, enmendadura o ausencia parcial/total de los documentos requeridos (ej. historia clínica).",
+  },
+  {
+    codigo: "AU",
+    familia: "Autorizaciones",
+    nombre: "Servicios prestados sin el debido aval o número de autorización acordado con la ERP.",
+  },
+  {
+    codigo: "CO",
+    familia: "Cobertura",
+    nombre: "Tecnologías o servicios prestados que no corresponden al Plan de Beneficios (PBS) a cargo de esa entidad.",
+  },
+];
+
+async function asegurarCausalNormativa(
+  db: ReturnType<typeof createServiceClient>,
+  codigoRaw: string | null
+) {
+  if (!codigoRaw) return;
+  const cod = codigoRaw.trim().toUpperCase();
+  const base = CAUSALES_NORMATIVAS_BASE.find((c) => c.codigo === cod);
+  if (!base) return;
+  await db
+    .from("cf_causales")
+    .upsert({ codigo: base.codigo, familia: base.familia, nombre: base.nombre, activo: true }, { onConflict: "codigo" });
+}
 
 /**
  * Busca un nombre en un catalogo (cf_empresas, cf_responsables) y, si no
@@ -55,7 +131,7 @@ async function anotar(
   entidad: "factura" | "glosa" | "pendiente",
   entidadId: string,
   facturaNumero: string | null,
-  accion: "CREAR" | "EDITAR" | "CAMBIO_ESTADO" | "CLASIFICAR",
+  accion: "CREAR" | "EDITAR" | "CAMBIO_ESTADO" | "CLASIFICAR" | "IMPORTAR",
   detalle: Fila,
   userId: string | null,
   userNombre: string | null
@@ -141,33 +217,33 @@ export async function GET() {
   }
 
   const emp = (r: Fila) =>
-    ((r.cf_empresas as Fila | null)?.nombre as string) ||
-    (r.empresa_nombre_original as string) ||
+    strLimpio((r.cf_empresas as Fila | null)?.nombre) ||
+    strLimpio(r.empresa_nombre_original) ||
     "";
 
   const filaFactura = (r: Fila, i: number) => ({
     id: String(r.id),
     numero: i + 1,
     empresa: emp(r),
-    empresaOriginal: (r.empresa_nombre_original as string) || emp(r),
+    empresaOriginal: strLimpio(r.empresa_nombre_original) || emp(r),
     fechaFactura: (r.fecha_elaboracion as string) || "",
-    periodo: (r.periodo as string) || "",
+    periodo: strLimpio(r.periodo),
     anio: r.anio ? String(r.anio) : "",
-    factura: r.numero as string,
+    factura: strLimpio(r.numero),
     fechaRadicacion: (r.fecha_radicacion as string) || "",
     valorRadicado: Number(r.valor_radicado) || 0,
     copagos: Number(r.copagos) || 0,
     valorGlosaDevolucion: Number(r.valor_glosa_devolucion) || 0,
     tipo: "GLOSA",
-    motivo: (r.motivo_anulacion_texto as string) || "",
+    motivo: strLimpio(r.motivo_anulacion_texto),
     facturaReemplaza: r.reemplaza_a_id ? "SI" : "",
     fechaAnulacion: (r.fecha_anulacion as string) || "",
     fechaRadicacionReemplazo: "",
-    rips: (r.rips as string) || "",
-    revisionFinanciera: (r.revision_financiera as string) || "",
+    rips: strLimpio(r.rips),
+    revisionFinanciera: strLimpio(r.revision_financiera),
     preagrupado: "",
-    responsable: ((r.cf_responsables as Fila | null)?.nombre as string) || "SIN ASIGNAR",
-    estadoGestion: (r.estado as string) || "RADICADA",
+    responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre) || "SIN ASIGNAR",
+    estadoGestion: strLimpio(r.estado) || "RADICADA",
   });
 
   const todas = (facturas.data || []) as unknown as Fila[];
@@ -184,79 +260,77 @@ export async function GET() {
       id: String(r.id),
       subtabla: String(r.estado),
       empresa:
-        ((f.cf_empresas as Fila | null)?.nombre as string) ||
-        (f.empresa_nombre_original as string) ||
+        strLimpio((f.cf_empresas as Fila | null)?.nombre) ||
+        strLimpio(f.empresa_nombre_original) ||
         "",
-      empresaOriginal: (f.empresa_nombre_original as string) || "",
+      empresaOriginal: strLimpio(f.empresa_nombre_original),
       fechaFactura: (f.fecha_elaboracion as string) || "",
       periodo: "",
       anio: f.anio ? String(f.anio) : "",
-      factura: (f.numero as string) || "",
+      factura: strLimpio(f.numero),
       fechaRadicacion: (f.fecha_radicacion as string) || "",
       fechaNotificacionGlosa: (r.fecha_glosa as string) || "",
       valorRadicado: Number(f.valor_radicado) || 0,
       valorFactura: Number(f.valor_radicado) || 0,
       valorFacturado: Number(f.valor_radicado) || 0,
       valorGlosado: Number(r.valor_glosado) || 0,
-      // null se conserva como null a proposito: "sin resolver" no es "cero
-      // aceptado". Si se volviera 0 la pantalla mostraria "no aceptada" en
+      // null se conserva como null a propósito: "sin resolver" no es "cero
+      // aceptado". Si se volviera 0 la pantalla mostraría "no aceptada" en
       // glosas que nadie ha mirado.
       valorAceptado:
         r.valor_aceptado === null || r.valor_aceptado === undefined
           ? null
           : Number(r.valor_aceptado),
-      // La causal de la norma y el texto que escribio Facturacion son dos
-      // cosas distintas y las dos se conservan: el codigo para medir, el
-      // texto porque es el que cuenta que paso de verdad.
-      motivoCodigo: (r.motivo_codigo as string) || "",
-      motivoGlosa: (r.motivo_texto as string) || "",
-      facturador: ((r.facturador as Fila | null)?.nombre as string) || "",
-      responsableAceptacion: ((r.aceptacion as Fila | null)?.nombre as string) || "",
-      responsableRespuesta: ((r.aceptacion as Fila | null)?.nombre as string) || ((r.facturador as Fila | null)?.nombre as string) || "",
-      observacionInterna: (r.observacion as string) || "",
-      notaCredito: (r.nota_credito as string) || "",
-      tipoGlosa: (r.tipo as string) || "GLOSA",
-      // null = todavia sin definir. No se rellena con un valor por defecto:
-      // la pantalla lo muestra en blanco para que se note.
-      alcance: (r.alcance as string) || "",
-      estado: (r.estado as string) || "PENDIENTE",
+      motivoCodigo: strLimpio(r.motivo_codigo),
+      motivoGlosa: strLimpio(r.motivo_texto),
+      facturador: strLimpio((r.facturador as Fila | null)?.nombre),
+      responsableAceptacion: strLimpio((r.aceptacion as Fila | null)?.nombre),
+      responsableRespuesta: strLimpio((r.aceptacion as Fila | null)?.nombre),
+      observacionInterna: strLimpio(r.observacion),
+      notaCredito: strLimpio(r.nota_credito),
+      tipoGlosa: strLimpio(r.tipo) || "GLOSA",
+      alcance: strLimpio(r.alcance),
+      estado: strLimpio(r.estado) || "PENDIENTE",
     };
   });
 
   const filasPendiente = ((pendientes.data || []) as unknown as Fila[]).map((r) => ({
     id: String(r.id),
     empresa: emp(r),
-    empresaOriginal: (r.empresa_nombre_original as string) || emp(r),
-    contrato: (r.contrato as string) || "",
-    unidadFuncional: (r.unidad_funcional as string) || "",
-    cups: (r.cups as string) || "",
-    descripcion: (r.descripcion as string) || "",
+    empresaOriginal: strLimpio(r.empresa_nombre_original) || emp(r),
+    contrato: strLimpio(r.contrato),
+    unidadFuncional: strLimpio(r.unidad_funcional),
+    cups: strLimpio(r.cups),
+    descripcion: strLimpio(r.descripcion),
     fechaServicio: (r.fecha_servicio as string) || "",
     anio: r.anio ? String(r.anio) : "",
-    medico: (r.medico as string) || "",
+    medico: strLimpio(r.medico),
     valorServicio: Number(r.valor_servicio) || 0,
-    responsable: ((r.cf_responsables as Fila | null)?.nombre as string) || "",
-    observaciones: (r.observaciones as string) || "",
-    estado: (r.estado as string) || "PENDIENTE",
+    responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre),
+    observaciones: strLimpio(r.observaciones),
+    estado: strLimpio(r.estado) || "PENDIENTE",
   }));
 
-  // Catalogos para los desplegables de la mesa. Los motivos no salen de
-  // cf_motivos (que exige codigo y categoria) sino de lo que Facturacion ya
-  // escribio: asi la lista refleja el trabajo real y no hay catalogo que
-  // alguien tenga que mantener aparte. Lo que se escriba nuevo aparece en la
-  // lista la proxima vez, solo.
   const unicos = (xs: (string | undefined)[]) =>
-    Array.from(new Set(xs.filter((x): x is string => !!x && x.trim() !== "").map((x) => x.trim())))
+    Array.from(new Set(xs.filter((x): x is string => !!x && x.trim() !== "").map((x) => limpiarUtf8(x.trim()))))
       .sort((a, b) => a.localeCompare(b, "es"));
 
-  // Empresas y facturadores salen del catalogo (solo los activos), no de lo
-  // que haya escrito en las glosas: asi uno recien creado aparece de una, y
-  // uno desactivado deja de ofrecerse sin que su historico se toque.
+  const causalesDb = ((causales.data || []) as { codigo: string; familia: string; nombre: string }[]).map((c) => ({
+    codigo: limpiarUtf8(c.codigo),
+    familia: limpiarUtf8(c.familia),
+    nombre: limpiarUtf8(c.nombre),
+  }));
+  const codigosExistentes = new Set(causalesDb.map((c) => c.codigo));
+  const causalesCompletas = [
+    ...CAUSALES_NORMATIVAS_BASE.filter((b) => !codigosExistentes.has(b.codigo)),
+    ...causalesDb,
+  ];
+
   const catalogos = {
     empresas: unicos((empresasCat.data || []).map((x) => x.nombre as string)),
     responsables: unicos((responsablesCat.data || []).map((x) => x.nombre as string)),
     motivos: unicos(filasGlosa.map((g) => g.motivoGlosa)),
-    causales: (causales.data || []) as { codigo: string; familia: string; nombre: string }[],
+    causales: causalesCompletas,
     anios: unicos(filasGlosa.map((g) => g.anio)),
   };
 
@@ -281,15 +355,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
   }
 
-  let body: { entidad?: string; accion?: string; fila?: Fila };
+  let body: { entidad?: string; accion?: string; fila?: Fila; filas?: Fila[] };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "Cuerpo invalido" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const { entidad, accion = "EDITAR", fila } = body;
-  if (!entidad || !fila) {
+  const { entidad, accion = "EDITAR" } = body;
+  const fila: Fila = (body.fila && !Array.isArray(body.fila) ? body.fila : {}) as Fila;
+  if (!entidad || (!body.fila && !Array.isArray(body.filas))) {
     return NextResponse.json({ ok: false, error: "Faltan entidad o fila" }, { status: 400 });
   }
 
@@ -364,13 +439,15 @@ export async function POST(request: Request) {
     // compartan exactamente el mismo texto.
     if (entidad === "glosas-lote") {
       const texto = txt(fila.motivoGlosa);
-      const codigo = txt(fila.motivoCodigo);
+      const codigoRaw = txt(fila.motivoCodigo);
+      const codigo = codigoRaw ? codigoRaw.trim().toUpperCase() : null;
       if (!texto || !codigo) {
         return NextResponse.json(
-          { ok: false, error: "Falta el texto del motivo o el codigo" },
+          { ok: false, error: "Falta el texto del motivo o el código" },
           { status: 400 }
         );
       }
+      await asegurarCausalNormativa(db, codigo);
       const { data: afectadas, error } = await db
         .from("cf_glosas")
         .update({ motivo_codigo: codigo })
@@ -389,41 +466,68 @@ export async function POST(request: Request) {
     if (entidad === "glosas") {
       const numero = String(fila.factura || "").trim().toUpperCase().replace(/\s+/g, "");
       if (!numero) {
-        return NextResponse.json({ ok: false, error: "Falta el numero de factura" }, { status: 400 });
+        return NextResponse.json({ ok: false, error: "Falta el número de factura" }, { status: 400 });
       }
+      if (esNuevo && !esNotaCreditoValida(fila.notaCredito)) {
+        return NextResponse.json(
+          { ok: false, error: "La Nota Crédito es obligatoria (ingresa el número o N/A)" },
+          { status: 400 }
+        );
+      }
+      if (
+        !esNuevo &&
+        fila.notaCredito !== undefined &&
+        String(fila.notaCredito).trim() !== "" &&
+        !esNotaCreditoValida(fila.notaCredito)
+      ) {
+        return NextResponse.json(
+          { ok: false, error: "La Nota Crédito debe contener el número consecutivo o N/A" },
+          { status: 400 }
+        );
+      }
+
       const empresaId = await idCatalogo(db, "cf_empresas", fila.empresa);
       const facturaId = await idFactura(db, numero, {
         empresa_id: empresaId,
         empresa_nombre_original: txt(fila.empresaOriginal) ?? txt(fila.empresa),
-        valor_radicado: num(fila.valorFacturado || fila.valorRadicado),
+        valor_radicado: num(fila.valorFacturado ?? fila.valorRadicado),
         fecha_elaboracion: fecha(fila.fechaFactura),
         fecha_radicacion: fecha(fila.fechaRadicacion),
       });
       if (!facturaId) throw new Error("No se pudo resolver la factura de la glosa");
 
-      // Actualizar factura si se pasaron fechas o valor actualizados
-      if (fila.fechaFactura || fila.fechaRadicacion || fila.valorFacturado) {
-        const upFact: Record<string, unknown> = {};
-        if (fila.fechaFactura) upFact.fecha_elaboracion = fecha(fila.fechaFactura);
-        if (fila.fechaRadicacion) upFact.fecha_radicacion = fecha(fila.fechaRadicacion);
-        if (fila.valorFacturado) upFact.valor_radicado = num(fila.valorFacturado);
-        if (Object.keys(upFact).length > 0) {
-          await db.from("cf_facturas").update(upFact).eq("id", facturaId);
-        }
+      // Actualizar factura si se pasaron fechas, empresa o valor actualizados
+      const upFact: Record<string, unknown> = {};
+      if (empresaId) upFact.empresa_id = empresaId;
+      if (fila.fechaFactura !== undefined) upFact.fecha_elaboracion = fecha(fila.fechaFactura);
+      if (fila.fechaRadicacion !== undefined) upFact.fecha_radicacion = fecha(fila.fechaRadicacion);
+      if (fila.valorFacturado !== undefined || fila.valorRadicado !== undefined) {
+        upFact.valor_radicado = num(fila.valorFacturado ?? fila.valorRadicado);
+      }
+      if (Object.keys(upFact).length > 0) {
+        await db.from("cf_facturas").update(upFact).eq("id", facturaId);
       }
 
       const factId = await idCatalogo(db, "cf_responsables", fila.facturador);
       const acepId = await idCatalogo(db, "cf_responsables", fila.responsableRespuesta || fila.responsableAceptacion);
-      const fechaNotif = fecha(fila.fechaNotificacionGlosa) || fecha(fila.fechaRadicacion);
+      const fechaNotif = fecha(fila.fechaNotificacionGlosa);
+      const codCausal = txt(fila.motivoCodigo)?.trim().toUpperCase() || null;
+      await asegurarCausalNormativa(db, codCausal);
 
       const estado = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
+      const ncNormalizada =
+        txt(fila.notaCredito)?.trim().toUpperCase() === "NA" ||
+        txt(fila.notaCredito)?.trim().toUpperCase() === "NO APLICA"
+          ? "N/A"
+          : txt(fila.notaCredito)?.trim() || null;
+
       const valores = {
         factura_id: facturaId,
         tipo: String(fila.tipoGlosa || "GLOSA").toUpperCase().startsWith("DEVOL") ? "DEVOLUCION" : "GLOSA",
         alcance: ["PARCIAL", "TOTAL"].includes(String(fila.alcance || "").toUpperCase())
           ? String(fila.alcance).toUpperCase()
           : null,
-        motivo_codigo: txt(fila.motivoCodigo),
+        motivo_codigo: codCausal,
         motivo_texto: txt(fila.motivoGlosa),
         observacion: txt(fila.observacionInterna),
         valor_glosado: num(fila.valorGlosado),
@@ -438,7 +542,7 @@ export async function POST(request: Request) {
           ? estado
           : "PENDIENTE",
         fecha_glosa: fechaNotif,
-        nota_credito: txt(fila.notaCredito),
+        nota_credito: ncNormalizada,
         facturador_id: factId,
         responsable_aceptacion_id: acepId,
       };
@@ -515,67 +619,146 @@ export async function POST(request: Request) {
       if (!numero) {
         return NextResponse.json({ ok: false, error: "Falta el número de factura a anular" }, { status: 400 });
       }
-      const motivo = txt(fila.motivo) || "Factura anulada desde WorkCenter";
-      const fechaAnul = fecha(fila.fechaAnulacion) || new Date().toISOString().slice(0, 10);
+      const motivo = txt(fila.motivo);
+      if (!motivo) {
+        return NextResponse.json({ ok: false, error: "Indica el motivo de anulación de la factura" }, { status: 400 });
+      }
+      const fechaAnul = fecha(fila.fechaAnulacion);
+      const empId = await idCatalogo(db, "cf_empresas", fila.empresa);
+      const respId = await idCatalogo(db, "cf_responsables", fila.responsable);
       const yaEsta = await db.from("cf_facturas").select("id").eq("numero", numero).maybeSingle();
       let factId = yaEsta.data?.id as string | undefined;
+
+      const camposAnulacion: Record<string, unknown> = {
+        estado: "ANULADA",
+        motivo_anulacion_texto: motivo,
+      };
+      if (fechaAnul) camposAnulacion.fecha_anulacion = fechaAnul;
+      if (empId) camposAnulacion.empresa_id = empId;
+      if (fila.empresa) camposAnulacion.empresa_nombre_original = txt(fila.empresaOriginal) ?? txt(fila.empresa);
+      if (fila.fechaFactura) camposAnulacion.fecha_elaboracion = fecha(fila.fechaFactura);
+      if (fila.fechaRadicacion) camposAnulacion.fecha_radicacion = fecha(fila.fechaRadicacion);
+      if (fila.valorFacturado !== undefined && fila.valorFacturado !== "") {
+        camposAnulacion.valor_radicado = num(fila.valorFacturado);
+      }
+      if (respId) camposAnulacion.responsable_id = respId;
+
       if (!factId) {
-        const ins = await db.from("cf_facturas").insert({
-          numero,
-          estado: "ANULADA",
-          motivo_anulacion_texto: motivo,
-          fecha_anulacion: fechaAnul,
-        }).select("id").maybeSingle();
+        const ins = await db
+          .from("cf_facturas")
+          .insert({ numero, ...camposAnulacion })
+          .select("id")
+          .maybeSingle();
         factId = ins.data?.id as string | undefined;
       } else {
-        await db.from("cf_facturas").update({
-          estado: "ANULADA",
-          motivo_anulacion_texto: motivo,
-          fecha_anulacion: fechaAnul,
-        }).eq("id", factId);
+        await db.from("cf_facturas").update(camposAnulacion).eq("id", factId);
       }
       if (factId) {
-        await anotar(db, "factura", factId, numero, "CAMBIO_ESTADO", { motivo, fechaAnul, estado: "ANULADA" }, uid, unombre);
+        await anotar(
+          db,
+          "factura",
+          factId,
+          numero,
+          "CAMBIO_ESTADO",
+          { motivo, fechaAnulacion: fechaAnul, estado: "ANULADA" },
+          uid,
+          unombre
+        );
       }
       return NextResponse.json({ ok: true, factura: numero });
     }
 
     // ---- importar lote de glosas ----
     if (entidad === "importar-lote") {
-      const filas = Array.isArray(fila) ? fila : Array.isArray(body.fila) ? (body.fila as unknown as Fila[]) : [fila];
+      const listaFilas: Fila[] = Array.isArray(body.filas)
+        ? body.filas
+        : Array.isArray(body.fila)
+        ? (body.fila as unknown as Fila[])
+        : [fila];
+
+      // Validación estricta previa: Nota Crédito obligatoria (con número o N/A) sin inventar valores
+      for (let i = 0; i < listaFilas.length; i++) {
+        const item = listaFilas[i];
+        const numFact = String(item.factura || "").trim().toUpperCase().replace(/\s+/g, "");
+        if (!numFact) continue;
+        if (!esNotaCreditoValida(item.notaCredito)) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: `Fila ${i + 1} (${numFact}): la Nota Crédito es obligatoria. Ingresa el número consecutivo o N/A.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
       let importadas = 0;
-      for (const item of filas) {
+      for (const item of listaFilas) {
         const numFact = String(item.factura || "").trim().toUpperCase().replace(/\s+/g, "");
         if (!numFact) continue;
         const empId = await idCatalogo(db, "cf_empresas", item.empresa);
         const factId = await idFactura(db, numFact, {
           empresa_id: empId,
           empresa_nombre_original: txt(item.empresaOriginal) ?? txt(item.empresa),
-          valor_radicado: num(item.valorFacturado || item.valorRadicado),
+          valor_radicado: num(item.valorFacturado ?? item.valorRadicado),
           fecha_elaboracion: fecha(item.fechaFactura),
           fecha_radicacion: fecha(item.fechaRadicacion),
         });
         if (!factId) continue;
+
+        const upFactImp: Record<string, unknown> = {};
+        if (empId) upFactImp.empresa_id = empId;
+        if (item.fechaFactura) upFactImp.fecha_elaboracion = fecha(item.fechaFactura);
+        if (item.fechaRadicacion) upFactImp.fecha_radicacion = fecha(item.fechaRadicacion);
+        if (item.valorFacturado !== undefined || item.valorRadicado !== undefined) {
+          const vf = num(item.valorFacturado ?? item.valorRadicado);
+          if (vf > 0) upFactImp.valor_radicado = vf;
+        }
+        if (Object.keys(upFactImp).length > 0) {
+          await db.from("cf_facturas").update(upFactImp).eq("id", factId);
+        }
+
         const fId = await idCatalogo(db, "cf_responsables", item.facturador);
         const rId = await idCatalogo(db, "cf_responsables", item.responsableRespuesta || item.responsableAceptacion);
-        const notif = fecha(item.fechaNotificacionGlosa) || fecha(item.fechaRadicacion);
-        const nc = txt(item.notaCredito) || "N/A";
+        const notif = fecha(item.fechaNotificacionGlosa);
+        const rawNc = txt(item.notaCredito)?.trim() || "";
+        const nc =
+          rawNc.toUpperCase() === "NA" || rawNc.toUpperCase() === "NO APLICA" ? "N/A" : rawNc;
+        const codCausal = txt(item.motivoCodigo)?.trim().toUpperCase() || null;
+        await asegurarCausalNormativa(db, codCausal);
 
-        await db.from("cf_glosas").insert({
-          factura_id: factId,
-          tipo: String(item.tipoGlosa || "GLOSA").toUpperCase().startsWith("DEVOL") ? "DEVOLUCION" : "GLOSA",
-          alcance: ["PARCIAL", "TOTAL"].includes(String(item.alcance || "").toUpperCase()) ? String(item.alcance).toUpperCase() : null,
-          motivo_codigo: txt(item.motivoCodigo),
-          motivo_texto: txt(item.motivoGlosa),
-          observacion: txt(item.observacionInterna),
-          valor_glosado: num(item.valorGlosado),
-          valor_aceptado: item.valorAceptado === null || item.valorAceptado === undefined || item.valorAceptado === "" ? null : num(item.valorAceptado),
-          estado: ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(String(item.estado || "").toUpperCase()) ? String(item.estado).toUpperCase() : "PENDIENTE",
-          fecha_glosa: notif,
-          nota_credito: nc,
-          facturador_id: fId,
-          responsable_aceptacion_id: rId,
-        });
+        const insGlosa = await db
+          .from("cf_glosas")
+          .insert({
+            factura_id: factId,
+            tipo: String(item.tipoGlosa || "GLOSA").toUpperCase().startsWith("DEVOL") ? "DEVOLUCION" : "GLOSA",
+            alcance: ["PARCIAL", "TOTAL"].includes(String(item.alcance || "").toUpperCase())
+              ? String(item.alcance).toUpperCase()
+              : null,
+            motivo_codigo: codCausal,
+            motivo_texto: txt(item.motivoGlosa),
+            observacion: txt(item.observacionInterna),
+            valor_glosado: num(item.valorGlosado),
+            valor_aceptado:
+              item.valorAceptado === null || item.valorAceptado === undefined || item.valorAceptado === ""
+                ? null
+                : num(item.valorAceptado),
+            estado: ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(
+              String(item.estado || "").toUpperCase()
+            )
+              ? String(item.estado).toUpperCase()
+              : "PENDIENTE",
+            fecha_glosa: notif,
+            nota_credito: nc,
+            facturador_id: fId,
+            responsable_aceptacion_id: rId,
+          })
+          .select("id")
+          .maybeSingle();
+
+        if (insGlosa.data?.id) {
+          await anotar(db, "glosa", String(insGlosa.data.id), numFact, "IMPORTAR", item, uid, unombre);
+        }
         importadas++;
       }
       return NextResponse.json({ ok: true, importadas });
