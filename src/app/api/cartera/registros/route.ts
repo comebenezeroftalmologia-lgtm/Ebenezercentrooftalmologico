@@ -192,9 +192,11 @@ export async function GET() {
       periodo: "",
       anio: f.anio ? String(f.anio) : "",
       factura: (f.numero as string) || "",
-      fechaRadicacion: (r.fecha_glosa as string) || (f.fecha_radicacion as string) || "",
+      fechaRadicacion: (f.fecha_radicacion as string) || "",
+      fechaNotificacionGlosa: (r.fecha_glosa as string) || "",
       valorRadicado: Number(f.valor_radicado) || 0,
       valorFactura: Number(f.valor_radicado) || 0,
+      valorFacturado: Number(f.valor_radicado) || 0,
       valorGlosado: Number(r.valor_glosado) || 0,
       // null se conserva como null a proposito: "sin resolver" no es "cero
       // aceptado". Si se volviera 0 la pantalla mostraria "no aceptada" en
@@ -210,6 +212,7 @@ export async function GET() {
       motivoGlosa: (r.motivo_texto as string) || "",
       facturador: ((r.facturador as Fila | null)?.nombre as string) || "",
       responsableAceptacion: ((r.aceptacion as Fila | null)?.nombre as string) || "",
+      responsableRespuesta: ((r.aceptacion as Fila | null)?.nombre as string) || ((r.facturador as Fila | null)?.nombre as string) || "",
       observacionInterna: (r.observacion as string) || "",
       notaCredito: (r.nota_credito as string) || "",
       tipoGlosa: (r.tipo as string) || "GLOSA",
@@ -392,14 +395,26 @@ export async function POST(request: Request) {
       const facturaId = await idFactura(db, numero, {
         empresa_id: empresaId,
         empresa_nombre_original: txt(fila.empresaOriginal) ?? txt(fila.empresa),
-        valor_radicado: num(fila.valorRadicado),
+        valor_radicado: num(fila.valorFacturado || fila.valorRadicado),
         fecha_elaboracion: fecha(fila.fechaFactura),
         fecha_radicacion: fecha(fila.fechaRadicacion),
       });
       if (!facturaId) throw new Error("No se pudo resolver la factura de la glosa");
 
+      // Actualizar factura si se pasaron fechas o valor actualizados
+      if (fila.fechaFactura || fila.fechaRadicacion || fila.valorFacturado) {
+        const upFact: Record<string, unknown> = {};
+        if (fila.fechaFactura) upFact.fecha_elaboracion = fecha(fila.fechaFactura);
+        if (fila.fechaRadicacion) upFact.fecha_radicacion = fecha(fila.fechaRadicacion);
+        if (fila.valorFacturado) upFact.valor_radicado = num(fila.valorFacturado);
+        if (Object.keys(upFact).length > 0) {
+          await db.from("cf_facturas").update(upFact).eq("id", facturaId);
+        }
+      }
+
       const factId = await idCatalogo(db, "cf_responsables", fila.facturador);
-      const acepId = await idCatalogo(db, "cf_responsables", fila.responsableAceptacion);
+      const acepId = await idCatalogo(db, "cf_responsables", fila.responsableRespuesta || fila.responsableAceptacion);
+      const fechaNotif = fecha(fila.fechaNotificacionGlosa) || fecha(fila.fechaRadicacion);
 
       const estado = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
       const valores = {
@@ -422,7 +437,7 @@ export async function POST(request: Request) {
         estado: ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(estado)
           ? estado
           : "PENDIENTE",
-        fecha_glosa: fecha(fila.fechaRadicacion),
+        fecha_glosa: fechaNotif,
         nota_credito: txt(fila.notaCredito),
         facturador_id: factId,
         responsable_aceptacion_id: acepId,
@@ -492,6 +507,78 @@ export async function POST(request: Request) {
       if (!id) throw new Error("No se pudo guardar el pendiente");
       await anotar(db, "pendiente", id, null, esNuevo ? "CREAR" : "EDITAR", fila, uid, unombre);
       return NextResponse.json({ ok: true, id });
+    }
+
+    // ---- anular factura ----
+    if (entidad === "anular") {
+      const numero = String(fila.factura || "").trim().toUpperCase().replace(/\s+/g, "");
+      if (!numero) {
+        return NextResponse.json({ ok: false, error: "Falta el número de factura a anular" }, { status: 400 });
+      }
+      const motivo = txt(fila.motivo) || "Factura anulada desde WorkCenter";
+      const fechaAnul = fecha(fila.fechaAnulacion) || new Date().toISOString().slice(0, 10);
+      const yaEsta = await db.from("cf_facturas").select("id").eq("numero", numero).maybeSingle();
+      let factId = yaEsta.data?.id as string | undefined;
+      if (!factId) {
+        const ins = await db.from("cf_facturas").insert({
+          numero,
+          estado: "ANULADA",
+          motivo_anulacion_texto: motivo,
+          fecha_anulacion: fechaAnul,
+        }).select("id").maybeSingle();
+        factId = ins.data?.id as string | undefined;
+      } else {
+        await db.from("cf_facturas").update({
+          estado: "ANULADA",
+          motivo_anulacion_texto: motivo,
+          fecha_anulacion: fechaAnul,
+        }).eq("id", factId);
+      }
+      if (factId) {
+        await anotar(db, "factura", factId, numero, "CAMBIO_ESTADO", { motivo, fechaAnul, estado: "ANULADA" }, uid, unombre);
+      }
+      return NextResponse.json({ ok: true, factura: numero });
+    }
+
+    // ---- importar lote de glosas ----
+    if (entidad === "importar-lote") {
+      const filas = Array.isArray(fila) ? fila : Array.isArray(body.fila) ? (body.fila as unknown as Fila[]) : [fila];
+      let importadas = 0;
+      for (const item of filas) {
+        const numFact = String(item.factura || "").trim().toUpperCase().replace(/\s+/g, "");
+        if (!numFact) continue;
+        const empId = await idCatalogo(db, "cf_empresas", item.empresa);
+        const factId = await idFactura(db, numFact, {
+          empresa_id: empId,
+          empresa_nombre_original: txt(item.empresaOriginal) ?? txt(item.empresa),
+          valor_radicado: num(item.valorFacturado || item.valorRadicado),
+          fecha_elaboracion: fecha(item.fechaFactura),
+          fecha_radicacion: fecha(item.fechaRadicacion),
+        });
+        if (!factId) continue;
+        const fId = await idCatalogo(db, "cf_responsables", item.facturador);
+        const rId = await idCatalogo(db, "cf_responsables", item.responsableRespuesta || item.responsableAceptacion);
+        const notif = fecha(item.fechaNotificacionGlosa) || fecha(item.fechaRadicacion);
+        const nc = txt(item.notaCredito) || "N/A";
+
+        await db.from("cf_glosas").insert({
+          factura_id: factId,
+          tipo: String(item.tipoGlosa || "GLOSA").toUpperCase().startsWith("DEVOL") ? "DEVOLUCION" : "GLOSA",
+          alcance: ["PARCIAL", "TOTAL"].includes(String(item.alcance || "").toUpperCase()) ? String(item.alcance).toUpperCase() : null,
+          motivo_codigo: txt(item.motivoCodigo),
+          motivo_texto: txt(item.motivoGlosa),
+          observacion: txt(item.observacionInterna),
+          valor_glosado: num(item.valorGlosado),
+          valor_aceptado: item.valorAceptado === null || item.valorAceptado === undefined || item.valorAceptado === "" ? null : num(item.valorAceptado),
+          estado: ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(String(item.estado || "").toUpperCase()) ? String(item.estado).toUpperCase() : "PENDIENTE",
+          fecha_glosa: notif,
+          nota_credito: nc,
+          facturador_id: fId,
+          responsable_aceptacion_id: rId,
+        });
+        importadas++;
+      }
+      return NextResponse.json({ ok: true, importadas });
     }
 
     return NextResponse.json({ ok: false, error: "Entidad desconocida: " + entidad }, { status: 400 });

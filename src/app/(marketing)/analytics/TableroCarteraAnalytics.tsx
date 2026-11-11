@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import carteraInitialData from "@/lib/cartera-data.json";
 import { FechaDelDato } from "@/components/FechaDelDato";
+import { normalizarEmpresaYNit, CAUSAS_NORMATIVAS } from "@/components/workcenter/CarteraWorkspace";
 
 type CorteSismaBack = {
   fechaCorte: string;
@@ -5373,1057 +5374,316 @@ export default function TableroCarteraAnalytics() {
       </div>
 
       {/* ===================================================================== */}
-      {/* CUADRO 2: GESTIÓN DE GLOSAS Y ANULADAS (DESPLEGABLE COMO PERSIANA)    */}
+      {/* CUADRO 2: DASHBOARD EJECUTIVO · GLOSAS, DEVOLUCIONES Y FACTURACIÓN */}
       {/* ===================================================================== */}
-      <div
-        className="rounded-xl p-6 shadow-xs border space-y-4"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
-      >
-        <div
-          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b"
-          style={{ borderColor: "#E2ECF8" }}
-        >
-          <button
-            type="button"
-            onClick={() => setPersianaMesaAbierta((prev) => !prev)}
-            className="text-left flex items-center gap-3 cursor-pointer"
+      {(() => {
+        const totFacturado = glosasFiltradas.reduce((a, g) => a + (g.valorFactura || g.valorRadicado || 0), 0);
+        const totGlosado = glosasFiltradas.reduce((a, g) => a + (g.valorGlosado || 0), 0);
+        const totAceptado = glosasFiltradas.reduce((a, g) => a + (g.valorAceptado ?? 0), 0);
+        const glosasPend = glosasFiltradas.filter((g) => g.subtabla === "PENDIENTE" || !g.subtabla);
+        const valPend = glosasPend.reduce((a, g) => a + (g.valorGlosado || 0), 0);
+
+        // Agrupación por Causa Normativa (FA, TA, SO, AU, CO)
+        const porCausaNorma: Record<string, { monto: number; cantidad: number }> = {
+          FA: { monto: 0, cantidad: 0 },
+          TA: { monto: 0, cantidad: 0 },
+          SO: { monto: 0, cantidad: 0 },
+          AU: { monto: 0, cantidad: 0 },
+          CO: { monto: 0, cantidad: 0 },
+        };
+        let montoOtrasCausas = 0;
+        let cantOtrasCausas = 0;
+
+        for (const g of glosasFiltradas) {
+          const cod = (g.motivoCodigo || "").trim().toUpperCase().slice(0, 2);
+          const v = g.valorGlosado || 0;
+          if (porCausaNorma[cod]) {
+            porCausaNorma[cod].monto += v;
+            porCausaNorma[cod].cantidad += 1;
+          } else {
+            montoOtrasCausas += v;
+            cantOtrasCausas += 1;
+          }
+        }
+
+        // Agrupación unificada por NIT de Empresas
+        const porEmpresaNit: Record<string, { nit: string; nombre: string; monto: number; glosas: number }> = {};
+        for (const g of glosasFiltradas) {
+          const info = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
+          if (!porEmpresaNit[info.nombre]) {
+            porEmpresaNit[info.nombre] = { nit: info.nit, nombre: info.nombre, monto: 0, glosas: 0 };
+          }
+          porEmpresaNit[info.nombre].monto += (g.valorGlosado || 0);
+          porEmpresaNit[info.nombre].glosas += 1;
+        }
+        const topEmpresas = Object.values(porEmpresaNit).sort((a, b) => b.monto - a.monto);
+        const maxEmpMonto = topEmpresas[0]?.monto || 1;
+
+        // Agrupación por Responsable
+        const porResp: Record<string, { monto: number; glosas: number }> = {};
+        for (const g of glosasFiltradas) {
+          const r = normalizarResponsableReal(g.facturador || g.responsable, g.empresa);
+          if (!porResp[r]) porResp[r] = { monto: 0, glosas: 0 };
+          porResp[r].monto += (g.valorGlosado || 0);
+          porResp[r].glosas += 1;
+        }
+        const topResponsables = Object.entries(porResp).sort((a, b) => b[1].monto - a[1].monto);
+        const maxRespMonto = topResponsables[0]?.[1]?.monto || 1;
+
+        // Conteo de Notas Crédito
+        const conNC = glosasFiltradas.filter((g) => g.notaCredito && g.notaCredito.trim() !== "" && g.notaCredito.trim().toUpperCase() !== "N/A");
+        const valNC = conNC.reduce((a, g) => a + (g.valorGlosado || 0), 0);
+
+        return (
+          <div
+            className="rounded-xl p-6 shadow-xs border space-y-6"
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
           >
-            <span
-              className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0"
-              style={{ backgroundColor: "#EFF6FF", color: "#1D58D8" }}
-            >
-              {persianaMesaAbierta ? "▴" : "▾"}
-            </span>
-            <div>
-              <h3 className="text-lg font-extrabold" style={{ color: "#0E245E" }}>
-                Gestión de Glosas, Facturas Anuladas y Pendientes (2021 – 2026)
-              </h3>
-              <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
-                Haz clic aquí para plegar/desplegar el cuadro como persiana, en cualquier columna (▾) para filtrar o en una fila para ver su detalle.
-              </p>
-            </div>
-          </button>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {hayFiltrosActivos && (
-              <button
-                type="button"
-                onClick={limpiarTodosLosFiltros}
-                className="px-3.5 py-2 rounded-xl font-bold text-xs border transition cursor-pointer"
-                style={{ backgroundColor: "#FFF1F2", color: "#BE123C", borderColor: "#FECDD3" }}
-              >
-                ✕ Limpiar Filtros
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setMostrarModalNuevo(true)}
-              className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer"
-              style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-            >
-              + Nuevo Registro
-            </button>
-            <button
-              type="button"
-              onClick={exportarVistaExcelCSV}
-              className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm border transition cursor-pointer"
-              style={{ backgroundColor: "#F8FAFC", color: "#0E245E", borderColor: "#CBD5E1" }}
-            >
-              ↓ Exportar a Excel (CSV)
-            </button>
-          </div>
-        </div>
-
-        {persianaMesaAbierta && (
-          <div className="space-y-4">
-            {/* BARRA SUPERIOR DE 6 FILTROS ALINEADOS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
-              <div>
-                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-                  Año
-                </label>
-                <select
-                  value={filtroAnio}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFiltroAnio(val);
-                    setAniosFrecSel(val === "TODOS" ? [] : [val]);
-                    setPaginaActual(1);
-                  }}
-                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+            {/* Cabecera ejecutiva con enlace directo al WorkCenter */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-[#E2ECF8]">
+              <div className="flex items-center gap-3">
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shrink-0"
+                  style={{ backgroundColor: "#EFF6FF", color: "#1D58D8" }}
                 >
-                  <option value="TODOS">Todos</option>
-                  {ANIOS_SISMA_DISPONIBLES.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
+                  ⚖️
+                </span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-extrabold text-[#0E245E]">
+                      Dashboard Ejecutivo de Glosas y Control de Facturación
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                      Resolución 2284 / Decreto 4747
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Entidades Unificadas por NIT
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-[#64748B]">
+                    Alimentado en tiempo real desde el tablero de trabajo operativo. Visualiza causas normativas (FA, TA, SO, AU, CO), impacto financiero y trazabilidad por responsable.
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-                  Empresa
-                </label>
-                <select
-                  value={filtroEmpresa}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFiltroEmpresa(val);
-                    setEmpresasFrecSel(val === "TODAS" ? [] : [val]);
-                    setPaginaActual(1);
-                  }}
-                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href="/workcenter/cartera"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-xs transition hover:brightness-110 cursor-pointer"
+                  style={{ backgroundColor: "#0E245E" }}
                 >
-                  <option value="TODAS">Todas</option>
-                  {todasLasEmpresasDisponibles.map((emp) => (
-                    <option key={emp} value={emp}>
-                      {emp}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-                  Tipo
-                </label>
-                <select
-                  value={filtroTipo}
-                  onChange={(e) => {
-                    setFiltroTipo(e.target.value);
-                    setPaginaActual(1);
-                  }}
-                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                >
-                  <option value="TODOS">Glosa / Devolución</option>
-                  <option value="GLOSA">GLOSA</option>
-                  <option value="DEVOL">DEVOLUCIÓN</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-                  Estado
-                </label>
-                <select
-                  value={filtroEstado}
-                  onChange={(e) => {
-                    setFiltroEstado(e.target.value);
-                    setPaginaActual(1);
-                  }}
-                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                >
-                  <option value="TODOS">Reemplazada / Pendiente</option>
-                  <option value="REEMPLAZADA">Reemplazada / Gestionada</option>
-                  <option value="PENDIENTE">Pendiente</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-                  Responsable
-                </label>
-                <select
-                  value={filtroResponsable}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFiltroResponsable(val);
-                    setResponsablesFrecSel(val === "TODAS" ? [] : [val]);
-                    setPaginaActual(1);
-                  }}
-                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs font-semibold"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                >
-                  <option value="TODAS">Todas</option>
-                  {carteraInitialData.responsablesDisponibles.map((resp) => (
-                    <option key={resp} value={resp}>
-                      {resp}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1" style={{ color: "#0E245E" }}>
-                  Buscar
-                </label>
-                <input
-                  type="text"
-                  value={busqueda}
-                  onChange={(e) => {
-                    setBusqueda(e.target.value);
-                    setPaginaActual(1);
-                  }}
-                  placeholder="Buscar factura o motivo..."
-                  className="w-full rounded-lg border bg-white px-2.5 py-2 text-xs"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                />
+                  <span>Abrir Tablero de Trabajo (WorkCenter)</span>
+                  <span>→</span>
+                </a>
               </div>
             </div>
 
-            {/* PESTAÑAS DE LAS 4 HOJAS OPERATIVAS */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div
-                className="inline-flex flex-wrap rounded-xl p-1 border gap-1"
-                style={{ backgroundColor: "#F1F5F9", borderColor: "#CBD5E1" }}
-              >
-                {[
-                  {
-                    id: "anuladas" as const,
-                    label: `Facturas Anuladas / Reemplazos (${anuladasFiltradas.length})`,
-                  },
-                  {
-                    id: "legalizadas" as const,
-                    label: `Glosas Legalizadas (${legalizadasFiltradas.length})`,
-                  },
-                  {
-                    id: "glosas" as const,
-                    label: `Glosas y Notas Crédito (${glosasFiltradas.length})`,
-                  },
-                  {
-                    id: "pendientes" as const,
-                    label: `Servicios Pendientes Facturar (${pendientesFiltradas.length})`,
-                  },
-                ].map((t) => {
-                  const activo = tabActiva === t.id;
+            {/* 4 KPIs Ejecutivos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="p-4 rounded-xl border bg-[#F8FAFC]" style={{ borderColor: "#E2ECF8" }}>
+                <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+                  Total Glosado Notificado
+                </div>
+                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#0E245E]">
+                  {formatCOP(totGlosado)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-[#64748B]">
+                  {glosasFiltradas.length} glosas en el período activo
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-[#EFF6FF]/60" style={{ borderColor: "#BFDBFE" }}>
+                <div className="text-[11px] font-bold text-[#1D4ED8] uppercase tracking-wider">
+                  Sin Resolver (Pendientes)
+                </div>
+                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#1D4ED8]">
+                  {formatCOP(valPend)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-[#1D4ED8] font-semibold">
+                  {glosasPend.length} glosas esperan respuesta ({totGlosado > 0 ? Math.round((valPend / totGlosado) * 100) : 0}%)
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-[#ECFDF5]/60" style={{ borderColor: "#A7F3D0" }}>
+                <div className="text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Valor Aceptado / En Trámite
+                </div>
+                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#059669]">
+                  {formatCOP(totAceptado)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-[#059669] font-semibold">
+                  {totGlosado > 0 ? `${Math.round((totAceptado / totGlosado) * 100)}% de lo glosado` : "0%"}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-[#FAF5FF]/60" style={{ borderColor: "#DDD6FE" }}>
+                <div className="text-[11px] font-bold text-[#5B21B6] uppercase tracking-wider">
+                  Legalizado con Nota Crédito
+                </div>
+                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#7C3AED]">
+                  {formatCOP(valNC)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-[#5B21B6] font-semibold">
+                  {conNC.length} glosas con N° de NC registrada
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN 1: CAUSAS PRINCIPALES DE GLOSA SEGÚN LA NORMA (RES. 2284) */}
+            <div className="rounded-xl border p-4 sm:p-5 space-y-3" style={{ borderColor: "#E2ECF8", backgroundColor: "#FAFBFD" }}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                <div>
+                  <h4 className="text-[13.5px] sm:text-[14.5px] font-bold text-[#0E245E]">
+                    Causas Principales de Glosa según la Norma Técnica (FA, TA, SO, AU, CO)
+                  </h4>
+                  <p className="text-[11.5px] text-[#64748B]">
+                    Clasificación oficial según el Manual Único de Devoluciones y Glosas (Resolución 2284 de 2023).
+                  </p>
+                </div>
+                <span className="text-[11px] font-mono text-[#64748B]">
+                  Base activa: {formatCOP(totGlosado)}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-2">
+                {CAUSAS_NORMATIVAS.map((c) => {
+                  const info = porCausaNorma[c.codigo] || { monto: 0, cantidad: 0 };
+                  const pct = totGlosado > 0 ? Math.round((info.monto / totGlosado) * 100) : 0;
                   return (
-                    <button
-                      type="button"
-                      key={t.id}
-                      onClick={() => {
-                        if (tabActiva === t.id) {
-                          setCortinaTablaAbierta((prev) => !prev);
-                        } else {
-                          setTabActiva(t.id);
-                          setCortinaTablaAbierta(true);
-                        }
-                        setColMenuAbierto(null);
-                        setPaginaActual(1);
-                      }}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-                      style={{
-                        backgroundColor: activo ? "#1D58D8" : "transparent",
-                        color: activo ? "#FFFFFF" : "#0E245E",
-                      }}
+                    <div
+                      key={c.codigo}
+                      className="p-3.5 rounded-xl border bg-white shadow-2xs space-y-2 transition hover:shadow-xs"
+                      style={{ borderColor: c.badgeBorder }}
                     >
-                      {t.label}
-                    </button>
+                      <div className="flex items-center justify-between">
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[11px] font-extrabold"
+                          style={{ backgroundColor: c.badgeBg, color: c.badgeText }}
+                        >
+                          {c.codigo} · {c.nombre}
+                        </span>
+                        <span className="text-xs font-mono font-bold" style={{ color: c.badgeText }}>
+                          {pct}%
+                        </span>
+                      </div>
+
+                      <div className="font-mono text-base font-extrabold text-[#0E245E]">
+                        {formatCOP(info.monto)}
+                      </div>
+
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: c.color }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10.5px] text-[#64748B]">
+                        <span>{info.cantidad} glosas</span>
+                      </div>
+
+                      <p className="text-[10.5px] text-[#64748B] leading-tight line-clamp-2" title={c.descripcion}>
+                        {c.descripcion}
+                      </p>
+                    </div>
                   );
                 })}
               </div>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCortinaTablaAbierta((prev) => !prev)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1.5"
-                  style={{ backgroundColor: "#EFF6FF", color: "#1D58D8", borderColor: "#BFDBFE" }}
-                >
-                  <span>{cortinaTablaAbierta ? "▴" : "▾"}</span>
-                  <span>{cortinaTablaAbierta ? "Replegar cortina de tabla" : "Desplegar cortina de tabla"}</span>
-                </button>
+            {/* SECCIÓN 2: TOP EMPRESAS POR NIT Y GESTIÓN POR RESPONSABLE */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Top Empresas unificadas por NIT */}
+              <div className="p-4 sm:p-5 rounded-xl border bg-white shadow-2xs space-y-3" style={{ borderColor: "#E2ECF8" }}>
+                <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "#F1F5F9" }}>
+                  <div>
+                    <h4 className="text-[13px] font-bold text-[#0E245E]">
+                      Empresas con Mayor Glosa (Unificadas por NIT)
+                    </h4>
+                    <p className="text-[11px] text-[#64748B]">Entidades canónicas sin duplicidades</p>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#1D58D8]">
+                    {topEmpresas.length} entidades
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                  {topEmpresas.slice(0, 7).map((emp) => {
+                    const pct = totGlosado > 0 ? Math.round((emp.monto / totGlosado) * 100) : 0;
+                    const barW = Math.min(100, Math.max(2, Math.round((emp.monto / maxEmpMonto) * 100)));
+                    return (
+                      <div key={emp.nombre} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="min-w-0 flex-1 truncate pr-2">
+                            <span className="font-bold text-[#0F172A]">{emp.nombre}</span>
+                            {emp.nit !== "S/N" && (
+                              <span className="ml-1.5 text-[10px] font-mono text-[#64748B] bg-slate-100 px-1.5 py-0.2 rounded">
+                                NIT: {emp.nit}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right font-mono font-bold text-[#0E245E] shrink-0">
+                            {formatCOP(emp.monto)} <span className="text-[10px] text-[#64748B]">({pct}%)</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[#1D58D8] transition-all"
+                            style={{ width: `${barW}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* TABLA CON REPLIEGUE TIPO CORTINA Y FILAS EN 1 SOLA LÍNEA LIMPIA */}
-            {cortinaTablaAbierta && (
-            <div className="border rounded-xl overflow-x-auto" style={{ borderColor: "#E2ECF8" }}>
-              {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
-                <table
-                  className="w-full text-[11px] border-collapse"
-                  style={{ tableLayout: "auto", width: "100%" }}
-                >
-                  <thead>
-                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                      {columnasAnuladas.map((col, idx) =>
-                        renderCeldaHeaderConFiltro(col, idx, columnasAnuladas.length + 1)
-                      )}
-                      <th
-                        style={{ width: "1%", whiteSpace: "nowrap" }}
-                        className="px-2 py-2.5 text-center font-bold"
-                      >
-                        Acción
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                    {(listaActivaPaginada.items as AnuladaRow[]).map((r) => {
-                      const abierta = Boolean(filasExpandidas[r.id]);
-                      const etiquetaTipo = normalizarEtiquetaTipo(r.tipo);
-                      const textoMotivoBase =
-                        r.motivo && r.motivo !== "-"
-                          ? r.motivo
-                          : r.tipo && r.tipo.length > 15
-                          ? r.tipo
-                          : "Sin motivo registrado";
-                      const nombreResp = normalizarResponsableReal(r.responsable, r.empresa);
+              {/* Responsables de responder la glosa */}
+              <div className="p-4 sm:p-5 rounded-xl border bg-white shadow-2xs space-y-3" style={{ borderColor: "#E2ECF8" }}>
+                <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "#F1F5F9" }}>
+                  <div>
+                    <h4 className="text-[13px] font-bold text-[#0E245E]">
+                      Carga por Responsable de Respuesta
+                    </h4>
+                    <p className="text-[11px] text-[#64748B]">Persona encargada de responder u objetar la glosa</p>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#059669]">
+                    {topResponsables.length} responsables
+                  </span>
+                </div>
 
-                      return (
-                        <React.Fragment key={r.id}>
-                          <tr
-                            onClick={() => togglePersianaFila(r.id)}
-                            className="hover:bg-slate-50 align-middle cursor-pointer"
-                          >
-                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {r.anio}
-                            </td>
-                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {r.empresa}
-                            </td>
-                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                              {r.factura}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
-                              {r.fechaRadicacion ||
-                                (r as unknown as Record<string, string>).fechaRadicacionNota ||
-                                "-"}
-                            </td>
-                            <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {formatCOP(r.valorRadicado)}
-                            </td>
-                            <td className="px-2 py-2 text-right font-mono font-semibold whitespace-nowrap" style={{ color: "#BE123C" }}>
-                              {formatCOP(r.valorGlosaDevolucion)}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap">
-                              <span
-                                className="px-2 py-0.5 rounded-full text-[10px] font-bold inline-block"
-                                style={{
-                                  backgroundColor: etiquetaTipo === "GLOSA" ? "#FFE4E6" : "#EFF6FF",
-                                  color: etiquetaTipo === "GLOSA" ? "#BE123C" : "#1D58D8",
-                                }}
-                              >
-                                {etiquetaTipo}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
-                              <div className="flex items-start justify-between gap-2">
-                                <span>
-                                  {abierta
-                                    ? textoMotivoBase
-                                    : textoMotivoBase.length > 28
-                                    ? `${textoMotivoBase.slice(0, 28)}…`
-                                    : textoMotivoBase}
-                                </span>
-                                <span
-                                  className="text-[10px] font-bold shrink-0 px-2 py-0.5 rounded"
-                                  style={{ backgroundColor: abierta ? "#DBEAFE" : "#EFF6FF", color: "#1D58D8" }}
-                                >
-                                  {abierta ? "▴ Replegar" : "▾ Desplegar"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#047857" }}>
-                              {r.facturaReemplaza || "PENDIENTE"}
-                            </td>
-                            <td className="px-2 py-2 font-mono whitespace-nowrap" style={{ color: "#334155" }}>
-                              {r.rips || "-"}
-                            </td>
-                            <td className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {nombreResp}
-                            </td>
-                            <td
-                              onClick={(e) => e.stopPropagation()}
-                              className="px-2 py-2 text-center whitespace-nowrap"
-                            >
-                              <button
-                                type="button"
-                                onClick={() => setFilaEditando({ ...r, responsable: nombreResp })}
-                                className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                              >
-                                Editar
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* PERSIANA DESPLEGABLE DE LA FILA */}
-                          {abierta && (
-                            <tr style={{ backgroundColor: "#F4F8FD" }}>
-                              <td colSpan={12} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                                  <div className="md:col-span-2 space-y-1">
-                                    <div className="font-extrabold text-[11px] uppercase" style={{ color: "#1D58D8" }}>
-                                      Detalle Completo del Registro ({r.factura})
-                                    </div>
-                                    <div className="p-2.5 rounded-lg bg-white border leading-relaxed" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
-                                      {textoMotivoBase}
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="font-extrabold text-[11px] uppercase" style={{ color: "#047857" }}>
-                                      Revisión Financiera y Trazabilidad
-                                    </div>
-                                    <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
-                                      <div>
-                                        <strong>Revisión:</strong> {r.revisionFinanciera || "Registrada en seguimiento"}
-                                      </div>
-                                      <div>
-                                        <strong>Factura Reemplaza:</strong>{" "}
-                                        <span className="font-mono font-bold" style={{ color: "#047857" }}>
-                                          {r.facturaReemplaza || "PENDIENTE"}
-                                        </span>{" "}
-                                        | <strong>RIPS:</strong> {r.rips || "-"}
-                                      </div>
-                                      <div>
-                                        <strong>Fecha Factura:</strong> {r.fechaFactura || "-"} |{" "}
-                                        <strong>Responsable:</strong> {nombreResp}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-
-              {tabActiva === "glosas" && (
-                <table
-                  className="w-full text-[11px] border-collapse"
-                  style={{ tableLayout: "auto", width: "100%" }}
-                >
-                  <thead>
-                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                      {columnasGlosas.map((col, idx) =>
-                        renderCeldaHeaderConFiltro(col, idx, columnasGlosas.length + 1)
-                      )}
-                      <th
-                        style={{ width: "1%", whiteSpace: "nowrap" }}
-                        className="px-2 py-2.5 text-center font-bold"
-                      >
-                        Acción
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                    {(listaActivaPaginada.items as GlosaRow[]).map((r) => {
-                      const abierta = Boolean(filasExpandidas[r.id]);
-                      const nombreFac = normalizarResponsableReal(r.facturador, r.empresa);
-
-                      return (
-                        <React.Fragment key={r.id}>
-                          <tr
-                            onClick={() => togglePersianaFila(r.id)}
-                            className="hover:bg-slate-50 align-middle cursor-pointer"
-                          >
-                            <td className="px-2 py-2 whitespace-nowrap">
-                              <span
-                                className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
-                                style={{
-                                  backgroundColor:
-                                    r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                                      ? "#FFE4E6"
-                                      : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                                      ? "#ECFDF5"
-                                      : "#FEF3C7",
-                                  color:
-                                    r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                                      ? "#BE123C"
-                                      : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                                      ? "#047857"
-                                      : "#B45309",
-                                }}
-                              >
-                                {r.subtabla === "ACEPTADA_NOTA_CREDITO"
-                                  ? "Aceptada (NC)"
-                                  : r.subtabla === "RESPONDIDA_NO_ACEPTADA"
-                                  ? "Respondida"
-                                  : "En Gestión"}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {r.anio}
-                            </td>
-                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {r.empresa}
-                            </td>
-                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                              {r.factura}
-                            </td>
-                            <td className="px-2 py-2 text-right font-mono whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {formatCOP(r.valorFactura || r.valorRadicado)}
-                            </td>
-                            <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#BE123C" }}>
-                              {formatCOP(r.valorGlosado)}
-                            </td>
-                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
-                              <div className="flex items-start justify-between gap-2">
-                                <span className={abierta ? "whitespace-normal" : "line-clamp-1"}>
-                                  {r.motivoGlosa || "-"}
-                                </span>
-                                <span
-                                  className="text-[10px] font-bold shrink-0 mt-0.5 px-1.5 py-0.5 rounded"
-                                  style={{ backgroundColor: abierta ? "#DBEAFE" : "#F1F5F9", color: "#1D58D8" }}
-                                >
-                                  {abierta ? "▴ Replegar" : "▾ Ver"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155" }}>
-                              <span className={abierta ? "whitespace-normal" : "line-clamp-1"}>
-                                {r.observacionInterna || "-"}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {nombreFac}
-                            </td>
-                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#6D28D9" }}>
-                              {r.notaCredito || "-"}
-                            </td>
-                            <td
-                              onClick={(e) => e.stopPropagation()}
-                              className="px-2 py-2 text-center whitespace-nowrap"
-                            >
-                              <button
-                                type="button"
-                                onClick={() => setFilaEditando({ ...r, facturador: nombreFac })}
-                                className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                              >
-                                Editar
-                              </button>
-                            </td>
-                          </tr>
-
-                          {abierta && (
-                            <tr style={{ backgroundColor: "#F4F8FD" }}>
-                              <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                  <div>
-                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
-                                      Motivo Completo de Glosa ({r.factura})
-                                    </div>
-                                    <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
-                                      {r.motivoGlosa || "-"}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
-                                      Respuesta / Observación Interna
-                                    </div>
-                                    <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
-                                      {r.observacionInterna || "Sin observación adicional"}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-
-              {tabActiva === "pendientes" && (
-                <table
-                  className="w-full text-[11px] border-collapse"
-                  style={{ tableLayout: "auto", width: "100%" }}
-                >
-                  <thead>
-                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                      {columnasPendientes.map((col, idx) =>
-                        renderCeldaHeaderConFiltro(col, idx, columnasPendientes.length + 1)
-                      )}
-                      <th
-                        style={{ width: "1%", whiteSpace: "nowrap" }}
-                        className="px-2 py-2.5 text-center font-bold"
-                      >
-                        Acción
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                    {(listaActivaPaginada.items as PendienteRow[]).map((r) => {
-                      const abierta = Boolean(filasExpandidas[r.id]);
-                      const nombreResp = normalizarResponsableReal(r.responsable, r.empresa);
-
-                      return (
-                        <React.Fragment key={r.id}>
-                          <tr
-                            onClick={() => togglePersianaFila(r.id)}
-                            className="hover:bg-slate-50 align-middle cursor-pointer"
-                          >
-                            <td className="px-2 py-2 whitespace-nowrap">
-                              <span
-                                className="px-2 py-0.5 rounded-full font-bold text-[10px] inline-block"
-                                style={{
-                                  backgroundColor: r.estado === "FACTURADO" ? "#ECFDF5" : "#FEF3C7",
-                                  color: r.estado === "FACTURADO" ? "#047857" : "#B45309",
-                                }}
-                              >
-                                {r.estado}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2 font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {r.empresa}
-                            </td>
-                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155" }}>
-                              {r.contrato}
-                            </td>
-                            <td className="px-2 py-2 font-mono font-bold whitespace-nowrap" style={{ color: "#1D58D8" }}>
-                              {r.cups}
-                            </td>
-                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155", width: "100%" }}>
-                              <div className="flex items-start justify-between gap-2">
-                                <span>{r.descripcion}</span>
-                                <span
-                                  className="text-[10px] font-bold shrink-0 mt-0.5"
-                                  style={{ color: "#1D58D8" }}
-                                >
-                                  {abierta ? "▴" : "▾"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
-                              {r.fechaServicio}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap" style={{ color: "#334155" }}>
-                              {r.medico}
-                            </td>
-                            <td className="px-2 py-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {formatCOP(r.valorServicio)}
-                            </td>
-                            <td className="px-2 py-2 font-semibold whitespace-nowrap" style={{ color: "#0E245E" }}>
-                              {nombreResp}
-                            </td>
-                            <td className="px-2 py-2 leading-snug" style={{ color: "#334155" }}>
-                              {r.observaciones || "-"}
-                            </td>
-                            <td
-                              onClick={(e) => e.stopPropagation()}
-                              className="px-2 py-2 text-center whitespace-nowrap"
-                            >
-                              <button
-                                type="button"
-                                onClick={() => setFilaEditando({ ...r, responsable: nombreResp })}
-                                className="px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer"
-                                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-                              >
-                                Editar
-                              </button>
-                            </td>
-                          </tr>
-
-                          {abierta && (
-                            <tr style={{ backgroundColor: "#F4F8FD" }}>
-                              <td colSpan={11} className="px-4 py-3 border-t" style={{ borderColor: "#BFDBFE" }}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                  <div>
-                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#1D58D8" }}>
-                                      Descripción Completa del Procedimiento ({r.cups})
-                                    </div>
-                                    <div className="p-2.5 rounded-lg bg-white border" style={{ borderColor: "#CBD5E1", color: "#0E245E" }}>
-                                      {r.descripcion}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="font-extrabold text-[11px] uppercase mb-1" style={{ color: "#047857" }}>
-                                      Contrato y Observaciones
-                                    </div>
-                                    <div className="p-2.5 rounded-lg bg-white border space-y-1" style={{ borderColor: "#CBD5E1", color: "#334155" }}>
-                                      <div>
-                                        <strong>Contrato:</strong> {r.contrato}
-                                      </div>
-                                      <div>
-                                        <strong>Observación:</strong> {r.observaciones || "Pendiente por facturar"}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            )}
-
-            {/* PAGINACIÓN */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-xs" style={{ color: "#475569" }}>
-              <span>
-                Mostrando <strong>{listaActivaPaginada.items.length}</strong> de{" "}
-                <strong>{listaActivaPaginada.total}</strong> registros
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={paginaActual <= 1}
-                  onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 font-bold cursor-pointer"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                >
-                  Anterior
-                </button>
-                <span className="font-bold" style={{ color: "#0E245E" }}>
-                  Página {paginaActual} de {listaActivaPaginada.totalPaginas}
-                </span>
-                <button
-                  type="button"
-                  disabled={paginaActual >= listaActivaPaginada.totalPaginas}
-                  onClick={() => setPaginaActual((p) => Math.min(listaActivaPaginada.totalPaginas, p + 1))}
-                  className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 font-bold cursor-pointer"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                >
-                  Siguiente
-                </button>
+                <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                  {topResponsables.slice(0, 7).map(([resp, info]) => {
+                    const pct = totGlosado > 0 ? Math.round((info.monto / totGlosado) * 100) : 0;
+                    const barW = Math.min(100, Math.max(2, Math.round((info.monto / maxRespMonto) * 100)));
+                    return (
+                      <div key={resp} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="min-w-0 flex-1 truncate pr-2">
+                            <span className="font-bold text-[#0F172A]">{resp}</span>
+                            <span className="ml-1.5 text-[10px] text-[#64748B]">
+                              ({info.glosas} glosas asignadas)
+                            </span>
+                          </div>
+                          <div className="text-right font-mono font-bold text-[#0E245E] shrink-0">
+                            {formatCOP(info.monto)} <span className="text-[10px] text-[#64748B]">({pct}%)</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[#059669] transition-all"
+                            style={{ width: `${barW}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* MODAL EDITAR FILA */}
-      {filaEditando && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <div
-            className="rounded-xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#0E245E" }}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#E2ECF8" }}>
-              <h4 className="text-base font-extrabold">
-                Editar Registro — {String(filaEditando.factura || filaEditando.cups || filaEditando.id)}
-              </h4>
-              <button
-                type="button"
-                onClick={() => setFilaEditando(null)}
-                className="font-bold text-base cursor-pointer"
-                style={{ color: "#64748B" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
-              <div>
-                <label className="block text-xs font-bold mb-1">Empresa</label>
-                <input
-                  type="text"
-                  value={String(filaEditando.empresa || "")}
-                  onChange={(e) => setFilaEditando({ ...filaEditando, empresa: e.target.value.toUpperCase() })}
-                  className="w-full rounded-lg border px-3 py-2"
-                  style={{ borderColor: "#CBD5E1" }}
-                />
-              </div>
-
-              {"factura" in filaEditando && (
-                <div>
-                  <label className="block text-xs font-bold mb-1">No. Factura</label>
-                  <input
-                    type="text"
-                    value={String(filaEditando.factura || "")}
-                    onChange={(e) => setFilaEditando({ ...filaEditando, factura: e.target.value.toUpperCase() })}
-                    className="w-full rounded-lg border px-3 py-2 font-mono"
-                    style={{ borderColor: "#CBD5E1" }}
-                  />
-                </div>
-              )}
-
-              {"facturaReemplaza" in filaEditando && (
-                <div>
-                  <label className="block text-xs font-bold mb-1" style={{ color: "#047857" }}>
-                    # Factura Reemplaza (FCOE...)
-                  </label>
-                  <input
-                    type="text"
-                    value={String(filaEditando.facturaReemplaza || "")}
-                    onChange={(e) =>
-                      setFilaEditando({ ...filaEditando, facturaReemplaza: e.target.value.toUpperCase() })
-                    }
-                    className="w-full rounded-lg border px-3 py-2 font-mono font-bold"
-                    style={{ borderColor: "#10B981" }}
-                  />
-                </div>
-              )}
-
-              {"rips" in filaEditando && (
-                <div>
-                  <label className="block text-xs font-bold mb-1">RIPS</label>
-                  <input
-                    type="text"
-                    value={String(filaEditando.rips || "")}
-                    onChange={(e) => setFilaEditando({ ...filaEditando, rips: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2"
-                    style={{ borderColor: "#CBD5E1" }}
-                  />
-                </div>
-              )}
-
-              {"revisionFinanciera" in filaEditando && (
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold mb-1">Revisión Financiera / Seguimiento</label>
-                  <input
-                    type="text"
-                    value={String(filaEditando.revisionFinanciera || "")}
-                    onChange={(e) => setFilaEditando({ ...filaEditando, revisionFinanciera: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2"
-                    style={{ borderColor: "#CBD5E1" }}
-                  />
-                </div>
-              )}
-
-              {"motivo" in filaEditando && (
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold mb-1">Motivo de Anulación / Devolución</label>
-                  <input
-                    type="text"
-                    value={String(filaEditando.motivo || "")}
-                    onChange={(e) => setFilaEditando({ ...filaEditando, motivo: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2"
-                    style={{ borderColor: "#CBD5E1" }}
-                  />
-                </div>
-              )}
-
-              {"notaCredito" in filaEditando && (
-                <div>
-                  <label className="block text-xs font-bold mb-1">Nota Crédito</label>
-                  <input
-                    type="text"
-                    value={String(filaEditando.notaCredito || "")}
-                    onChange={(e) => setFilaEditando({ ...filaEditando, notaCredito: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2 font-mono"
-                    style={{ borderColor: "#CBD5E1" }}
-                  />
-                </div>
-              )}
-
-              {"observacionInterna" in filaEditando && (
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold mb-1">Observación Interna</label>
-                  <input
-                    type="text"
-                    value={String(filaEditando.observacionInterna || "")}
-                    onChange={(e) => setFilaEditando({ ...filaEditando, observacionInterna: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2"
-                    style={{ borderColor: "#CBD5E1" }}
-                  />
-                </div>
-              )}
-
-              {"estado" in filaEditando && (
-                <div>
-                  <label className="block text-xs font-bold mb-1">Estado</label>
-                  <select
-                    value={String(filaEditando.estado || "PENDIENTE")}
-                    onChange={(e) => setFilaEditando({ ...filaEditando, estado: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2 font-bold"
-                    style={{ borderColor: "#CBD5E1" }}
-                  >
-                    <option value="PENDIENTE">PENDIENTE</option>
-                    <option value="FACTURADO">FACTURADO</option>
-                    <option value="EN REVISION">EN REVISIÓN</option>
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold mb-1">Responsable / Facturadora</label>
-                <select
-                  value={String(filaEditando.responsable || filaEditando.facturador || "MARIA ALEJANDRA")}
-                  onChange={(e) =>
-                    setFilaEditando({
-                      ...filaEditando,
-                      responsable: e.target.value,
-                      facturador: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border px-3 py-2 font-semibold"
-                  style={{ borderColor: "#CBD5E1" }}
-                >
-                  {carteraInitialData.responsablesDisponibles.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: "#E2ECF8" }}>
-              <button
-                type="button"
-                onClick={() => setFilaEditando(null)}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border cursor-pointer"
-                style={{ backgroundColor: "#F8FAFC", color: "#475569", borderColor: "#CBD5E1" }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={guardarEdicionFila}
-                className="px-5 py-2 rounded-xl text-xs sm:text-sm font-bold cursor-pointer"
-                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-              >
-                Guardar Cambios
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL NUEVO REGISTRO */}
-      {mostrarModalNuevo && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <div
-            className="rounded-xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#0E245E" }}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "#E2ECF8" }}>
-              <h4 className="text-base font-extrabold">
-                + Nuevo Registro ({tabActiva.toUpperCase()})
-              </h4>
-              <button
-                type="button"
-                onClick={() => setMostrarModalNuevo(false)}
-                className="font-bold text-base cursor-pointer"
-                style={{ color: "#64748B" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
-              <div>
-                <label className="block text-xs font-bold mb-1">Empresa</label>
-                <select
-                  value={nuevoRegistroForm.empresa}
-                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, empresa: e.target.value })}
-                  className="w-full rounded-lg border px-3 py-2 font-semibold"
-                  style={{ borderColor: "#CBD5E1" }}
-                >
-                  {todasLasEmpresasDisponibles.map((emp) => (
-                    <option key={emp} value={emp}>
-                      {emp}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1">Año</label>
-                <select
-                  value={nuevoRegistroForm.anio}
-                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, anio: e.target.value })}
-                  className="w-full rounded-lg border px-3 py-2 font-semibold"
-                  style={{ borderColor: "#CBD5E1" }}
-                >
-                  {ANIOS_SISMA_DISPONIBLES.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1">No. Factura (FCOE...)</label>
-                <input
-                  type="text"
-                  value={nuevoRegistroForm.factura}
-                  onChange={(e) =>
-                    setNuevoRegistroForm({ ...nuevoRegistroForm, factura: e.target.value.toUpperCase() })
-                  }
-                  className="w-full rounded-lg border px-3 py-2 font-mono"
-                  style={{ borderColor: "#CBD5E1" }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1">Valor Facturado ($ COP)</label>
-                <input
-                  type="number"
-                  value={nuevoRegistroForm.valorRadicado}
-                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, valorRadicado: e.target.value })}
-                  placeholder="Ej. 1450000"
-                  className="w-full rounded-lg border px-3 py-2 font-mono"
-                  style={{ borderColor: "#CBD5E1" }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1"># Factura Reemplaza / Nota Crédito</label>
-                <input
-                  type="text"
-                  value={nuevoRegistroForm.facturaReemplaza}
-                  onChange={(e) =>
-                    setNuevoRegistroForm({
-                      ...nuevoRegistroForm,
-                      facturaReemplaza: e.target.value.toUpperCase(),
-                      notaCredito: e.target.value.toUpperCase(),
-                    })
-                  }
-                  placeholder="Ej. FCOE90012 o NC1204"
-                  className="w-full rounded-lg border px-3 py-2 font-mono"
-                  style={{ borderColor: "#CBD5E1" }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1">Responsable / Facturadora</label>
-                <select
-                  value={nuevoRegistroForm.responsable}
-                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, responsable: e.target.value })}
-                  className="w-full rounded-lg border px-3 py-2 font-semibold"
-                  style={{ borderColor: "#CBD5E1" }}
-                >
-                  {carteraInitialData.responsablesDisponibles.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold mb-1">Motivo / Observación</label>
-                <input
-                  type="text"
-                  value={nuevoRegistroForm.motivo}
-                  onChange={(e) => setNuevoRegistroForm({ ...nuevoRegistroForm, motivo: e.target.value })}
-                  placeholder="Detalle del motivo de glosa, devolución o servicio..."
-                  className="w-full rounded-lg border px-3 py-2"
-                  style={{ borderColor: "#CBD5E1" }}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: "#E2ECF8" }}>
-              <button
-                type="button"
-                onClick={() => setMostrarModalNuevo(false)}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border cursor-pointer"
-                style={{ backgroundColor: "#F8FAFC", color: "#475569", borderColor: "#CBD5E1" }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={crearNuevoRegistro}
-                className="px-5 py-2 rounded-xl text-xs sm:text-sm font-bold cursor-pointer"
-                style={{ backgroundColor: "#1D58D8", color: "#FFFFFF" }}
-              >
-                Guardar Registro
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL REGISTRAR CORTE */}
       {mostrarModalCorte && (
