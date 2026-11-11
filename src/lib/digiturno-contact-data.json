@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-11 09:15:32",
+  "updatedAt": "2026-11-11 13:58:49",
   "sources": {
     "digiturno": "http://192.168.200.11:6663/SGTWidgetGestureApi",
     "contactCenter": "https://pbx.itmsas.com/sonata/service/v1/api"
@@ -387,50 +387,50 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 1129,
-            "espera": 7.1,
+            "turnos": 1211,
+            "espera": 7.4,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 2052,
+            "turnos": 2150,
             "espera": 27.2,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 1129,
+            "turnos": 1211,
             "espera": 0.0,
-            "atencion": 4.2
+            "atencion": 4.3
           },
           "sede2": {
-            "turnos": 2052,
+            "turnos": 2150,
             "espera": 0.0,
             "atencion": 1.8
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 475,
-            "espera": 15.1,
-            "atencion": 15.6
+            "turnos": 503,
+            "espera": 15.4,
+            "atencion": 16.1
           },
           "sede2": {
-            "turnos": 1508,
-            "espera": 22.2,
-            "atencion": 6.7
+            "turnos": 1574,
+            "espera": 21.9,
+            "atencion": 6.6
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 158,
-            "espera": 34.1,
-            "atencion": 17.9
+            "turnos": 184,
+            "espera": 34.6,
+            "atencion": 18.0
           },
           "sede2": {
-            "turnos": 389,
-            "espera": 53.2,
-            "atencion": 8.6
+            "turnos": 414,
+            "espera": 55.2,
+            "atencion": 8.7
           }
         },
         "step5": {
@@ -440,19 +440,19 @@
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 571,
-            "espera": 17.8,
+            "turnos": 604,
+            "espera": 18.3,
             "atencion": 2.3
           }
         }
       },
       "_extraccion": {
-        "cuando": "2026-11-11 09:15",
+        "cuando": "2026-11-11 13:58",
         "desde": "2026-11-01",
         "hasta": "2026-11-11",
-        "registros_leidos": 6282,
-        "turnos_sede1": 1762,
-        "turnos_sede2": 4520
+        "registros_leidos": 6640,
+        "turnos_sede1": 1898,
+        "turnos_sede2": 4742
       }
     }
   ],
@@ -4452,17 +4452,17 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 3076,
-          "contestadas": 511,
-          "perdidas": 2565,
-          "esperaMin": 12.2,
-          "slaPct": 0.07,
+          "recibidas": 3302,
+          "contestadas": 536,
+          "perdidas": 2766,
+          "esperaMin": 12.1,
+          "slaPct": 0.06,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 294,
-              "contestadas": 269,
+              "timbradas": 319,
+              "contestadas": 294,
               "perdidas": 25,
               "duracionMin": 4.8
             },
@@ -4488,19 +4488,19 @@
           "id": "506013",
           "name": "Mutual Contributivo",
           "isMutual": true,
-          "recibidas": 707,
-          "contestadas": 294,
-          "perdidas": 413,
+          "recibidas": 750,
+          "contestadas": 310,
+          "perdidas": 440,
           "esperaMin": 9.2,
-          "slaPct": 2.69,
+          "slaPct": 2.53,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 182,
-              "contestadas": 170,
-              "perdidas": 12,
-              "duracionMin": 5.5
+              "timbradas": 199,
+              "contestadas": 186,
+              "perdidas": 13,
+              "duracionMin": 5.4
             },
             {
               "id": "1018",
@@ -4532,11 +4532,11 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 437,
-          "contestadas": 392,
-          "perdidas": 45,
+          "recibidas": 451,
+          "contestadas": 405,
+          "perdidas": 46,
           "esperaMin": 0.9,
-          "slaPct": 73.0,
+          "slaPct": 73.61,
           "agents": [
             {
               "id": "1005",
@@ -4549,16 +4549,16 @@
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 111,
-              "contestadas": 96,
+              "timbradas": 122,
+              "contestadas": 107,
               "perdidas": 15,
-              "duracionMin": 5.0
+              "duracionMin": 4.8
             },
             {
               "id": "1001",
               "name": "Fabiola Bustos",
-              "timbradas": 113,
-              "contestadas": 87,
+              "timbradas": 115,
+              "contestadas": 89,
               "perdidas": 26,
               "duracionMin": 3.5
             },
@@ -4621,16 +4621,16 @@
         {
           "id": "1003",
           "name": "Maria Angelica",
-          "timbradas": 532,
-          "contestadas": 482,
-          "perdidas": 50,
-          "duracionMin": 5.1
+          "timbradas": 574,
+          "contestadas": 523,
+          "perdidas": 51,
+          "duracionMin": 5.0
         },
         {
           "id": "1018",
           "name": "Karen Tatiana",
-          "timbradas": 427,
-          "contestadas": 399,
+          "timbradas": 438,
+          "contestadas": 410,
           "perdidas": 28,
           "duracionMin": 4.1
         },
@@ -4645,8 +4645,8 @@
         {
           "id": "1001",
           "name": "Fabiola Bustos",
-          "timbradas": 118,
-          "contestadas": 91,
+          "timbradas": 120,
+          "contestadas": 93,
           "perdidas": 27,
           "duracionMin": 3.5
         },
@@ -4668,11 +4668,5 @@
         }
       ]
     }
-  ],
-  "_parcial": {
-    "intento": "2026-11-11 11:20:50",
-    "digiturno": "FALLO",
-    "contactCenter": "FALLO",
-    "nota": "La fecha de arriba NO se movio: hay datos sin actualizar."
-  }
+  ]
 }
