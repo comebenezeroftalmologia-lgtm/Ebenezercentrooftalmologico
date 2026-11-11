@@ -19732,7 +19732,12 @@ try{
           }
         }
         var base = filas.filter(function(r){ return iso(r.f) === f; })[0] || {};
-        nuevas.push({ f: f, emp: base.emp || "", tipo: base.tipo || "Anestesia",
+        /* el cirujano del acuerdo es el que dice el acuerdo («… · Dr. Alfredo Ramírez»),
+           no el que estaba ese día en el quirófano */
+        var quien = "";
+        var mq = /·\s*(?:Dr\.?a?\.?\s*)?([^·—]+?)\s*$/.exec(txt);
+        if(mq) quien = mq[1].trim();
+        nuevas.push({ f: f, emp: quien || base.emp || "", tipo: base.tipo || "Anestesia",
                       pac: txt.replace(/^acuerdo:\s*/i, "").replace(/\s*—\s*\d{1,2}\/\d{1,2}.*$/, "").trim(),
                       det: "Acuerdo" + (tur ? (" · turno " + tur) : ""),
                       v: red(c.v), __acuerdo: true, __tur: tur });
@@ -19930,6 +19935,466 @@ try{
     var sd = document.getElementById("sede");
     if(sd) sd.addEventListener("change", function(){ var v=document.querySelector(".cong"); if(v) v.remove(); });
   }catch(e){}
+})();
+
+
+
+/* === Qué voy a liquidar: los cortes se marcan ===
+   Los tres cortes NO son tres pedazos del mes: los tres arrancan el 26 del mes
+   anterior y lo único que cambia es hasta dónde llegan. Está así a propósito,
+   porque la ficha técnica cobra por mes (tramos por volumen, mínimos, paquetes de
+   jornadas): si se parte el mes, esas reglas se inflan.
+   Por eso marcar el 1 y el 2 es lo mismo que marcar el 2, y marcar el 3 es el mes
+   completo. Aquí se ve marcado, con las fechas de verdad, y se avisa qué ya se
+   envió para que no haya dudas de que lo enviado no se mueve.
+   === */
+(function(){
+  if(window.__cortesMarca) return; window.__cortesMarca = true;
+
+  var CSS = ".qliq{margin:10px 0 0;border:1px solid #cfe0f5;background:#f6faff;border-radius:10px;padding:11px 13px}"
+    + ".qliq h4{margin:0 0 3px;font-size:14px;color:#1e3a6b}"
+    + ".qliq .sub{font-size:11.5px;color:#6b7a90;margin:0 0 9px;line-height:1.45}"
+    + ".qliq label{display:flex;align-items:flex-start;gap:8px;padding:6px 7px;border-radius:7px;cursor:pointer;font-size:12.5px}"
+    + ".qliq label:hover{background:#eef4fd}"
+    + ".qliq label.sel{background:#e7f0ff}"
+    + ".qliq input{margin-top:2px}"
+    + ".qliq .nom{font-weight:700;color:#1e3a6b}"
+    + ".qliq .fec{color:#44556e}"
+    + ".qliq .et{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;padding:1px 6px;border-radius:9px;margin-left:5px}"
+    + ".qliq .et.int{background:#eceff4;color:#5a6a80}"
+    + ".qliq .et.def{background:#dff3e6;color:#17683f}"
+    + ".qliq .et.env{background:#fff0cc;color:#7a5600}"
+    + ".qliq .res{margin-top:8px;padding:7px 9px;border-radius:7px;background:#fff;border:1px solid #dbe6f4;font-size:12.5px;color:#1e3a6b;font-weight:700}"
+    + ".qliq .ojo{margin-top:7px;padding:7px 9px;border-radius:7px;background:#fffdf5;border:1px solid #e6b800;font-size:12px;color:#7a5600;line-height:1.45}";
+  try{ var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
+
+  var NOM = {C1:"Corte 1 · inicial", C2:"Corte 2 · en transcurso", C3:"Corte 3 · la definitiva"};
+  var ORD = ["C1","C2","C3"];
+
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function dd(d){
+    try{ return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0"); }catch(e){ return "?"; }
+  }
+  function mesAno(){
+    var m = parseInt((el("periodoMes")||{}).value, 10), a = parseInt((el("periodoAno")||{}).value, 10);
+    return (m && a) ? [m,a] : null;
+  }
+  function rangos(){
+    var p = mesAno(); if(!p) return null;
+    var r = {};
+    ORD.forEach(function(c){
+      try{ r[c] = corteRango(p[0], p[1], c); }catch(e){ r[c] = null; }
+    });
+    return r;
+  }
+  /* los marcados viven en la pantalla, no se guardan: el corte de verdad es el select */
+  function marcados(){
+    var s = [];
+    ORD.forEach(function(c){ var i = el("qliq_"+c); if(i && i.checked) s.push(c); });
+    return s;
+  }
+  function aplicar(){
+    var s = marcados();
+    var e = el("periodoCorte"); if(!e) return;
+    if(!s.length){ pintarResumen(); return; }
+    e.value = s[s.length-1];                       /* el último marcado manda: es el que llega más lejos */
+    try{ corteFechasPintar(); }catch(err){}
+    try{ e.dispatchEvent(new Event("change", {bubbles:true})); }catch(err){}
+    pintarResumen();
+  }
+
+  var ENVIADO = null;      /* {parte, el, por, confirmada} del corte definitivo ya enviado */
+
+  function pintarResumen(){
+    var box = document.querySelector(".qliq"); if(!box) return;
+    var res = box.querySelector(".res"), ojo = box.querySelector(".ojo");
+    var R = rangos(), s = marcados();
+    ORD.forEach(function(c){
+      var l = el("qliq_"+c); if(l && l.parentNode) l.parentNode.classList.toggle("sel", !!l.checked);
+    });
+    if(!res) return;
+    if(!s.length || !R){
+      res.textContent = "No ha marcado ningún corte: se liquida con las fechas que estén arriba.";
+    } else {
+      var c = s[s.length-1], r = R[c];
+      res.textContent = "Va a liquidar del " + (r?dd(r.ini):"?") + " al " + (r?dd(r.fin):"?")
+        + " — " + NOM[c] + (c === "C3" ? " (el mes completo)" : "")
+        + (s.length > 1 ? "  ·  marcar " + s.join(" y ") + " es lo mismo que marcar " + c + ": cada corte incluye al anterior." : "");
+    }
+    if(!ojo) return;
+    var avisos = [];
+    if(ENVIADO){
+      avisos.push("Este corte ya se envió a contabilidad el <b>" + esc(ENVIADO.el) + "</b> por <b>" + esc(ENVIADO.por) + "</b>."
+        + " <b>Lo enviado no se mueve</b>, ni el total ni el paciente: lo que vea en pantalla es un recálculo de hoy."
+        + (ENVIADO.confirmada ? " Contabilidad ya lo confirmó." : ""));
+      if(s.length && s[s.length-1] !== "C3"){
+        avisos.push("Ojo: marcó un corte que no llega a fin de mes, y la definitiva ya se envió. Va a ver <b>menos</b> de lo que ya se envió, y eso es normal: no es que se haya borrado nada.");
+      }
+    }
+    ojo.innerHTML = avisos.join("<br><br>");
+    ojo.style.display = avisos.length ? "" : "none";
+  }
+
+  function pintar(){
+    var sel = el("periodoCorte"); if(!sel) return;
+    if(document.querySelector(".qliq")) { pintarResumen(); return; }
+    var R = rangos(); if(!R) return;
+    var act = (sel.value || "C3");
+
+    var box = document.createElement("div"); box.className = "qliq";
+    var filas = ORD.map(function(c){
+      var r = R[c];
+      var et = (c === "C3") ? '<span class="et def">se envía</span>' : '<span class="et int">interno</span>';
+      var marca = (ORD.indexOf(c) <= ORD.indexOf(act)) && act !== "X";
+      return '<label class="' + (marca?"sel":"") + '">'
+        + '<input type="checkbox" id="qliq_' + c + '"' + (marca?" checked":"") + '>'
+        + '<span><span class="nom">' + esc(NOM[c]) + '</span>' + et + '<br>'
+        + '<span class="fec">del ' + (r?dd(r.ini):"?") + ' al ' + (r?dd(r.fin):"?") + '</span></span></label>';
+    }).join("");
+
+    box.innerHTML = "<h4>Qué voy a liquidar</h4>"
+      + '<p class="sub">Los tres cortes arrancan el <b>26 del mes anterior</b>. Lo único que cambia es hasta dónde llegan, '
+      + 'y cada uno incluye al anterior. Está así porque la ficha técnica cobra por mes —tramos por volumen, mínimos, paquetes de jornadas—: '
+      + 'si se parte el mes, esas reglas se inflan. Marque hasta dónde quiere llegar.</p>'
+      + filas
+      + '<div class="res"></div>'
+      + '<div class="ojo" style="display:none"></div>';
+
+    var cont = sel.closest("label") || sel.closest("div") || sel.parentNode;
+    if(cont && cont.parentNode) cont.parentNode.insertBefore(box, cont.nextSibling);
+    else return;
+
+    ORD.forEach(function(c){
+      var i = el("qliq_" + c);
+      if(i) i.addEventListener("change", function(){
+        /* marcar uno marca los anteriores: el corte incluye al anterior, no se puede saltar */
+        if(i.checked){ ORD.slice(0, ORD.indexOf(c)).forEach(function(p){ var q=el("qliq_"+p); if(q) q.checked=true; }); }
+        else { ORD.slice(ORD.indexOf(c)+1).forEach(function(p){ var q=el("qliq_"+p); if(q) q.checked=false; }); }
+        aplicar();
+      });
+    });
+    ["periodoMes","periodoAno"].forEach(function(id){
+      var e = el(id); if(e) e.addEventListener("change", function(){ setTimeout(function(){ leerEnviado(); pintarResumen(); }, 200); });
+    });
+    sel.addEventListener("change", function(){
+      var v = sel.value;
+      ORD.forEach(function(c){ var q=el("qliq_"+c); if(q) q.checked = (v!=="X") && (ORD.indexOf(c) <= ORD.indexOf(v)); });
+      pintarResumen();
+    });
+    pintarResumen();
+    leerEnviado();
+  }
+
+  async function leerEnviado(){
+    ENVIADO = null;
+    try{
+      var parte = (typeof nubeParteActual === "function") ? nubeParteActual() : null;
+      var per = (typeof nubePeriodoActual === "function") ? nubePeriodoActual() : "";
+      if(!parte || !per || !window.NUBE || !NUBE.leerCierres){ pintarResumen(); return; }
+      var C = await NUBE.leerCierres(per);
+      var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){ return C[k]; }) : []);
+      var c = arr.filter(function(x){ return String(x.parte||"") === parte && x.enviado; })[0];
+      if(c){
+        var f = c.enviadoEl;
+        var d = (f && f.seconds) ? new Date(f.seconds*1000) : (f ? new Date(f) : null);
+        ENVIADO = { parte: parte,
+                    el: (d && !isNaN(d.getTime())) ? d.toLocaleString("es-CO",{dateStyle:"short",timeStyle:"short"}) : String(f||"—").slice(0,16).replace("T"," "),
+                    por: c.porNombre || c.enviadoPor || "—",
+                    confirmada: !!c.confirmada };
+      }
+    }catch(e){}
+    pintarResumen();
+  }
+
+  window.__cortesPintar = pintar;
+  setTimeout(pintar, 900);
+  setTimeout(pintar, 3500);
+  try{
+    var sd = el("sede");
+    if(sd) sd.addEventListener("change", function(){ setTimeout(leerEnviado, 300); });
+  }catch(e){}
+})();
+
+
+
+/* === El precio sale de la ficha técnica ===
+   Hoy hay 196 valores de cirugía escritos dentro del código. La regla del código
+   sigue decidiendo QUÉ servicio es y si es uno o los dos ojos — eso no se toca —
+   pero el VALOR se busca en la ficha de ese médico.
+   Viene APAGADO a propósito. Con el interruptor apagado no cambia ni un peso: solo
+   anota las diferencias y las muestra abajo, para que usted vea qué se movería
+   antes de que se mueva. Cuando lo prenda, manda la ficha.
+   === */
+(function(){
+  if(window.__fichaManda) return; window.__fichaManda = true;
+  if(typeof v4CirFija !== "function" || typeof REGLAS_DOC === "undefined") return;
+
+  var LLAVE = "ficha_manda_v1";
+  function prendido(){
+    try{ return localStorage.getItem(LLAVE) === "1"; }catch(e){ return false; }
+  }
+  function prender(v){
+    try{ localStorage.setItem(LLAVE, v ? "1" : "0"); }catch(e){}
+  }
+
+  var MED_DE = new Map();
+  try{ Object.keys(REGLAS_DOC).forEach(function(h){ MED_DE.set(REGLAS_DOC[h], h); }); }catch(e){}
+
+  function nz(s){
+    return String(s==null?"":s).toUpperCase().normalize("NFD")
+      .replace(/[̀-ͯ]/g,"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+  }
+  function grupoFicha(f){
+    var t = nz((f.empresa||"") + " " + (f.seccion||""));
+    if(/MUTUAL/.test(t)) return "M";
+    if(/SURA/.test(t))   return "S";
+    if(/PARTICULAR/.test(t)) return "PART";
+    if(/PREPAGAD/.test(t))   return "P";
+    return "";
+  }
+  function lateralidad(f){
+    var t = nz(f.tipo);
+    if(/\bUNILATERAL Y BILATERAL\b/.test(t)) return "ambos";
+    if(/\bBILATERAL\b/.test(t)) return "bil";
+    if(/\bUNILATERAL\b/.test(t) || /UN SOLO OJO/.test(t)) return "uni";
+    if(/POR PACIENTE/.test(t)) return "pac";
+    return "";
+  }
+
+  window.__fichaValor = function(med, src, g, lado){
+    var filas = [];
+    /* OJO: TARIFAS_V2 es «const» del bloque, NO está en window. Preguntar por
+       window.TARIFAS_V2 da undefined y la ficha queda muda sin avisar. Se nombra directo. */
+    try{ filas = TARIFAS_V2[med] || []; }catch(e){ return null; }
+    if(!filas.length || !src) return null;
+    var re;
+    try{ re = new RegExp(src); }catch(e){ return null; }
+
+    var quiero = (g === "M") ? "M" : (g === "S") ? "S" : (g === "PART") ? "PART" : "P";
+    var cand = filas.filter(function(f){
+      if(f.valor == null) return false;
+      if(Number(f.valor) > 0 && Number(f.valor) <= 1) return false;   /* los % los maneja otra rama */
+      if(!re.test(nz(f.servicio))) return false;
+      var gf = grupoFicha(f);
+      if(quiero === "PART") return gf === "PART" || gf === "P";       /* «prepagadas y particulares» */
+      if(quiero === "P")    return gf === "P" || gf === "PART";
+      return gf === quiero;
+    });
+    if(!cand.length) return null;
+
+    function porLado(l){
+      var x = cand.filter(function(f){ return lateralidad(f) === l; });
+      return x.length === 1 ? x[0] : null;
+    }
+    var f = null;
+    if(lado === "un ojo")      f = porLado("uni");
+    else if(lado === "ambos ojos") f = porLado("bil");
+    if(!f) f = porLado(lado === "un ojo" ? "uni" : "bil");
+    if(!f) f = porLado("pac") || porLado("ambos");
+    if(!f && cand.length === 1) f = cand[0];
+    if(!f) return {ambiguo:true, cuantas:cand.length,
+                   valores:cand.map(function(x){ return Math.round(x.valor); })};
+    return {v: Math.round(f.valor), srv: f.servicio, tipo: f.tipo, emp: f.empresa || f.seccion};
+  };
+
+  window.__fichaAudit = [];
+  var _orig = v4CirFija;
+  v4CirFija = function(cfg, proc, emp, q){
+    var r = _orig.apply(this, arguments);
+    try{
+      if(!r || !r.src) return r;
+      var med = MED_DE.get(cfg);
+      if(!med) return r;
+      var g = (typeof v4EmpG === "function") ? v4EmpG(emp) : "";
+      if(g !== "M" && g !== "S"){
+        g = (typeof v4EsParticular === "function" && v4EsParticular(emp)) ? "PART" : "P";
+      }
+      var h = window.__fichaValor(med, r.src, g, r.lado);
+      var fila = {med:med, srv:String(proc||"").slice(0,54), emp:String(emp||"").slice(0,26),
+                  g:g, lado:r.lado||"", codigo:Math.round(r.v||0)};
+      if(!h){
+        fila.ficha = null; fila.caso = "no está escrito en la ficha";
+        window.__fichaAudit.push(fila);
+        r.sinFicha = true;
+        return r;
+      }
+      if(h.ambiguo){
+        fila.ficha = h.valores; fila.caso = "la ficha tiene varios renglones que sirven";
+        window.__fichaAudit.push(fila);
+        r.fichaAmbigua = true;
+        return r;
+      }
+      if(Math.round(h.v) !== Math.round(r.v)){
+        fila.ficha = h.v; fila.caso = "la ficha dice otro valor";
+        fila.renglon = h.srv + " | " + h.tipo + " | " + h.emp;
+        window.__fichaAudit.push(fila);
+      }
+      if(prendido()){ r.v = h.v; r.deFicha = true; }   /* apagado: no se toca ni un peso */
+    }catch(e){}
+    return r;
+  };
+
+  /* ---------- el panel ---------- */
+  var CSS = ".fman{margin:0 0 16px;border:1px solid #cfe0f5;background:#f6faff;border-radius:10px;padding:12px 14px}"
+    + ".fman h3{margin:0 0 3px;font-size:15px;color:#1e3a6b}"
+    + ".fman .sub{font-size:12px;color:#6b7a90;margin:0 0 9px;line-height:1.45}"
+    + ".fman .sw{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:#1e3a6b;cursor:pointer}"
+    + ".fman .est{font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:2px 8px;border-radius:9px}"
+    + ".fman .est.on{background:#dff3e6;color:#17683f}"
+    + ".fman .est.off{background:#eceff4;color:#5a6a80}"
+    + ".fman table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;margin-top:10px}"
+    + ".fman th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:#6b7a90;padding:5px 7px;border-bottom:1px solid #e6ecf5}"
+    + ".fman td{padding:5px 7px;border-bottom:1px solid #f1f5fa}"
+    + ".fman .num{text-align:right;white-space:nowrap}"
+    + ".fman .sube{color:#1a7f4b;font-weight:700}.fman .baja{color:#b3261e;font-weight:700}"
+    + ".fman .ok{color:#1a7f4b;font-weight:700}";
+  try{ var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
+
+  function mny(n){ return "$ " + (Math.round(Number(n)||0)).toLocaleString("es-CO"); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  function pintar(){
+    var sec = document.getElementById("fichasPanel"); if(!sec) return;
+    var vieja = sec.querySelector(".fman"); if(vieja) vieja.remove();
+    var on = prendido();
+    var A = window.__fichaAudit || [];
+    var dist = A.filter(function(x){ return x.caso === "la ficha dice otro valor"; });
+    var sinF = A.filter(function(x){ return x.caso === "no está escrito en la ficha"; });
+    var amb  = A.filter(function(x){ return /varios renglones/.test(x.caso); });
+
+    /* una línea por médico+servicio, no una por paciente */
+    function juntar(L){
+      var m = {};
+      L.forEach(function(x){
+        var k = x.med + "|" + x.srv + "|" + x.emp + "|" + x.codigo + "|" + JSON.stringify(x.ficha);
+        if(!m[k]) m[k] = {x:x, n:0};
+        m[k].n++;
+      });
+      return Object.keys(m).map(function(k){ return m[k]; })
+        .sort(function(a,b){ return Math.abs((b.x.ficha-b.x.codigo)*b.n) - Math.abs((a.x.ficha-a.x.codigo)*a.n); });
+    }
+    var D = juntar(dist), S = juntar(sinF), M = juntar(amb);
+    var mueve = D.reduce(function(a,o){ return a + ((Number(o.x.ficha)||0) - o.x.codigo) * o.n; }, 0);
+
+    var box = document.createElement("div"); box.className = "fman";
+    var cab = "<h3>⚖ El precio sale de la ficha técnica</h3>"
+      + '<p class="sub">La regla del código sigue decidiendo <b>qué</b> servicio es y si es uno o los dos ojos. '
+      + 'Lo que cambia es de dónde sale el <b>valor</b>: de la ficha de ese médico, no de un número escrito adentro del programa. '
+      + 'Mientras esté apagado no cambia ni un peso — solo le muestra abajo qué se movería.</p>'
+      + '<label class="sw"><input type="checkbox" id="fmanSw"' + (on?" checked":"") + '> '
+      + 'Que mande la ficha <span class="est ' + (on?"on":"off") + '">' + (on?"prendido":"apagado") + "</span></label>";
+
+    if(!A.length){
+      box.innerHTML = cab + '<p class="sub" style="margin:9px 0 0">Todavía no hay nada que mostrar: liquide una sede y vuelva aquí.</p>';
+    } else {
+      var t = "";
+      if(D.length){
+        t += '<p class="sub" style="margin:10px 0 0"><b>' + D.length + "</b> servicio(s) donde la ficha dice otro valor"
+           + (mueve ? ". En este corte movería " + (mueve>0?"+":"") + mny(mueve) : "") + ":</p>"
+           + "<table><thead><tr><th>Médico</th><th>Servicio</th><th>Empresa</th><th class='num'>Veces</th>"
+           + "<th class='num'>Paga hoy</th><th class='num'>Dice la ficha</th></tr></thead><tbody>"
+           + D.slice(0,25).map(function(o){
+               var d = (Number(o.x.ficha)||0) - o.x.codigo;
+               return "<tr><td>" + esc(o.x.med) + "</td><td>" + esc(o.x.srv) + "</td><td>" + esc(o.x.emp) + "</td>"
+                 + '<td class="num">' + o.n + "</td>"
+                 + '<td class="num">' + mny(o.x.codigo) + "</td>"
+                 + '<td class="num ' + (d>0?"sube":"baja") + '">' + mny(o.x.ficha) + "</td></tr>";
+             }).join("") + "</tbody></table>";
+      } else {
+        t += '<p class="sub" style="margin:10px 0 0"><span class="ok">Ningún servicio cambia de valor:</span> lo que paga el programa es lo que dice la ficha.</p>';
+      }
+      if(S.length){
+        t += '<p class="sub" style="margin:10px 0 0"><b>' + S.length + "</b> servicio(s) que el programa paga pero <b>no están escritos en la ficha</b>. "
+           + "Estos hay que escribirlos en la ficha o decidir qué se hace; mientras tanto se siguen pagando como hoy:</p>"
+           + "<table><thead><tr><th>Médico</th><th>Servicio</th><th>Empresa</th><th class='num'>Veces</th><th class='num'>Paga hoy</th></tr></thead><tbody>"
+           + S.slice(0,20).map(function(o){
+               return "<tr><td>" + esc(o.x.med) + "</td><td>" + esc(o.x.srv) + "</td><td>" + esc(o.x.emp) + "</td>"
+                 + '<td class="num">' + o.n + '</td><td class="num">' + mny(o.x.codigo) + "</td></tr>";
+             }).join("") + "</tbody></table>";
+      }
+      if(M.length){
+        t += '<p class="sub" style="margin:10px 0 0"><b>' + M.length + "</b> servicio(s) donde la ficha tiene varios renglones que servirían y no se puede saber cuál. "
+           + "No se adivina: se sigue pagando como hoy hasta que la ficha lo aclare.</p>";
+      }
+      box.innerHTML = cab + t;
+    }
+
+    var ref = sec.querySelector(".searchbar");
+    if(ref && ref.parentNode) ref.parentNode.insertBefore(box, ref);
+    else sec.appendChild(box);
+
+    var sw = document.getElementById("fmanSw");
+    if(sw) sw.onclick = function(){
+      var v = sw.checked;
+      if(v && !confirm("Con esto el valor de cada cirugía sale de la ficha técnica y ya no del número escrito adentro del programa.\n\nSe va a volver a liquidar. ¿Sigo?")) { sw.checked = false; return; }
+      prender(v);
+      try{
+        if(typeof NUBE!=="undefined" && NUBE.audit) NUBE.audit({accion: v?"LA FICHA MANDA: PRENDIDO":"LA FICHA MANDA: APAGADO",
+          periodo:(typeof nubePeriodoActual==="function"?nubePeriodoActual():"")||"—", parte:"", detalle:""});
+      }catch(e){}
+      var b = document.getElementById("btnCalc");
+      if(b && window.RESULT) b.click(); else pintar();
+    };
+  }
+  window.__fichaPintar = pintar;
+
+  try{
+    var b = document.getElementById("btnCalc");
+    if(b) b.addEventListener("click", function(){
+      window.__fichaAudit = [];                 /* cada liquidación empieza su propia cuenta */
+      setTimeout(pintar, 7000); setTimeout(pintar, 18000);
+    });
+  }catch(e){}
+  try{
+    var bf = document.getElementById("btnFichas");
+    if(bf) bf.addEventListener("click", function(){ setTimeout(pintar, 300); });
+  }catch(e){}
+  setTimeout(pintar, 2500);
+})();
+
+
+
+/* === No se liquida con los archivos a medio llegar ===
+   Los archivos del mes llegan de la nube de a pedazos. Si se aprieta «Liquidar»
+   mientras están llegando, se liquida con la mitad de la información y el número
+   sale mal sin que nada avise. Mientras estén llegando, el botón espera y dice por qué.
+   === */
+(function(){
+  if(window.__esperarArchivos) return; window.__esperarArchivos = true;
+
+  var TXT = "⏳ Esperando los archivos…";
+  var original = null;
+
+  function cargando(){
+    try{ return !!(window.SIMPLE && SIMPLE._trayendo); }catch(e){ return false; }
+  }
+  function hayDatos(){
+    try{ return !!(typeof RECORDS !== "undefined" && RECORDS && RECORDS.length); }catch(e){ return false; }
+  }
+
+  function revisar(){
+    var b = document.getElementById("btnCalc"); if(!b) return;
+    if(original === null) original = b.innerHTML;
+    if(cargando()){
+      if(!b.dataset.espera){
+        b.dataset.espera = "1";
+        b.dataset.antes = b.disabled ? "1" : "0";
+        b.innerHTML = TXT;
+      }
+      b.disabled = true;
+      b.title = "Todavía están llegando los archivos del mes. En cuanto terminen se habilita solo.";
+    } else if(b.dataset.espera){
+      delete b.dataset.espera;
+      b.innerHTML = original;
+      b.disabled = !hayDatos();
+      b.title = "";
+      delete b.dataset.antes;
+    }
+  }
+
+  setInterval(revisar, 400);
+  setTimeout(revisar, 300);
 })();
 
 
