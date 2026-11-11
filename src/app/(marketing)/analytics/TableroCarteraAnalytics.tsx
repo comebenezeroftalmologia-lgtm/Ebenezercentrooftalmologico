@@ -55,6 +55,17 @@ type GlosaRow = {
   valorRadicado: number;
   valorFactura: number;
   valorGlosado: number;
+  // Lo que la empresa aceptó pagar de la glosa. La API ya lo entrega
+  // (valor_aceptado) y el tablero lo suma; faltaba declararlo aquí.
+  valorAceptado?: number | null;
+  valorFacturado?: number;
+  fechaNotificacionGlosa?: string;
+  motivoCodigo?: string;
+  responsableRespuesta?: string;
+  responsable?: string;
+  tipoGlosa?: string;
+  alcance?: string;
+  estado?: string;
   motivoGlosa: string;
   facturador: string;
   responsableAceptacion: string;
