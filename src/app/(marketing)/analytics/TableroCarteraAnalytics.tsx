@@ -423,6 +423,22 @@ export default function TableroCarteraAnalytics() {
   const [diasFiltroActivo, setDiasFiltroActivo] = useState<boolean>(false);
   const [diasEtiqueta, setDiasEtiqueta] = useState<string>("📅 Todos los días");
 
+  // Sincronizar automáticamente el año de la tendencia con el filtro de año superior si se selecciona uno específico
+  useEffect(() => {
+    const anioSel =
+      aniosFrecSel.length === 1
+        ? aniosFrecSel[0]
+        : filtroAnio !== "TODOS"
+        ? filtroAnio
+        : null;
+    if (anioSel) {
+      const num = Number(anioSel);
+      if (!isNaN(num)) {
+        setAnioTendencia(num);
+      }
+    }
+  }, [aniosFrecSel, filtroAnio]);
+
   // Excel-style floating column filter popover state
   const [colMenuAbierto, setColMenuAbierto] = useState<string | null>(null);
   const [busquedaMenuCol, setBusquedaMenuCol] = useState<string>("");
@@ -1814,9 +1830,10 @@ export default function TableroCarteraAnalytics() {
     const totalBaseRef =
       datosSismaCompletaRef.current?.edades?.saldoTotal ||
       corteBaseSeleccionado?.carteraTotal ||
+      cortesTodas[cortesTodas.length - 1]?.carteraTotal ||
       1;
     const factorFiltro =
-      tieneFiltroEntidadDirecto && modalidadSisma === "TODAS"
+      tieneFiltroEntidadDirecto || modalidadSisma === "PYP"
         ? Math.min(1, Math.max(0, corteSeleccionado.carteraTotal / totalBaseRef))
         : 1;
 
@@ -1829,6 +1846,7 @@ export default function TableroCarteraAnalytics() {
       esVivo: boolean;
       carteraTotal: number;
       totalCarteraReal: number;
+      carteraCorriente: number;
       carteraVencida: number;
     };
 
@@ -1841,8 +1859,7 @@ export default function TableroCarteraAnalytics() {
           fClean === datosSismaVivo?.fechaCorte.slice(0, 10));
 
       const usarDirecto =
-        tieneFiltroEntidadDirecto &&
-        modalidadSisma === "TODAS" &&
+        (tieneFiltroEntidadDirecto || modalidadSisma === "PYP") &&
         idx === indiceCorteActivo;
 
       const cTotal = usarDirecto
@@ -1851,6 +1868,9 @@ export default function TableroCarteraAnalytics() {
       const cReal = usarDirecto
         ? corteSeleccionado.totalCarteraReal
         : Math.round(c.totalCarteraReal * factorFiltro);
+      const cCorr = usarDirecto
+        ? corteSeleccionado.carteraCorriente
+        : Math.round((c.carteraCorriente ?? (c.carteraTotal - c.carteraVencida)) * factorFiltro);
       const cVenc = usarDirecto
         ? corteSeleccionado.carteraVencida
         : Math.round(c.carteraVencida * factorFiltro);
@@ -1864,6 +1884,7 @@ export default function TableroCarteraAnalytics() {
         esVivo,
         carteraTotal: cTotal,
         totalCarteraReal: cReal,
+        carteraCorriente: cCorr,
         carteraVencida: cVenc,
       };
     });
@@ -1888,6 +1909,7 @@ export default function TableroCarteraAnalytics() {
               esVivo: true,
               carteraTotal: corteSeleccionado.carteraTotal,
               totalCarteraReal: corteSeleccionado.totalCarteraReal,
+              carteraCorriente: corteSeleccionado.carteraCorriente,
               carteraVencida: corteSeleccionado.carteraVencida,
             },
           ]
@@ -1902,42 +1924,43 @@ export default function TableroCarteraAnalytics() {
           );
 
     /* -----------------------------------------------------------------
-       LA TENDENCIA MENSUAL SALE DE LOS CIERRES GUARDADOS.
-
-       Aqui habia dos fuentes, y ninguna era un cierre de mes:
-
-       1. serieMensual de SISMA, que es el ACUMULADO POR MES DE FACTURA:
-          de lo que se debe hoy, cuanto viene de facturas hasta cada mes.
-          Por eso solo podia subir. Enero marcaba 52 millones, que no fue
-          la cartera de enero sino lo que todavia se debe de facturas de
-          enero, diez meses despues.
-
-       2. Un respaldo que FABRICABA los diez meses interpolando cuatro
-          cortes: "Febrero = promedio del corte del 9 y el del 23 de
-          septiembre", "Marzo = mezcla 30/70 de esos mismos dos". Se
-          dibujaba mientras SISMA respondia, con el mismo aspecto que lo
-          real y sin un solo aviso. Es lo que gerencia alcanzo a ver.
-
-       Ahora se leen los cierres guardados (tabla cartera_cierres_mensuales),
-       que si son lo que pidio Faber: como cerro la cartera cada mes,
-       Corriente + Vencida = Total, menos Giros = Real.
-
-       Y si no hay cierres, NO SE DIBUJA NADA. La tarjeta lo dice. Un
-       hueco visible es mejor que una curva inventada.
+       LA TENDENCIA MENSUAL SALE DE LOS CIERRES GUARDADOS,
+       FILTRADA REACTIVAMENTE POR LOS MESES Y ENTIDADES SELECCIONADOS.
        ----------------------------------------------------------------- */
-    const puntosMeses = cierresMensuales.map((c, idx) => ({
-      id: `cierre-${c.anio}-${c.mes}`,
-      idxCorte: 0,
-      etiquetaEje: c.etiqueta,
-      carteraTotal: c.carteraTotal,
-      totalCarteraReal: c.carteraReal,
-      carteraCorriente: c.carteraCorriente,
-      carteraVencida: c.carteraVencida,
-      /* Antes se saltaba un mes de por medio cuando habia mas de siete:
-         la cifra que faltaba se iba a buscar a la tabla de abajo. Ya no
-         hay tabla, asi que todos los meses tienen que decir lo suyo. */
-      mostrarLabel: true,
-    }));
+    const cierresFiltrados = cierresMensuales.filter((c) => {
+      if (mesesFrecSel.length > 0 && mesesFrecSel.length < 12) {
+        const mm = String(c.mes).padStart(2, "0");
+        if (!mesesFrecSel.includes(mm)) return false;
+      }
+      return true;
+    });
+
+    const puntosMeses = cierresFiltrados.map((c, idx) => {
+      const esMesVivoActual = c.esMesEnCurso && (tieneFiltroEntidadDirecto || modalidadSisma === "PYP");
+      const cTotal = esMesVivoActual
+        ? corteSeleccionado.carteraTotal
+        : Math.round(c.carteraTotal * factorFiltro);
+      const cReal = esMesVivoActual
+        ? corteSeleccionado.totalCarteraReal
+        : Math.round(c.carteraReal * factorFiltro);
+      const cCorr = esMesVivoActual
+        ? corteSeleccionado.carteraCorriente
+        : Math.round(c.carteraCorriente * factorFiltro);
+      const cVenc = esMesVivoActual
+        ? corteSeleccionado.carteraVencida
+        : Math.round(c.carteraVencida * factorFiltro);
+
+      return {
+        id: `cierre-${c.anio}-${c.mes}`,
+        idxCorte: 0,
+        etiquetaEje: c.etiqueta,
+        carteraTotal: cTotal,
+        totalCarteraReal: cReal,
+        carteraCorriente: cCorr,
+        carteraVencida: cVenc,
+        mostrarLabel: true,
+      };
+    });
 
     const puntosGrafica =
       modoTendenciaCartera === "MES"
@@ -1948,8 +1971,8 @@ export default function TableroCarteraAnalytics() {
             etiquetaEje: c.etiquetaEje,
             carteraTotal: c.carteraTotal,
             totalCarteraReal: c.totalCarteraReal,
-            carteraCorriente: (c as { carteraCorriente?: number }).carteraCorriente ?? 0,
-            carteraVencida: (c as { carteraVencida?: number }).carteraVencida ?? 0,
+            carteraCorriente: c.carteraCorriente,
+            carteraVencida: c.carteraVencida,
             mostrarLabel: true,
           }));
 
@@ -2066,13 +2089,41 @@ export default function TableroCarteraAnalytics() {
       >
         {/* ENCABEZADO, LEYENDAS EN CÁPSULAS Y BOTÓN [VER EN GRÁFICA: POR MES (ENE-OCT) | POR CORTES] */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
-          <div>
-            <h4
-              className="text-[13.5px] sm:text-[14.5px] font-bold tracking-tight"
-              style={{ color: "#0F172A" }}
-            >
-              Tendencia del Total de Cartera: Evolución Mensual y Fechas de Corte
-            </h4>
+          <div className="space-y-0.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4
+                className="text-[13.5px] sm:text-[14.5px] font-bold tracking-tight"
+                style={{ color: "#0F172A" }}
+              >
+                Tendencia del Total de Cartera: Evolución Mensual y Fechas de Corte
+              </h4>
+              {(tieneFiltroEntidadDirecto || modalidadSisma === "PYP" || (mesesFrecSel.length > 0 && mesesFrecSel.length < 12)) && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold border shadow-2xs"
+                  style={{
+                    backgroundColor: "#EFF6FF",
+                    borderColor: "#BFDBFE",
+                    color: "#1D4ED8",
+                  }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                  <span>
+                    Filtrado por:{" "}
+                    {filtroEmpresa !== "TODAS"
+                      ? filtroEmpresa
+                      : empresasFrecSel.length > 0
+                      ? `${empresasFrecSel.length} entidades`
+                      : filtroResponsable !== "TODAS"
+                      ? filtroResponsable
+                      : responsablesFrecSel.length > 0
+                      ? `${responsablesFrecSel.length} responsables`
+                      : modalidadSisma === "PYP"
+                      ? "PyP"
+                      : "Meses seleccionados"}
+                  </span>
+                </span>
+              )}
+            </div>
             <p className="text-[11.5px]" style={{ color: "#475569" }}>
               Evolución por corte: Cartera Total vs. Total Cartera Real Neta (descontando Giros por Cruzar)
             </p>
@@ -2153,8 +2204,8 @@ export default function TableroCarteraAnalytics() {
                 {/* El rango sale de los cierres que de verdad hay, no de
                     un texto fijo. Decia "Ene-Oct" aunque la gráfica
                     mostrara otra cosa. */}
-                {cierresMensuales.length > 0
-                  ? `Por Mes (${cierresMensuales[0].etiqueta}-${cierresMensuales[cierresMensuales.length - 1].etiqueta} ${anioTendencia})`
+                {cierresFiltrados.length > 0
+                  ? `Por Mes (${cierresFiltrados[0].etiqueta}-${cierresFiltrados[cierresFiltrados.length - 1].etiqueta} ${anioTendencia})`
                   : `Por Mes (${anioTendencia})`}
               </button>
               <span className="mx-1.5 font-bold" style={{ color: "#1D58D8" }}>
@@ -2216,7 +2267,9 @@ export default function TableroCarteraAnalytics() {
                       ? "Todavía no está creada la tabla de cierres mensuales"
                       : estadoCierres === "error"
                         ? "No se pudieron traer los cierres mensuales"
-                        : `No hay cierres mensuales guardados de ${anioTendencia}`}
+                        : mesesFrecSel.length > 0 && mesesFrecSel.length < 12
+                          ? `No hay cierres mensuales para los meses seleccionados de ${anioTendencia}`
+                          : `No hay cierres mensuales guardados de ${anioTendencia}`}
                 </p>
                 {estadoCierres !== "cargando" ? (
                   <p className="mt-1.5 max-w-[420px] text-[11.5px] leading-relaxed text-[#5B6B8C]">
