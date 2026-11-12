@@ -4668,5 +4668,11 @@
         }
       ]
     }
-  ]
+  ],
+  "_parcial": {
+    "intento": "2026-11-11 20:03:31",
+    "digiturno": "FALLO",
+    "contactCenter": "FALLO",
+    "nota": "La fecha de arriba NO se movio: hay datos sin actualizar."
+  }
 }
