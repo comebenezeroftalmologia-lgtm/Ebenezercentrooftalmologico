@@ -664,11 +664,98 @@ function honFilasDetalle(){
   det.push(['','','','','','',{b:'TOTAL GENERAL ('+MEDS.length+' médicos · '+n+' registros)'},{bm:gran}]);
   return {filas:det, anchos:[26,13,12,24,20,32,46,14]};
 }
+
+/* === Hoja nueva: «Por unidad funcional» ===
+   Qué hizo cada médico, agrupado en las cuatro categorías que usa el liquidador, y
+   adentro de cada una qué fue exactamente, con cuántos actos, cuántos pacientes y
+   en cuántos días. Solo lo que se paga: un renglón en $0 no entra.
+   Es el mismo criterio del liquidador, para que la pantalla, el acta y este Excel
+   digan lo mismo.
+   Comprobado el 12/11/2026: los 28 médicos de la página suman exactamente su total. === */
+var UF_RUBRO = /^ACUERDO\b|\bRUBRO\b|PAQUETE MENSUAL|\bJORNADA|BONIFICACION|^AJUSTE|^MENOS\b|COORDINACION|DISPONIBILIDAD|^LENTE\b/;
+var UF_CONS  = /CONSULTA|VALORACION/;
+var UF_AYU   = /TOMOGRAF|OCT|TOPOGRAF|CAMPOS? VISUAL|CAMPIMETR|ECOGRAF|BIOMETR|ANGIOGRAF|FOTOGRAF|PAQUIMETR|MICROSCOP|GONIO|LECTURA|TONOGRAF|TONOMETR|ESTUDIO|PRUEBA|POTENCIAL|ELECTRO|SIRIUS|PENTACAM|RETINOGRAF/;
+var UF_CIR   = /CIRUG|FACO|LIO|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|INYECCION|IMPLANTE|ABLACION|REPARACION|DRENAJE|BIOPSIA|CRIOTERAPIA|QUERATO/;
+var UF_NOM = {1:'Consultas', 2:'Ayudas diagnósticas', 3:'Cirugías y procedimientos', 4:'Jornadas, rubros y acuerdos'};
+
+function ufNz(s){
+  return String(s==null?'':s).toUpperCase().normalize('NFD')
+    .replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function ufCat(servicio){
+  var s = ufNz(servicio);
+  if(UF_RUBRO.test(s)) return 4;     /* un acuerdo o un lente no es una consulta */
+  if(UF_CONS.test(s))  return 1;
+  if(UF_AYU.test(s))   return 2;
+  if(UF_CIR.test(s))   return 3;
+  return 4;
+}
+/* los lentes se juntan en un solo renglón: cada modelo aparte no le dice nada a nadie */
+function ufNombre(servicio){
+  var s = String(servicio||'');
+  if(/^\s*LENTE\b/i.test(s)) return 'Lentes intraoculares (bonificación)';
+  return s;
+}
+
+function honFilasUF(){
+  var res = [[{b:'HONORARIOS MÉDICOS'}],[{b:'Qué hizo cada médico, por unidad funcional'}],
+             [D.periodo||''],
+             ['Solo lo que se paga. Los actos que no se cobran (no cobra, cortesía, convenio propio) no entran.'],[]];
+  var gran = 0, granAct = 0;
+
+  var ord = MEDS.slice().sort(function(a,b){
+    var ta=Math.round((D.medicos[a]||{}).t||0), tb=Math.round((D.medicos[b]||{}).t||0);
+    return tb-ta || String(a).localeCompare(String(b));
+  });
+
+  ord.forEach(function(m){
+    var d = D.medicos[m] || {t:0, f:[]};
+    var t = Math.round(d.t||0);
+    var cats = {};
+    (d.f||[]).forEach(function(r){
+      var v = Math.round(Number(r[6])||0);
+      if(v === 0) return;                      /* solo lo que se paga */
+      var c = ufCat(r[5]);
+      var C = cats[c] || (cats[c] = {items:{}, actos:0, valor:0, dias:{}, pacs:{}});
+      var nom = ufNombre(r[5]);
+      var it = C.items[nom] || (C.items[nom] = {actos:0, valor:0, dias:{}, pacs:{}});
+      it.actos++; it.valor += v;
+      C.actos++;  C.valor += v;
+      var f = String(r[1]||'').slice(0,10);
+      if(f){ it.dias[f]=1; C.dias[f]=1; }
+      var p = String(r[4]||'').trim();
+      if(p){ it.pacs[p]=1; C.pacs[p]=1; }
+      granAct++;
+    });
+
+    res.push([{b:tit(m)}, '', '', '', {b:'VALOR A FACTURAR'}, {bm:t}]);
+    res.push([{b:'Unidad funcional'},{b:'Qué se hizo'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
+    [1,2,3,4].forEach(function(c){
+      var C = cats[c]; if(!C) return;
+      res.push([{b:UF_NOM[c]}, '', {b:C.actos}, {b:Object.keys(C.pacs).length||''},
+                {b:Object.keys(C.dias).length||''}, {bm:C.valor}]);
+      Object.keys(C.items).sort(function(a,b){ return C.items[b].valor - C.items[a].valor; })
+        .forEach(function(nom){
+          var it = C.items[nom];
+          res.push(['', '   '+nom, it.actos, Object.keys(it.pacs).length||'',
+                    Object.keys(it.dias).length||'', it.valor]);
+        });
+    });
+    res.push(['', {b:'TOTAL DE '+tit(m)}, '', '', '', {bm:t}]);
+    res.push([]);
+    gran += t;
+  });
+
+  res.push([{b:'TOTAL GENERAL ('+ord.length+' médicos · '+granAct+' actos pagados)'}, '', '', '', '', {bm:gran}]);
+  return {filas:res, anchos:[30,50,9,11,8,17]};
+}
+
 window.hoExcelGeneral=function(b){
   var fin=avisar(b,'armando…');
   try{
-    var r=honFilasResumen(), d=honFilasDetalle();
+    var r=honFilasResumen(), u=honFilasUF(), d=honFilasDetalle();
     bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)},
+                {nombre:'Por unidad funcional', xml:hoja(u.filas,u.anchos)},
                 {nombre:'Detalle', xml:hoja(d.filas,d.anchos)}]),
           'Honorarios todos los medicos.xlsx');
   }catch(e){ alert('No se pudo generar el Excel: '+(e.message||e)); }
@@ -677,8 +764,9 @@ window.hoExcelGeneral=function(b){
 window.hoResumenExcel=function(b){
   var fin=avisar(b,'armando…');
   try{
-    var r=honFilasResumen();
-    bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)}]),
+    var r=honFilasResumen(), u=honFilasUF();
+    bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)},
+                {nombre:'Por unidad funcional', xml:hoja(u.filas,u.anchos)}]),
           'Resumen honorarios.xlsx');
   }catch(e){ alert('No se pudo generar el resumen: '+(e.message||e)); }
   fin();
