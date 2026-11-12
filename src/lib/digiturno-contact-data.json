@@ -4452,19 +4452,19 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 3453,
-          "contestadas": 564,
-          "perdidas": 2889,
+          "recibidas": 3507,
+          "contestadas": 578,
+          "perdidas": 2929,
           "esperaMin": 12.0,
           "slaPct": 0.2,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 354,
-              "contestadas": 322,
-              "perdidas": 32,
-              "duracionMin": 4.8
+              "timbradas": 372,
+              "contestadas": 336,
+              "perdidas": 36,
+              "duracionMin": 4.9
             },
             {
               "id": "1018",
@@ -4488,19 +4488,19 @@
           "id": "506013",
           "name": "Mutual Contributivo",
           "isMutual": true,
-          "recibidas": 782,
-          "contestadas": 322,
-          "perdidas": 460,
-          "esperaMin": 9.1,
-          "slaPct": 2.56,
+          "recibidas": 795,
+          "contestadas": 326,
+          "perdidas": 469,
+          "esperaMin": 9.2,
+          "slaPct": 2.52,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 214,
-              "contestadas": 198,
-              "perdidas": 16,
-              "duracionMin": 5.4
+              "timbradas": 221,
+              "contestadas": 202,
+              "perdidas": 19,
+              "duracionMin": 5.3
             },
             {
               "id": "1018",
@@ -4532,11 +4532,11 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 473,
-          "contestadas": 427,
+          "recibidas": 482,
+          "contestadas": 436,
           "perdidas": 46,
-          "esperaMin": 0.9,
-          "slaPct": 74.63,
+          "esperaMin": 0.8,
+          "slaPct": 74.9,
           "agents": [
             {
               "id": "1005",
@@ -4549,16 +4549,16 @@
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 137,
-              "contestadas": 117,
-              "perdidas": 20,
+              "timbradas": 141,
+              "contestadas": 120,
+              "perdidas": 21,
               "duracionMin": 4.8
             },
             {
               "id": "1001",
               "name": "Fabiola Bustos",
-              "timbradas": 127,
-              "contestadas": 101,
+              "timbradas": 133,
+              "contestadas": 107,
               "perdidas": 26,
               "duracionMin": 3.3
             },
@@ -4584,11 +4584,11 @@
           "id": "506015",
           "name": "Cirugía Refractiva",
           "isMutual": false,
-          "recibidas": 34,
-          "contestadas": 21,
+          "recibidas": 35,
+          "contestadas": 22,
           "perdidas": 13,
           "esperaMin": 0.6,
-          "slaPct": 55.88,
+          "slaPct": 57.14,
           "agents": [
             {
               "id": "1005",
@@ -4601,10 +4601,10 @@
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 7,
-              "contestadas": 6,
-              "perdidas": 1,
-              "duracionMin": 3.0
+              "timbradas": 9,
+              "contestadas": 7,
+              "perdidas": 2,
+              "duracionMin": 3.8
             },
             {
               "id": "1001",
@@ -4621,17 +4621,17 @@
         {
           "id": "1003",
           "name": "Maria Angelica",
-          "timbradas": 624,
-          "contestadas": 563,
-          "perdidas": 61,
+          "timbradas": 649,
+          "contestadas": 581,
+          "perdidas": 68,
           "duracionMin": 5.0
         },
         {
           "id": "1018",
           "name": "Karen Tatiana",
-          "timbradas": 454,
-          "contestadas": 421,
-          "perdidas": 33,
+          "timbradas": 460,
+          "contestadas": 425,
+          "perdidas": 35,
           "duracionMin": 4.1
         },
         {
@@ -4645,8 +4645,8 @@
         {
           "id": "1001",
           "name": "Fabiola Bustos",
-          "timbradas": 133,
-          "contestadas": 106,
+          "timbradas": 139,
+          "contestadas": 112,
           "perdidas": 27,
           "duracionMin": 3.3
         },
@@ -4670,7 +4670,7 @@
     }
   ],
   "_parcial": {
-    "intento": "2026-11-12 08:27:09",
+    "intento": "2026-11-12 10:27:09",
     "digiturno": "FALLO",
     "contactCenter": "ok",
     "nota": "La fecha de arriba NO se movio: hay datos sin actualizar."
