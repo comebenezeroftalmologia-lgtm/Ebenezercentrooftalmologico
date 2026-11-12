@@ -110,6 +110,45 @@ const formatMillones = (val: number | undefined) => {
   return "$" + m.toFixed(1).replace(".", ",") + "M";
 };
 
+const formatEscalaEjeY = (val: number): string => {
+  const n = Number(val || 0);
+  if (!n || isNaN(n)) return "$0";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) {
+    const m = n / 1_000_000;
+    if (Math.abs(m) >= 10 || Number.isInteger(m)) {
+      return "$" + Math.round(m).toLocaleString("es-CO") + "M";
+    }
+    return "$" + m.toFixed(1).replace(".", ",") + "M";
+  }
+  if (abs >= 1_000) {
+    return "$" + Math.round(n / 1_000).toLocaleString("es-CO") + " mil";
+  }
+  return "$" + Math.round(n).toLocaleString("es-CO");
+};
+
+const generarTicksEjeY = (maxBruto: number, pasos = 4) => {
+  const limpio = Math.max(maxBruto || 0, 1);
+  const crudoPaso = limpio / pasos;
+  const magnitud = Math.pow(10, Math.floor(Math.log10(crudoPaso)));
+  const residual = crudoPaso / magnitud;
+  const mult =
+    residual <= 1 ? 1 : residual <= 2 ? 2 : residual <= 2.5 ? 2.5 : residual <= 5 ? 5 : 10;
+  const pasoRedondo = mult * magnitud;
+  const techo = pasoRedondo * pasos;
+  const ticks = Array.from({ length: pasos + 1 }, (_, idx) => {
+    const valor = Math.round(techo - idx * pasoRedondo);
+    return { valor, label: formatEscalaEjeY(valor) };
+  });
+  return { techo: Math.max(techo, 1), ticks };
+};
+
+const esEmpresaMutual = (empRaw: string | undefined, nitRaw?: string | undefined): boolean => {
+  const r = String(empRaw || "").toUpperCase();
+  const nit = String(nitRaw || "").replace(/\D/g, "");
+  return r.includes("MUTUAL") || nit.startsWith("806008394");
+};
+
 const normalizarEtiquetaTipo = (tipoRaw: string | undefined): string => {
   const t = String(tipoRaw || "").toUpperCase().trim();
   if (t.includes("DEVOL")) return "DEVOL.";
@@ -118,7 +157,7 @@ const normalizarEtiquetaTipo = (tipoRaw: string | undefined): string => {
 
 const normalizarEmpresaCorta = (razonSocialRaw: string | undefined): string => {
   const r = String(razonSocialRaw || "").toUpperCase().trim();
-  if (r.includes("MUTUAL SER")) return "MUTUAL SER";
+  if (esEmpresaMutual(r)) return "MUTUAL SER";
   if (r.includes("ECOPETROL")) return "ECOPETROL";
   if (r.includes("SEGUROS DE VIDA SURAMERICANA") || r.includes("SURA POLIZA")) return "SURA POLIZA";
   if (r.includes("SUSALUD")) return "SUSALUD PREPAGADA";
@@ -245,6 +284,18 @@ function hoyEnColombia(): string {
   return new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
+/** Último día cerrado (día anterior en hora Colombia) para congelar el corte activo. */
+function ayerEnColombia(): string {
+  const d = new Date(Date.now() - 5 * 3600 * 1000);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatearISOaLatam(iso: string): string {
+  const partes = String(iso || "").slice(0, 10).split("-");
+  return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : iso;
+}
+
 export default function TableroCarteraAnalytics() {
   const [cortesTodas, setCortesTodas] = useState<CorteSismaBack[]>(
     carteraInitialData.sismaBack.cortes.TODAS
@@ -333,24 +384,78 @@ export default function TableroCarteraAnalytics() {
   const [cortinaTablaAbierta, setCortinaTablaAbierta] = useState<boolean>(true);
   const [persianaMesaAbierta, setPersianaMesaAbierta] = useState<boolean>(true);
 
-  // Multi-date calendar popover state
+  // Multi-date calendar popover state (inicializado en la fecha del día anterior cerrado)
+  const ayerInicial = ayerEnColombia();
   const [calendarioAbierto, setCalendarioAbierto] = useState<boolean>(false);
-  const [mesCalendario, setMesCalendario] = useState<number>(9); // 0-indexed: 9 = Octubre
-  const [anioCalendario, setAnioCalendario] = useState<number>(2026);
+  const [mesCalendario, setMesCalendario] = useState<number>(
+    Math.max(0, Number(ayerInicial.slice(5, 7)) - 1)
+  );
+  const [anioCalendario, setAnioCalendario] = useState<number>(
+    Number(ayerInicial.slice(0, 4)) || 2026
+  );
 
-  // Live SISMA API state (Faber endpoints: cartera-edades & auxiliar-abierto)
-  const [fechaCorteVivo, setFechaCorteVivo] = useState<string>("2026-10-20");
+  // Estados interactivos de seguimiento con cursor (Crosshair + Tabla inferior) y drill-down de glosas
+  const [hoverTendenciaIdx, setHoverTendenciaIdx] = useState<number | null>(null);
+  const [hoverVentaMesIdx, setHoverVentaMesIdx] = useState<number | null>(null);
+  const [hoverGlosaMesIdx, setHoverGlosaMesIdx] = useState<number | null>(null);
+  const [causaFiltroDash, setCausaFiltroDash] = useState<string | null>(null);
+  const [facturasBaseDb, setFacturasBaseDb] = useState<AnuladaRow[]>([]);
+
+  // Live SISMA API state (congelado por defecto al día anterior cerrado)
+  const [fechaCorteVivo, setFechaCorteVivo] = useState<string>(() => ayerEnColombia());
   const [cargandoSismaVivo, setCargandoSismaVivo] = useState<boolean>(false);
   const [datosSismaVivo, setDatosSismaVivo] = useState<{
     corteISO: string;
+    ayerISO?: string;
+    corteCongeladoAyer?: boolean;
     fechaCorte: string;
     filasFacturas: number;
-    /* Viene en true cuando SISMA no entrego los giros por cruzar. En ese
-       caso la Cartera Real que se muestra es, en realidad, la Total: la
-       resta se hizo contra un cero que nadie midio. Se avisa arriba en
-       rojo; callarlo fue el defecto que encontramos el 08-11-2026. */
     girosIncompletos?: boolean;
     girosMotivo?: string | null;
+    desgloseUniverso?: {
+      conMutual: {
+        carteraCorriente: number;
+        carteraVencida: number;
+        carteraTotal: number;
+        facturasPendientesRadicar: number;
+        anticiposPorCruzar: number;
+        totalCarteraReal: number;
+        facturasCount: number;
+      };
+      sinMutual: {
+        carteraCorriente: number;
+        carteraVencida: number;
+        carteraTotal: number;
+        facturasPendientesRadicar: number;
+        anticiposPorCruzar: number;
+        totalCarteraReal: number;
+        facturasCount: number;
+      };
+      soloMutual: {
+        carteraCorriente: number;
+        carteraVencida: number;
+        carteraTotal: number;
+        facturasPendientesRadicar: number;
+        anticiposPorCruzar: number;
+        totalCarteraReal: number;
+        facturasCount: number;
+      };
+    };
+    facturacionSisma?: {
+      ventaContableDisponible: boolean;
+      ventaContableTotal: number | null;
+      ventaContableNota: string | null;
+      cuentasIngresos: { codigo: string; nombre: string; total: number }[];
+      porMes: {
+        mes: string;
+        etiqueta: string;
+        ventaContable: number | null;
+        saldoAbiertoEmitidoMes: number;
+        corrienteEmitidoMes: number;
+        vencidaEmitidoMes: number;
+        facturasAbiertasMes: number;
+      }[];
+    };
     edades: {
       porVencer: number;
       d30: number;
@@ -372,6 +477,7 @@ export default function TableroCarteraAnalytics() {
     topEmpresas: {
       nit: string;
       razonSocial: string;
+      esMutual?: boolean;
       facturasCount: number;
       corriente: number;
       vencida: number;
@@ -383,6 +489,7 @@ export default function TableroCarteraAnalytics() {
       razonSocial: string;
       empresaCorta?: string;
       responsable?: string;
+      esMutual?: boolean;
       facturasCount: number;
       corriente: number;
       vencida: number;
@@ -529,6 +636,14 @@ export default function TableroCarteraAnalytics() {
           );
           return;
         }
+        if (Array.isArray(json.facturasBase) && json.facturasBase.length > 0) {
+          setFacturasBaseDb(
+            json.facturasBase.map((r: AnuladaRow) => ({
+              ...r,
+              responsable: normalizarResponsableReal(r.responsable, r.empresa),
+            }))
+          );
+        }
         if (Array.isArray(json.anuladas) && json.anuladas.length > 0) {
           setAnuladas(
             json.anuladas.map((r: AnuladaRow) => ({
@@ -653,7 +768,7 @@ export default function TableroCarteraAnalytics() {
       mutual?: boolean;
     }
   ) => {
-    const corteConsulta = fechaISO || fechaCorteVivo || "2026-10-20";
+    const corteConsulta = fechaISO || fechaCorteVivo || ayerEnColombia();
     const aniosBase = filtrosCustom?.anios ?? aniosFrecSel;
     const aniosAct =
       aniosBase.length > 0 && aniosBase.length < ANIOS_SISMA_DISPONIBLES.length
@@ -681,7 +796,8 @@ export default function TableroCarteraAnalytics() {
         : filtroResponsable !== "TODAS"
         ? [filtroResponsable]
         : [];
-    const mutAct = filtrosCustom?.mutual ?? incluirMutual;
+    const pideMutualExplicita = empAct.some((e) => esEmpresaMutual(e));
+    const mutAct = pideMutualExplicita ? true : (filtrosCustom?.mutual ?? incluirMutual);
 
     const params = new URLSearchParams();
     params.set("corte", corteConsulta);
@@ -778,9 +894,9 @@ export default function TableroCarteraAnalytics() {
   };
 
   useEffect(() => {
-    const hoyCol = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    setFechaCorteVivo(hoyCol);
-    sincronizarConSismaVivo(hoyCol, true);
+    const ayerCol = ayerEnColombia();
+    setFechaCorteVivo(ayerCol);
+    sincronizarConSismaVivo(ayerCol, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -791,9 +907,9 @@ export default function TableroCarteraAnalytics() {
       primeraCargaRef.current = false;
       return;
     }
-    const hoyCol = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const ayerCol = ayerEnColombia();
     const timer = setTimeout(() => {
-      sincronizarConSismaVivo(fechaCorteVivo || hoyCol, true);
+      sincronizarConSismaVivo(fechaCorteVivo || ayerCol, true);
     }, 120);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1026,7 +1142,9 @@ export default function TableroCarteraAnalytics() {
     }
     const c = normalizarEmpresaCorta(empRawReg || empCortaReg);
     const rUp = String(empRawReg || empCortaReg || "").toUpperCase();
+    const regEsMutual = esEmpresaMutual( `${empRawReg || ""} ${empCortaReg || ""}` );
     return listaSeleccionadas.some((sel) => {
+      if (esEmpresaMutual(sel) && regEsMutual) return true;
       if (sel === c || sel === empCortaReg) return true;
       if (
         (sel === "AXA COLPATRIA PREPAGADA" || sel === "AXA COLPATRIA SEGUROS") &&
@@ -1052,7 +1170,13 @@ export default function TableroCarteraAnalytics() {
     empresaOrig?: string
   ): boolean => {
     const textoEmp = `${empresaReg || ""} ${empresaOrig || ""}`.toUpperCase();
-    if (!incluirMutual && textoEmp.includes("MUTUAL")) {
+    const pideMutualExplicita =
+      (empresasFrecSel.length > 0 &&
+        empresasFrecSel.length < todasLasEmpresasDisponibles.length &&
+        empresasFrecSel.some((e) => esEmpresaMutual(e))) ||
+      (filtroEmpresa !== "TODAS" && esEmpresaMutual(filtroEmpresa));
+
+    if (!incluirMutual && !pideMutualExplicita && esEmpresaMutual(textoEmp)) {
       return false;
     }
     if (
@@ -1078,10 +1202,12 @@ export default function TableroCarteraAnalytics() {
     ) {
       return false;
     }
-    const fStr = String(fechaISO || "").trim().slice(0, 10);
+    const fRaw = String(fechaISO || "").trim();
+    const fStr = fRaw.slice(0, 10);
+    const fMes = fRaw.slice(0, 7);
     if (mesesFrecSel.length > 0 && mesesFrecSel.length < 12) {
-      if (!/^\d{4}-\d{2}/.test(fStr)) return false;
-      const mm = fStr.slice(5, 7);
+      if (!/^\d{4}-\d{2}/.test(fMes)) return false;
+      const mm = fMes.slice(5, 7);
       if (!mesesFrecSel.includes(mm)) return false;
     }
     if (diasFiltroActivo) {
@@ -1108,6 +1234,7 @@ export default function TableroCarteraAnalytics() {
     setEmpresasFrecSel([]);
     setResponsablesFrecSel([]);
     setIncluirMutual(true);
+    setCausaFiltroDash(null);
     setDiasDesde("");
     setDiasHasta("");
     setDiasSemanaSel([]);
@@ -1119,7 +1246,7 @@ export default function TableroCarteraAnalytics() {
     setOrdenColumna(null);
     setColMenuAbierto(null);
     setPaginaActual(1);
-    sincronizarConSismaVivo(fechaCorteVivo, true, {
+    sincronizarConSismaVivo(fechaCorteVivo || ayerEnColombia(), true, {
       anios: [],
       meses: [],
       diasActivo: false,
@@ -1154,6 +1281,7 @@ export default function TableroCarteraAnalytics() {
 
   const todasLasEmpresasDisponibles = useMemo(() => {
     const setEmp = new Set<string>(carteraInitialData.empresasDisponibles);
+    setEmp.add("MUTUAL SER");
     const listasSisma = [
       datosSismaCompletaRef.current?.topEmpresas || [],
       datosSismaVivo?.catalogoEmpresasPeriodo || [],
@@ -1186,6 +1314,7 @@ export default function TableroCarteraAnalytics() {
     filtroResponsable !== "TODAS" ||
     busqueda.trim() !== "" ||
     !incluirMutual ||
+    causaFiltroDash !== null ||
     (empresasFrecSel.length > 0 &&
       empresasFrecSel.length < todasLasEmpresasDisponibles.length) ||
     (responsablesFrecSel.length > 0 &&
@@ -1210,14 +1339,20 @@ export default function TableroCarteraAnalytics() {
       datosSismaCompletaRef.current?.topEmpresas ||
       carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
       [];
+    const pideMutualExplicita =
+      (empresasFrecSel.length > 0 &&
+        empresasFrecSel.length < todasLasEmpresasDisponibles.length &&
+        empresasFrecSel.some((e) => esEmpresaMutual(e))) ||
+      (filtroEmpresa !== "TODAS" && esEmpresaMutual(filtroEmpresa));
+
     return origen.filter((emp) => {
       const empCorta = normalizarEmpresaCorta(emp.razonSocial);
       const resp = normalizarResponsableReal("", empCorta);
-      if (
-        !incluirMutual &&
-        (empCorta.includes("MUTUAL") ||
-          String(emp.razonSocial || "").toUpperCase().includes("MUTUAL"))
-      ) {
+      const empEsMut =
+        Boolean((emp as { esMutual?: boolean }).esMutual) ||
+        esEmpresaMutual(emp.razonSocial, emp.nit);
+
+      if (!incluirMutual && !pideMutualExplicita && empEsMut) {
         return false;
       }
       if (
@@ -1268,9 +1403,78 @@ export default function TableroCarteraAnalytics() {
     filtroResponsable !== "TODAS";
 
   const corteSeleccionado = useMemo<CorteSismaBack>(() => {
-    if (!tieneFiltroEntidadDirecto || modalidadSisma === "PYP") {
+    if (modalidadSisma === "PYP") {
       return corteBaseSeleccionado;
     }
+
+    const sinSubfiltroEmpresa =
+      (empresasFrecSel.length === 0 ||
+        empresasFrecSel.length >= todasLasEmpresasDisponibles.length) &&
+      filtroEmpresa === "TODAS";
+    const sinSubfiltroResp =
+      (responsablesFrecSel.length === 0 ||
+        responsablesFrecSel.length >=
+          carteraInitialData.responsablesDisponibles.length) &&
+      filtroResponsable === "TODAS";
+    const esSoloMutual =
+      sinSubfiltroResp &&
+      ((empresasFrecSel.length === 1 && esEmpresaMutual(empresasFrecSel[0])) ||
+        (empresasFrecSel.length === 0 &&
+          filtroEmpresa !== "TODAS" &&
+          esEmpresaMutual(filtroEmpresa)));
+
+    if (!tieneFiltroEntidadDirecto) {
+      if (
+        indiceCorteActivo === listaCortesActiva.length - 1 &&
+        datosSismaVivo?.desgloseUniverso?.conMutual
+      ) {
+        const u = datosSismaVivo.desgloseUniverso.conMutual;
+        return {
+          ...corteBaseSeleccionado,
+          fechaCorte: datosSismaVivo.fechaCorte || corteBaseSeleccionado.fechaCorte,
+          carteraCorriente: u.carteraCorriente,
+          carteraVencida: u.carteraVencida,
+          carteraTotal: u.carteraTotal,
+          facturasPendientesRadicar: u.facturasPendientesRadicar,
+          anticiposPorCruzar: u.anticiposPorCruzar,
+          totalCarteraReal: u.totalCarteraReal,
+        };
+      }
+      return corteBaseSeleccionado;
+    }
+
+    // Desglose exacto del servidor para Sin Mutual y Solo Mutual (con giros contables exactos por NIT)
+    if (
+      !incluirMutual &&
+      sinSubfiltroEmpresa &&
+      sinSubfiltroResp &&
+      datosSismaVivo?.desgloseUniverso?.sinMutual
+    ) {
+      const u = datosSismaVivo.desgloseUniverso.sinMutual;
+      return {
+        ...corteBaseSeleccionado,
+        carteraCorriente: u.carteraCorriente,
+        carteraVencida: u.carteraVencida,
+        carteraTotal: u.carteraTotal,
+        facturasPendientesRadicar: u.facturasPendientesRadicar,
+        anticiposPorCruzar: u.anticiposPorCruzar,
+        totalCarteraReal: u.totalCarteraReal,
+      };
+    }
+
+    if (esSoloMutual && datosSismaVivo?.desgloseUniverso?.soloMutual) {
+      const u = datosSismaVivo.desgloseUniverso.soloMutual;
+      return {
+        ...corteBaseSeleccionado,
+        carteraCorriente: u.carteraCorriente,
+        carteraVencida: u.carteraVencida,
+        carteraTotal: u.carteraTotal,
+        facturasPendientesRadicar: u.facturasPendientesRadicar,
+        anticiposPorCruzar: u.anticiposPorCruzar,
+        totalCarteraReal: u.totalCarteraReal,
+      };
+    }
+
     const corr = empresasSismaFiltradas.reduce((acc, e) => acc + (e.corriente || 0), 0);
     const venc = empresasSismaFiltradas.reduce((acc, e) => acc + (e.vencida || 0), 0);
     const tot = empresasSismaFiltradas.reduce((acc, e) => acc + (e.total || 0), 0);
@@ -1279,8 +1483,13 @@ export default function TableroCarteraAnalytics() {
       0
     );
     const totalBaseSinFiltro =
-      (datosSismaCompletaRef.current?.edades?.saldoTotal ||
-        corteBaseSeleccionado.carteraTotal) ||
+      datosSismaVivo?.desgloseUniverso?.conMutual?.carteraTotal ||
+      (datosSismaVivo?.catalogoEmpresasPeriodo || []).reduce(
+        (acc, e) => acc + (e.total || 0),
+        0
+      ) ||
+      datosSismaCompletaRef.current?.edades?.saldoTotal ||
+      corteBaseSeleccionado.carteraTotal ||
       1;
     const proporcion = Math.min(1, Math.max(0, tot / totalBaseSinFiltro));
     const girosVivo = datosSismaVivo?.cuentasGirosDetalle
@@ -1289,12 +1498,13 @@ export default function TableroCarteraAnalytics() {
           0
         )
       : null;
+    const baseGirosUniverso =
+      datosSismaVivo?.desgloseUniverso?.conMutual?.anticiposPorCruzar ??
+      corteBaseSeleccionado.anticiposPorCruzar;
     const giros =
-      girosVivo !== null &&
-      datosSismaVivo &&
-      datosSismaVivo.topEmpresas.length === empresasSismaFiltradas.length
+      !cargandoSismaVivo && girosVivo !== null
         ? girosVivo
-        : Math.round(corteBaseSeleccionado.anticiposPorCruzar * proporcion);
+        : Math.round(baseGirosUniverso * proporcion);
     return {
       ...corteBaseSeleccionado,
       carteraCorriente: Math.round(corr),
@@ -1310,6 +1520,15 @@ export default function TableroCarteraAnalytics() {
     corteBaseSeleccionado,
     empresasSismaFiltradas,
     datosSismaVivo,
+    cargandoSismaVivo,
+    incluirMutual,
+    empresasFrecSel,
+    todasLasEmpresasDisponibles.length,
+    filtroEmpresa,
+    responsablesFrecSel,
+    filtroResponsable,
+    indiceCorteActivo,
+    listaCortesActiva.length,
   ]);
 
   const formatearPctDonut = (pct: number): string => {
@@ -1328,16 +1547,20 @@ export default function TableroCarteraAnalytics() {
       datosSismaCompletaRef.current?.topEmpresas ||
       carteraInitialData.sismaBack.datosSismaVivo.topEmpresas ||
       [];
+    const pideMutualExplicita =
+      (empresasFrecSel.length > 0 &&
+        empresasFrecSel.length < todasLasEmpresasDisponibles.length &&
+        empresasFrecSel.some((e) => esEmpresaMutual(e))) ||
+      (filtroEmpresa !== "TODAS" && esEmpresaMutual(filtroEmpresa));
 
     let totalUniverso = 0;
     for (const emp of origenCatalogo) {
       const clave = normalizarEmpresaCorta(emp.razonSocial);
       if (clave === "OTRAS" || clave === "OTRAS ENTIDADES") continue;
-      if (
-        !incluirMutual &&
-        (clave.includes("MUTUAL") ||
-          String(emp.razonSocial || "").toUpperCase().includes("MUTUAL"))
-      ) {
+      const empEsMut =
+        Boolean((emp as { esMutual?: boolean }).esMutual) ||
+        esEmpresaMutual(emp.razonSocial, emp.nit);
+      if (!incluirMutual && !pideMutualExplicita && empEsMut) {
         continue;
       }
       totalUniverso += Math.max(0, Number(emp[campo] || 0));
@@ -1837,15 +2060,37 @@ export default function TableroCarteraAnalytics() {
   };
 
   const renderTarjetaTendenciaTotalCartera = () => {
+    const uConMismoCorte = datosSismaVivo?.desgloseUniverso?.conMutual;
     const totalBaseRef =
+      uConMismoCorte?.carteraTotal ||
+      (datosSismaVivo?.catalogoEmpresasPeriodo || []).reduce(
+        (acc, e) => acc + (e.total || 0),
+        0
+      ) ||
       datosSismaCompletaRef.current?.edades?.saldoTotal ||
       corteBaseSeleccionado?.carteraTotal ||
       cortesTodas[cortesTodas.length - 1]?.carteraTotal ||
       1;
+    const girosBaseRef =
+      uConMismoCorte?.anticiposPorCruzar ||
+      corteBaseSeleccionado?.anticiposPorCruzar ||
+      cortesTodas[cortesTodas.length - 1]?.anticiposPorCruzar ||
+      1;
     const factorFiltro =
       tieneFiltroEntidadDirecto || modalidadSisma === "PYP"
-        ? Math.min(1, Math.max(0, corteSeleccionado.carteraTotal / totalBaseRef))
+        ? Math.min(1, Math.max(0, corteSeleccionado.carteraTotal / Math.max(1, totalBaseRef)))
         : 1;
+    const factorGiros =
+      tieneFiltroEntidadDirecto || modalidadSisma === "PYP"
+        ? Math.min(
+            1,
+            Math.max(0, corteSeleccionado.anticiposPorCruzar / Math.max(1, girosBaseRef))
+          )
+        : 1;
+
+    const ayerIsoRef = datosSismaVivo?.ayerISO || ayerEnColombia();
+    const corteIsoActivo = datosSismaVivo?.corteISO || fechaCorteVivo || ayerIsoRef;
+    const esCorteCongeladoAyer = corteIsoActivo === ayerIsoRef;
 
     type PuntoCorteTabla = {
       id: string;
@@ -1854,10 +2099,12 @@ export default function TableroCarteraAnalytics() {
       etiquetaTabla: string;
       etiquetaEje: string;
       esVivo: boolean;
+      esCongeladoAyer: boolean;
       carteraTotal: number;
       totalCarteraReal: number;
       carteraCorriente: number;
       carteraVencida: number;
+      anticiposPorCruzar: number;
     };
 
     const puntosCortes: PuntoCorteTabla[] = listaCortesActiva.map((c, idx) => {
@@ -1867,44 +2114,55 @@ export default function TableroCarteraAnalytics() {
         (Boolean(datosSismaVivo) &&
           idx === listaCortesActiva.length - 1 &&
           fClean === datosSismaVivo?.fechaCorte.slice(0, 10));
+      const congAyer = esVivo && esCorteCongeladoAyer;
 
       const usarDirecto =
-        (tieneFiltroEntidadDirecto || modalidadSisma === "PYP") &&
+        (tieneFiltroEntidadDirecto || modalidadSisma === "PYP" || esVivo) &&
         idx === indiceCorteActivo;
 
       const cTotal = usarDirecto
         ? corteSeleccionado.carteraTotal
         : Math.round(c.carteraTotal * factorFiltro);
-      const cReal = usarDirecto
-        ? corteSeleccionado.totalCarteraReal
-        : Math.round(c.totalCarteraReal * factorFiltro);
       const cCorr = usarDirecto
         ? corteSeleccionado.carteraCorriente
-        : Math.round((c.carteraCorriente ?? (c.carteraTotal - c.carteraVencida)) * factorFiltro);
+        : Math.round((c.carteraCorriente ?? c.carteraTotal - c.carteraVencida) * factorFiltro);
       const cVenc = usarDirecto
         ? corteSeleccionado.carteraVencida
-        : Math.round(c.carteraVencida * factorFiltro);
+        : Math.max(0, cTotal - cCorr);
+      const cGiros = usarDirecto
+        ? corteSeleccionado.anticiposPorCruzar
+        : Math.round((c.anticiposPorCruzar || 0) * factorGiros);
+      const cReal = usarDirecto
+        ? corteSeleccionado.totalCarteraReal
+        : Math.round(cTotal - cGiros);
 
       return {
         id: `corte-${fClean}-${idx}`,
         idxCorte: idx,
         fechaRaw: fClean,
-        etiquetaTabla: esVivo ? `Vivo ${fClean}` : `Corte ${fClean}`,
-        etiquetaEje: esVivo ? `Vivo ${fClean.slice(0, 5)}` : fClean,
+        etiquetaTabla: congAyer
+          ? `Ayer ${fClean}`
+          : esVivo
+          ? `Vivo ${fClean}`
+          : `Corte ${fClean}`,
+        etiquetaEje: congAyer
+          ? `Ayer ${fClean.slice(0, 5)}`
+          : esVivo
+          ? `Vivo ${fClean.slice(0, 5)}`
+          : fClean,
         esVivo,
+        esCongeladoAyer: congAyer,
         carteraTotal: cTotal,
         totalCarteraReal: cReal,
         carteraCorriente: cCorr,
         carteraVencida: cVenc,
+        anticiposPorCruzar: cGiros,
       };
     });
 
     const ultimoCorteLista = puntosCortes[puntosCortes.length - 1];
     const puntosTablaCortes: PuntoCorteTabla[] =
       datosSismaVivo &&
-      // Sin giros, el punto "vivo" llevaria una Cartera Real que es la
-      // Total disfrazada. No se agrega a la curva: mejor que falte el
-      // punto de hoy a que la linea verde mienta.
       !sinGiros &&
       ultimoCorteLista &&
       datosSismaVivo.fechaCorte.slice(0, 10) !== ultimoCorteLista.fechaRaw
@@ -1914,13 +2172,19 @@ export default function TableroCarteraAnalytics() {
               id: `corte-vivo-${datosSismaVivo.fechaCorte}`,
               idxCorte: listaCortesActiva.length - 1,
               fechaRaw: datosSismaVivo.fechaCorte.slice(0, 10),
-              etiquetaTabla: `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
-              etiquetaEje: `Vivo ${datosSismaVivo.fechaCorte.slice(0, 5)}`,
+              etiquetaTabla: esCorteCongeladoAyer
+                ? `Ayer ${datosSismaVivo.fechaCorte.slice(0, 10)}`
+                : `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
+              etiquetaEje: esCorteCongeladoAyer
+                ? `Ayer ${datosSismaVivo.fechaCorte.slice(0, 5)}`
+                : `Vivo ${datosSismaVivo.fechaCorte.slice(0, 5)}`,
               esVivo: true,
+              esCongeladoAyer: esCorteCongeladoAyer,
               carteraTotal: corteSeleccionado.carteraTotal,
               totalCarteraReal: corteSeleccionado.totalCarteraReal,
               carteraCorriente: corteSeleccionado.carteraCorriente,
               carteraVencida: corteSeleccionado.carteraVencida,
+              anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
             },
           ]
         : puntosCortes.map((pt, i) =>
@@ -1928,15 +2192,38 @@ export default function TableroCarteraAnalytics() {
               ? {
                   ...pt,
                   esVivo: true,
-                  etiquetaTabla: `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
+                  esCongeladoAyer: esCorteCongeladoAyer,
+                  etiquetaTabla: esCorteCongeladoAyer
+                    ? `Ayer ${datosSismaVivo.fechaCorte.slice(0, 10)}`
+                    : `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
                 }
               : pt
           );
 
     /* -----------------------------------------------------------------
-       LA TENDENCIA MENSUAL SALE DE LOS CIERRES GUARDADOS,
-       FILTRADA REACTIVAMENTE POR LOS MESES Y ENTIDADES SELECCIONADOS.
+       LA TENDENCIA MENSUAL SALE DE LOS CIERRES GUARDADOS, Y EL MES EN
+       CURSO SE CONECTA SIEMPRE AL CORTE CONGELADO DEL DÍA ANTERIOR PARA
+       QUE NUNCA QUEDE EN LÍNEA RECTA HORIZONTAL CON EL MES ANTERIOR.
        ----------------------------------------------------------------- */
+    const anioCorteVivo = Number(corteIsoActivo.slice(0, 4)) || anioTendencia;
+    const mesCorteVivo = Number(corteIsoActivo.slice(5, 7)) || 0;
+    const mmCorteVivo = String(mesCorteVivo).padStart(2, "0");
+    const nombresMesCorto = [
+      "",
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic",
+    ];
+
     const cierresFiltrados = cierresMensuales.filter((c) => {
       if (mesesFrecSel.length > 0 && mesesFrecSel.length < 12) {
         const mm = String(c.mes).padStart(2, "0");
@@ -1945,32 +2232,80 @@ export default function TableroCarteraAnalytics() {
       return true;
     });
 
-    const puntosMeses = cierresFiltrados.map((c, idx) => {
-      const esMesVivoActual = c.esMesEnCurso && (tieneFiltroEntidadDirecto || modalidadSisma === "PYP");
-      const cTotal = esMesVivoActual
+    const puntosMesesBase = cierresFiltrados.map((c) => {
+      const usarCorteCongeladoVivo =
+        (c.esMesEnCurso || (c.anio === anioCorteVivo && c.mes === mesCorteVivo)) &&
+        Boolean(datosSismaVivo) &&
+        !sinGiros;
+
+      const cTotal = usarCorteCongeladoVivo
         ? corteSeleccionado.carteraTotal
         : Math.round(c.carteraTotal * factorFiltro);
-      const cReal = esMesVivoActual
-        ? corteSeleccionado.totalCarteraReal
-        : Math.round(c.carteraReal * factorFiltro);
-      const cCorr = esMesVivoActual
+      const cCorr = usarCorteCongeladoVivo
         ? corteSeleccionado.carteraCorriente
         : Math.round(c.carteraCorriente * factorFiltro);
-      const cVenc = esMesVivoActual
+      const cVenc = usarCorteCongeladoVivo
         ? corteSeleccionado.carteraVencida
-        : Math.round(c.carteraVencida * factorFiltro);
+        : Math.max(0, cTotal - cCorr);
+      const cGiros = usarCorteCongeladoVivo
+        ? corteSeleccionado.anticiposPorCruzar
+        : Math.round((c.girosPorCruzar ?? Math.max(0, c.carteraTotal - c.carteraReal)) * factorGiros);
+      const cReal = usarCorteCongeladoVivo
+        ? corteSeleccionado.totalCarteraReal
+        : Math.round(cTotal - cGiros);
+
+      const fechaCierreLatam = usarCorteCongeladoVivo
+        ? `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)}${esCorteCongeladoAyer ? " (Ayer)" : ""}`
+        : formatearISOaLatam(c.fechaCorte);
 
       return {
         id: `cierre-${c.anio}-${c.mes}`,
-        idxCorte: 0,
-        etiquetaEje: c.etiqueta,
+        idxCorte: listaCortesActiva.length - 1,
+        etiquetaEje: usarCorteCongeladoVivo && esCorteCongeladoAyer ? `${c.etiqueta}*` : c.etiqueta,
+        fechaDetalle: fechaCierreLatam,
+        esCongeladoAyer: usarCorteCongeladoVivo && esCorteCongeladoAyer,
         carteraTotal: cTotal,
         totalCarteraReal: cReal,
         carteraCorriente: cCorr,
         carteraVencida: cVenc,
+        anticiposPorCruzar: cGiros,
         mostrarLabel: true,
       };
     });
+
+    const yaTieneMesVivo = cierresFiltrados.some(
+      (c) => c.anio === anioCorteVivo && c.mes === mesCorteVivo
+    );
+    const permiteMesVivo =
+      mesesFrecSel.length === 0 ||
+      mesesFrecSel.length >= 12 ||
+      mesesFrecSel.includes(mmCorteVivo);
+
+    const puntosMeses =
+      !yaTieneMesVivo &&
+      puntosMesesBase.length > 0 &&
+      anioTendencia === anioCorteVivo &&
+      mesCorteVivo >= 1 &&
+      permiteMesVivo &&
+      Boolean(datosSismaVivo) &&
+      !sinGiros
+        ? [
+            ...puntosMesesBase,
+            {
+              id: `cierre-vivo-${anioCorteVivo}-${mesCorteVivo}`,
+              idxCorte: listaCortesActiva.length - 1,
+              etiquetaEje: `${nombresMesCorto[mesCorteVivo] || mmCorteVivo}${esCorteCongeladoAyer ? "*" : ""}`,
+              fechaDetalle: `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)}${esCorteCongeladoAyer ? " (Ayer)" : ""}`,
+              esCongeladoAyer: esCorteCongeladoAyer,
+              carteraTotal: corteSeleccionado.carteraTotal,
+              totalCarteraReal: corteSeleccionado.totalCarteraReal,
+              carteraCorriente: corteSeleccionado.carteraCorriente,
+              carteraVencida: corteSeleccionado.carteraVencida,
+              anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
+              mostrarLabel: true,
+            },
+          ]
+        : puntosMesesBase;
 
     const puntosGrafica =
       modoTendenciaCartera === "MES"
@@ -1979,42 +2314,36 @@ export default function TableroCarteraAnalytics() {
             id: c.id,
             idxCorte: c.idxCorte,
             etiquetaEje: c.etiquetaEje,
+            fechaDetalle: c.etiquetaTabla,
+            esCongeladoAyer: c.esCongeladoAyer,
             carteraTotal: c.carteraTotal,
             totalCarteraReal: c.totalCarteraReal,
             carteraCorriente: c.carteraCorriente,
             carteraVencida: c.carteraVencida,
+            anticiposPorCruzar: c.anticiposPorCruzar,
             mostrarLabel: true,
           }));
 
     const n = puntosGrafica.length;
-    const svgW = 680;
-    /* La tabla que iba debajo se quito: las cuatro cifras de cada mes se
-       leen ahora DENTRO del dibujo. Ese espacio se le devolvio al alto de
-       la grafica, que paso de 268 a 356. No es un capricho de tamanio:
-       con cuatro cifras por mes, el alto manda. Cuanto mas separadas van
-       las lineas, menos tiene que correrse cada capsula para no chocar
-       con la vecina, y una cifra que no se corrio es una cifra que se lee
-       pegada a su propia linea. */
-    const svgH = 356;
-    const padL = 38;
-    const padR = 38;
-    const padT = 34;
-    const baseLineY = 322;
-    const yFloor = 276; // Piso de la curva 46px por encima de la línea del eje X para que las cápsulas inferiores nunca toquen el eje ni los meses
+    const svgW = 760;
+    const svgH = 352;
+    const padL = 82;
+    const padR = 34;
+    const padT = 26;
+    const baseLineY = 314;
+    const yFloor = 314;
     const plotW = svgW - padL - padR;
     const plotH = yFloor - padT;
 
-    // La escala tiene que abarcar las CUATRO series. Si solo mirara Total y
-    // Real, la linea de Vencida se saldria del area dibujable.
     const todosValores = puntosGrafica.flatMap((p) => [
       p.carteraTotal,
       p.totalCarteraReal,
       p.carteraCorriente,
       p.carteraVencida,
     ]);
-    const maxVal = Math.max(...todosValores, 1) * 1.06;
-    const minVal = Math.max(0, Math.min(...todosValores, 0) * 0.85);
-    const rangoVal = Math.max(1, maxVal - minVal);
+    const escalaTendencia = generarTicksEjeY(Math.max(...todosValores, 1) * 1.05, 4);
+    const minVal = 0;
+    const rangoVal = Math.max(1, escalaTendencia.techo - minVal);
 
     const getX = (i: number) =>
       n <= 1 ? padL + plotW / 2 : padL + (i / (n - 1)) * plotW;
@@ -2054,12 +2383,6 @@ export default function TableroCarteraAnalytics() {
     const pathTotal = construirCurvaSuave(coordsTotal);
     const pathReal = construirCurvaSuave(coordsReal);
 
-    /* Corriente y Vencida: las dos partes que suman el Total.
-       Van como lineas finas y punteadas, con su cifra en capsula chica y
-       del color de su linea. Durante un tiempo se dibujaron sin cifra,
-       porque cuatro numeros por mes se amontonaban; el arreglo no era
-       quitar dos de los cuatro sino darle alto a la grafica y separar las
-       capsulas en bloque, que es lo que se hace mas abajo. */
     const coordsCorriente = puntosGrafica.map((p, i) => ({
       x: getX(i),
       y: getYRaw(p.carteraCorriente),
@@ -2085,12 +2408,18 @@ export default function TableroCarteraAnalytics() {
         ? `${pathReal} L ${coordsReal[coordsReal.length - 1].x.toFixed(1)} ${baseLineY} L ${coordsReal[0].x.toFixed(1)} ${baseLineY} Z`
         : "";
 
-    const lineasGuiaY = [
-      padT + plotH * 0.05,
-      padT + plotH * 0.38,
-      padT + plotH * 0.71,
-      yFloor,
-    ];
+    const idxActivoCursor =
+      hoverTendenciaIdx !== null && hoverTendenciaIdx < puntosGrafica.length
+        ? hoverTendenciaIdx
+        : puntosGrafica.length > 0
+        ? puntosGrafica.length - 1
+        : null;
+    const puntoInspeccionado =
+      idxActivoCursor !== null ? puntosGrafica[idxActivoCursor] : null;
+    const puntoAnteriorInsp =
+      idxActivoCursor !== null && idxActivoCursor > 0
+        ? puntosGrafica[idxActivoCursor - 1]
+        : null;
 
     return (
       <div
@@ -2292,9 +2621,82 @@ export default function TableroCarteraAnalytics() {
                 ) : null}
               </div>
             ) : (
+            <div className="space-y-2.5">
+              {/* BARRA INTERACTIVA DE SEGUIMIENTO CON CURSOR */}
+              {puntoInspeccionado && (
+                <div
+                  className="rounded-xl border px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[11.5px] transition-colors"
+                  style={{
+                    backgroundColor: hoverTendenciaIdx !== null ? "#EFF6FF" : "#F8FAFC",
+                    borderColor: hoverTendenciaIdx !== null ? "#93C5FD" : "#E2ECF8",
+                  }}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className="px-2 py-0.5 rounded-md font-extrabold text-[11px]"
+                      style={{
+                        backgroundColor: hoverTendenciaIdx !== null ? "#1D58D8" : "#0E245E",
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      {puntoInspeccionado.etiquetaEje.replace("*", "")}
+                    </span>
+                    <span className="font-semibold text-[#475569]">
+                      Corte: {puntoInspeccionado.fechaDetalle}
+                    </span>
+                    {puntoInspeccionado.esCongeladoAyer && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        Congelado día anterior cerrado
+                      </span>
+                    )}
+                    {puntoAnteriorInsp && puntoAnteriorInsp.carteraTotal > 0 && (() => {
+                      const diff = puntoInspeccionado.carteraTotal - puntoAnteriorInsp.carteraTotal;
+                      const pct = (diff / puntoAnteriorInsp.carteraTotal) * 100;
+                      const sube = diff >= 0;
+                      return (
+                        <span
+                          className="font-mono font-bold text-[10.5px] px-1.5 py-0.5 rounded"
+                          style={{
+                            backgroundColor: sube ? "#FEF2F2" : "#ECFDF5",
+                            color: sube ? "#B91C1C" : "#047857",
+                          }}
+                        >
+                          {sube ? "▲ +" : "▼ "}
+                          {formatMillones(diff)} ({sube ? "+" : ""}
+                          {pct.toFixed(1)}% vs. {puntoAnteriorInsp.etiquetaEje.replace("*", "")})
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-mono text-[11px]">
+                    <span className="text-[#0E245E]">
+                      <strong>Total:</strong> {formatCOP(puntoInspeccionado.carteraTotal)}
+                    </span>
+                    <span className="text-[#0369A1]">
+                      <strong>Corr:</strong> {formatCOP(puntoInspeccionado.carteraCorriente)}
+                    </span>
+                    <span className="text-[#B91C1C]">
+                      <strong>Venc:</strong> {formatCOP(puntoInspeccionado.carteraVencida)} (
+                      {puntoInspeccionado.carteraTotal > 0
+                        ? ((puntoInspeccionado.carteraVencida / puntoInspeccionado.carteraTotal) * 100).toFixed(1)
+                        : "0.0"}
+                      %)
+                    </span>
+                    <span className="text-[#92400E]">
+                      <strong>(-) Giros:</strong> {formatCOP(puntoInspeccionado.anticiposPorCruzar)}
+                    </span>
+                    <span className="text-[#047857] font-extrabold">
+                      <strong>Real:</strong> {realCOP(puntoInspeccionado.totalCarteraReal)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
             <svg
               viewBox={`0 0 ${svgW} ${svgH}`}
               className="w-full h-auto select-none overflow-visible"
+              onMouseLeave={() => setHoverTendenciaIdx(null)}
             >
               <defs>
                 <linearGradient id="gradTendenciaTotal" x1="0" y1="0" x2="0" y2="1">
@@ -2310,33 +2712,83 @@ export default function TableroCarteraAnalytics() {
                 </filter>
               </defs>
 
-              {/* Líneas guía horizontales punteadas suaves */}
-              {lineasGuiaY.map((gy, idx) => (
-                <line
-                  key={`grid-tend-${idx}`}
-                  x1={padL - 18}
-                  y1={gy}
-                  x2={svgW - padR + 18}
-                  y2={gy}
-                  stroke="#E2E8F0"
-                  strokeWidth="1"
-                  strokeDasharray="3.5 3.5"
-                />
-              ))}
+              {/* ESCALA MONETARIA DEL EJE Y IZQUIERDO + LÍNEAS GUÍA */}
+              <line
+                x1={padL - 10}
+                y1={padT - 4}
+                x2={padL - 10}
+                y2={baseLineY}
+                stroke="#CBD5E1"
+                strokeWidth="1.2"
+              />
+              {escalaTendencia.ticks.map((tk, idx) => {
+                const gy = getYRaw(tk.valor);
+                return (
+                  <g key={`grid-tend-${idx}`}>
+                    <line
+                      x1={padL - 10}
+                      y1={gy}
+                      x2={svgW - padR + 14}
+                      y2={gy}
+                      stroke={tk.valor === 0 ? "#334155" : "#E2E8F0"}
+                      strokeWidth={tk.valor === 0 ? "1.2" : "1"}
+                      strokeDasharray={tk.valor === 0 ? undefined : "3.5 3.5"}
+                    />
+                    <line
+                      x1={padL - 14}
+                      y1={gy}
+                      x2={padL - 10}
+                      y2={gy}
+                      stroke="#94A3B8"
+                      strokeWidth="1.1"
+                    />
+                    <text
+                      x={padL - 17}
+                      y={gy + 3.5}
+                      textAnchor="end"
+                      fontSize="10"
+                      fontWeight="700"
+                      fill="#334155"
+                      style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                    >
+                      {tk.label}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* FRANJA Y CROSSHAIR VERTICAL DEL CURSOR */}
+              {hoverTendenciaIdx !== null && hoverTendenciaIdx < puntosGrafica.length && (() => {
+                const hx = getX(hoverTendenciaIdx);
+                const pasoX = n > 1 ? plotW / (n - 1) : 56;
+                const bandW = Math.min(54, pasoX * 0.72);
+                return (
+                  <g pointerEvents="none">
+                    <rect
+                      x={hx - bandW / 2}
+                      y={padT - 6}
+                      width={bandW}
+                      height={baseLineY - padT + 6}
+                      rx={6}
+                      fill="#DBEAFE"
+                      opacity="0.32"
+                    />
+                    <line
+                      x1={hx}
+                      y1={padT - 6}
+                      x2={hx}
+                      y2={baseLineY}
+                      stroke="#1D58D8"
+                      strokeWidth="1.4"
+                      strokeDasharray="4 3"
+                    />
+                  </g>
+                );
+              })()}
 
               {/* Áreas degradadas */}
               {areaTotal && <path d={areaTotal} fill="url(#gradTendenciaTotal)" />}
               {areaReal && <path d={areaReal} fill="url(#gradTendenciaReal)" />}
-
-              {/* Línea base del eje X (bien separada por debajo de las cápsulas inferiores) */}
-              <line
-                x1={padL - 20}
-                y1={baseLineY}
-                x2={svgW - padR + 20}
-                y2={baseLineY}
-                stroke="#334155"
-                strokeWidth="1.2"
-              />
 
               {/* Las dos partes que suman el Total. Van PRIMERO para que
                   queden por debajo: Total y Real son las que se leen, estas
@@ -2538,36 +2990,47 @@ export default function TableroCarteraAnalytics() {
                    el borde: va centrada en el punto y el punto esta
                    pegado al margen. Se corre hacia adentro lo necesario. */
                 const dentro = (w: number) =>
-                  Math.max(w / 2 + 2, Math.min(svgW - w / 2 - 2, x));
+                  Math.max(padL - 8 + w / 2, Math.min(svgW - w / 2 - 2, x));
+                const esHover = hoverTendenciaIdx === i;
+                const hitW = n > 1 ? Math.max(28, plotW / (n - 1)) : 80;
 
                 return (
                   <g
                     key={pt.id}
                     className="cursor-pointer"
+                    onMouseEnter={() => setHoverTendenciaIdx(i)}
                     onClick={() => setIndiceCorteActivo(pt.idxCorte)}
                   >
+                    {/* Zona invisible ancha para seguimiento fluido con el cursor */}
+                    <rect
+                      x={x - hitW / 2}
+                      y={padT - 8}
+                      width={hitW}
+                      height={baseLineY - padT + 36}
+                      fill="transparent"
+                    />
                     {pt.mostrarLabel && (
                       <>
                         {/* Nodos de las dos series principales */}
                         <circle
                           cx={x}
                           cy={yTot}
-                          r={4.6}
+                          r={esHover ? 6.4 : 4.6}
                           fill="#1D58D8"
                           stroke="#FFFFFF"
-                          strokeWidth="1.6"
+                          strokeWidth={esHover ? "2.2" : "1.6"}
                         >
                           <title>{`${pt.etiquetaEje} · Cartera Total: ${formatCOP(pt.carteraTotal)}`}</title>
                         </circle>
                         <circle
                           cx={x}
                           cy={yReal}
-                          r={4.6}
+                          r={esHover ? 6.4 : 4.6}
                           fill="#059669"
                           stroke="#FFFFFF"
-                          strokeWidth="1.6"
+                          strokeWidth={esHover ? "2.2" : "1.6"}
                         >
-                          <title>{`${pt.etiquetaEje} · Cartera Real: ${formatCOP(pt.totalCarteraReal)}`}</title>
+                          <title>{`${pt.etiquetaEje} · Cartera Real: ${realCOP(pt.totalCarteraReal)}`}</title>
                         </circle>
 
                         {/* El desglose va primero: si dos se rozan, la que
@@ -2598,9 +3061,9 @@ export default function TableroCarteraAnalytics() {
                                   width={c.ancho}
                                   height={19}
                                   rx={9.5}
-                                  fill={c.fondo}
-                                  stroke={c.borde}
-                                  strokeWidth="1"
+                                  fill={esHover ? "#EFF6FF" : c.fondo}
+                                  stroke={esHover ? "#2563EB" : c.borde}
+                                  strokeWidth={esHover ? "1.4" : "1"}
                                   filter="url(#sombraCapsulaTendencia)"
                                 />
                                 <text
@@ -2624,9 +3087,9 @@ export default function TableroCarteraAnalytics() {
                       x={x}
                       y={baseLineY + 20}
                       textAnchor="middle"
-                      fontSize="10.5"
-                      fontWeight="600"
-                      fill="#0F172A"
+                      fontSize={esHover ? "11.2" : "10.5"}
+                      fontWeight={esHover ? "800" : "600"}
+                      fill={esHover ? "#1D4ED8" : "#0F172A"}
                     >
                       {pt.etiquetaEje}
                     </text>
@@ -2634,6 +3097,7 @@ export default function TableroCarteraAnalytics() {
                 );
               })}
             </svg>
+            </div>
             )}
           </div>
 
@@ -2643,11 +3107,18 @@ export default function TableroCarteraAnalytics() {
               className="rounded-xl p-3.5 border space-y-2"
               style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
             >
-              <div
-                className="text-[13px] font-bold"
-                style={{ color: "#0F172A" }}
-              >
-                Fechas de Corte (Excel / SISMA)
+              <div className="flex items-center justify-between gap-2">
+                <div
+                  className="text-[13px] font-bold"
+                  style={{ color: "#0F172A" }}
+                >
+                  Fechas de Corte (Excel / SISMA)
+                </div>
+                {esCorteCongeladoAyer && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Congelado ayer
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-12 text-[10.5px] font-semibold pb-1 border-b" style={{ color: "#475569", borderColor: "#E2ECF8" }}>
@@ -2696,6 +3167,157 @@ export default function TableroCarteraAnalytics() {
             </div>
           </div>
         </div>
+
+        {/* TABLA DE DATOS INFERIOR SINCRONIZADA CON EL CURSOR */}
+        {puntosGrafica.length > 0 && (
+          <div
+            className="pt-2 border-t space-y-2"
+            style={{ borderColor: "#E2ECF8" }}
+            onMouseLeave={() => setHoverTendenciaIdx(null)}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <span className="font-bold text-[#0E245E]">
+                Tabla Detallada de Evolución ({modoTendenciaCartera === "MES" ? `Cierres Mensuales ${anioTendencia}` : "Fechas de Corte"}) — Pasa el cursor sobre cualquier columna o punto de la gráfica
+              </span>
+              <span className="text-[#64748B]">
+                * Mes actual conectado al cierre congelado del día anterior ({formatearISOaLatam(ayerIsoRef)})
+              </span>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "#E2ECF8" }}>
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: "#F8FAFC" }}>
+                    <th className="p-2 text-left font-extrabold text-[#0E245E] sticky left-0 bg-[#F8FAFC] border-b border-r min-w-[155px]" style={{ borderColor: "#E2ECF8" }}>
+                      Indicador Contable
+                    </th>
+                    {puntosGrafica.map((pt, i) => {
+                      const colActiva = hoverTendenciaIdx === i;
+                      return (
+                        <th
+                          key={`th-tend-${pt.id}`}
+                          onMouseEnter={() => setHoverTendenciaIdx(i)}
+                          className="p-2 text-right font-extrabold border-b cursor-pointer transition-colors min-w-[76px]"
+                          style={{
+                            borderColor: "#E2ECF8",
+                            backgroundColor: colActiva ? "#DBEAFE" : pt.esCongeladoAyer ? "#ECFDF5" : "#F8FAFC",
+                            color: colActiva ? "#1D4ED8" : pt.esCongeladoAyer ? "#047857" : "#0E245E",
+                          }}
+                          title={`Corte: ${pt.fechaDetalle}`}
+                        >
+                          <div>{pt.etiquetaEje}</div>
+                          <div className="text-[9.5px] font-normal opacity-80">
+                            {pt.fechaDetalle.slice(0, 10)}
+                          </div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                  <tr>
+                    <td className="p-2 font-bold text-[#1D58D8] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                      Cartera Total
+                    </td>
+                    {puntosGrafica.map((pt, i) => (
+                      <td
+                        key={`td-tot-${pt.id}`}
+                        onMouseEnter={() => setHoverTendenciaIdx(i)}
+                        className="p-2 text-right font-mono font-bold text-[#0E245E] cursor-pointer transition-colors"
+                        style={{ backgroundColor: hoverTendenciaIdx === i ? "#EFF6FF" : "transparent" }}
+                        title={formatCOP(pt.carteraTotal)}
+                      >
+                        {formatMillones(pt.carteraTotal)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2 font-semibold text-[#0369A1] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                      Corriente (&lt; 60d)
+                    </td>
+                    {puntosGrafica.map((pt, i) => (
+                      <td
+                        key={`td-corr-${pt.id}`}
+                        onMouseEnter={() => setHoverTendenciaIdx(i)}
+                        className="p-2 text-right font-mono text-[#0369A1] cursor-pointer transition-colors"
+                        style={{ backgroundColor: hoverTendenciaIdx === i ? "#EFF6FF" : "transparent" }}
+                        title={formatCOP(pt.carteraCorriente)}
+                      >
+                        {formatMillones(pt.carteraCorriente)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2 font-semibold text-[#B91C1C] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                      Vencida (&gt;= 60d)
+                    </td>
+                    {puntosGrafica.map((pt, i) => (
+                      <td
+                        key={`td-venc-${pt.id}`}
+                        onMouseEnter={() => setHoverTendenciaIdx(i)}
+                        className="p-2 text-right font-mono text-[#B91C1C] cursor-pointer transition-colors"
+                        style={{ backgroundColor: hoverTendenciaIdx === i ? "#EFF6FF" : "transparent" }}
+                        title={formatCOP(pt.carteraVencida)}
+                      >
+                        {formatMillones(pt.carteraVencida)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2 font-semibold text-[#92400E] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                      (−) Giros por Cruzar
+                    </td>
+                    {puntosGrafica.map((pt, i) => (
+                      <td
+                        key={`td-gir-${pt.id}`}
+                        onMouseEnter={() => setHoverTendenciaIdx(i)}
+                        className="p-2 text-right font-mono text-[#92400E] cursor-pointer transition-colors"
+                        style={{ backgroundColor: hoverTendenciaIdx === i ? "#EFF6FF" : "transparent" }}
+                        title={formatCOP(pt.anticiposPorCruzar)}
+                      >
+                        {formatMillones(pt.anticiposPorCruzar)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr style={{ backgroundColor: "#F0FDF4" }}>
+                    <td className="p-2 font-extrabold text-[#047857] sticky left-0 bg-[#F0FDF4] border-r" style={{ borderColor: "#E2ECF8" }}>
+                      (=) Cartera Real Neta
+                    </td>
+                    {puntosGrafica.map((pt, i) => (
+                      <td
+                        key={`td-real-${pt.id}`}
+                        onMouseEnter={() => setHoverTendenciaIdx(i)}
+                        className="p-2 text-right font-mono font-extrabold text-[#047857] cursor-pointer transition-colors"
+                        style={{ backgroundColor: hoverTendenciaIdx === i ? "#DCFCE7" : "#F0FDF4" }}
+                        title={realCOP(pt.totalCarteraReal)}
+                      >
+                        {realMillones(pt.totalCarteraReal)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2 font-semibold text-[#475569] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                      % Cartera Vencida
+                    </td>
+                    {puntosGrafica.map((pt, i) => {
+                      const pctV = pt.carteraTotal > 0 ? (pt.carteraVencida / pt.carteraTotal) * 100 : 0;
+                      return (
+                        <td
+                          key={`td-pct-${pt.id}`}
+                          onMouseEnter={() => setHoverTendenciaIdx(i)}
+                          className="p-2 text-right font-mono font-semibold text-[#475569] cursor-pointer transition-colors"
+                          style={{ backgroundColor: hoverTendenciaIdx === i ? "#EFF6FF" : "transparent" }}
+                        >
+                          {pctV.toFixed(1)}%
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -2782,7 +3404,7 @@ export default function TableroCarteraAnalytics() {
           r.anio,
           r.empresa,
           respReal,
-          r.fechaRadicacion || r.fechaFactura,
+          r.fechaRadicacion || r.fechaFactura || r.periodo,
           r.empresaOriginal
         )
       ) {
@@ -2872,6 +3494,31 @@ export default function TableroCarteraAnalytics() {
     ]
   );
 
+  const facturasBaseFiltradas = useMemo(
+    () => filtrarBaseAnuladas(facturasBaseDb),
+    [
+      facturasBaseDb,
+      filtroAnio,
+      filtroEmpresa,
+      filtroTipo,
+      filtroEstado,
+      filtroResponsable,
+      busqueda,
+      valoresExcluidosPorCol,
+      busquedaTextoPorCol,
+      ordenColumna,
+      aniosFrecSel,
+      mesesFrecSel,
+      empresasFrecSel,
+      responsablesFrecSel,
+      incluirMutual,
+      diasFiltroActivo,
+      diasDesde,
+      diasHasta,
+      diasSemanaSel,
+    ]
+  );
+
   const glosasFiltradas = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     const base = glosas.filter((r) => {
@@ -2881,7 +3528,7 @@ export default function TableroCarteraAnalytics() {
           r.anio,
           r.empresa,
           facReal,
-          r.fechaRadicacion || r.fechaFactura,
+          r.fechaNotificacionGlosa || r.fechaRadicacion || r.fechaFactura || r.periodo,
           r.empresaOriginal
         )
       ) {
@@ -4282,6 +4929,9 @@ export default function TableroCarteraAnalytics() {
                       key={emp}
                       onClick={() => {
                         setFiltroEmpresa("TODAS");
+                        if (!sel && esEmpresaMutual(emp)) {
+                          setIncluirMutual(true);
+                        }
                         if (
                           empresasFrecSel.length ===
                           todasLasEmpresasDisponibles.length
@@ -4482,56 +5132,99 @@ export default function TableroCarteraAnalytics() {
           Limpiar
         </button>
 
-        {/* 7. INTERRUPTOR MUTUAL: INCLUIR | EXCLUIR (ALINEADO A LA DERECHA) */}
-        <div className="flex items-center gap-1.5 ml-auto shrink-0">
-          <span
-            className="text-[10px] font-bold uppercase tracking-wider"
-            style={{ color: "#5B6483" }}
-          >
-            MUTUAL
-          </span>
-          <div
-            className="inline-flex rounded-[10px] p-0.5 border"
-            style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setIncluirMutual(true);
-                setPaginaActual(1);
-                sincronizarConSismaVivo(fechaCorteVivo, true, { mutual: true });
-              }}
-              className="px-2 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
-              style={{
-                backgroundColor: incluirMutual ? "#FFFFFF" : "transparent",
-                color: incluirMutual ? "#0E245E" : "#5B6483",
-                boxShadow: incluirMutual
-                  ? "0 1px 3px rgba(15,23,42,0.1)"
-                  : "none",
-              }}
-            >
-              Incluir
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIncluirMutual(false);
-                setPaginaActual(1);
-                sincronizarConSismaVivo(fechaCorteVivo, true, { mutual: false });
-              }}
-              className="px-2 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
-              style={{
-                backgroundColor: !incluirMutual ? "#FFFFFF" : "transparent",
-                color: !incluirMutual ? "#0E245E" : "#5B6483",
-                boxShadow: !incluirMutual
-                  ? "0 1px 3px rgba(15,23,42,0.1)"
-                  : "none",
-              }}
-            >
-              Excluir
-            </button>
-          </div>
-        </div>
+        {/* 7. INTERRUPTOR MUTUAL DE 3 VÍAS: CON MUTUAL | SOLO MUTUAL | SIN MUTUAL */}
+        {(() => {
+          const modoSoloMutual =
+            incluirMutual &&
+            ((empresasFrecSel.length === 1 && esEmpresaMutual(empresasFrecSel[0])) ||
+              (empresasFrecSel.length === 0 &&
+                filtroEmpresa !== "TODAS" &&
+                esEmpresaMutual(filtroEmpresa)));
+          const modoSinMutual = !incluirMutual && !modoSoloMutual;
+          const modoConMutual = incluirMutual && !modoSoloMutual;
+
+          return (
+            <div className="flex items-center gap-1.5 ml-auto shrink-0">
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: "#5B6483" }}
+              >
+                MUTUAL SER
+              </span>
+              <div
+                className="inline-flex rounded-[10px] p-0.5 border"
+                style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncluirMutual(true);
+                    if (modoSoloMutual) {
+                      setEmpresasFrecSel([]);
+                      setFiltroEmpresa("TODAS");
+                    }
+                    setPaginaActual(1);
+                  }}
+                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
+                  style={{
+                    backgroundColor: modoConMutual ? "#FFFFFF" : "transparent",
+                    color: modoConMutual ? "#0E245E" : "#5B6483",
+                    boxShadow: modoConMutual
+                      ? "0 1px 3px rgba(15,23,42,0.1)"
+                      : "none",
+                  }}
+                  title="Mostrar todas las entidades incluyendo Mutual Ser"
+                >
+                  Con Mutual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncluirMutual(true);
+                    setFiltroEmpresa("TODAS");
+                    setEmpresasFrecSel(["MUTUAL SER"]);
+                    setPaginaActual(1);
+                  }}
+                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
+                  style={{
+                    backgroundColor: modoSoloMutual ? "#1D58D8" : "transparent",
+                    color: modoSoloMutual ? "#FFFFFF" : "#5B6483",
+                    boxShadow: modoSoloMutual
+                      ? "0 1px 3px rgba(29,88,216,0.28)"
+                      : "none",
+                  }}
+                  title="Filtrar únicamente Mutual Ser (NIT 806008394) en todo el tablero"
+                >
+                  Solo Mutual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncluirMutual(false);
+                    setEmpresasFrecSel((prev) =>
+                      prev.filter((e) => !esEmpresaMutual(e))
+                    );
+                    if (esEmpresaMutual(filtroEmpresa)) {
+                      setFiltroEmpresa("TODAS");
+                    }
+                    setPaginaActual(1);
+                  }}
+                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
+                  style={{
+                    backgroundColor: modoSinMutual ? "#FFFFFF" : "transparent",
+                    color: modoSinMutual ? "#B91C1C" : "#5B6483",
+                    boxShadow: modoSinMutual
+                      ? "0 1px 3px rgba(15,23,42,0.1)"
+                      : "none",
+                  }}
+                  title="Excluir Mutual Ser de todos los indicadores, curvas y glosas"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ===================================================================== */}
@@ -4563,15 +5256,38 @@ export default function TableroCarteraAnalytics() {
               <p className="text-xs sm:text-sm" style={{ color: "#64748B" }}>
                 Cartera Corriente (&lt; 60 días) + Cartera Vencida (&gt;= 60 días) − Giros por cruzar = Total Cartera Real (Clic para plegar/desplegar)
               </p>
-              {/* Esta pantalla consulta SISMA en vivo, pero si la consulta
-                  falla el aviso dura 4 segundos y despues la pantalla se
-                  queda mostrando la instantanea guardada como si fuera el
-                  corte de hoy. Esto lo dice de forma permanente. */}
-              <div className="mt-1.5">
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 {datosSismaVivo ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-[11.5px] font-semibold text-[#047857]">
-                    En vivo desde SISMA · corte {datosSismaVivo.fechaCorte}
-                  </span>
+                  <>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-[11.5px] font-semibold text-[#047857]">
+                      {(datosSismaVivo.corteISO || fechaCorteVivo) === ayerEnColombia()
+                        ? `Corte congelado al día anterior cerrado: ${datosSismaVivo.fechaCorte} (hoy: ${formatearISOaLatam(hoyEnColombia())})`
+                        : `En vivo desde SISMA · corte ${datosSismaVivo.fechaCorte}`}
+                    </span>
+                    {(datosSismaVivo.corteISO || fechaCorteVivo) !== ayerEnColombia() && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const ay = ayerEnColombia();
+                          setFechaCorteVivo(ay);
+                          sincronizarConSismaVivo(ay, false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.stopPropagation();
+                            const ay = ayerEnColombia();
+                            setFechaCorteVivo(ay);
+                            sincronizarConSismaVivo(ay, false);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-[#1D58D8] hover:bg-blue-100 transition"
+                      >
+                        Volver al día anterior ({formatearISOaLatam(ayerEnColombia())})
+                      </span>
+                    )}
+                  </>
                 ) : (
                   <FechaDelDato
                     fecha={carteraInitialData.ultimaActualizacion}
@@ -5383,107 +6099,1120 @@ export default function TableroCarteraAnalytics() {
       </div>
 
       {/* ===================================================================== */}
-      {/* CUADRO 2: DASHBOARD EJECUTIVO · GLOSAS, DEVOLUCIONES Y FACTURACIÓN */}
+      {/* CUADRO 2A: VENTA TOTAL Y TOTAL FACTURADO VS. CARTERA (MENSUAL)        */}
       {/* ===================================================================== */}
       {(() => {
-        const totFacturado = glosasFiltradas.reduce(
-          (a, g) => a + (g.valorFacturado || g.valorFactura || g.valorRadicado || 0),
+        const anioActivoComp =
+          aniosFrecSel.length === 1
+            ? Number(aniosFrecSel[0])
+            : filtroAnio !== "TODOS"
+            ? Number(filtroAnio)
+            : anioTendencia;
+
+        const uConComp = datosSismaVivo?.desgloseUniverso?.conMutual;
+        const baseTotComp =
+          uConComp?.carteraTotal ||
+          datosSismaCompletaRef.current?.edades?.saldoTotal ||
+          corteBaseSeleccionado?.carteraTotal ||
+          1;
+        const baseGirComp =
+          uConComp?.anticiposPorCruzar ||
+          corteBaseSeleccionado?.anticiposPorCruzar ||
+          1;
+        const factorTotComp =
+          tieneFiltroEntidadDirecto || modalidadSisma === "PYP"
+            ? Math.min(1, Math.max(0, corteSeleccionado.carteraTotal / Math.max(1, baseTotComp)))
+            : 1;
+        const factorGirComp =
+          tieneFiltroEntidadDirecto || modalidadSisma === "PYP"
+            ? Math.min(1, Math.max(0, corteSeleccionado.anticiposPorCruzar / Math.max(1, baseGirComp)))
+            : 1;
+
+        // Deduplicación estricta por número de factura real (jamás sumar 2 veces una factura con varias glosas)
+        const mapaFacturasUnicas = new Map<
+          string,
+          { valor: number; fechaIso: string; anio: string; anulada: boolean }
+        >();
+        const registrarFacturaUnica = (
+          numRaw: string | undefined,
+          idFallback: string,
+          valor: number,
+          fechaRaw: string | undefined,
+          anioRaw: string | undefined,
+          esAnulada: boolean
+        ) => {
+          const v = Math.max(0, Number(valor || 0));
+          const numLimpio = String(numRaw || "").trim().toUpperCase();
+          const clave =
+            numLimpio && numLimpio !== "-" && numLimpio !== "PENDIENTE"
+              ? `FAC:${numLimpio}`
+              : `ID:${idFallback}`;
+          const prev = mapaFacturasUnicas.get(clave);
+          const fIso = String(fechaRaw || "").trim().slice(0, 10);
+          if (!prev) {
+            mapaFacturasUnicas.set(clave, {
+              valor: v,
+              fechaIso: fIso,
+              anio: String(anioRaw || fIso.slice(0, 4) || ""),
+              anulada: esAnulada,
+            });
+          } else {
+            if (v > prev.valor) prev.valor = v;
+            if (!prev.fechaIso && fIso) prev.fechaIso = fIso;
+            if (esAnulada) prev.anulada = true;
+          }
+        };
+
+        for (const f of facturasBaseFiltradas) {
+          const est = String(f.estadoGestion || "").toUpperCase();
+          const esAnul = est === "ANULADA" || est === "REEMPLAZADA" || est === "PENDIENTE_REEMPLAZO";
+          registrarFacturaUnica(
+            f.factura,
+            f.id,
+            f.valorRadicado || 0,
+            f.fechaFactura || f.fechaRadicacion || f.periodo,
+            f.anio,
+            esAnul
+          );
+        }
+        for (const l of legalizadasFiltradas) {
+          registrarFacturaUnica(
+            l.factura,
+            `leg-${l.id}`,
+            l.valorRadicado || 0,
+            l.fechaFactura || l.fechaRadicacion || l.periodo,
+            l.anio,
+            false
+          );
+        }
+        for (const g of glosasFiltradas) {
+          registrarFacturaUnica(
+            g.factura,
+            `glo-${g.id}`,
+            g.valorFacturado || g.valorFactura || g.valorRadicado || 0,
+            g.fechaFactura || g.fechaRadicacion || g.periodo,
+            g.anio,
+            false
+          );
+        }
+        for (const a of anuladasFiltradas) {
+          registrarFacturaUnica(
+            a.factura,
+            `anu-${a.id}`,
+            a.valorRadicado || 0,
+            a.fechaFactura || a.fechaRadicacion || a.periodo,
+            a.anio,
+            true
+          );
+        }
+
+        let totalFacturadoAuditadoVigente = 0;
+        let cantFacturasAuditadasVigentes = 0;
+        const facturadoAuditadoMes = new Array<number>(12).fill(0);
+
+        mapaFacturasUnicas.forEach((info) => {
+          if (info.anulada) return;
+          totalFacturadoAuditadoVigente += info.valor;
+          if (info.valor > 0) cantFacturasAuditadasVigentes += 1;
+          if (
+            /^\d{4}-\d{2}/.test(info.fechaIso) &&
+            Number(info.fechaIso.slice(0, 4)) === anioActivoComp
+          ) {
+            const mIdx = Number(info.fechaIso.slice(5, 7)) - 1;
+            if (mIdx >= 0 && mIdx < 12) facturadoAuditadoMes[mIdx] += info.valor;
+          }
+        });
+
+        const glosadoPorMesComp = new Array<number>(12).fill(0);
+        for (const g of glosasFiltradas) {
+          const fRef = String(
+            g.fechaNotificacionGlosa || g.fechaRadicacion || g.fechaFactura || g.periodo || ""
+          ).trim();
+          if (/^\d{4}-\d{2}/.test(fRef) && Number(fRef.slice(0, 4)) === anioActivoComp) {
+            const mIdx = Number(fRef.slice(5, 7)) - 1;
+            if (mIdx >= 0 && mIdx < 12) glosadoPorMesComp[mIdx] += g.valorGlosado || 0;
+          }
+        }
+
+        const factSisma = datosSismaVivo?.facturacionSisma;
+        const hayVentaContableSisma = Boolean(
+          factSisma?.ventaContableDisponible && (factSisma.ventaContableTotal || 0) > 0
+        );
+        const totalEmitidoAbiertoSisma = (factSisma?.porMes || []).reduce(
+          (acc, m) => acc + (m.saldoAbiertoEmitidoMes || 0),
           0
         );
-        const totGlosado = glosasFiltradas.reduce((a, g) => a + (g.valorGlosado || 0), 0);
-        const totAceptado = glosasFiltradas.reduce((a, g) => a + (g.valorAceptado ?? 0), 0);
-        const glosasPend = glosasFiltradas.filter(
-          (g) => (g.estado || g.subtabla || "PENDIENTE") === "PENDIENTE"
+        const totalGlosadoActivoComp = glosasFiltradas.reduce(
+          (acc, g) => acc + (g.valorGlosado || 0),
+          0
         );
-        const valPend = glosasPend.reduce((a, g) => a + (g.valorGlosado || 0), 0);
-        const totAnuladasMonto = anuladasFiltradas.reduce((a, r) => a + (r.valorRadicado || 0), 0);
 
-        // Agrupación por Causa Normativa (FA, TA, SO, AU, CO)
-        const porCausaNorma: Record<string, { monto: number; cantidad: number }> = {
-          FA: { monto: 0, cantidad: 0 },
-          TA: { monto: 0, cantidad: 0 },
-          SO: { monto: 0, cantidad: 0 },
-          AU: { monto: 0, cantidad: 0 },
-          CO: { monto: 0, cantidad: 0 },
+        const corteIsoAct = datosSismaVivo?.corteISO || fechaCorteVivo || ayerEnColombia();
+        const mesCorteAct = Number(corteIsoAct.slice(5, 7)) || 11;
+        const maxMesComp =
+          anioActivoComp === Number(corteIsoAct.slice(0, 4)) ? mesCorteAct : 12;
+        const etiquetasMesesCortas = [
+          "Ene",
+          "Feb",
+          "Mar",
+          "Abr",
+          "May",
+          "Jun",
+          "Jul",
+          "Ago",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dic",
+        ];
+
+        const mapaCierresAnio = new Map<number, CierreMes>();
+        for (const c of cierresTodos) {
+          if (c.anio === anioActivoComp) mapaCierresAnio.set(c.mes, c);
+        }
+
+        const filasCompMensual = Array.from({ length: maxMesComp }, (_, idx) => {
+          const mesNum = idx + 1;
+          const mm = String(mesNum).padStart(2, "0");
+          if (
+            mesesFrecSel.length > 0 &&
+            mesesFrecSel.length < 12 &&
+            !mesesFrecSel.includes(mm)
+          ) {
+            return null;
+          }
+          const sismaMes = factSisma?.porMes?.find((x) => x.mes === `${anioActivoComp}-${mm}`);
+          const cierreMes = mapaCierresAnio.get(mesNum);
+          const esMesCongeladoActual =
+            anioActivoComp === Number(corteIsoAct.slice(0, 4)) &&
+            mesNum === mesCorteAct &&
+            Boolean(datosSismaVivo) &&
+            !sinGiros;
+
+          const carteraTotMes = esMesCongeladoActual
+            ? corteSeleccionado.carteraTotal
+            : cierreMes
+            ? Math.round(cierreMes.carteraTotal * factorTotComp)
+            : 0;
+          const girosMes = esMesCongeladoActual
+            ? corteSeleccionado.anticiposPorCruzar
+            : cierreMes
+            ? Math.round(
+                (cierreMes.girosPorCruzar ??
+                  Math.max(0, cierreMes.carteraTotal - cierreMes.carteraReal)) *
+                  factorGirComp
+              )
+            : 0;
+          const carteraRealMes = esMesCongeladoActual
+            ? corteSeleccionado.totalCarteraReal
+            : cierreMes
+            ? Math.round(carteraTotMes - girosMes)
+            : 0;
+
+          const ventaContable = hayVentaContableSisma ? sismaMes?.ventaContable || 0 : null;
+          const emitidoAbierto = sismaMes?.saldoAbiertoEmitidoMes || 0;
+          const facturadoAudit = facturadoAuditadoMes[idx] || 0;
+          const barraFacturacion =
+            ventaContable !== null ? ventaContable : Math.max(emitidoAbierto, facturadoAudit);
+
+          return {
+            mesNum,
+            mm,
+            etiqueta: `${etiquetasMesesCortas[idx]}${esMesCongeladoActual ? "*" : ""}`,
+            ventaContable,
+            emitidoAbierto,
+            facturadoAudit,
+            barraFacturacion,
+            carteraTotMes,
+            carteraRealMes,
+            glosadoMes: glosadoPorMesComp[idx] || 0,
+          };
+        }).filter((x): x is NonNullable<typeof x> => x !== null);
+
+        const nComp = filasCompMensual.length;
+        const svgCompW = 780;
+        const svgCompH = 290;
+        const padCompL = 82;
+        const padCompR = 28;
+        const padCompT = 22;
+        const baseCompY = 254;
+        const plotCompW = svgCompW - padCompL - padCompR;
+        const plotCompH = baseCompY - padCompT;
+
+        const maxCompBruto = Math.max(
+          1,
+          ...filasCompMensual.flatMap((f) => [
+            f.barraFacturacion,
+            f.carteraTotMes,
+            f.carteraRealMes,
+            f.glosadoMes,
+          ])
+        );
+        const escalaComp = generarTicksEjeY(maxCompBruto * 1.06, 4);
+        const getXComp = (i: number) =>
+          nComp <= 1
+            ? padCompL + plotCompW / 2
+            : padCompL + ((i + 0.5) / nComp) * plotCompW;
+        const getYComp = (v: number) =>
+          baseCompY - (Math.max(0, v) / escalaComp.techo) * plotCompH;
+
+        const curvaSuaveComp = (pts: { x: number; y: number }[]) => {
+          if (pts.length === 0) return "";
+          if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+          let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+          for (let i = 0; i < pts.length - 1; i++) {
+            const p0 = pts[i];
+            const p1 = pts[i + 1];
+            const cx1 = p0.x + (p1.x - p0.x) * 0.4;
+            const cx2 = p1.x - (p1.x - p0.x) * 0.4;
+            d += ` C ${cx1.toFixed(1)} ${p0.y.toFixed(1)}, ${cx2.toFixed(1)} ${p1.y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+          }
+          return d;
+        };
+
+        const ptsCarteraTot = filasCompMensual
+          .map((f, i) => ({ x: getXComp(i), y: getYComp(f.carteraTotMes), v: f.carteraTotMes }))
+          .filter((p) => p.v > 0);
+        const ptsCarteraReal = filasCompMensual
+          .map((f, i) => ({ x: getXComp(i), y: getYComp(f.carteraRealMes), v: f.carteraRealMes }))
+          .filter((p) => p.v > 0);
+
+        const idxInspVenta =
+          hoverVentaMesIdx !== null && hoverVentaMesIdx < filasCompMensual.length
+            ? hoverVentaMesIdx
+            : filasCompMensual.length > 0
+            ? filasCompMensual.length - 1
+            : null;
+        const filaInspVenta = idxInspVenta !== null ? filasCompMensual[idxInspVenta] : null;
+
+        return (
+          <div
+            className="rounded-xl p-6 shadow-xs border space-y-5"
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3 border-b border-[#E2ECF8]">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-extrabold text-[#0E245E]">
+                    Venta Total y Total Facturado vs. Cartera ({anioActivoComp})
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {hayVentaContableSisma
+                      ? "Ingresos PUC 41–43 + Cartera SISMA"
+                      : "Facturación Emitida / Auditada Real vs. Cierre Cartera"}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-[#64748B]">
+                  Compara mes a mes la facturación real registrada frente al saldo acumulado de Cartera Total, Cartera Real Neta y Glosas del período.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#E2ECF8] bg-white text-[#312E81]">
+                  <span className="w-2.5 h-2.5 rounded-xs bg-[#4F46E5]" />
+                  {hayVentaContableSisma ? "Venta Contable Mes" : "Facturado Emitido / Auditado Mes"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#E2ECF8] bg-white text-[#BE123C]">
+                  <span className="w-2.5 h-2.5 rounded-xs bg-[#E11D48]" />
+                  Glosado Mes
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#E2ECF8] bg-white text-[#1D58D8]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#1D58D8]" />
+                  Cartera Total
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#E2ECF8] bg-white text-[#047857]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#059669]" />
+                  Cartera Real
+                </span>
+              </div>
+            </div>
+
+            {/* 5 KPIs DE VENTA / TOTAL FACTURADO VS CARTERA */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+              <div className="p-3.5 rounded-xl border bg-[#EEF2FF]/55" style={{ borderColor: "#C7D2FE" }}>
+                <div className="text-[10.5px] font-bold text-[#3730A3] uppercase tracking-wider">
+                  {hayVentaContableSisma ? "Venta Total Contable (SISMA)" : "Total Facturado Auditado Único"}
+                </div>
+                <div className="mt-1 font-mono text-lg sm:text-xl font-extrabold text-[#312E81]">
+                  {hayVentaContableSisma
+                    ? formatCOP(factSisma?.ventaContableTotal || 0)
+                    : formatCOP(totalFacturadoAuditadoVigente)}
+                </div>
+                <div className="mt-1 text-[11px] text-[#4338CA] leading-snug">
+                  {hayVentaContableSisma
+                    ? `PUC 41–43 SISMA (${factSisma?.cuentasIngresos?.length || 0} cuentas)`
+                    : `${cantFacturasAuditadasVigentes.toLocaleString("es-CO")} facturas únicas vigentes en control`}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl border bg-[#F8FAFC]" style={{ borderColor: "#E2ECF8" }}>
+                <div className="text-[10.5px] font-bold text-[#475569] uppercase tracking-wider">
+                  Saldo Emitido Abierto ({anioActivoComp})
+                </div>
+                <div className="mt-1 font-mono text-lg sm:text-xl font-extrabold text-[#0E245E]">
+                  {formatCOP(totalEmitidoAbiertoSisma || corteSeleccionado.carteraTotal)}
+                </div>
+                <div className="mt-1 text-[11px] text-[#64748B] leading-snug">
+                  Facturas emitidas en {anioActivoComp} con saldo activo en SISMA
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl border bg-[#EFF6FF]/65" style={{ borderColor: "#BFDBFE" }}>
+                <div className="text-[10.5px] font-bold text-[#1D4ED8] uppercase tracking-wider">
+                  Cartera Total (Corte Activo)
+                </div>
+                <div className="mt-1 font-mono text-lg sm:text-xl font-extrabold text-[#1D4ED8]">
+                  {formatCOP(corteSeleccionado.carteraTotal)}
+                </div>
+                <div className="mt-1 text-[11px] text-[#1E40AF] leading-snug">
+                  Corriente {formatMillones(corteSeleccionado.carteraCorriente)} · Vencida {formatMillones(corteSeleccionado.carteraVencida)}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl border bg-[#ECFDF5]/65" style={{ borderColor: "#A7F3D0" }}>
+                <div className="text-[10.5px] font-bold text-[#047857] uppercase tracking-wider">
+                  Cartera Real Neta (− Giros)
+                </div>
+                <div className="mt-1 font-mono text-lg sm:text-xl font-extrabold text-[#047857]">
+                  {realCOP(corteSeleccionado.totalCarteraReal)}
+                </div>
+                <div className="mt-1 text-[11px] text-[#065F46] leading-snug">
+                  Descontando {formatMillones(corteSeleccionado.anticiposPorCruzar)} en giros por cruzar
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl border bg-[#FFF1F2]/65" style={{ borderColor: "#FECDD3" }}>
+                <div className="text-[10.5px] font-bold text-[#BE123C] uppercase tracking-wider">
+                  Peso Glosa vs. Facturado / Cartera
+                </div>
+                <div className="mt-1 font-mono text-lg sm:text-xl font-extrabold text-[#BE123C]">
+                  {totalFacturadoAuditadoVigente > 0
+                    ? `${((totalGlosadoActivoComp / totalFacturadoAuditadoVigente) * 100).toFixed(1)}%`
+                    : "0.0%"}
+                  <span className="text-xs font-bold text-[#64748B] ml-1.5">
+                    ({corteSeleccionado.carteraTotal > 0
+                      ? `${((totalGlosadoActivoComp / corteSeleccionado.carteraTotal) * 100).toFixed(1)}% s/cartera`
+                      : "0% s/cartera"})
+                  </span>
+                </div>
+                <div className="mt-1 text-[11px] text-[#9F1239] leading-snug">
+                  Glosado activo: {formatCOP(totalGlosadoActivoComp)}
+                </div>
+              </div>
+            </div>
+
+            {/* BARRA INTERACTIVA DE CURSOR + GRÁFICA COMPARATIVA CON EJE Y IZQUIERDO */}
+            {filaInspVenta && (
+              <div
+                className="rounded-xl border px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11.5px] transition-colors"
+                style={{
+                  backgroundColor: hoverVentaMesIdx !== null ? "#EEF2FF" : "#F8FAFC",
+                  borderColor: hoverVentaMesIdx !== null ? "#A5B4FC" : "#E2ECF8",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md font-extrabold text-white bg-[#312E81]">
+                    {filaInspVenta.etiqueta.replace("*", "")} {anioActivoComp}
+                  </span>
+                  <span className="text-[#475569] font-semibold">
+                    {hoverVentaMesIdx !== null ? "Inspección activa con cursor" : "Mueve el cursor sobre las barras o la tabla inferior"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-mono text-[11px]">
+                  {filaInspVenta.ventaContable !== null && (
+                    <span className="text-[#312E81]">
+                      <strong>Venta SISMA:</strong> {formatCOP(filaInspVenta.ventaContable)}
+                    </span>
+                  )}
+                  <span className="text-[#4338CA]">
+                    <strong>Emitido Abierto:</strong> {formatCOP(filaInspVenta.emitidoAbierto)}
+                  </span>
+                  <span className="text-[#0F172A]">
+                    <strong>Fact. Auditado:</strong> {formatCOP(filaInspVenta.facturadoAudit)}
+                  </span>
+                  <span className="text-[#1D58D8]">
+                    <strong>Cartera Total:</strong> {formatCOP(filaInspVenta.carteraTotMes)}
+                  </span>
+                  <span className="text-[#047857]">
+                    <strong>Cartera Real:</strong> {realCOP(filaInspVenta.carteraRealMes)}
+                  </span>
+                  <span className="text-[#BE123C] font-bold">
+                    <strong>Glosado:</strong> {formatCOP(filaInspVenta.glosadoMes)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {nComp > 0 && (
+              <svg
+                viewBox={`0 0 ${svgCompW} ${svgCompH}`}
+                className="w-full h-auto select-none overflow-visible"
+                onMouseLeave={() => setHoverVentaMesIdx(null)}
+              >
+                <line
+                  x1={padCompL - 10}
+                  y1={padCompT - 4}
+                  x2={padCompL - 10}
+                  y2={baseCompY}
+                  stroke="#CBD5E1"
+                  strokeWidth="1.2"
+                />
+                {escalaComp.ticks.map((tk, idx) => {
+                  const gy = getYComp(tk.valor);
+                  return (
+                    <g key={`tk-comp-${idx}`}>
+                      <line
+                        x1={padCompL - 10}
+                        y1={gy}
+                        x2={svgCompW - padCompR}
+                        y2={gy}
+                        stroke={tk.valor === 0 ? "#334155" : "#E2E8F0"}
+                        strokeWidth={tk.valor === 0 ? "1.2" : "1"}
+                        strokeDasharray={tk.valor === 0 ? undefined : "3.5 3.5"}
+                      />
+                      <text
+                        x={padCompL - 16}
+                        y={gy + 3.5}
+                        textAnchor="end"
+                        fontSize="10"
+                        fontWeight="700"
+                        fill="#334155"
+                        style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                      >
+                        {tk.label}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {filasCompMensual.map((f, i) => {
+                  const cx = getXComp(i);
+                  const paso = plotCompW / Math.max(1, nComp);
+                  const barW = Math.min(20, Math.max(8, paso * 0.28));
+                  const yFact = getYComp(f.barraFacturacion);
+                  const yGlos = getYComp(f.glosadoMes);
+                  const activo = hoverVentaMesIdx === i;
+                  return (
+                    <g
+                      key={`bar-comp-${f.mm}`}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoverVentaMesIdx(i)}
+                    >
+                      {activo && (
+                        <>
+                          <rect
+                            x={cx - paso * 0.44}
+                            y={padCompT - 4}
+                            width={paso * 0.88}
+                            height={baseCompY - padCompT + 4}
+                            rx={6}
+                            fill="#E0E7FF"
+                            opacity="0.35"
+                          />
+                          <line
+                            x1={cx}
+                            y1={padCompT - 4}
+                            x2={cx}
+                            y2={baseCompY}
+                            stroke="#4F46E5"
+                            strokeWidth="1.2"
+                            strokeDasharray="4 3"
+                          />
+                        </>
+                      )}
+                      <rect
+                        x={cx - barW - 1.5}
+                        y={yFact}
+                        width={barW}
+                        height={Math.max(1.5, baseCompY - yFact)}
+                        rx={3.5}
+                        fill="#4F46E5"
+                        opacity={activo ? 1 : 0.85}
+                      />
+                      <rect
+                        x={cx + 1.5}
+                        y={yGlos}
+                        width={barW}
+                        height={Math.max(f.glosadoMes > 0 ? 2.5 : 0, baseCompY - yGlos)}
+                        rx={3.5}
+                        fill="#E11D48"
+                        opacity={activo ? 1 : 0.9}
+                      />
+                      <text
+                        x={cx}
+                        y={baseCompY + 18}
+                        textAnchor="middle"
+                        fontSize={activo ? "11" : "10.2"}
+                        fontWeight={activo ? "800" : "600"}
+                        fill={activo ? "#312E81" : "#0F172A"}
+                      >
+                        {f.etiqueta}
+                      </text>
+                      <rect
+                        x={cx - paso / 2}
+                        y={padCompT - 4}
+                        width={paso}
+                        height={baseCompY - padCompT + 28}
+                        fill="transparent"
+                      />
+                    </g>
+                  );
+                })}
+
+                {ptsCarteraTot.length > 0 && (
+                  <path
+                    d={curvaSuaveComp(ptsCarteraTot)}
+                    fill="none"
+                    stroke="#1D58D8"
+                    strokeWidth="2.4"
+                    pointerEvents="none"
+                  />
+                )}
+                {ptsCarteraReal.length > 0 && (
+                  <path
+                    d={curvaSuaveComp(ptsCarteraReal)}
+                    fill="none"
+                    stroke="#059669"
+                    strokeWidth="2.3"
+                    pointerEvents="none"
+                  />
+                )}
+                {filasCompMensual.map((f, i) => {
+                  const cx = getXComp(i);
+                  const activo = hoverVentaMesIdx === i;
+                  return (
+                    <g key={`nds-comp-${f.mm}`} pointerEvents="none">
+                      {f.carteraTotMes > 0 && (
+                        <circle
+                          cx={cx}
+                          cy={getYComp(f.carteraTotMes)}
+                          r={activo ? 5.6 : 3.8}
+                          fill="#1D58D8"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.5"
+                        />
+                      )}
+                      {f.carteraRealMes > 0 && (
+                        <circle
+                          cx={cx}
+                          cy={getYComp(f.carteraRealMes)}
+                          r={activo ? 5.6 : 3.8}
+                          fill="#059669"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.5"
+                        />
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
+
+            {/* TABLA MENSUAL VENTA / FACTURACIÓN VS CARTERA SINCRONIZADA CON CURSOR */}
+            {nComp > 0 && (
+              <div
+                className="overflow-x-auto rounded-xl border"
+                style={{ borderColor: "#E2ECF8" }}
+                onMouseLeave={() => setHoverVentaMesIdx(null)}
+              >
+                <table className="w-full text-[11px] border-collapse">
+                  <thead>
+                    <tr style={{ backgroundColor: "#F8FAFC" }}>
+                      <th className="p-2 text-left font-extrabold text-[#0E245E] sticky left-0 bg-[#F8FAFC] border-b border-r min-w-[190px]" style={{ borderColor: "#E2ECF8" }}>
+                        Serie Mensual ({anioActivoComp})
+                      </th>
+                      {filasCompMensual.map((f, i) => (
+                        <th
+                          key={`th-vc-${f.mm}`}
+                          onMouseEnter={() => setHoverVentaMesIdx(i)}
+                          className="p-2 text-right font-extrabold border-b cursor-pointer transition-colors min-w-[74px]"
+                          style={{
+                            borderColor: "#E2ECF8",
+                            backgroundColor: hoverVentaMesIdx === i ? "#E0E7FF" : "#F8FAFC",
+                            color: hoverVentaMesIdx === i ? "#312E81" : "#0E245E",
+                          }}
+                        >
+                          {f.etiqueta}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                    {hayVentaContableSisma && (
+                      <tr>
+                        <td className="p-2 font-bold text-[#312E81] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                          Venta Contable SISMA (PUC 41–43)
+                        </td>
+                        {filasCompMensual.map((f, i) => (
+                          <td
+                            key={`td-vcs-${f.mm}`}
+                            onMouseEnter={() => setHoverVentaMesIdx(i)}
+                            className="p-2 text-right font-mono font-bold text-[#312E81] cursor-pointer"
+                            style={{ backgroundColor: hoverVentaMesIdx === i ? "#EEF2FF" : "transparent" }}
+                            title={formatCOP(f.ventaContable || 0)}
+                          >
+                            {formatMillones(f.ventaContable || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    <tr>
+                      <td className="p-2 font-semibold text-[#4338CA] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                        Saldo Emitido Abierto (SISMA)
+                      </td>
+                      {filasCompMensual.map((f, i) => (
+                        <td
+                          key={`td-emi-${f.mm}`}
+                          onMouseEnter={() => setHoverVentaMesIdx(i)}
+                          className="p-2 text-right font-mono text-[#4338CA] cursor-pointer"
+                          style={{ backgroundColor: hoverVentaMesIdx === i ? "#EEF2FF" : "transparent" }}
+                          title={formatCOP(f.emitidoAbierto)}
+                        >
+                          {formatMillones(f.emitidoAbierto)}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-semibold text-[#0F172A] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                        Facturado Auditado Único (Control)
+                      </td>
+                      {filasCompMensual.map((f, i) => (
+                        <td
+                          key={`td-fau-${f.mm}`}
+                          onMouseEnter={() => setHoverVentaMesIdx(i)}
+                          className="p-2 text-right font-mono text-[#0F172A] cursor-pointer"
+                          style={{ backgroundColor: hoverVentaMesIdx === i ? "#EEF2FF" : "transparent" }}
+                          title={formatCOP(f.facturadoAudit)}
+                        >
+                          {formatMillones(f.facturadoAudit)}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-bold text-[#1D58D8] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                        Cierre Cartera Total
+                      </td>
+                      {filasCompMensual.map((f, i) => (
+                        <td
+                          key={`td-ct-${f.mm}`}
+                          onMouseEnter={() => setHoverVentaMesIdx(i)}
+                          className="p-2 text-right font-mono font-bold text-[#1D58D8] cursor-pointer"
+                          style={{ backgroundColor: hoverVentaMesIdx === i ? "#EEF2FF" : "transparent" }}
+                          title={formatCOP(f.carteraTotMes)}
+                        >
+                          {f.carteraTotMes > 0 ? formatMillones(f.carteraTotMes) : "—"}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr style={{ backgroundColor: "#F0FDF4" }}>
+                      <td className="p-2 font-extrabold text-[#047857] sticky left-0 bg-[#F0FDF4] border-r" style={{ borderColor: "#E2ECF8" }}>
+                        Cierre Cartera Real Neta
+                      </td>
+                      {filasCompMensual.map((f, i) => (
+                        <td
+                          key={`td-cr-${f.mm}`}
+                          onMouseEnter={() => setHoverVentaMesIdx(i)}
+                          className="p-2 text-right font-mono font-extrabold text-[#047857] cursor-pointer"
+                          style={{ backgroundColor: hoverVentaMesIdx === i ? "#DCFCE7" : "#F0FDF4" }}
+                          title={realCOP(f.carteraRealMes)}
+                        >
+                          {f.carteraRealMes > 0 ? realMillones(f.carteraRealMes) : "—"}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-bold text-[#BE123C] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                        Valor Glosado del Mes
+                      </td>
+                      {filasCompMensual.map((f, i) => (
+                        <td
+                          key={`td-gl-${f.mm}`}
+                          onMouseEnter={() => setHoverVentaMesIdx(i)}
+                          className="p-2 text-right font-mono font-bold text-[#BE123C] cursor-pointer"
+                          style={{ backgroundColor: hoverVentaMesIdx === i ? "#FFF1F2" : "transparent" }}
+                          title={formatCOP(f.glosadoMes)}
+                        >
+                          {formatMillones(f.glosadoMes)}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!hayVentaContableSisma && factSisma?.ventaContableNota && (
+              <p className="text-[11px] text-[#64748B]">
+                Nota de fuente contable: {factSisma.ventaContableNota}
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ===================================================================== */}
+      {/* CUADRO 2B: DASHBOARD EJECUTIVO DE GLOSAS Y HOMENAJE AL EQUIPO         */}
+      {/* ===================================================================== */}
+      {(() => {
+        const clasificarMontosGlosa = (g: GlosaRow) => {
+          const vGlosa = Math.max(0, Number(g.valorGlosado || 0));
+          const est = String(g.estado || g.subtabla || "PENDIENTE").toUpperCase();
+          const tieneAceptExp = g.valorAceptado !== null && g.valorAceptado !== undefined;
+          const vAceptExp = tieneAceptExp
+            ? Math.min(vGlosa, Math.max(0, Number(g.valorAceptado || 0)))
+            : null;
+
+          if (est === "PENDIENTE" || est === "EN_GESTION") {
+            return { glosado: vGlosa, defendido: 0, aceptado: 0, pendiente: vGlosa, estadoNorm: "PENDIENTE" as const };
+          }
+          if (est === "NO_ACEPTADA" || est === "RESPONDIDA_NO_ACEPTADA") {
+            const ac = vAceptExp !== null && vAceptExp > 0 ? vAceptExp : 0;
+            return {
+              glosado: vGlosa,
+              defendido: Math.max(0, vGlosa - ac),
+              aceptado: ac,
+              pendiente: 0,
+              estadoNorm: "DEFENDIDA" as const,
+            };
+          }
+          const ac = vAceptExp !== null ? vAceptExp : vGlosa;
+          return {
+            glosado: vGlosa,
+            defendido: Math.max(0, vGlosa - ac),
+            aceptado: ac,
+            pendiente: 0,
+            estadoNorm: "ACEPTADA" as const,
+          };
+        };
+
+        // Totales por Causa Normativa sobre el universo filtrado (para poder alternar clic entre causas sin apagar las demás tarjetas)
+        const porCausaNorma: Record<string, { monto: number; defendido: number; cantidad: number }> = {
+          FA: { monto: 0, defendido: 0, cantidad: 0 },
+          TA: { monto: 0, defendido: 0, cantidad: 0 },
+          SO: { monto: 0, defendido: 0, cantidad: 0 },
+          AU: { monto: 0, defendido: 0, cantidad: 0 },
+          CO: { monto: 0, defendido: 0, cantidad: 0 },
         };
         let montoOtrasCausas = 0;
+        let defOtrasCausas = 0;
         let cantOtrasCausas = 0;
 
         for (const g of glosasFiltradas) {
           const cod = causaNormativaDe(g.motivoCodigo);
-          const v = g.valorGlosado || 0;
+          const m = clasificarMontosGlosa(g);
           if (cod && porCausaNorma[cod]) {
-            porCausaNorma[cod].monto += v;
+            porCausaNorma[cod].monto += m.glosado;
+            porCausaNorma[cod].defendido += m.defendido;
             porCausaNorma[cod].cantidad += 1;
           } else {
-            montoOtrasCausas += v;
+            montoOtrasCausas += m.glosado;
+            defOtrasCausas += m.defendido;
             cantOtrasCausas += 1;
           }
         }
+        const totGlosadoBaseCausas = glosasFiltradas.reduce((a, g) => a + (g.valorGlosado || 0), 0);
 
-        // Agrupación unificada por NIT real de Empresas (SISMA Contabilidad)
-        const porEmpresaNit: Record<string, { nit: string; nombre: string; monto: number; glosas: number }> = {};
-        for (const g of glosasFiltradas) {
+        // Subconjunto activo si el usuario hizo clic en una causa normativa (FA, TA, SO, AU, CO u OTRAS)
+        const glosasDash = causaFiltroDash
+          ? glosasFiltradas.filter((g) => {
+              const cod = causaNormativaDe(g.motivoCodigo);
+              return causaFiltroDash === "OTRAS" ? !cod : cod === causaFiltroDash;
+            })
+          : glosasFiltradas;
+
+        // Facturado único sin duplicar facturas con múltiples glosas
+        const factUnicasGlosa = new Map<string, number>();
+        for (const g of glosasDash) {
+          const k = String(g.factura || "").trim().toUpperCase() || `ID:${g.id}`;
+          const vf = Math.max(0, Number(g.valorFacturado || g.valorFactura || g.valorRadicado || 0));
+          factUnicasGlosa.set(k, Math.max(factUnicasGlosa.get(k) || 0, vf));
+        }
+        if (!causaFiltroDash) {
+          for (const l of legalizadasFiltradas) {
+            const k = String(l.factura || "").trim().toUpperCase() || `LEG:${l.id}`;
+            const vf = Math.max(0, Number(l.valorRadicado || 0));
+            factUnicasGlosa.set(k, Math.max(factUnicasGlosa.get(k) || 0, vf));
+          }
+        }
+        let totFacturadoUnico = 0;
+        factUnicasGlosa.forEach((v) => {
+          totFacturadoUnico += v;
+        });
+
+        let totGlosado = 0;
+        let totDefendido = 0;
+        let totAceptado = 0;
+        let totPendiente = 0;
+        let cantDefendidas = 0;
+        let cantAceptadas = 0;
+        let cantPendientes = 0;
+
+        for (const g of glosasDash) {
+          const m = clasificarMontosGlosa(g);
+          totGlosado += m.glosado;
+          totDefendido += m.defendido;
+          totAceptado += m.aceptado;
+          totPendiente += m.pendiente;
+          if (m.estadoNorm === "PENDIENTE") cantPendientes += 1;
+          else if (m.defendido > 0 && m.defendido >= m.aceptado) cantDefendidas += 1;
+          else cantAceptadas += 1;
+        }
+
+        const totGestionado = totDefendido + totAceptado;
+        const pctEfectividadDefensa =
+          totGestionado > 0 ? (totDefendido / totGestionado) * 100 : 0;
+        const pctGlosaSobreFact =
+          totFacturadoUnico > 0 ? (totGlosado / totFacturadoUnico) * 100 : 0;
+        const pctGlosaSobreCartera =
+          corteSeleccionado.carteraTotal > 0
+            ? (totGlosado / corteSeleccionado.carteraTotal) * 100
+            : 0;
+
+        const totAnuladasMonto = anuladasFiltradas.reduce((a, r) => a + (r.valorRadicado || 0), 0);
+        const cantReemplazadas = anuladasFiltradas.filter(
+          (r) => Boolean(r.facturaReemplaza && r.facturaReemplaza.trim() !== "" && r.facturaReemplaza.trim().toUpperCase() !== "PENDIENTE")
+        ).length;
+        const cantSinReemplazo = Math.max(0, anuladasFiltradas.length - cantReemplazadas);
+
+        const conNC = glosasDash.filter((g) => {
+          const nc = (g.notaCredito || "").trim().toUpperCase();
+          return Boolean(nc && nc !== "N/A" && nc !== "NA" && nc !== "NO APLICA");
+        });
+        const conNA = glosasDash.filter((g) => {
+          const nc = (g.notaCredito || "").trim().toUpperCase();
+          return nc === "N/A" || nc === "NA" || nc === "NO APLICA";
+        });
+        const sinDiligenciarNC = Math.max(0, glosasDash.length - conNC.length - conNA.length);
+
+        // SERIE MENSUAL REAL DE GLOSAS (¿Cuánto hay de glosa por mes y cuál es la tendencia?)
+        const nombresMes = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+        const mapaGlosasMes = new Map<
+          string,
+          {
+            ym: string;
+            etiqueta: string;
+            glosado: number;
+            defendido: number;
+            aceptado: number;
+            pendiente: number;
+            cantidad: number;
+            facturasMes: Map<string, number>;
+          }
+        >();
+        let glosasSinMesExplicitoMonto = 0;
+        let glosasSinMesExplicitoCant = 0;
+
+        const anioUnicoSel =
+          aniosFrecSel.length === 1
+            ? aniosFrecSel[0]
+            : filtroAnio !== "TODOS"
+            ? filtroAnio
+            : null;
+        if (anioUnicoSel) {
+          const topeM = anioUnicoSel === String(ayerEnColombia().slice(0, 4))
+            ? Number(ayerEnColombia().slice(5, 7)) || 11
+            : 12;
+          for (let m = 1; m <= topeM; m++) {
+            const mm = String(m).padStart(2, "0");
+            if (mesesFrecSel.length > 0 && mesesFrecSel.length < 12 && !mesesFrecSel.includes(mm)) continue;
+            const ym = `${anioUnicoSel}-${mm}`;
+            mapaGlosasMes.set(ym, {
+              ym,
+              etiqueta: `${nombresMes[m - 1]} ${anioUnicoSel.slice(2)}`,
+              glosado: 0,
+              defendido: 0,
+              aceptado: 0,
+              pendiente: 0,
+              cantidad: 0,
+              facturasMes: new Map(),
+            });
+          }
+        }
+
+        for (const g of glosasDash) {
+          const fRef = String(
+            g.fechaNotificacionGlosa || g.fechaRadicacion || g.fechaFactura || g.periodo || ""
+          ).trim();
+          const m = clasificarMontosGlosa(g);
+          if (/^\d{4}-\d{2}/.test(fRef)) {
+            const ym = fRef.slice(0, 7);
+            const mIdx = Number(ym.slice(5, 7)) - 1;
+            if (mIdx >= 0 && mIdx < 12) {
+              const item = mapaGlosasMes.get(ym) || {
+                ym,
+                etiqueta: `${nombresMes[mIdx]} ${ym.slice(2, 4)}`,
+                glosado: 0,
+                defendido: 0,
+                aceptado: 0,
+                pendiente: 0,
+                cantidad: 0,
+                facturasMes: new Map<string, number>(),
+              };
+              item.glosado += m.glosado;
+              item.defendido += m.defendido;
+              item.aceptado += m.aceptado;
+              item.pendiente += m.pendiente;
+              item.cantidad += 1;
+              const fk = String(g.factura || "").trim().toUpperCase() || `ID:${g.id}`;
+              const vf = Math.max(0, Number(g.valorFacturado || g.valorFactura || g.valorRadicado || 0));
+              item.facturasMes.set(fk, Math.max(item.facturasMes.get(fk) || 0, vf));
+              mapaGlosasMes.set(ym, item);
+              continue;
+            }
+          }
+          glosasSinMesExplicitoMonto += m.glosado;
+          glosasSinMesExplicitoCant += 1;
+        }
+
+        const serieGlosasMensual = Array.from(mapaGlosasMes.values())
+          .sort((a, b) => a.ym.localeCompare(b.ym))
+          .slice(-14)
+          .map((it) => {
+            let factMes = 0;
+            it.facturasMes.forEach((v) => {
+              factMes += v;
+            });
+            return {
+              ym: it.ym,
+              etiqueta: it.etiqueta,
+              glosado: it.glosado,
+              defendido: it.defendido,
+              aceptado: it.aceptado,
+              pendiente: it.pendiente,
+              cantidad: it.cantidad,
+              facturadoMes: factMes,
+            };
+          });
+
+        const nGlM = serieGlosasMensual.length;
+        const svgGlW = 780;
+        const svgGlH = 285;
+        const padGlL = 82;
+        const padGlR = 28;
+        const padGlT = 22;
+        const baseGlY = 248;
+        const plotGlW = svgGlW - padGlL - padGlR;
+        const plotGlH = baseGlY - padGlT;
+        const maxGlMes = Math.max(1, ...serieGlosasMensual.map((x) => x.glosado));
+        const escalaGlMes = generarTicksEjeY(maxGlMes * 1.08, 4);
+        const getXGl = (i: number) =>
+          nGlM <= 1 ? padGlL + plotGlW / 2 : padGlL + ((i + 0.5) / nGlM) * plotGlW;
+        const getYGl = (v: number) =>
+          baseGlY - (Math.max(0, v) / escalaGlMes.techo) * plotGlH;
+
+        const ptsLineaGlosa = serieGlosasMensual.map((x, i) => ({
+          x: getXGl(i),
+          y: getYGl(x.glosado),
+        }));
+        const pathLineaGlosa = (() => {
+          if (ptsLineaGlosa.length === 0) return "";
+          if (ptsLineaGlosa.length === 1) return `M ${ptsLineaGlosa[0].x} ${ptsLineaGlosa[0].y}`;
+          let d = `M ${ptsLineaGlosa[0].x.toFixed(1)} ${ptsLineaGlosa[0].y.toFixed(1)}`;
+          for (let i = 0; i < ptsLineaGlosa.length - 1; i++) {
+            const p0 = ptsLineaGlosa[i];
+            const p1 = ptsLineaGlosa[i + 1];
+            const cx1 = p0.x + (p1.x - p0.x) * 0.38;
+            const cx2 = p1.x - (p1.x - p0.x) * 0.38;
+            d += ` C ${cx1.toFixed(1)} ${p0.y.toFixed(1)}, ${cx2.toFixed(1)} ${p1.y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+          }
+          return d;
+        })();
+
+        const idxInspGlosa =
+          hoverGlosaMesIdx !== null && hoverGlosaMesIdx < serieGlosasMensual.length
+            ? hoverGlosaMesIdx
+            : serieGlosasMensual.length > 0
+            ? serieGlosasMensual.length - 1
+            : null;
+        const mesInspGlosa = idxInspGlosa !== null ? serieGlosasMensual[idxInspGlosa] : null;
+
+        // Top Empresas por NIT (apiladas: Defendido vs Aceptado vs Pendiente)
+        const porEmpresaNit: Record<
+          string,
+          { nit: string; nombre: string; monto: number; defendido: number; aceptado: number; pendiente: number; glosas: number }
+        > = {};
+        for (const g of glosasDash) {
           const info = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
           const clave = info.nombre || "SIN EMPRESA";
+          const m = clasificarMontosGlosa(g);
           if (!porEmpresaNit[clave]) {
-            porEmpresaNit[clave] = { nit: info.nit, nombre: clave, monto: 0, glosas: 0 };
+            porEmpresaNit[clave] = {
+              nit: info.nit,
+              nombre: clave,
+              monto: 0,
+              defendido: 0,
+              aceptado: 0,
+              pendiente: 0,
+              glosas: 0,
+            };
           }
-          porEmpresaNit[clave].monto += g.valorGlosado || 0;
+          porEmpresaNit[clave].monto += m.glosado;
+          porEmpresaNit[clave].defendido += m.defendido;
+          porEmpresaNit[clave].aceptado += m.aceptado;
+          porEmpresaNit[clave].pendiente += m.pendiente;
           porEmpresaNit[clave].glosas += 1;
         }
         const topEmpresas = Object.values(porEmpresaNit).sort((a, b) => b.monto - a.monto);
         const maxEmpMonto = topEmpresas[0]?.monto || 1;
 
-        // Agrupación por Responsable real de responder la glosa (sin inventar por empresa)
-        const porResp: Record<string, { monto: number; glosas: number }> = {};
-        for (const g of glosasFiltradas) {
+        // Desempeño real por Responsable de Respuesta (sin inventar asignaciones vacías)
+        const porResp: Record<
+          string,
+          { monto: number; defendido: number; aceptado: number; pendiente: number; glosas: number }
+        > = {};
+        for (const g of glosasDash) {
           const r =
             (g.responsableRespuesta || g.responsableAceptacion || "").trim().toUpperCase() ||
             "SIN ASIGNAR EN WORKCENTER";
-          if (!porResp[r]) porResp[r] = { monto: 0, glosas: 0 };
-          porResp[r].monto += g.valorGlosado || 0;
+          const m = clasificarMontosGlosa(g);
+          if (!porResp[r]) {
+            porResp[r] = { monto: 0, defendido: 0, aceptado: 0, pendiente: 0, glosas: 0 };
+          }
+          porResp[r].monto += m.glosado;
+          porResp[r].defendido += m.defendido;
+          porResp[r].aceptado += m.aceptado;
+          porResp[r].pendiente += m.pendiente;
           porResp[r].glosas += 1;
         }
         const topResponsables = Object.entries(porResp).sort((a, b) => b[1].monto - a[1].monto);
         const maxRespMonto = topResponsables[0]?.[1]?.monto || 1;
-
-        // Conteo de Notas Crédito y pendientes de diligenciar NC / N/A
-        const conNC = glosasFiltradas.filter((g) => {
-          const nc = (g.notaCredito || "").trim().toUpperCase();
-          return Boolean(nc && nc !== "N/A" && nc !== "NA" && nc !== "NO APLICA");
-        });
-        const valNC = conNC.reduce((a, g) => a + (g.valorGlosado || 0), 0);
-        const sinDiligenciarNC = glosasFiltradas.filter((g) => !(g.notaCredito || "").trim()).length;
 
         return (
           <div
             className="rounded-xl p-6 shadow-xs border space-y-6"
             style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
           >
-            {/* Cabecera ejecutiva con enlace directo al WorkCenter */}
+            {/* CABECERA EJECUTIVA */}
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-[#E2ECF8]">
               <div className="flex items-center gap-3">
                 <span
                   className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shrink-0"
-                  style={{ backgroundColor: "#EFF6FF", color: "#1D58D8" }}
+                  style={{ backgroundColor: "#ECFDF5", color: "#047857" }}
                 >
-                  ⚖️
+                  🛡️
                 </span>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-lg font-extrabold text-[#0E245E]">
-                      Dashboard Ejecutivo de Glosas y Control de Facturación
+                      Dashboard Ejecutivo de Glosas, Tendencia Mensual y Defensa Financiera
                     </h3>
                     <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                       Resolución 2284 / Decreto 4747
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Entidades Unificadas por NIT
+                      Homenaje a la Gestión de Auditoría y Facturación
                     </span>
+                    {causaFiltroDash && (
+                      <button
+                        type="button"
+                        onClick={() => setCausaFiltroDash(null)}
+                        className="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 cursor-pointer"
+                      >
+                        Causa activa: {causaFiltroDash} ×
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs sm:text-sm text-[#64748B]">
-                    Alimentado en tiempo real desde el tablero de trabajo operativo. Visualiza causas normativas (FA, TA, SO, AU, CO), impacto financiero y trazabilidad por responsable.
+                    Explica cuánto corresponde a glosa frente a lo facturado, cuánto ha defendido el equipo a favor de Ebenezer y cómo evoluciona la tendencia mes a mes.
                   </p>
                 </div>
               </div>
@@ -5500,94 +7229,516 @@ export default function TableroCarteraAnalytics() {
               </div>
             </div>
 
-            {/* 5 KPIs Ejecutivos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-              <div className="p-4 rounded-xl border bg-[#F8FAFC]" style={{ borderColor: "#E2ECF8" }}>
-                <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
-                  Total Glosado Notificado
+            {/* 6 KPIs AUTOEXPLICATIVOS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+              <div className="p-3.5 rounded-xl border bg-[#F8FAFC]" style={{ borderColor: "#E2ECF8" }}>
+                <div className="text-[10.5px] font-bold text-[#475569] uppercase tracking-wider">
+                  1. Total Facturado Auditado
                 </div>
-                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#0E245E]">
+                <div className="mt-1 font-mono text-lg font-extrabold text-[#0E245E]">
+                  {formatCOP(totFacturadoUnico)}
+                </div>
+                <p className="mt-1 text-[10.5px] text-[#64748B] leading-snug">
+                  Base única de {factUnicasGlosa.size.toLocaleString("es-CO")} facturas auditadas (sin duplicar facturas).
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border bg-[#FFF1F2]/65" style={{ borderColor: "#FECDD3" }}>
+                <div className="text-[10.5px] font-bold text-[#BE123C] uppercase tracking-wider">
+                  2. ¿Cuánto es la Glosa?
+                </div>
+                <div className="mt-1 font-mono text-lg font-extrabold text-[#BE123C]">
                   {formatCOP(totGlosado)}
                 </div>
-                <div className="mt-1 text-[11.5px] text-[#64748B]">
-                  {glosasFiltradas.length} glosas · Facturado base: {formatMillones(totFacturado)}
-                </div>
+                <p className="mt-1 text-[10.5px] text-[#9F1239] font-semibold leading-snug">
+                  Equivale al {pctGlosaSobreFact.toFixed(1)}% de lo facturado auditado ({pctGlosaSobreCartera.toFixed(1)}% s/cartera) · {glosasDash.length} registros.
+                </p>
               </div>
 
-              <div className="p-4 rounded-xl border bg-[#EFF6FF]/60" style={{ borderColor: "#BFDBFE" }}>
-                <div className="text-[11px] font-bold text-[#1D4ED8] uppercase tracking-wider">
-                  Sin Resolver (Pendientes)
+              <div className="p-3.5 rounded-xl border bg-[#ECFDF5]/80" style={{ borderColor: "#6EE7B7" }}>
+                <div className="text-[10.5px] font-bold text-[#047857] uppercase tracking-wider">
+                  3. Defendido por el Equipo
                 </div>
-                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#1D4ED8]">
-                  {formatCOP(valPend)}
+                <div className="mt-1 font-mono text-lg font-extrabold text-[#047857]">
+                  {formatCOP(totDefendido)}
                 </div>
-                <div className="mt-1 text-[11.5px] text-[#1D4ED8] font-semibold">
-                  {glosasPend.length} esperan respuesta ({totGlosado > 0 ? Math.round((valPend / totGlosado) * 100) : 0}%)
-                </div>
+                <p className="mt-1 text-[10.5px] text-[#065F46] font-semibold leading-snug">
+                  {pctEfectividadDefensa.toFixed(1)}% de efectividad sobre lo gestionado ({cantDefendidas} glosas objetadas a favor).
+                </p>
               </div>
 
-              <div className="p-4 rounded-xl border bg-[#ECFDF5]/60" style={{ borderColor: "#A7F3D0" }}>
-                <div className="text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
-                  Valor Aceptado
+              <div className="p-3.5 rounded-xl border bg-[#FFFBEB]/80" style={{ borderColor: "#FDE68A" }}>
+                <div className="text-[10.5px] font-bold text-[#B45309] uppercase tracking-wider">
+                  4. Pendiente por Responder
                 </div>
-                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#059669]">
+                <div className="mt-1 font-mono text-lg font-extrabold text-[#B45309]">
+                  {formatCOP(totPendiente)}
+                </div>
+                <p className="mt-1 text-[10.5px] text-[#92400E] font-semibold leading-snug">
+                  {cantPendientes} registros abiertos en revisión técnica dentro del WorkCenter.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border bg-[#FAF5FF]/70" style={{ borderColor: "#DDD6FE" }}>
+                <div className="text-[10.5px] font-bold text-[#6D28D9] uppercase tracking-wider">
+                  5. Aceptado / Notas Crédito
+                </div>
+                <div className="mt-1 font-mono text-lg font-extrabold text-[#6D28D9]">
                   {formatCOP(totAceptado)}
                 </div>
-                <div className="mt-1 text-[11.5px] text-[#059669] font-semibold">
-                  {totGlosado > 0 ? `${Math.round((totAceptado / totGlosado) * 100)}% de lo glosado` : "0%"}
-                </div>
+                <p className="mt-1 text-[10.5px] text-[#5B21B6] font-semibold leading-snug">
+                  {conNC.length} con N° NC · {conNA.length} N/A · {sinDiligenciarNC} sin N°/N/A ({cantAceptadas} cerradas).
+                </p>
               </div>
 
-              <div className="p-4 rounded-xl border bg-[#FAF5FF]/60" style={{ borderColor: "#DDD6FE" }}>
-                <div className="text-[11px] font-bold text-[#5B21B6] uppercase tracking-wider">
-                  Legalizado con Nota Crédito
+              <div className="p-3.5 rounded-xl border bg-[#EFF6FF]/65" style={{ borderColor: "#BFDBFE" }}>
+                <div className="text-[10.5px] font-bold text-[#1D4ED8] uppercase tracking-wider">
+                  6. Anuladas vs. Reemplazadas
                 </div>
-                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#7C3AED]">
-                  {formatCOP(valNC)}
+                <div className="mt-1 font-mono text-lg font-extrabold text-[#1D4ED8]">
+                  {cantReemplazadas} / {anuladasFiltradas.length}
                 </div>
-                <div className="mt-1 text-[11.5px] text-[#5B21B6] font-semibold">
-                  {conNC.length} con N° NC · {sinDiligenciarNC} sin N°/N/A
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl border bg-[#FFF1F2]/60" style={{ borderColor: "#FECDD3" }}>
-                <div className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider">
-                  Facturas Anuladas / Reempl.
-                </div>
-                <div className="mt-1.5 font-mono text-xl sm:text-2xl font-extrabold text-[#BE123C]">
-                  {anuladasFiltradas.length}
-                </div>
-                <div className="mt-1 text-[11.5px] text-[#BE123C] font-semibold">
-                  Monto: {formatMillones(totAnuladasMonto)}
-                </div>
+                <p className="mt-1 text-[10.5px] text-[#1E40AF] font-semibold leading-snug">
+                  {cantReemplazadas} ya refacturadas · {cantSinReemplazo} por reemplazar ({formatMillones(totAnuladasMonto)}).
+                </p>
               </div>
             </div>
 
-            {/* SECCIÓN 1: CAUSAS PRINCIPALES DE GLOSA SEGÚN LA NORMA (RES. 2284) */}
+            {/* EMBUDO EJECUTIVO: HOMENAJE AL TRABAJO REALIZADO POR EL EQUIPO */}
+            <div className="rounded-xl border p-4 sm:p-5 bg-gradient-to-r from-[#F8FAFC] via-[#F0FDF4]/50 to-[#EFF6FF]/50 space-y-3" style={{ borderColor: "#D1FAE5" }}>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <h4 className="text-[13.5px] sm:text-[14.5px] font-extrabold text-[#0E245E]">
+                    Trazabilidad de Defensa Financiera — Impacto Real del Equipo de Facturación y Glosas
+                  </h4>
+                  <p className="text-[11.5px] text-[#475569]">
+                    De cada <strong>$100</strong> ya gestionados en glosas, el equipo ha defendido y objetado con soporte clínico/contractual <strong>${Math.round(pctEfectividadDefensa)}</strong> a favor de la institución.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-600 text-white shadow-2xs self-start md:self-auto">
+                  Recuperado / Defendido: {formatCOP(totDefendido)}
+                </span>
+              </div>
+
+              <div className="w-full h-4 rounded-full bg-slate-200 overflow-hidden flex">
+                {totGlosado > 0 && (
+                  <>
+                    <div
+                      style={{ width: `${(totDefendido / totGlosado) * 100}%`, backgroundColor: "#059669" }}
+                      title={`Defendido a favor: ${formatCOP(totDefendido)}`}
+                    />
+                    <div
+                      style={{ width: `${(totAceptado / totGlosado) * 100}%`, backgroundColor: "#7C3AED" }}
+                      title={`Valor aceptado: ${formatCOP(totAceptado)}`}
+                    />
+                    <div
+                      style={{ width: `${(totPendiente / totGlosado) * 100}%`, backgroundColor: "#F59E0B" }}
+                      title={`Pendiente por responder: ${formatCOP(totPendiente)}`}
+                    />
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold">
+                <span className="text-[#047857]">
+                  ● Defendido a favor: {formatCOP(totDefendido)} ({totGlosado > 0 ? ((totDefendido / totGlosado) * 100).toFixed(1) : "0.0"}% del total glosado)
+                </span>
+                <span className="text-[#6D28D9]">
+                  ● Aceptado / Conciliado: {formatCOP(totAceptado)} ({totGlosado > 0 ? ((totAceptado / totGlosado) * 100).toFixed(1) : "0.0"}%)
+                </span>
+                <span className="text-[#B45309]">
+                  ● En gestión / Pendiente: {formatCOP(totPendiente)} ({totGlosado > 0 ? ((totPendiente / totGlosado) * 100).toFixed(1) : "0.0"}%)
+                </span>
+              </div>
+            </div>
+
+            {/* GRÁFICA DE TENDENCIA MENSUAL DE GLOSAS + ESCALA IZQUIERDA + CURSOR + TABLA ABAJO */}
+            <div className="rounded-xl border p-4 sm:p-5 space-y-3" style={{ borderColor: "#E2ECF8" }}>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                <div>
+                  <h4 className="text-[13.5px] sm:text-[14.5px] font-extrabold text-[#0E245E]">
+                    Tendencia Mensual de Glosas: ¿Cuánto hay de glosa por mes y cómo se resolvió?
+                  </h4>
+                  <p className="text-[11.5px] text-[#64748B]">
+                    Barras apiladas por estado de resolución (Defendido, Aceptado, Pendiente) + curva de Total Glosado mensual con escala monetaria izquierda.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#E2ECF8] text-[#BE123C]">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#E11D48]" /> Curva Total Glosa
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#E2ECF8] text-[#047857]">
+                    <span className="w-2.5 h-2.5 rounded-xs bg-[#059669]" /> Defendido
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#E2ECF8] text-[#6D28D9]">
+                    <span className="w-2.5 h-2.5 rounded-xs bg-[#7C3AED]" /> Aceptado
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#E2ECF8] text-[#B45309]">
+                    <span className="w-2.5 h-2.5 rounded-xs bg-[#F59E0B]" /> Pendiente
+                  </span>
+                </div>
+              </div>
+
+              {mesInspGlosa && (
+                <div
+                  className="rounded-xl border px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11.5px] transition-colors"
+                  style={{
+                    backgroundColor: hoverGlosaMesIdx !== null ? "#FFF1F2" : "#F8FAFC",
+                    borderColor: hoverGlosaMesIdx !== null ? "#FDA4AF" : "#E2ECF8",
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md font-extrabold text-white bg-[#BE123C]">
+                      {mesInspGlosa.etiqueta}
+                    </span>
+                    <span className="text-[#475569] font-semibold">
+                      {mesInspGlosa.cantidad} glosas en el mes
+                      {mesInspGlosa.facturadoMes > 0
+                        ? ` · ${((mesInspGlosa.glosado / mesInspGlosa.facturadoMes) * 100).toFixed(1)}% sobre facturado base (${formatMillones(mesInspGlosa.facturadoMes)})`
+                        : ""}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-mono text-[11px]">
+                    <span className="text-[#BE123C] font-extrabold">
+                      <strong>Glosado Mes:</strong> {formatCOP(mesInspGlosa.glosado)}
+                    </span>
+                    <span className="text-[#047857] font-bold">
+                      <strong>Defendido:</strong> {formatCOP(mesInspGlosa.defendido)}
+                    </span>
+                    <span className="text-[#6D28D9]">
+                      <strong>Aceptado:</strong> {formatCOP(mesInspGlosa.aceptado)}
+                    </span>
+                    <span className="text-[#B45309]">
+                      <strong>Pendiente:</strong> {formatCOP(mesInspGlosa.pendiente)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {nGlM > 0 ? (
+                <>
+                  <svg
+                    viewBox={`0 0 ${svgGlW} ${svgGlH}`}
+                    className="w-full h-auto select-none overflow-visible"
+                    onMouseLeave={() => setHoverGlosaMesIdx(null)}
+                  >
+                    <line
+                      x1={padGlL - 10}
+                      y1={padGlT - 4}
+                      x2={padGlL - 10}
+                      y2={baseGlY}
+                      stroke="#CBD5E1"
+                      strokeWidth="1.2"
+                    />
+                    {escalaGlMes.ticks.map((tk, idx) => {
+                      const gy = getYGl(tk.valor);
+                      return (
+                        <g key={`tk-gl-${idx}`}>
+                          <line
+                            x1={padGlL - 10}
+                            y1={gy}
+                            x2={svgGlW - padGlR}
+                            y2={gy}
+                            stroke={tk.valor === 0 ? "#334155" : "#E2E8F0"}
+                            strokeWidth={tk.valor === 0 ? "1.2" : "1"}
+                            strokeDasharray={tk.valor === 0 ? undefined : "3.5 3.5"}
+                          />
+                          <text
+                            x={padGlL - 16}
+                            y={gy + 3.5}
+                            textAnchor="end"
+                            fontSize="10"
+                            fontWeight="700"
+                            fill="#334155"
+                            style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                          >
+                            {tk.label}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {serieGlosasMensual.map((m, i) => {
+                      const cx = getXGl(i);
+                      const paso = plotGlW / Math.max(1, nGlM);
+                      const barW = Math.min(34, Math.max(12, paso * 0.48));
+                      const hDef = (m.defendido / escalaGlMes.techo) * plotGlH;
+                      const hAcp = (m.aceptado / escalaGlMes.techo) * plotGlH;
+                      const hPnd = (m.pendiente / escalaGlMes.techo) * plotGlH;
+                      const yDef = baseGlY - hDef;
+                      const yAcp = yDef - hAcp;
+                      const yPnd = yAcp - hPnd;
+                      const activo = hoverGlosaMesIdx === i;
+
+                      return (
+                        <g
+                          key={`gl-bar-${m.ym}`}
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoverGlosaMesIdx(i)}
+                        >
+                          {activo && (
+                            <>
+                              <rect
+                                x={cx - paso * 0.44}
+                                y={padGlT - 4}
+                                width={paso * 0.88}
+                                height={baseGlY - padGlT + 4}
+                                rx={6}
+                                fill="#FFE4E6"
+                                opacity="0.4"
+                              />
+                              <line
+                                x1={cx}
+                                y1={padGlT - 4}
+                                x2={cx}
+                                y2={baseGlY}
+                                stroke="#E11D48"
+                                strokeWidth="1.2"
+                                strokeDasharray="4 3"
+                              />
+                            </>
+                          )}
+                          {hDef > 0 && (
+                            <rect
+                              x={cx - barW / 2}
+                              y={yDef}
+                              width={barW}
+                              height={hDef}
+                              fill="#059669"
+                              opacity={activo ? 1 : 0.88}
+                            />
+                          )}
+                          {hAcp > 0 && (
+                            <rect
+                              x={cx - barW / 2}
+                              y={yAcp}
+                              width={barW}
+                              height={hAcp}
+                              fill="#7C3AED"
+                              opacity={activo ? 1 : 0.85}
+                            />
+                          )}
+                          {hPnd > 0 && (
+                            <rect
+                              x={cx - barW / 2}
+                              y={yPnd}
+                              width={barW}
+                              height={hPnd}
+                              fill="#F59E0B"
+                              opacity={activo ? 1 : 0.9}
+                            />
+                          )}
+                          {m.glosado > 0 && (
+                            <text
+                              x={cx}
+                              y={Math.max(12, getYGl(m.glosado) - 8)}
+                              textAnchor="middle"
+                              fontSize="9.5"
+                              fontWeight="800"
+                              fill="#9F1239"
+                            >
+                              {formatEscalaEjeY(m.glosado)}
+                            </text>
+                          )}
+                          <text
+                            x={cx}
+                            y={baseGlY + 18}
+                            textAnchor="middle"
+                            fontSize={activo ? "10.8" : "10"}
+                            fontWeight={activo ? "800" : "600"}
+                            fill={activo ? "#BE123C" : "#0F172A"}
+                          >
+                            {m.etiqueta}
+                          </text>
+                          <rect
+                            x={cx - paso / 2}
+                            y={padGlT - 4}
+                            width={paso}
+                            height={baseGlY - padGlT + 28}
+                            fill="transparent"
+                          />
+                        </g>
+                      );
+                    })}
+
+                    {pathLineaGlosa && (
+                      <path
+                        d={pathLineaGlosa}
+                        fill="none"
+                        stroke="#E11D48"
+                        strokeWidth="2.3"
+                        pointerEvents="none"
+                      />
+                    )}
+                    {ptsLineaGlosa.map((pt, i) => (
+                      <circle
+                        key={`gl-nd-${i}`}
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={hoverGlosaMesIdx === i ? 5.6 : 3.8}
+                        fill="#E11D48"
+                        stroke="#FFFFFF"
+                        strokeWidth="1.5"
+                        pointerEvents="none"
+                      />
+                    ))}
+                  </svg>
+
+                  {/* TABLA MENSUAL DE GLOSAS SINCRONIZADA CON EL CURSOR */}
+                  <div
+                    className="overflow-x-auto rounded-xl border"
+                    style={{ borderColor: "#E2ECF8" }}
+                    onMouseLeave={() => setHoverGlosaMesIdx(null)}
+                  >
+                    <table className="w-full text-[11px] border-collapse">
+                      <thead>
+                        <tr style={{ backgroundColor: "#F8FAFC" }}>
+                          <th className="p-2 text-left font-extrabold text-[#0E245E] sticky left-0 bg-[#F8FAFC] border-b border-r min-w-[175px]" style={{ borderColor: "#E2ECF8" }}>
+                            Detalle Mensual Glosas
+                          </th>
+                          {serieGlosasMensual.map((m, i) => (
+                            <th
+                              key={`th-glm-${m.ym}`}
+                              onMouseEnter={() => setHoverGlosaMesIdx(i)}
+                              className="p-2 text-right font-extrabold border-b cursor-pointer transition-colors min-w-[74px]"
+                              style={{
+                                borderColor: "#E2ECF8",
+                                backgroundColor: hoverGlosaMesIdx === i ? "#FFE4E6" : "#F8FAFC",
+                                color: hoverGlosaMesIdx === i ? "#BE123C" : "#0E245E",
+                              }}
+                            >
+                              <div>{m.etiqueta}</div>
+                              <div className="text-[9.5px] font-normal text-[#64748B]">{m.cantidad} reg.</div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                        <tr>
+                          <td className="p-2 font-extrabold text-[#BE123C] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                            Total Glosado Mes
+                          </td>
+                          {serieGlosasMensual.map((m, i) => (
+                            <td
+                              key={`td-glt-${m.ym}`}
+                              onMouseEnter={() => setHoverGlosaMesIdx(i)}
+                              className="p-2 text-right font-mono font-extrabold text-[#BE123C] cursor-pointer"
+                              style={{ backgroundColor: hoverGlosaMesIdx === i ? "#FFF1F2" : "transparent" }}
+                              title={formatCOP(m.glosado)}
+                            >
+                              {formatEscalaEjeY(m.glosado)}
+                            </td>
+                          ))}
+                        </tr>
+                        <tr style={{ backgroundColor: "#F0FDF4" }}>
+                          <td className="p-2 font-bold text-[#047857] sticky left-0 bg-[#F0FDF4] border-r" style={{ borderColor: "#E2ECF8" }}>
+                            Defendido a Favor
+                          </td>
+                          {serieGlosasMensual.map((m, i) => (
+                            <td
+                              key={`td-gld-${m.ym}`}
+                              onMouseEnter={() => setHoverGlosaMesIdx(i)}
+                              className="p-2 text-right font-mono font-bold text-[#047857] cursor-pointer"
+                              style={{ backgroundColor: hoverGlosaMesIdx === i ? "#DCFCE7" : "#F0FDF4" }}
+                              title={formatCOP(m.defendido)}
+                            >
+                              {formatEscalaEjeY(m.defendido)}
+                            </td>
+                          ))}
+                        </tr>
+                        <tr>
+                          <td className="p-2 font-semibold text-[#6D28D9] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                            Aceptado / Conciliado
+                          </td>
+                          {serieGlosasMensual.map((m, i) => (
+                            <td
+                              key={`td-gla-${m.ym}`}
+                              onMouseEnter={() => setHoverGlosaMesIdx(i)}
+                              className="p-2 text-right font-mono text-[#6D28D9] cursor-pointer"
+                              style={{ backgroundColor: hoverGlosaMesIdx === i ? "#FAF5FF" : "transparent" }}
+                              title={formatCOP(m.aceptado)}
+                            >
+                              {formatEscalaEjeY(m.aceptado)}
+                            </td>
+                          ))}
+                        </tr>
+                        <tr>
+                          <td className="p-2 font-semibold text-[#B45309] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                            Pendiente por Responder
+                          </td>
+                          {serieGlosasMensual.map((m, i) => (
+                            <td
+                              key={`td-glp-${m.ym}`}
+                              onMouseEnter={() => setHoverGlosaMesIdx(i)}
+                              className="p-2 text-right font-mono text-[#B45309] cursor-pointer"
+                              style={{ backgroundColor: hoverGlosaMesIdx === i ? "#FFFBEB" : "transparent" }}
+                              title={formatCOP(m.pendiente)}
+                            >
+                              {formatEscalaEjeY(m.pendiente)}
+                            </td>
+                          ))}
+                        </tr>
+                        <tr>
+                          <td className="p-2 font-semibold text-[#475569] sticky left-0 bg-white border-r" style={{ borderColor: "#E2ECF8" }}>
+                            % Glosa s/Facturado Mes
+                          </td>
+                          {serieGlosasMensual.map((m, i) => (
+                            <td
+                              key={`td-glpct-${m.ym}`}
+                              onMouseEnter={() => setHoverGlosaMesIdx(i)}
+                              className="p-2 text-right font-mono font-semibold text-[#475569] cursor-pointer"
+                              style={{ backgroundColor: hoverGlosaMesIdx === i ? "#F8FAFC" : "transparent" }}
+                            >
+                              {m.facturadoMes > 0 ? `${((m.glosado / m.facturadoMes) * 100).toFixed(1)}%` : "—"}
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="py-8 text-center text-xs text-[#64748B]">
+                  No hay glosas con fecha mensual registrada para la combinación actual de filtros.
+                </div>
+              )}
+
+              {glosasSinMesExplicitoCant > 0 && (
+                <p className="text-[11px] text-[#64748B]">
+                  Transparencia de datos: {glosasSinMesExplicitoCant} registros históricos ({formatCOP(glosasSinMesExplicitoMonto)}) solo traen año sin mes exacto en la fuente original y sí están incluidos en los KPIs superiores.
+                </p>
+              )}
+            </div>
+
+            {/* CAUSAS PRINCIPALES SEGÚN LA NORMA (INTERACTIVAS AL CLIC) */}
             <div className="rounded-xl border p-4 sm:p-5 space-y-3" style={{ borderColor: "#E2ECF8", backgroundColor: "#FAFBFD" }}>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
                 <div>
                   <h4 className="text-[13.5px] sm:text-[14.5px] font-bold text-[#0E245E]">
-                    Causas Principales de Glosa según la Norma Técnica (FA, TA, SO, AU, CO)
+                    Causas Principales de Glosa según la Norma Técnica (FA, TA, SO, AU, CO) — Clic para filtrar
                   </h4>
                   <p className="text-[11.5px] text-[#64748B]">
-                    Clasificación oficial según el Manual Único de Devoluciones y Glosas (Resolución 2284 de 2023).
+                    Manual Único de Devoluciones y Glosas (Resolución 2284 de 2023). Haz clic en cualquier causal para inspeccionar su tendencia mensual y entidades.
                   </p>
                 </div>
                 <span className="text-[11px] font-mono text-[#64748B]">
-                  Base activa: {formatCOP(totGlosado)}
+                  Universo glosado: {formatCOP(totGlosadoBaseCausas)}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-2">
                 {CAUSAS_NORMATIVAS.map((c) => {
-                  const info = porCausaNorma[c.codigo] || { monto: 0, cantidad: 0 };
-                  const pct = totGlosado > 0 ? Math.round((info.monto / totGlosado) * 100) : 0;
+                  const info = porCausaNorma[c.codigo] || { monto: 0, defendido: 0, cantidad: 0 };
+                  const pct = totGlosadoBaseCausas > 0 ? Math.round((info.monto / totGlosadoBaseCausas) * 100) : 0;
+                  const activa = causaFiltroDash === c.codigo;
                   return (
                     <div
                       key={c.codigo}
-                      className="p-3.5 rounded-xl border bg-white shadow-2xs space-y-2 transition hover:shadow-xs"
-                      style={{ borderColor: c.badgeBorder }}
+                      onClick={() => setCausaFiltroDash((prev) => (prev === c.codigo ? null : c.codigo))}
+                      className="p-3.5 rounded-xl border bg-white shadow-2xs space-y-2 transition cursor-pointer hover:shadow-sm"
+                      style={{
+                        borderColor: activa ? c.color : c.badgeBorder,
+                        boxShadow: activa ? `0 0 0 2px ${c.color}33` : undefined,
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <span
@@ -5614,6 +7765,11 @@ export default function TableroCarteraAnalytics() {
 
                       <div className="flex items-center justify-between text-[10.5px] text-[#64748B]">
                         <span>{info.cantidad} glosas</span>
+                        {info.defendido > 0 && (
+                          <span className="text-[#047857] font-bold">
+                            Def: {formatEscalaEjeY(info.defendido)}
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-[10.5px] text-[#64748B] leading-tight line-clamp-2" title={c.descripcion}>
@@ -5624,41 +7780,59 @@ export default function TableroCarteraAnalytics() {
                 })}
               </div>
               {cantOtrasCausas > 0 && (
-                <div className="pt-1 flex flex-wrap items-center justify-between text-[11.5px] text-[#64748B] border-t border-[#E2ECF8]">
+                <div
+                  onClick={() => setCausaFiltroDash((prev) => (prev === "OTRAS" ? null : "OTRAS"))}
+                  className="pt-2 flex flex-wrap items-center justify-between text-[11.5px] text-[#64748B] border-t border-[#E2ECF8] cursor-pointer hover:text-[#0E245E]"
+                >
                   <span>
-                    Devoluciones / Otras causales o pendientes de clasificar en WorkCenter:{" "}
+                    Códigos históricos / Devoluciones (`RE97`, `DEV` o pendientes de tipificar FA–CO en WorkCenter):{" "}
                     <strong className="text-[#0E245E]">{cantOtrasCausas} registros</strong>
+                    {defOtrasCausas > 0 ? ` · Defendido: ${formatCOP(defOtrasCausas)}` : ""}
                   </span>
                   <span className="font-mono font-bold text-[#0E245E]">
                     {formatCOP(montoOtrasCausas)} (
-                    {totGlosado > 0 ? Math.round((montoOtrasCausas / totGlosado) * 100) : 0}%)
+                    {totGlosadoBaseCausas > 0 ? Math.round((montoOtrasCausas / totGlosadoBaseCausas) * 100) : 0}%)
                   </span>
                 </div>
               )}
             </div>
 
-            {/* SECCIÓN 2: TOP EMPRESAS POR NIT Y GESTIÓN POR RESPONSABLE */}
+            {/* TOP EMPRESAS POR NIT Y GESTIÓN POR RESPONSABLE (APILADAS DEFENDIDO / ACEPTADO / PENDIENTE) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Top Empresas unificadas por NIT */}
               <div className="p-4 sm:p-5 rounded-xl border bg-white shadow-2xs space-y-3" style={{ borderColor: "#E2ECF8" }}>
                 <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "#F1F5F9" }}>
                   <div>
                     <h4 className="text-[13px] font-bold text-[#0E245E]">
-                      Empresas con Mayor Glosa (Unificadas por NIT)
+                      Empresas con Mayor Glosa y Recuperación (Unificadas por NIT)
                     </h4>
-                    <p className="text-[11px] text-[#64748B]">Entidades canónicas verificadas con NIT contable SISMA</p>
+                    <p className="text-[11px] text-[#64748B]">Clic en una entidad para filtrar todo el tablero (incluye Mutual Ser)</p>
                   </div>
                   <span className="text-[11px] font-semibold text-[#1D58D8]">
                     {topEmpresas.length} entidades
                   </span>
                 </div>
 
-                <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                  {topEmpresas.slice(0, 7).map((emp) => {
+                <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                  {topEmpresas.slice(0, 8).map((emp) => {
                     const pct = totGlosado > 0 ? Math.round((emp.monto / totGlosado) * 100) : 0;
-                    const barW = Math.min(100, Math.max(2, Math.round((emp.monto / maxEmpMonto) * 100)));
+                    const barW = Math.min(100, Math.max(3, Math.round((emp.monto / maxEmpMonto) * 100)));
+                    const pDef = emp.monto > 0 ? (emp.defendido / emp.monto) * 100 : 0;
+                    const pAcp = emp.monto > 0 ? (emp.aceptado / emp.monto) * 100 : 0;
+                    const pPnd = Math.max(0, 100 - pDef - pAcp);
+                    const empCortaClick = normalizarEmpresaCorta(emp.nombre);
+
                     return (
-                      <div key={emp.nombre} className="space-y-1">
+                      <div
+                        key={emp.nombre}
+                        onClick={() => {
+                          if (esEmpresaMutual(empCortaClick)) setIncluirMutual(true);
+                          setFiltroEmpresa("TODAS");
+                          setEmpresasFrecSel((prev) =>
+                            prev.length === 1 && prev[0] === empCortaClick ? [] : [empCortaClick]
+                          );
+                        }}
+                        className="space-y-1 cursor-pointer rounded-lg p-1.5 hover:bg-slate-50 transition"
+                      >
                         <div className="flex items-center justify-between text-xs">
                           <div className="min-w-0 flex-1 truncate pr-2">
                             <span className="font-bold text-[#0F172A]">{emp.nombre}</span>
@@ -5672,11 +7846,18 @@ export default function TableroCarteraAnalytics() {
                             {formatCOP(emp.monto)} <span className="text-[10px] text-[#64748B]">({pct}%)</span>
                           </div>
                         </div>
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-[#1D58D8] transition-all"
-                            style={{ width: `${barW}%` }}
-                          />
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div className="h-full flex rounded-full overflow-hidden" style={{ width: `${barW}%` }}>
+                            <div style={{ width: `${pDef}%`, backgroundColor: "#059669" }} />
+                            <div style={{ width: `${pAcp}%`, backgroundColor: "#7C3AED" }} />
+                            <div style={{ width: `${pPnd}%`, backgroundColor: "#F59E0B" }} />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-[#64748B]">
+                          <span>{emp.glosas} glosas</span>
+                          <span className="font-mono">
+                            <strong className="text-[#047857]">Def: {formatEscalaEjeY(emp.defendido)}</strong> · Acp: {formatEscalaEjeY(emp.aceptado)}
+                          </span>
                         </div>
                       </div>
                     );
@@ -5684,42 +7865,49 @@ export default function TableroCarteraAnalytics() {
                 </div>
               </div>
 
-              {/* Responsables de responder la glosa */}
               <div className="p-4 sm:p-5 rounded-xl border bg-white shadow-2xs space-y-3" style={{ borderColor: "#E2ECF8" }}>
                 <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "#F1F5F9" }}>
                   <div>
                     <h4 className="text-[13px] font-bold text-[#0E245E]">
-                      Carga por Responsable de Respuesta
+                      Gestión y Efectividad por Responsable de Respuesta
                     </h4>
-                    <p className="text-[11px] text-[#64748B]">Persona encargada de responder u objetar la glosa</p>
+                    <p className="text-[11px] text-[#64748B]">Muestra lo defendido, conciliado y pendiente según asignación real en WorkCenter</p>
                   </div>
                   <span className="text-[11px] font-semibold text-[#059669]">
                     {topResponsables.length} responsables
                   </span>
                 </div>
 
-                <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                  {topResponsables.slice(0, 7).map(([resp, info]) => {
+                <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                  {topResponsables.slice(0, 8).map(([resp, info]) => {
                     const pct = totGlosado > 0 ? Math.round((info.monto / totGlosado) * 100) : 0;
-                    const barW = Math.min(100, Math.max(2, Math.round((info.monto / maxRespMonto) * 100)));
+                    const barW = Math.min(100, Math.max(3, Math.round((info.monto / maxRespMonto) * 100)));
+                    const pDef = info.monto > 0 ? (info.defendido / info.monto) * 100 : 0;
+                    const pAcp = info.monto > 0 ? (info.aceptado / info.monto) * 100 : 0;
+                    const pPnd = Math.max(0, 100 - pDef - pAcp);
                     return (
-                      <div key={resp} className="space-y-1">
+                      <div key={resp} className="space-y-1 p-1.5 rounded-lg">
                         <div className="flex items-center justify-between text-xs">
                           <div className="min-w-0 flex-1 truncate pr-2">
                             <span className="font-bold text-[#0F172A]">{resp}</span>
                             <span className="ml-1.5 text-[10px] text-[#64748B]">
-                              ({info.glosas} glosas asignadas)
+                              ({info.glosas} glosas)
                             </span>
                           </div>
                           <div className="text-right font-mono font-bold text-[#0E245E] shrink-0">
                             {formatCOP(info.monto)} <span className="text-[10px] text-[#64748B]">({pct}%)</span>
                           </div>
                         </div>
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-[#059669] transition-all"
-                            style={{ width: `${barW}%` }}
-                          />
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div className="h-full flex rounded-full overflow-hidden" style={{ width: `${barW}%` }}>
+                            <div style={{ width: `${pDef}%`, backgroundColor: "#059669" }} />
+                            <div style={{ width: `${pAcp}%`, backgroundColor: "#7C3AED" }} />
+                            <div style={{ width: `${pPnd}%`, backgroundColor: "#F59E0B" }} />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-[#64748B] font-mono">
+                          <span className="text-[#047857] font-bold">Defendido: {formatCOP(info.defendido)}</span>
+                          <span>Aceptado: {formatEscalaEjeY(info.aceptado)} · Pend: {formatEscalaEjeY(info.pendiente)}</span>
                         </div>
                       </div>
                     );

@@ -88,13 +88,22 @@ type AuxiliarAbiertoResponse = {
   terceros: AuxiliarTercero[];
 };
 
-function hoyColombia(): string {
-  return new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+/** Último día cerrado en hora Colombia (día anterior), para congelar el corte sin fluctuación intradía. */
+function ayerColombia(): string {
+  const d = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
-function normalizarEmpresaSisma(razonSocialRaw: string): string {
+function esEntidadMutual(razonSocialRaw: string, nitRaw?: string): boolean {
+  const r = String(razonSocialRaw || "").toUpperCase();
+  const nitLimpio = String(nitRaw || "").replace(/\D/g, "");
+  return r.includes("MUTUAL") || nitLimpio.startsWith("806008394");
+}
+
+function normalizarEmpresaSisma(razonSocialRaw: string, nitRaw?: string): string {
   const r = String(razonSocialRaw || "").toUpperCase().trim();
-  if (r.includes("MUTUAL SER")) return "MUTUAL SER";
+  if (esEntidadMutual(r, nitRaw)) return "MUTUAL SER";
   if (r.includes("ECOPETROL")) return "ECOPETROL";
   if (r.includes("SEGUROS DE VIDA SURAMERICANA") || r.includes("SURA POLIZA")) return "SURA POLIZA";
   if (r.includes("SUSALUD")) return "SUSALUD PREPAGADA";
@@ -136,29 +145,37 @@ function normalizarResponsableSisma(empresaCorta: string, razonSocialRaw: string
   return "YULEIBIS";
 }
 
-async function fetchSismaJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${SISMA_BASE_URL}${path}`, {
-    headers: {
-      "X-Api-Key": SISMA_API_KEY,
-      Accept: "application/json",
-      "User-Agent": "ebenezer-plataforma-cartera",
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`SISMA API error ${res.status}: ${text.slice(0, 200)}`);
+async function fetchSismaJson<T>(path: string, timeoutMs?: number): Promise<T> {
+  const ctrl = timeoutMs ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${SISMA_BASE_URL}${path}`, {
+      headers: {
+        "X-Api-Key": SISMA_API_KEY,
+        Accept: "application/json",
+        "User-Agent": "ebenezer-plataforma-cartera",
+      },
+      signal: ctrl?.signal,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`SISMA API error ${res.status}: ${text.slice(0, 200)}`);
+    }
+    return (await res.json()) as T;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
-  return (await res.json()) as T;
 }
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const corteParam = searchParams.get("corte") || hoyColombia();
+    const ayerISO = ayerColombia();
+    const corteParam = searchParams.get("corte") || ayerISO;
     const corte = /^\d{4}-\d{2}-\d{2}$/.test(corteParam)
       ? corteParam
-      : hoyColombia();
+      : ayerISO;
     const anio = corte.slice(0, 4);
     const desde = `${anio}-01-01`;
 
@@ -181,7 +198,10 @@ export async function GET(req: NextRequest) {
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean);
     const mutualParam = searchParams.get("mutual");
-    const incluirMutual = mutualParam !== "0" && mutualParam !== "false";
+    const pideMutualEnEmpresas = empresasParam.some((e) => e.includes("MUTUAL"));
+    const incluirMutual =
+      pideMutualEnEmpresas || (mutualParam !== "0" && mutualParam !== "false");
+
     const diasDesde = (searchParams.get("desde") || "").trim();
     const diasHasta = (searchParams.get("hasta") || "").trim();
     const diasSemParam = (searchParams.get("diasSem") || "")
@@ -204,30 +224,12 @@ export async function GET(req: NextRequest) {
     /* ---------------------------------------------------------------
        GIROS POR CRUZAR: SI NO LLEGAN, SE DICE.
        Escrito el 08-11-2026.
-
-       Aqui las dos consultas de giros terminaban en `.catch(() => null)`
-       y nadie preguntaba despues si habian llegado. Si SISMA fallaba en
-       esas dos, el calculo seguia tan tranquilo:
-
-           procesarAuxiliar(null) -> no suma nada
-           anticiposPorCruzar = 0
-           totalCarteraReal = carteraTotal - 0 = carteraTotal
-
-       Es decir: la Cartera Real salia IGUAL a la Total, mas alta de lo
-       que es, sin un solo aviso. Y es la cifra de plata que mira
-       gerencia. Es el mismo defecto que nos tuvo tres semanas cargando
-       una foto del 13 de octubre, pero en el peor sitio posible.
-
-       Ahora se anota cual fallo y por que, y se devuelve la bandera
-       `girosIncompletos` para que la pantalla lo diga en rojo en vez de
-       mostrar un numero que no es. Las cifras se siguen entregando --
-       cartera corriente, vencida y total si son buenas -- lo que se
-       marca es que la RESTA no se puede confiar.
        --------------------------------------------------------------- */
     const fallosGiros: string[] = [];
+    let falloIngresos: string | null = null;
 
-    // Consultamos en paralelo cartera-edades y las cuentas de giros por cruzar en auxiliar-abierto
-    const [edadesData, aux1301, aux2501] = await Promise.all([
+    // Consultamos en paralelo cartera-edades, giros por cruzar e ingresos contables (clase 41-43, con timeout aislado)
+    const [edadesData, aux1301, aux2501, auxIngresos] = await Promise.all([
       fetchSismaJson<CarteraEdadesResponse>(
         `/api/contabilidad/cartera-edades?corte=${corte}&formato=json`
       ),
@@ -243,23 +245,28 @@ export async function GET(req: NextRequest) {
         fallosGiros.push(`cuentas 2501010602-607: ${e instanceof Error ? e.message : "no respondio"}`);
         return null;
       }),
+      fetchSismaJson<AuxiliarAbiertoResponse>(
+        `/api/contabilidad/auxiliar-abierto?desde=${desde}&hasta=${corte}&cuentaDesde=4100000000&cuentaHasta=4399999999&formato=json`,
+        8500
+      ).catch((e) => {
+        falloIngresos = e instanceof Error ? e.message : "no disponible";
+        return null;
+      }),
     ]);
 
-    const cumpleFiltroEntidad = (razonSocial: string): boolean => {
-      const empCorta = normalizarEmpresaSisma(razonSocial);
+    const cumpleFiltroEntidad = (razonSocial: string, nit?: string): boolean => {
+      const empCorta = normalizarEmpresaSisma(razonSocial, nit);
       const resp = normalizarResponsableSisma(empCorta, razonSocial);
-      if (
-        !incluirMutual &&
-        (empCorta.includes("MUTUAL") ||
-          String(razonSocial || "").toUpperCase().includes("MUTUAL"))
-      ) {
+      const esMut = esEntidadMutual(razonSocial, nit);
+      if (!incluirMutual && esMut) {
         return false;
       }
       if (empresasParam.length > 0) {
         const rsUp = String(razonSocial || "").toUpperCase();
-        const coincide = empresasParam.some(
-          (e) => empCorta === e || rsUp.includes(e)
-        );
+        const coincide = empresasParam.some((e) => {
+          if (e.includes("MUTUAL")) return esMut;
+          return empCorta === e || rsUp.includes(e);
+        });
         if (!coincide) return false;
       }
       if (responsablesParam.length > 0 && !responsablesParam.includes(resp)) {
@@ -318,11 +325,19 @@ export async function GET(req: NextRequest) {
       mas360: 0,
     };
 
+    // Desglose exacto Con Mutual / Sin Mutual / Solo Mutual sobre el período filtrado
+    const acumUniv = {
+      conMutual: { corriente: 0, vencida: 0, total: 0, pendRad: 0, facturas: 0, giros1301: 0, giros2502: 0, giros2507: 0 },
+      sinMutual: { corriente: 0, vencida: 0, total: 0, pendRad: 0, facturas: 0, giros1301: 0, giros2502: 0, giros2507: 0 },
+      soloMutual: { corriente: 0, vencida: 0, total: 0, pendRad: 0, facturas: 0, giros1301: 0, giros2502: 0, giros2507: 0 },
+    };
+
     type ResumenEmpresaSisma = {
       nit: string;
       razonSocial: string;
       empresaCorta: string;
       responsable: string;
+      esMutual: boolean;
       facturasCount: number;
       corriente: number;
       vencida: number;
@@ -333,8 +348,15 @@ export async function GET(req: NextRequest) {
     const mapaEmpresas = new Map<string, ResumenEmpresaSisma>();
     const mapaCatalogoPeriodo = new Map<string, ResumenEmpresaSisma>();
 
+    // Facturación abierta en cartera agrupada por mes real de emisión
+    const saldoAbiertoEmitidoPorMes = new Array<number>(12).fill(0);
+    const corrienteEmitidoPorMes = new Array<number>(12).fill(0);
+    const vencidaEmitidoPorMes = new Array<number>(12).fill(0);
+    const facturasAbiertasPorMes = new Array<number>(12).fill(0);
+
     for (const item of edadesData.cartera || []) {
       const razonSocial = item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
+      const nit = item.numeroIdentificacion || "";
       const fechaItem = item.fechaFactura || item.fechaRadicacion || item.fechaVencimiento;
       if (!cumpleFiltroFecha(fechaItem)) continue;
 
@@ -353,14 +375,30 @@ export async function GET(req: NextRequest) {
         String(item.descripcion || "").toUpperCase().includes("PEND");
       const corrItem = pv + d30 + d60;
       const vencItem = d90 + d120 + d180 + d360 + mas360;
-      const empCorta = normalizarEmpresaSisma(razonSocial);
+      const empCorta = normalizarEmpresaSisma(razonSocial, nit);
       const resp = normalizarResponsableSisma(empCorta, razonSocial);
+      const esMut = esEntidadMutual(razonSocial, nit);
+
+      // Acumulado exacto universo Con Mutual / Sin Mutual / Solo Mutual
+      acumUniv.conMutual.corriente += corrItem;
+      acumUniv.conMutual.vencida += vencItem;
+      acumUniv.conMutual.total += saldoItem;
+      if (esPendienteRad) acumUniv.conMutual.pendRad += saldoItem;
+      acumUniv.conMutual.facturas += 1;
+
+      const bucketMut = esMut ? acumUniv.soloMutual : acumUniv.sinMutual;
+      bucketMut.corriente += corrItem;
+      bucketMut.vencida += vencItem;
+      bucketMut.total += saldoItem;
+      if (esPendienteRad) bucketMut.pendRad += saldoItem;
+      bucketMut.facturas += 1;
 
       const catActual = mapaCatalogoPeriodo.get(razonSocial) || {
-        nit: item.numeroIdentificacion || "",
+        nit,
         razonSocial,
         empresaCorta: empCorta,
         responsable: resp,
+        esMutual: esMut,
         facturasCount: 0,
         corriente: 0,
         vencida: 0,
@@ -374,7 +412,7 @@ export async function GET(req: NextRequest) {
       catActual.total += saldoItem;
       mapaCatalogoPeriodo.set(razonSocial, catActual);
 
-      if (!cumpleFiltroEntidad(razonSocial)) continue;
+      if (!cumpleFiltroEntidad(razonSocial, nit)) continue;
 
       filasFiltradas += 1;
       edadesAcum.saldo += saldoItem;
@@ -387,6 +425,17 @@ export async function GET(req: NextRequest) {
       edadesAcum.d360 += d360;
       edadesAcum.mas360 += mas360;
 
+      const fIsoMes = normalizarFechaISO(fechaItem);
+      if (/^\d{4}-\d{2}/.test(fIsoMes) && fIsoMes.slice(0, 4) === anio) {
+        const mIdx = Number(fIsoMes.slice(5, 7)) - 1;
+        if (mIdx >= 0 && mIdx < 12) {
+          saldoAbiertoEmitidoPorMes[mIdx] += saldoItem;
+          corrienteEmitidoPorMes[mIdx] += corrItem;
+          vencidaEmitidoPorMes[mIdx] += vencItem;
+          facturasAbiertasPorMes[mIdx] += 1;
+        }
+      }
+
       if (esPendienteRad) {
         facturasPendientesRadicar += saldoItem;
       } else {
@@ -394,10 +443,11 @@ export async function GET(req: NextRequest) {
       }
 
       const actual = mapaEmpresas.get(razonSocial) || {
-        nit: item.numeroIdentificacion || "",
+        nit,
         razonSocial,
         empresaCorta: empCorta,
         responsable: resp,
+        esMutual: esMut,
         facturasCount: 0,
         corriente: 0,
         vencida: 0,
@@ -458,12 +508,27 @@ export async function GET(req: NextRequest) {
     const procesarAuxiliar = (aux: AuxiliarAbiertoResponse | null) => {
       if (!aux || !Array.isArray(aux.terceros)) return;
       for (const terc of aux.terceros) {
-        if (!cumpleFiltroEntidad(terc.razonSocial || "")) continue;
+        const esMut = esEntidadMutual(terc.razonSocial || "", terc.nit || "");
+        const pasaEntidad = cumpleFiltroEntidad(terc.razonSocial || "", terc.nit || "");
         for (const a of terc.auxiliares || []) {
           for (const doc of a.documentos || []) {
             if (!cumpleFiltroFecha(doc.fecha)) continue;
-            if (cuentasGirosMap[doc.cuenta]) {
-              cuentasGirosMap[doc.cuenta].saldo += Number(doc.valor || 0);
+            const v = Number(doc.valor || 0);
+            if (doc.cuenta === "1301250602") {
+              acumUniv.conMutual.giros1301 += v;
+              if (esMut) acumUniv.soloMutual.giros1301 += v;
+              else acumUniv.sinMutual.giros1301 += v;
+            } else if (doc.cuenta === "2501010602") {
+              acumUniv.conMutual.giros2502 += v;
+              if (esMut) acumUniv.soloMutual.giros2502 += v;
+              else acumUniv.sinMutual.giros2502 += v;
+            } else if (doc.cuenta === "2501010607") {
+              acumUniv.conMutual.giros2507 += v;
+              if (esMut) acumUniv.soloMutual.giros2507 += v;
+              else acumUniv.sinMutual.giros2507 += v;
+            }
+            if (pasaEntidad && cuentasGirosMap[doc.cuenta]) {
+              cuentasGirosMap[doc.cuenta].saldo += v;
               cuentasGirosMap[doc.cuenta].documentos += 1;
             }
           }
@@ -487,14 +552,69 @@ export async function GET(req: NextRequest) {
     const anticiposPorCruzar = sumaGirosCuentas;
     const totalCarteraReal = Math.round(carteraTotal - anticiposPorCruzar);
 
-    // Si alguna de las dos consultas de giros no llego, la resta de
-    // arriba esta hecha con un cero que no es un cero medido.
+    const cerrarBucketUniv = (b: typeof acumUniv.conMutual) => {
+      const giros = Math.round(
+        Math.abs(b.giros1301) + Math.abs(b.giros2502) + Math.abs(b.giros2507)
+      );
+      const tot = Math.round(b.total);
+      return {
+        carteraCorriente: Math.round(b.corriente),
+        carteraVencida: Math.round(b.vencida),
+        carteraTotal: tot,
+        facturasPendientesRadicar: Math.round(b.pendRad),
+        anticiposPorCruzar: giros,
+        totalCarteraReal: Math.round(tot - giros),
+        facturasCount: b.facturas,
+      };
+    };
+
+    const desgloseUniverso = {
+      conMutual: cerrarBucketUniv(acumUniv.conMutual),
+      sinMutual: cerrarBucketUniv(acumUniv.sinMutual),
+      soloMutual: cerrarBucketUniv(acumUniv.soloMutual),
+    };
+
+    // Procesamiento real de Ingresos / Venta Facturada Contable (clases 41-43 si SISMA auxiliar-abierto los entrega)
+    const ventaContableMesRaw = new Array<number>(12).fill(0);
+    const cuentasIngresosMap = new Map<string, { codigo: string; nombre: string; saldo: number }>();
+    let docsIngresosContables = 0;
+
+    if (auxIngresos && Array.isArray(auxIngresos.terceros)) {
+      for (const terc of auxIngresos.terceros) {
+        if (!cumpleFiltroEntidad(terc.razonSocial || "", terc.nit || "")) continue;
+        for (const a of terc.auxiliares || []) {
+          for (const doc of a.documentos || []) {
+            if (!cumpleFiltroFecha(doc.fecha)) continue;
+            const cta = String(doc.cuenta || "").trim();
+            if (!cta.startsWith("41") && !cta.startsWith("42") && !cta.startsWith("43")) continue;
+            const v = Number(doc.valor || 0);
+            if (!v) continue;
+            docsIngresosContables += 1;
+            const prevCta = cuentasIngresosMap.get(cta) || {
+              codigo: cta,
+              nombre: String(doc.nombreCuenta || a.descripcion || "INGRESOS SERVICIOS DE SALUD"),
+              saldo: 0,
+            };
+            prevCta.saldo += v;
+            cuentasIngresosMap.set(cta, prevCta);
+
+            const fIso = normalizarFechaISO(doc.fecha);
+            if (/^\d{4}-\d{2}/.test(fIso) && fIso.slice(0, 4) === anio) {
+              const mIdx = Number(fIso.slice(5, 7)) - 1;
+              if (mIdx >= 0 && mIdx < 12) {
+                ventaContableMesRaw[mIdx] += v;
+              }
+            }
+          }
+        }
+      }
+    }
+
     const girosIncompletos = fallosGiros.length > 0;
     if (girosIncompletos) {
       console.error("CARTERA: no llegaron los giros por cruzar ->", fallosGiros.join(" | "));
     }
 
-    // Serie mensual real (Ene a Oct/Dic) calculada directamente por el mes real de las facturas filtradas
     const incluyeAnioActual =
       aniosParam.length === 0 ||
       aniosParam.length >= 6 ||
@@ -523,7 +643,7 @@ export async function GET(req: NextRequest) {
     for (const item of edadesData.cartera || []) {
       const razonSocial =
         item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
-      if (!cumpleFiltroEntidad(razonSocial)) continue;
+      if (!cumpleFiltroEntidad(razonSocial, item.numeroIdentificacion || "")) continue;
       const fechaItem =
         item.fechaFactura || item.fechaRadicacion || item.fechaVencimiento;
       if (!cumpleFiltroFecha(fechaItem)) continue;
@@ -565,6 +685,53 @@ export async function GET(req: NextRequest) {
         ? serieMensualCompleta.filter((s) => mesesParam.includes(s.mes))
         : serieMensualCompleta;
 
+    const ventaContableDisponible = docsIngresosContables > 0;
+    const cuentasIngresos = Array.from(cuentasIngresosMap.values())
+      .map((c) => ({
+        codigo: c.codigo,
+        nombre: c.nombre,
+        total: Math.round(Math.abs(c.saldo)),
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    const sumaVentaContableBruta = Array.from(cuentasIngresosMap.values()).reduce(
+      (acc, c) => acc + c.saldo,
+      0
+    );
+    const ventaContableTotal = ventaContableDisponible
+      ? Math.round(Math.abs(sumaVentaContableBruta))
+      : null;
+
+    const facturacionPorMesCompleta = Array.from({ length: mesMaxCorte }, (_, idx) => {
+      const mmStr = String(idx + 1).padStart(2, "0");
+      return {
+        mes: mmStr,
+        etiqueta: nombresMesesCortos[idx],
+        ventaContable: ventaContableDisponible
+          ? Math.round(Math.abs(ventaContableMesRaw[idx]))
+          : null,
+        saldoAbiertoEmitidoMes: Math.round(saldoAbiertoEmitidoPorMes[idx]),
+        corrienteEmitidoMes: Math.round(corrienteEmitidoPorMes[idx]),
+        vencidaEmitidoMes: Math.round(vencidaEmitidoPorMes[idx]),
+        facturasAbiertasMes: facturasAbiertasPorMes[idx],
+      };
+    });
+
+    const facturacionSisma = {
+      ventaContableDisponible,
+      ventaContableTotal,
+      ventaContableNota: ventaContableDisponible
+        ? null
+        : falloIngresos
+        ? `Auxiliar abierto solo entrega cuentas de balance (${falloIngresos})`
+        : "El endpoint contable auxiliar-abierto expone cuentas de balance (1301/2501); no registra movimientos abiertos en cuentas de resultado (41-43).",
+      cuentasIngresos,
+      porMes:
+        mesesParam.length > 0
+          ? facturacionPorMesCompleta.filter((m) => mesesParam.includes(m.mes))
+          : facturacionPorMesCompleta,
+    };
+
     const topEmpresas = Array.from(mapaEmpresas.values())
       .map((e) => ({
         ...e,
@@ -592,6 +759,8 @@ export async function GET(req: NextRequest) {
       ok: true,
       fuente: "API SISMA Contabilidad en Vivo",
       corteISO: corte,
+      ayerISO,
+      corteCongeladoAyer: corte === ayerISO,
       fechaCorte: fechaCorteLabel,
       filasFacturas: hayFiltroActivo ? filasFiltradas : edadesData.filas || filasFiltradas,
       resumenCorte: {
@@ -605,11 +774,11 @@ export async function GET(req: NextRequest) {
         glosasPendientesGestionar: 0,
         anticiposPorCruzar,
         totalCarteraReal,
-        // Cuando esto viene en true, la Cartera Real de arriba es
-        // simplemente la Total: los giros no se pudieron restar.
         girosIncompletos,
         girosMotivo: girosIncompletos ? fallosGiros.join(" | ") : null,
       },
+      desgloseUniverso,
+      facturacionSisma,
       girosIncompletos,
       girosMotivo: girosIncompletos ? fallosGiros.join(" | ") : null,
       edades: {

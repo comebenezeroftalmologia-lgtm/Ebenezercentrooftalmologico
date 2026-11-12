@@ -190,7 +190,7 @@ export async function GET() {
     ),
     db.from("cf_glosas").select(
       "id, tipo, alcance, motivo_codigo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, " +
-      "cf_facturas(numero, anio, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
+      "cf_facturas(numero, anio, periodo, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
       "empresa_nombre_original, cf_empresas(nombre)), " +
       "facturador:cf_responsables!cf_glosas_facturador_id_fkey(nombre), " +
       "aceptacion:cf_responsables!cf_glosas_responsable_aceptacion_id_fkey(nombre)"
@@ -247,6 +247,7 @@ export async function GET() {
   });
 
   const todas = (facturas.data || []) as unknown as Fila[];
+  const todasFacturasBase = todas.map(filaFactura);
   const anuladas = todas
     .filter((r) => ["ANULADA", "REEMPLAZADA", "PENDIENTE_REEMPLAZO"].includes(String(r.estado)))
     .map(filaFactura);
@@ -265,7 +266,7 @@ export async function GET() {
         "",
       empresaOriginal: strLimpio(f.empresa_nombre_original),
       fechaFactura: (f.fecha_elaboracion as string) || "",
-      periodo: "",
+      periodo: strLimpio(f.periodo),
       anio: f.anio ? String(f.anio) : "",
       factura: strLimpio(f.numero),
       fechaRadicacion: (f.fecha_radicacion as string) || "",
@@ -338,6 +339,7 @@ export async function GET() {
     ok: true,
     origen: "base de datos",
     catalogos,
+    facturasBase: todasFacturasBase,
     anuladas,
     legalizadas,
     glosas: filasGlosa,

@@ -27,11 +27,18 @@ async function conPermiso() {
   return modulos.has("frecuencias") ? me : null; // el modulo de Cartera
 }
 
-/** Ultimo dia del mes, o hoy si el mes es el actual. */
+/** Ultimo dia del mes, o el dia anterior cerrado si el mes es el actual. */
 function fechaCorteDe(anio: number, mes: number): string {
   const hoy = new Date(Date.now() - 5 * 3600 * 1000); // Colombia
   const esActual = anio === hoy.getUTCFullYear() && mes === hoy.getUTCMonth() + 1;
-  if (esActual) return hoy.toISOString().slice(0, 10);
+  if (esActual) {
+    const ayer = new Date(hoy.getTime());
+    ayer.setUTCDate(ayer.getUTCDate() - 1);
+    if (ayer.getUTCFullYear() === anio && ayer.getUTCMonth() + 1 === mes) {
+      return ayer.toISOString().slice(0, 10);
+    }
+    return hoy.toISOString().slice(0, 10);
+  }
   const ultimo = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
   return `${anio}-${String(mes).padStart(2, "0")}-${String(ultimo).padStart(2, "0")}`;
 }
