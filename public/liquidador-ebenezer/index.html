@@ -17748,8 +17748,6 @@ function pdfActaEn(doc, h, primera){
   // cierres
   const H = doc.internal.pageSize.getHeight();
   const lineas = [];
-  // El cierre del acta sale por unidad funcional cuando el resumen cuadra con el total.
-  // Si no cuadra, se deja exactamente como estaba.
   let __usoRuf = false;
   try{
     const RS = (typeof resumenUF === 'function') ? resumenUF(h) : null;
@@ -20586,13 +20584,16 @@ try{
      El cuadro va de primero, arriba de todo, para que sea lo primero que se vea. */
   function pintarEn(pan){
     try{
-      if(!pan || pan.getAttribute("data-ruf") === "1") return;
+      if(!pan) return;
       var card = pan.closest(".doc-card"); if(!card) return;
+      /* la marca va en la TARJETA, no en el panel: adentro de una tarjeta hay varios
+         paneles y si se marca el panel el cuadro sale repetido */
+      if(card.getAttribute("data-ruf") === "1") return;
       var med = String(card.id || "").replace(/^doc-/, "").replace(/_/g, " ");
       if(!med) return;
       var R = window.resumenUF(med);
       if(!R || !R.cuadra) return;                   /* si no cuadra, no se muestra */
-      pan.setAttribute("data-ruf", "1");
+      card.setAttribute("data-ruf", "1");
       var box = document.createElement("div");
       box.className = "ruf";
       box.innerHTML = "<h4>📊 Resumen por unidad funcional — solo lo que se paga</h4>" + tabla(R);
