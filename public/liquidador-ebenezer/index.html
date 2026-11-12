@@ -17749,7 +17749,7 @@ function pdfActaEn(doc, h, primera){
   const H = doc.internal.pageSize.getHeight();
   const lineas = [];
   // El cierre del acta sale por unidad funcional cuando el resumen cuadra con el total.
-  // Si no cuadra, se deja exactamente como estaba: un resumen que no suma es peor que ninguno.
+  // Si no cuadra, se deja exactamente como estaba.
   let __usoRuf = false;
   try{
     const RS = (typeof resumenUF === 'function') ? resumenUF(h) : null;
@@ -20582,6 +20582,8 @@ try{
     return h + "</table>";
   }
 
+  /* La tarjeta de cada médico es «.doc-card#doc-<MEDICO>» y su contenido «.doc-body».
+     El cuadro va de primero, arriba de todo, para que sea lo primero que se vea. */
   function pintarEn(pan){
     try{
       if(!pan || pan.getAttribute("data-ruf") === "1") return;
@@ -20600,9 +20602,9 @@ try{
 
   function barrer(){
     try{
+      document.querySelectorAll(".doc-card .doc-body").forEach(pintarEn);
       document.querySelectorAll(".srvp").forEach(function(sp){
-        var pan = sp.parentNode;
-        if(pan) pintarEn(pan);
+        if(sp.parentNode) pintarEn(sp.parentNode);
       });
     }catch(e){}
   }
