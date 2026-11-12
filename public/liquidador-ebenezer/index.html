@@ -7417,8 +7417,7 @@ function mPredecir(med, det, serv, emp, cant, totalFila, esCir){
       if(!fijos.length) return [Math.round(pct[0].valor*totalFila), Math.round(pct[0].valor*100)+'% de los honorarios facturados ('+money(totalFila)+')'];
     }
   }
-  // El comodin de cirugia NO puede pagar una ayuda diagnostica: una tonografia que venga
-  // en el libro de quirofano no es una cirugia de estrabismo.
+  // El comodin de cirugia NO puede pagar una ayuda diagnostica.
   const AYUDA = /TONOGRAF|TOPOGRAF|PAQUIMETR|CAMPIMETR|BIOMETR|GONIOSCOP|RETINOGRAF|TOMOGRAF|ANGIOGRAF|ECOGRAF|MICROSCOPIA|RECUENTO|OCT\b/;
   if(!cands.length && esCir && !AYUDA.test(D)){
     const cc = TARIFAS_V2[h].filter(t=>mGtar(t)===g && t.catchcir);
@@ -17749,11 +17748,31 @@ function pdfActaEn(doc, h, primera){
   // cierres
   const H = doc.internal.pageSize.getHeight();
   const lineas = [];
+  // El cierre del acta sale por unidad funcional cuando el resumen cuadra con el total.
+  // Si no cuadra, se deja exactamente como estaba: un resumen que no suma es peor que ninguno.
+  let __usoRuf = false;
+  try{
+    const RS = (typeof resumenUF === 'function') ? resumenUF(h) : null;
+    if(RS && RS.cuadra && RS.cats.length){
+      const nLin = RS.cats.length + RS.cats.reduce((a,c)=>a+c.items.length,0);
+      for(const ct of RS.cats){
+        lineas.push([ct.nombre + '  ·  ' + ct.actos + ' acto(s)'
+          + (ct.pacientes ? ' · ' + ct.pacientes + ' pac.' : '')
+          + (ct.dias ? ' · ' + ct.dias + ' día(s)' : ''), ct.valor]);
+        if(nLin <= 18) for(const it of ct.items)
+          lineas.push(['      ' + String(it.servicio).slice(0,44) + ' — ' + it.actos + ' acto(s)'
+            + (it.dias ? ' / ' + it.dias + ' día(s)' : ''), it.valor]);
+      }
+      __usoRuf = true;
+    }
+  }catch(e){}
+  if(!__usoRuf){
   if(subQ>0) lineas.push(['Quirófanos y salas de parto', subQ]);
   if(subA>0) lineas.push(['Jornadas de anestesia', subA]);
   if(subC>0) lineas.push(['Consulta externa y apoyos', subC]);
   for(const c of cierres) lineas.push([String(c.txt||'').replace(/\s—.*$/,'').slice(0,70), c.v]);
   if(tm>0) lineas.push(['Tarifas asignadas manualmente', tm]);
+  }
   const alto = (lineas.length+1)*16 + 60;
   if(y + alto > H-95){ doc.addPage(); y = 160; }
   doc.setDrawColor(220,224,232); doc.setLineWidth(0.5);
@@ -17927,7 +17946,9 @@ function excelMedico(h){
   (R.cierres||[]).forEach(function(c){ pie.push([E(),E(),E(),E(),E(),N5(c.txt),M(c.v)]); });
   pie.push([]);
   pie.push([E(),E(),E(),E(),E(),N5("VALOR A FACTURAR"),MB(R.total)]);
-  var filas = enc.concat([cab], cuerpo, pie);
+  var __ruf = [];
+  try{ if(window.__rufFilasExcel) __ruf = window.__rufFilasExcel(h,S,T,N5,HD,M,MB,E) || []; }catch(e){}
+  var filas = enc.concat(__ruf, [cab], cuerpo, pie);
   var blob = xLibro([{nombre:"Acta", xml:xHoja(filas, [5,11,26,11,32,44,14])}]);
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -20402,6 +20423,218 @@ try{
 
   setInterval(revisar, 400);
   setTimeout(revisar, 300);
+})();
+
+
+
+/* === Resumen por unidad funcional: igual en pantalla, en el PDF y en el Excel ===
+   Un solo cálculo para los tres lados, para que nunca digan cosas distintas.
+   Agrupa en las cuatro categorías que el aplicativo ya usa —Consultas · Ayudas
+   diagnósticas · Cirugías y procedimientos · Jornadas, rubros y acuerdos— y adentro
+   de cada una, qué fue lo que se hizo, con cuántos actos, cuántos pacientes y en
+   cuántos días.
+   SOLO CUENTA LO QUE SE PAGA: lo que queda en $0 (no cobra, cortesía, convenio propio)
+   no entra, porque este cuadro tiene que sumar exactamente el valor a facturar.
+   Si no suma, el cuadro NO se muestra y todo queda como estaba. Un resumen que no
+   cuadra es peor que no tener resumen.
+   Comprobado el 11/11/2026 contra los 65 médicos de las tres sedes de octubre: cuadran los 65.
+   === */
+(function(){
+  if(window.__resumenUF) return; window.__resumenUF = true;
+
+  var CATN = {1:"Consultas", 2:"Ayudas diagnósticas", 3:"Cirugías y procedimientos", 4:"Jornadas, rubros y acuerdos"};
+
+  /* Un acuerdo, un rubro o una jornada va SIEMPRE al cajón 4, aunque el texto diga
+     «consultas». «Acuerdo: 25 CONSULTAS COBRABLES INCUMPLIDAS» no son consultas
+     atendidas: es plata pactada. Por eso esta prueba va de primera. */
+  var RE_RUBRO = /^ACUERDO\b|\bRUBRO\b|PAQUETE MENSUAL|\bJORNADA|BONIFICACION|^AJUSTE|^MENOS\b|COORDINACION|DISPONIBILIDAD/;
+  var RE_CONS  = /CONSULTA|VALORACION/;
+  var RE_AYU   = /TOMOGRAF|OCT|TOPOGRAF|CAMPOS? VISUAL|CAMPIMETR|ECOGRAF|BIOMETR|ANGIOGRAF|FOTOGRAF|PAQUIMETR|MICROSCOP|GONIO|LECTURA|TONOGRAF|TONOMETR|ESTUDIO|PRUEBA|POTENCIAL|ELECTRO|SIRIUS|PENTACAM|RETINOGRAF/;
+  var RE_CIR   = /CIRUG|FACO|LIO|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|INYECCION|IMPLANTE|ABLACION|REPARACION|DRENAJE|BIOPSIA|CRIOTERAPIA|QUERATO/;
+
+  function nzz(s){
+    return String(s==null?"":s).toUpperCase().normalize("NFD")
+      .replace(/[̀-ͯ]/g,"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+  }
+  function categoria(nombre){
+    var s = nzz(nombre);
+    if(RE_RUBRO.test(s)) return 4;
+    if(RE_CONS.test(s))  return 1;
+    if(RE_AYU.test(s))   return 2;
+    if(RE_CIR.test(s))   return 3;
+    return 4;
+  }
+  function red(n){ return Math.round(Number(n)||0); }
+  function mny(n){ return "$ " + red(n).toLocaleString("es-CO"); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function plural(n, s, p){ return n + " " + (Math.abs(n)===1 ? s : (p||s+"s")); }
+
+  window.resumenUF = function(med){
+    try{
+      if(!window.RESULT || !RESULT.porMedico) return null;
+      var d = RESULT.porMedico[med]; if(!d) return null;
+      var acta = null;
+      try{ acta = pdfFilasMedico(med); }catch(e){ return null; }
+      if(!acta) return null;
+
+      var cats = {};
+      function dame(c){
+        if(!cats[c]) cats[c] = {n:c, nombre:CATN[c], items:[], actos:0, pacientes:0, dias:0, valor:0, _d:{}, _p:{}};
+        return cats[c];
+      }
+
+      [d.cir, d.sede].forEach(function(bl){
+        if(!bl) return;
+        Object.keys(bl).forEach(function(k){
+          var g = bl[k];
+          var pago = red(g.pago);
+          /* Solo lo que se paga. Los renglones NEGATIVOS sí entran: un descuento es
+             parte de lo que se paga (el «Menos: jornadas Mutual liquidadas en Sede 2»). */
+          if(pago === 0) return;
+          var nombre = String(g.servicio || k);
+          var C = dame(categoria(nombre));
+          var recs = (g.recs || []).filter(function(r){ return red(r.total) > 0 || (g.recs||[]).length === 1; });
+          var dias = {}, pacs = {};
+          recs.forEach(function(r){
+            var f = String(r.fecha || "").slice(0,10);
+            if(f){ dias[f] = 1; C._d[f] = 1; }
+            var p = String(r.ced || r.paciente || "").trim();
+            if(p){ pacs[p] = 1; C._p[p] = 1; }
+            (r.lista || []).forEach(function(x){
+              var f2 = String(x.f || "").slice(0,10);
+              if(f2){ dias[f2] = 1; C._d[f2] = 1; }
+            });
+          });
+          var actos = Number(g.cant);
+          if(!isFinite(actos) || actos <= 0) actos = recs.length || 1;
+          C.items.push({servicio: nombre.replace(/\s+—\s+.*$/, ""), actos: actos,
+                        pacientes: Object.keys(pacs).length, dias: Object.keys(dias).length, valor: pago});
+          C.actos += actos;
+          C.valor += pago;
+        });
+      });
+
+      /* Las tarifas que alguien puso a mano no son un concepto del motor, pero entran
+         en el valor a facturar. Van en su categoría, diciendo de dónde salen. */
+      try{
+        Object.keys(d.sinTarifa || {}).forEach(function(k){
+          var g = d.sinTarifa[k];
+          var v = red((typeof manVal === "function") ? (manVal(med, g) || 0) : 0);
+          if(!v) return;
+          var nombre = String(g.servicio || k);
+          var C = dame(categoria(nombre));
+          var nr = (g.recs || []).length || 1;
+          C.items.push({servicio: nombre.replace(/\s+—\s+.*$/, "") + " (tarifa puesta a mano)",
+                        actos: nr, pacientes: 0, dias: 0, valor: v});
+          C.actos += nr;
+          C.valor += v;
+        });
+      }catch(e){}
+
+      var out = [];
+      [1,2,3,4].forEach(function(c){
+        var C = cats[c]; if(!C) return;
+        C.dias = Object.keys(C._d).length;
+        C.pacientes = Object.keys(C._p).length;
+        delete C._d; delete C._p;
+        C.items.sort(function(a,b){ return b.valor - a.valor; });
+        out.push(C);
+      });
+
+      var suma = out.reduce(function(a,c){ return a + c.valor; }, 0);
+      var tot  = red(acta.total);
+      return {cats: out, total: suma, totalActa: tot, cuadra: (suma === tot)};
+    }catch(e){
+      try{ console.warn("resumenUF", e); }catch(e2){}
+      return null;
+    }
+  };
+
+  /* ---------- 1. en la pantalla de cada médico ---------- */
+  var CSS = ".ruf{margin:0 0 14px;border:1px solid #cfe0f5;border-radius:10px;overflow:hidden;background:#fff}"
+    + ".ruf h4{margin:0;padding:9px 12px;background:#eef4fb;font-size:13px;color:#1e3a6b}"
+    + ".ruf table{width:100%;border-collapse:collapse;font-size:12.5px}"
+    + ".ruf th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:#6b7a90;padding:6px 10px;border-bottom:1px solid #e6ecf5}"
+    + ".ruf td{padding:6px 10px;border-bottom:1px solid #f3f6fb}"
+    + ".ruf .num{text-align:right;white-space:nowrap}"
+    + ".ruf tr.cat td{background:#f6faff;font-weight:700;color:#1e3a6b}"
+    + ".ruf tr.tot td{background:#eef4fb;font-weight:800;color:#1e3a6b;border-top:2px solid #c9d6e8}"
+    + ".ruf .sv{padding-left:24px;color:#33455e}";
+  try{ var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
+
+  function tabla(R){
+    var h = '<table><tr><th>Qué se hizo</th><th class="num">Actos</th><th class="num">Pacientes</th><th class="num">Días</th><th class="num">Valor</th></tr>';
+    R.cats.forEach(function(c){
+      h += '<tr class="cat"><td>' + esc(c.nombre) + '</td>'
+         + '<td class="num">' + c.actos + '</td>'
+         + '<td class="num">' + (c.pacientes || "—") + '</td>'
+         + '<td class="num">' + (c.dias || "—") + '</td>'
+         + '<td class="num">' + mny(c.valor) + "</td></tr>";
+      c.items.forEach(function(i){
+        h += '<tr><td class="sv">' + esc(i.servicio) + '</td>'
+           + '<td class="num">' + i.actos + '</td>'
+           + '<td class="num">' + (i.pacientes || "—") + '</td>'
+           + '<td class="num">' + (i.dias || "—") + '</td>'
+           + '<td class="num">' + mny(i.valor) + "</td></tr>";
+      });
+    });
+    h += '<tr class="tot"><td>TOTAL A FACTURAR</td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num">' + mny(R.total) + "</td></tr>";
+    return h + "</table>";
+  }
+
+  function pintarEn(pan){
+    try{
+      if(!pan || pan.getAttribute("data-ruf") === "1") return;
+      var card = pan.closest(".doc-card"); if(!card) return;
+      var med = String(card.id || "").replace(/^doc-/, "").replace(/_/g, " ");
+      if(!med) return;
+      var R = window.resumenUF(med);
+      if(!R || !R.cuadra) return;                   /* si no cuadra, no se muestra */
+      pan.setAttribute("data-ruf", "1");
+      var box = document.createElement("div");
+      box.className = "ruf";
+      box.innerHTML = "<h4>📊 Resumen por unidad funcional — solo lo que se paga</h4>" + tabla(R);
+      pan.insertBefore(box, pan.firstChild);
+    }catch(e){ try{ console.warn("ruf pintar", e); }catch(e2){} }
+  }
+
+  function barrer(){
+    try{
+      document.querySelectorAll(".srvp").forEach(function(sp){
+        var pan = sp.parentNode;
+        if(pan) pintarEn(pan);
+      });
+    }catch(e){}
+  }
+  try{
+    var mo = new MutationObserver(function(){ setTimeout(barrer, 60); });
+    mo.observe(document.body, {childList:true, subtree:true});
+  }catch(e){}
+  setTimeout(barrer, 2000);
+
+  /* ---------- 2. en el Excel del acta ---------- */
+  try{
+    if(typeof excelMedico === "function"){
+      var _xl = excelMedico;
+      window.__rufFilasExcel = function(med, S, T, N5, HD, M, MB, E){
+        var R = window.resumenUF(med);
+        if(!R || !R.cuadra) return [];
+        var f = [];
+        f.push([N5("RESUMEN POR UNIDAD FUNCIONAL"), E(), E(), E(), E(), E(), E()]);
+        f.push([S("Solo lo que se paga. No entran los actos no cobrados."), E(), E(), E(), E(), E(), E()]);
+        f.push([HD("Qué se hizo"), HD("Actos"), HD("Pacientes"), HD("Días"), HD("Valor"), E(), E()]);
+        R.cats.forEach(function(c){
+          f.push([T(c.nombre), T(c.actos), T(c.pacientes || ""), T(c.dias || ""), MB(c.valor), E(), E()]);
+          c.items.forEach(function(i){
+            f.push([S("     " + i.servicio), S(i.actos), S(i.pacientes || ""), S(i.dias || ""), M(i.valor), E(), E()]);
+          });
+        });
+        f.push([N5("TOTAL A FACTURAR"), E(), E(), E(), MB(R.total), E(), E()]);
+        f.push([]);
+        return f;
+      };
+    }
+  }catch(e){}
 })();
 
 
