@@ -4452,18 +4452,18 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 3636,
-          "contestadas": 616,
-          "perdidas": 3020,
+          "recibidas": 3646,
+          "contestadas": 617,
+          "perdidas": 3029,
           "esperaMin": 11.9,
           "slaPct": 0.3,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 420,
-              "contestadas": 374,
-              "perdidas": 46,
+              "timbradas": 426,
+              "contestadas": 375,
+              "perdidas": 51,
               "duracionMin": 5.0
             },
             {
@@ -4488,17 +4488,17 @@
           "id": "506013",
           "name": "Mutual Contributivo",
           "isMutual": true,
-          "recibidas": 826,
-          "contestadas": 332,
-          "perdidas": 494,
-          "esperaMin": 9.1,
-          "slaPct": 2.54,
+          "recibidas": 833,
+          "contestadas": 335,
+          "perdidas": 498,
+          "esperaMin": 9.0,
+          "slaPct": 2.76,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 227,
-              "contestadas": 208,
+              "timbradas": 230,
+              "contestadas": 211,
               "perdidas": 19,
               "duracionMin": 5.3
             },
@@ -4532,11 +4532,11 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 504,
-          "contestadas": 452,
-          "perdidas": 52,
+          "recibidas": 509,
+          "contestadas": 454,
+          "perdidas": 55,
           "esperaMin": 1.0,
-          "slaPct": 74.8,
+          "slaPct": 74.46,
           "agents": [
             {
               "id": "1005",
@@ -4549,17 +4549,17 @@
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 148,
-              "contestadas": 125,
+              "timbradas": 149,
+              "contestadas": 126,
               "perdidas": 23,
-              "duracionMin": 4.8
+              "duracionMin": 4.7
             },
             {
               "id": "1001",
               "name": "Fabiola Bustos",
-              "timbradas": 144,
-              "contestadas": 118,
-              "perdidas": 26,
+              "timbradas": 146,
+              "contestadas": 119,
+              "perdidas": 27,
               "duracionMin": 3.2
             },
             {
@@ -4621,16 +4621,16 @@
         {
           "id": "1003",
           "name": "Maria Angelica",
-          "timbradas": 703,
-          "contestadas": 625,
-          "perdidas": 78,
+          "timbradas": 712,
+          "contestadas": 629,
+          "perdidas": 83,
           "duracionMin": 5.1
         },
         {
           "id": "1018",
           "name": "Karen Tatiana",
-          "timbradas": 467,
-          "contestadas": 430,
+          "timbradas": 468,
+          "contestadas": 431,
           "perdidas": 37,
           "duracionMin": 4.1
         },
@@ -4645,9 +4645,9 @@
         {
           "id": "1001",
           "name": "Fabiola Bustos",
-          "timbradas": 150,
-          "contestadas": 123,
-          "perdidas": 27,
+          "timbradas": 152,
+          "contestadas": 124,
+          "perdidas": 28,
           "duracionMin": 3.2
         },
         {
@@ -4670,7 +4670,7 @@
     }
   ],
   "_parcial": {
-    "intento": "2026-11-13 11:16:17",
+    "intento": "2026-11-13 13:16:18",
     "digiturno": "FALLO",
     "contactCenter": "ok",
     "nota": "La fecha de arriba NO se movio: hay datos sin actualizar."
