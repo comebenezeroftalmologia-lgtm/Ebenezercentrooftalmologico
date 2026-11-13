@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
+import {
+  claveFacturaNorm,
+  extraerFacturasFcoe,
+  homologarEmpresaYOrigen,
+  clasificarAtencionYSede,
+  limpiarNombrePersona,
+} from "@/lib/carteraCruces";
 
 // API de registros de Cartera y Glosas.
 //
@@ -221,32 +228,176 @@ export async function GET() {
     strLimpio(r.empresa_nombre_original) ||
     "";
 
-  const filaFactura = (r: Fila, i: number) => ({
-    id: String(r.id),
-    numero: i + 1,
-    empresa: emp(r),
-    empresaOriginal: strLimpio(r.empresa_nombre_original) || emp(r),
-    fechaFactura: (r.fecha_elaboracion as string) || "",
-    periodo: strLimpio(r.periodo),
-    anio: r.anio ? String(r.anio) : "",
-    factura: strLimpio(r.numero),
-    fechaRadicacion: (r.fecha_radicacion as string) || "",
-    valorRadicado: Number(r.valor_radicado) || 0,
-    copagos: Number(r.copagos) || 0,
-    valorGlosaDevolucion: Number(r.valor_glosa_devolucion) || 0,
-    tipo: "GLOSA",
-    motivo: strLimpio(r.motivo_anulacion_texto),
-    facturaReemplaza: r.reemplaza_a_id ? "SI" : "",
-    fechaAnulacion: (r.fecha_anulacion as string) || "",
-    fechaRadicacionReemplazo: "",
-    rips: strLimpio(r.rips),
-    revisionFinanciera: strLimpio(r.revision_financiera),
-    preagrupado: "",
-    responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre) || "SIN ASIGNAR",
-    estadoGestion: strLimpio(r.estado) || "RADICADA",
+  type AcumClinicoFactura = {
+    pacientes: string[];
+    docs: string[];
+    medicos: string[];
+    cups: string[];
+    descripciones: string[];
+    contratos: string[];
+    ufs: string[];
+  };
+  const crucePorFactura = new Map<string, AcumClinicoFactura>();
+  const agregarUnico = (lista: string[], val: string) => {
+    if (val && !lista.includes(val)) lista.push(val);
+  };
+
+  // 1. Procesamos primero cf_pendientes_facturar para extraer paciente, médico, CUPS,
+  //    Consulta/Cirugía, Sede y cruzar cualquier factura FCOE asociada en observaciones.
+  const filasPendiente = ((pendientes.data || []) as unknown as Fila[]).map((r) => {
+    const empresaBase = emp(r);
+    const empresaOrig = strLimpio(r.empresa_nombre_original) || empresaBase;
+    const contratoStr = strLimpio(r.contrato);
+    const ufStr = strLimpio(r.unidad_funcional);
+    const cupsStr = strLimpio(r.cups);
+    const descStr = strLimpio(r.descripcion);
+    const obsStr = strLimpio(r.observaciones);
+    const pacTipo = strLimpio(r.paciente_tipo_id);
+    const pacNum = strLimpio(r.paciente_num_id);
+    const pacNombre = limpiarNombrePersona(strLimpio(r.paciente_nombre));
+    const pacDoc = [pacTipo, pacNum].filter(Boolean).join(" ");
+    const medNombre = limpiarNombrePersona(strLimpio(r.medico));
+    const facturasEnObs = extraerFacturasFcoe(obsStr);
+    const facturaAsociada = facturasEnObs[0] || "";
+
+    const empInfo = homologarEmpresaYOrigen({
+      empresa: empresaBase,
+      empresaOriginal: empresaOrig,
+      contrato: contratoStr,
+    });
+    const atencionInfo = clasificarAtencionYSede({
+      esMutual: empInfo.esMutual,
+      cups: cupsStr,
+      unidadFuncional: ufStr,
+      descripcion: descStr,
+      contrato: contratoStr,
+    });
+
+    for (const fCod of facturasEnObs) {
+      const k = claveFacturaNorm(fCod);
+      if (!k) continue;
+      const acum = crucePorFactura.get(k) || {
+        pacientes: [],
+        docs: [],
+        medicos: [],
+        cups: [],
+        descripciones: [],
+        contratos: [],
+        ufs: [],
+      };
+      agregarUnico(acum.pacientes, pacNombre);
+      agregarUnico(acum.docs, pacDoc);
+      agregarUnico(acum.medicos, medNombre);
+      agregarUnico(acum.cups, cupsStr);
+      agregarUnico(acum.descripciones, descStr);
+      agregarUnico(acum.contratos, contratoStr);
+      agregarUnico(acum.ufs, ufStr);
+      crucePorFactura.set(k, acum);
+    }
+
+    return {
+      id: String(r.id),
+      empresa: empresaBase,
+      empresaOriginal: empresaOrig,
+      empresaHomologada: empInfo.empresaHomologada,
+      nit: empInfo.nit,
+      esMutual: empInfo.esMutual,
+      deDondeEs: empInfo.deDondeEs,
+      sede: atencionInfo.sede,
+      sedeGrupo: atencionInfo.sedeGrupo,
+      tipoAtencion: atencionInfo.tipoAtencion,
+      tipoGrupo: atencionInfo.tipoGrupo,
+      contrato: contratoStr,
+      unidadFuncional: ufStr,
+      cups: cupsStr,
+      descripcion: descStr,
+      fechaServicio: (r.fecha_servicio as string) || "",
+      anio: r.anio ? String(r.anio) : "",
+      pacienteTipoId: pacTipo,
+      pacienteNumId: pacNum,
+      pacienteDoc: pacDoc,
+      pacienteNombre: pacNombre,
+      medico: medNombre || strLimpio(r.medico),
+      medicoNombre: medNombre,
+      autorizacion: strLimpio(r.autorizacion),
+      cantidad: Number(r.cantidad) || 1,
+      facturaAsociada,
+      valorServicio: Number(r.valor_servicio) || 0,
+      responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre),
+      observaciones: obsStr,
+      estado: strLimpio(r.estado) || "PENDIENTE",
+    };
   });
 
   const todas = (facturas.data || []) as unknown as Fila[];
+  const numeroPorFacturaId = new Map<string, string>();
+  for (const r of todas) {
+    const idStr = String(r.id || "");
+    const numStr = strLimpio(r.numero);
+    if (idStr && numStr) numeroPorFacturaId.set(idStr, numStr);
+  }
+
+  const filaFactura = (r: Fila, i: number) => {
+    const empBase = emp(r);
+    const empOrig = strLimpio(r.empresa_nombre_original) || empBase;
+    const facStr = strLimpio(r.numero);
+    const motivoStr = strLimpio(r.motivo_anulacion_texto);
+    const clinico = crucePorFactura.get(claveFacturaNorm(facStr));
+    const empInfo = homologarEmpresaYOrigen({
+      empresa: empBase,
+      empresaOriginal: empOrig,
+      contrato: clinico?.contratos[0],
+    });
+    const atencionInfo = clasificarAtencionYSede({
+      esMutual: empInfo.esMutual,
+      cups: clinico?.cups[0],
+      unidadFuncional: clinico?.ufs[0],
+      descripcion: clinico?.descripciones.join(" | "),
+      contrato: clinico?.contratos[0],
+      motivoTexto: motivoStr,
+    });
+    const reempId = r.reemplaza_a_id ? String(r.reemplaza_a_id) : "";
+    const facturaReemplazaReal = reempId ? numeroPorFacturaId.get(reempId) || "SI" : "";
+
+    return {
+      id: String(r.id),
+      numero: i + 1,
+      empresa: empBase,
+      empresaOriginal: empOrig,
+      empresaHomologada: empInfo.empresaHomologada,
+      nit: empInfo.nit,
+      esMutual: empInfo.esMutual,
+      deDondeEs: empInfo.deDondeEs,
+      sede: atencionInfo.sede,
+      sedeGrupo: atencionInfo.sedeGrupo,
+      tipoAtencion: atencionInfo.tipoAtencion,
+      tipoGrupo: atencionInfo.tipoGrupo,
+      pacienteNombre: clinico ? clinico.pacientes.join(" / ") : "",
+      pacienteDoc: clinico ? clinico.docs.join(" / ") : "",
+      medicoNombre: clinico ? clinico.medicos.join(" / ") : "",
+      cups: clinico ? clinico.cups.join(", ") : "",
+      servicioDescripcion: clinico ? clinico.descripciones.join(" · ") : "",
+      fechaFactura: (r.fecha_elaboracion as string) || "",
+      periodo: strLimpio(r.periodo),
+      anio: r.anio ? String(r.anio) : "",
+      factura: facStr,
+      fechaRadicacion: (r.fecha_radicacion as string) || "",
+      valorRadicado: Number(r.valor_radicado) || 0,
+      copagos: Number(r.copagos) || 0,
+      valorGlosaDevolucion: Number(r.valor_glosa_devolucion) || 0,
+      tipo: "GLOSA",
+      motivo: motivoStr,
+      facturaReemplaza: facturaReemplazaReal,
+      fechaAnulacion: (r.fecha_anulacion as string) || "",
+      fechaRadicacionReemplazo: "",
+      rips: strLimpio(r.rips),
+      revisionFinanciera: strLimpio(r.revision_financiera),
+      preagrupado: "",
+      responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre) || "SIN ASIGNAR",
+      estadoGestion: strLimpio(r.estado) || "RADICADA",
+    };
+  };
+
   const todasFacturasBase = todas.map(filaFactura);
   const anuladas = todas
     .filter((r) => ["ANULADA", "REEMPLAZADA", "PENDIENTE_REEMPLAZO"].includes(String(r.estado)))
@@ -257,60 +408,73 @@ export async function GET() {
 
   const filasGlosa = ((glosas.data || []) as unknown as Fila[]).map((r) => {
     const f = (r.cf_facturas as Fila | null) || {};
+    const empBase =
+      strLimpio((f.cf_empresas as Fila | null)?.nombre) ||
+      strLimpio(f.empresa_nombre_original) ||
+      "";
+    const empOrig = strLimpio(f.empresa_nombre_original);
+    const facStr = strLimpio(f.numero);
+    const motivoStr = strLimpio(r.motivo_texto);
+    const obsStr = strLimpio(r.observacion);
+    const clinico = crucePorFactura.get(claveFacturaNorm(facStr));
+    const empInfo = homologarEmpresaYOrigen({
+      empresa: empBase,
+      empresaOriginal: empOrig,
+      contrato: clinico?.contratos[0],
+    });
+    const atencionInfo = clasificarAtencionYSede({
+      esMutual: empInfo.esMutual,
+      cups: clinico?.cups[0],
+      unidadFuncional: clinico?.ufs[0],
+      descripcion: clinico?.descripciones.join(" | "),
+      contrato: clinico?.contratos[0],
+      motivoTexto: `${motivoStr} ${obsStr}`,
+    });
+
     return {
       id: String(r.id),
       subtabla: String(r.estado),
-      empresa:
-        strLimpio((f.cf_empresas as Fila | null)?.nombre) ||
-        strLimpio(f.empresa_nombre_original) ||
-        "",
-      empresaOriginal: strLimpio(f.empresa_nombre_original),
+      empresa: empBase,
+      empresaOriginal: empOrig,
+      empresaHomologada: empInfo.empresaHomologada,
+      nit: empInfo.nit,
+      esMutual: empInfo.esMutual,
+      deDondeEs: empInfo.deDondeEs,
+      sede: atencionInfo.sede,
+      sedeGrupo: atencionInfo.sedeGrupo,
+      tipoAtencion: atencionInfo.tipoAtencion,
+      tipoGrupo: atencionInfo.tipoGrupo,
+      pacienteNombre: clinico ? clinico.pacientes.join(" / ") : "",
+      pacienteDoc: clinico ? clinico.docs.join(" / ") : "",
+      medicoNombre: clinico ? clinico.medicos.join(" / ") : "",
+      cups: clinico ? clinico.cups.join(", ") : "",
+      servicioDescripcion: clinico ? clinico.descripciones.join(" · ") : "",
       fechaFactura: (f.fecha_elaboracion as string) || "",
       periodo: strLimpio(f.periodo),
       anio: f.anio ? String(f.anio) : "",
-      factura: strLimpio(f.numero),
+      factura: facStr,
       fechaRadicacion: (f.fecha_radicacion as string) || "",
       fechaNotificacionGlosa: (r.fecha_glosa as string) || "",
       valorRadicado: Number(f.valor_radicado) || 0,
       valorFactura: Number(f.valor_radicado) || 0,
       valorFacturado: Number(f.valor_radicado) || 0,
       valorGlosado: Number(r.valor_glosado) || 0,
-      // null se conserva como null a propósito: "sin resolver" no es "cero
-      // aceptado". Si se volviera 0 la pantalla mostraría "no aceptada" en
-      // glosas que nadie ha mirado.
       valorAceptado:
         r.valor_aceptado === null || r.valor_aceptado === undefined
           ? null
           : Number(r.valor_aceptado),
       motivoCodigo: strLimpio(r.motivo_codigo),
-      motivoGlosa: strLimpio(r.motivo_texto),
+      motivoGlosa: motivoStr,
       facturador: strLimpio((r.facturador as Fila | null)?.nombre),
       responsableAceptacion: strLimpio((r.aceptacion as Fila | null)?.nombre),
       responsableRespuesta: strLimpio((r.aceptacion as Fila | null)?.nombre),
-      observacionInterna: strLimpio(r.observacion),
+      observacionInterna: obsStr,
       notaCredito: strLimpio(r.nota_credito),
       tipoGlosa: strLimpio(r.tipo) || "GLOSA",
       alcance: strLimpio(r.alcance),
       estado: strLimpio(r.estado) || "PENDIENTE",
     };
   });
-
-  const filasPendiente = ((pendientes.data || []) as unknown as Fila[]).map((r) => ({
-    id: String(r.id),
-    empresa: emp(r),
-    empresaOriginal: strLimpio(r.empresa_nombre_original) || emp(r),
-    contrato: strLimpio(r.contrato),
-    unidadFuncional: strLimpio(r.unidad_funcional),
-    cups: strLimpio(r.cups),
-    descripcion: strLimpio(r.descripcion),
-    fechaServicio: (r.fecha_servicio as string) || "",
-    anio: r.anio ? String(r.anio) : "",
-    medico: strLimpio(r.medico),
-    valorServicio: Number(r.valor_servicio) || 0,
-    responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre),
-    observaciones: strLimpio(r.observaciones),
-    estado: strLimpio(r.estado) || "PENDIENTE",
-  }));
 
   const unicos = (xs: (string | undefined)[]) =>
     Array.from(new Set(xs.filter((x): x is string => !!x && x.trim() !== "").map((x) => limpiarUtf8(x.trim()))))

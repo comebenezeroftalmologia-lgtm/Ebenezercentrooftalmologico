@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  homologarEmpresaYOrigen,
+  clasificarAtencionYSede,
+  limpiarTextoUtf8,
+} from "@/lib/carteraCruces";
 
 export const dynamic = "force-dynamic";
 
@@ -189,10 +194,16 @@ export async function GET(req: NextRequest) {
       .map((s) => s.trim())
       .filter(Boolean)
       .map((s) => s.padStart(2, "0"));
-    const empresasParam = (searchParams.get("empresas") || "")
+    const empresasParam = (
+      searchParams.get("empresas") ||
+      searchParams.get("entidad") ||
+      ""
+    )
       .split(",")
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean);
+    const sedeParam = (searchParams.get("sede") || "").trim().toUpperCase();
+    const tipoAtencionParam = (searchParams.get("tipoAtencion") || "").trim().toUpperCase();
     const responsablesParam = (searchParams.get("responsables") || "")
       .split(",")
       .map((s) => s.trim().toUpperCase())
@@ -213,6 +224,8 @@ export async function GET(req: NextRequest) {
 
     const hayFiltroActivo =
       !incluirMutual ||
+      Boolean(sedeParam && sedeParam !== "TODAS") ||
+      Boolean(tipoAtencionParam && tipoAtencionParam !== "TODAS" && tipoAtencionParam !== "TODOS") ||
       (aniosParam.length > 0 && aniosParam.length < 6) ||
       mesesParam.length > 0 ||
       empresasParam.length > 0 ||
@@ -335,7 +348,12 @@ export async function GET(req: NextRequest) {
     type ResumenEmpresaSisma = {
       nit: string;
       razonSocial: string;
+      razonSocialOriginal: string;
       empresaCorta: string;
+      nombreHomologado: string;
+      deDondeEs: string;
+      sede: string;
+      sedeGrupo: string;
       responsable: string;
       esMutual: boolean;
       facturasCount: number;
@@ -345,8 +363,48 @@ export async function GET(req: NextRequest) {
       total: number;
     };
 
+    type FacturaAbiertaSisma = {
+      factura: string;
+      fechaFactura: string;
+      fechaRadicacion: string;
+      fechaVencimiento: string;
+      dias: number;
+      nit: string;
+      empresaCorta: string;
+      empresaHomologada: string;
+      razonSocialOriginal: string;
+      esMutual: boolean;
+      deDondeEs: string;
+      sede: string;
+      sedeGrupo: string;
+      tipoAtencion: string;
+      tipoGrupo: string;
+      cuenta: string;
+      descripcionCuenta: string;
+      tipoFactura: string;
+      pacienteNombre: string;
+      pacienteDoc: string;
+      responsable: string;
+      esPendienteRadicar: boolean;
+      corriente: number;
+      vencida: number;
+      saldo: number;
+    };
+
     const mapaEmpresas = new Map<string, ResumenEmpresaSisma>();
     const mapaCatalogoPeriodo = new Map<string, ResumenEmpresaSisma>();
+    const listaFacturasAbiertas: FacturaAbiertaSisma[] = [];
+
+    const resumenSedes = {
+      SEDE_1: { etiqueta: "Sede 1 · Principal", facturas: 0, corriente: 0, vencida: 0, total: 0 },
+      SEDE_2: { etiqueta: "Sede 2 · Consultorios (Mutual)", facturas: 0, corriente: 0, vencida: 0, total: 0 },
+    };
+    const resumenAtencion = {
+      CONSULTA: { etiqueta: "Consulta", facturas: 0, total: 0 },
+      CIRUGIA: { etiqueta: "Cirugía", facturas: 0, total: 0 },
+      AYUDA_DX: { etiqueta: "Ayuda Dx / Proc.", facturas: 0, total: 0 },
+      SIN_DETALLE: { etiqueta: "Sin CUPS en factura", facturas: 0, total: 0 },
+    };
 
     // Facturación abierta en cartera agrupada por mes real de emisión
     const saldoAbiertoEmitidoPorMes = new Array<number>(12).fill(0);
@@ -355,8 +413,8 @@ export async function GET(req: NextRequest) {
     const facturasAbiertasPorMes = new Array<number>(12).fill(0);
 
     for (const item of edadesData.cartera || []) {
-      const razonSocial = item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
-      const nit = item.numeroIdentificacion || "";
+      const razonSocial = limpiarTextoUtf8(item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD");
+      const nit = String(item.numeroIdentificacion || "").trim();
       const fechaItem = item.fechaFactura || item.fechaRadicacion || item.fechaVencimiento;
       if (!cumpleFiltroFecha(fechaItem)) continue;
 
@@ -375,9 +433,22 @@ export async function GET(req: NextRequest) {
         String(item.descripcion || "").toUpperCase().includes("PEND");
       const corrItem = pv + d30 + d60;
       const vencItem = d90 + d120 + d180 + d360 + mas360;
+      const empInfo = homologarEmpresaYOrigen({
+        empresa: razonSocial,
+        nit,
+        descripcionCuenta: item.descripcion,
+        tipoFactura: item.tipoFactura,
+      });
+      const atencionInfo = clasificarAtencionYSede({
+        esMutual: empInfo.esMutual,
+        cuentaContable: item.cuenta,
+        descripcionCuenta: item.descripcion,
+        tipoFactura: item.tipoFactura,
+      });
       const empCorta = normalizarEmpresaSisma(razonSocial, nit);
       const resp = normalizarResponsableSisma(empCorta, razonSocial);
-      const esMut = esEntidadMutual(razonSocial, nit);
+      const esMut = empInfo.esMutual || esEntidadMutual(razonSocial, nit);
+      const claveEntidad = empInfo.empresaCorta || empCorta || razonSocial;
 
       // Acumulado exacto universo Con Mutual / Sin Mutual / Solo Mutual
       acumUniv.conMutual.corriente += corrItem;
@@ -393,10 +464,15 @@ export async function GET(req: NextRequest) {
       if (esPendienteRad) bucketMut.pendRad += saldoItem;
       bucketMut.facturas += 1;
 
-      const catActual = mapaCatalogoPeriodo.get(razonSocial) || {
-        nit,
-        razonSocial,
+      const catActual = mapaCatalogoPeriodo.get(claveEntidad) || {
+        nit: empInfo.nit || nit,
+        razonSocial: empInfo.empresaHomologada || razonSocial,
+        razonSocialOriginal: razonSocial,
         empresaCorta: empCorta,
+        nombreHomologado: empInfo.empresaHomologada,
+        deDondeEs: empInfo.deDondeEs,
+        sede: esMut ? "Sede 2 · Consultorios" : "Sede 1 · Principal",
+        sedeGrupo: atencionInfo.sedeGrupo,
         responsable: resp,
         esMutual: esMut,
         facturasCount: 0,
@@ -410,9 +486,18 @@ export async function GET(req: NextRequest) {
       catActual.vencida += vencItem;
       if (esPendienteRad) catActual.pendienteRadicar += saldoItem;
       catActual.total += saldoItem;
-      mapaCatalogoPeriodo.set(razonSocial, catActual);
+      mapaCatalogoPeriodo.set(claveEntidad, catActual);
 
       if (!cumpleFiltroEntidad(razonSocial, nit)) continue;
+      if (sedeParam && sedeParam !== "TODAS" && atencionInfo.sedeGrupo !== sedeParam) continue;
+      if (
+        tipoAtencionParam &&
+        tipoAtencionParam !== "TODAS" &&
+        tipoAtencionParam !== "TODOS" &&
+        atencionInfo.tipoGrupo !== tipoAtencionParam
+      ) {
+        continue;
+      }
 
       filasFiltradas += 1;
       edadesAcum.saldo += saldoItem;
@@ -424,6 +509,16 @@ export async function GET(req: NextRequest) {
       edadesAcum.d180 += d180;
       edadesAcum.d360 += d360;
       edadesAcum.mas360 += mas360;
+
+      const bSede = resumenSedes[atencionInfo.sedeGrupo];
+      bSede.facturas += 1;
+      bSede.corriente += corrItem;
+      bSede.vencida += vencItem;
+      bSede.total += saldoItem;
+
+      const bAt = resumenAtencion[atencionInfo.tipoGrupo];
+      bAt.facturas += 1;
+      bAt.total += saldoItem;
 
       const fIsoMes = normalizarFechaISO(fechaItem);
       if (/^\d{4}-\d{2}/.test(fIsoMes) && fIsoMes.slice(0, 4) === anio) {
@@ -442,10 +537,15 @@ export async function GET(req: NextRequest) {
         carteraRadicada += saldoItem;
       }
 
-      const actual = mapaEmpresas.get(razonSocial) || {
-        nit,
-        razonSocial,
+      const actual = mapaEmpresas.get(claveEntidad) || {
+        nit: empInfo.nit || nit,
+        razonSocial: empInfo.empresaHomologada || razonSocial,
+        razonSocialOriginal: razonSocial,
         empresaCorta: empCorta,
+        nombreHomologado: empInfo.empresaHomologada,
+        deDondeEs: empInfo.deDondeEs,
+        sede: esMut ? "Sede 2 · Consultorios" : "Sede 1 · Principal",
+        sedeGrupo: atencionInfo.sedeGrupo,
         responsable: resp,
         esMutual: esMut,
         facturasCount: 0,
@@ -459,7 +559,40 @@ export async function GET(req: NextRequest) {
       actual.vencida += vencItem;
       if (esPendienteRad) actual.pendienteRadicar += saldoItem;
       actual.total += saldoItem;
-      mapaEmpresas.set(razonSocial, actual);
+      mapaEmpresas.set(claveEntidad, actual);
+
+      const esPersonaParticular =
+        empInfo.esParticular &&
+        !razonSocial.toUpperCase().includes("PARTICULAR") &&
+        razonSocial !== "SIN ENTIDAD";
+
+      listaFacturasAbiertas.push({
+        factura: limpiarTextoUtf8(item.numeroFactura || ""),
+        fechaFactura: normalizarFechaISO(item.fechaFactura),
+        fechaRadicacion: normalizarFechaISO(item.fechaRadicacion),
+        fechaVencimiento: normalizarFechaISO(item.fechaVencimiento),
+        dias: Number(item.dias || 0),
+        nit: empInfo.nit || nit,
+        empresaCorta: empCorta,
+        empresaHomologada: empInfo.empresaHomologada,
+        razonSocialOriginal: razonSocial,
+        esMutual: esMut,
+        deDondeEs: empInfo.deDondeEs,
+        sede: atencionInfo.sede,
+        sedeGrupo: atencionInfo.sedeGrupo,
+        tipoAtencion: atencionInfo.tipoAtencion,
+        tipoGrupo: atencionInfo.tipoGrupo,
+        cuenta: String(item.cuenta || ""),
+        descripcionCuenta: limpiarTextoUtf8(item.descripcion || ""),
+        tipoFactura: limpiarTextoUtf8(item.tipoFactura || ""),
+        pacienteNombre: esPersonaParticular ? razonSocial : "",
+        pacienteDoc: esPersonaParticular ? nit : "",
+        responsable: resp,
+        esPendienteRadicar: esPendienteRad,
+        corriente: Math.round(corrItem),
+        vencida: Math.round(vencItem),
+        saldo: Math.round(saldoItem),
+      });
     }
 
     const t = hayFiltroActivo
@@ -795,6 +928,30 @@ export async function GET(req: NextRequest) {
       cuentasGirosDetalle,
       topEmpresas,
       catalogoEmpresasPeriodo,
+      resumenSedes: {
+        SEDE_1: {
+          ...resumenSedes.SEDE_1,
+          corriente: Math.round(resumenSedes.SEDE_1.corriente),
+          vencida: Math.round(resumenSedes.SEDE_1.vencida),
+          total: Math.round(resumenSedes.SEDE_1.total),
+        },
+        SEDE_2: {
+          ...resumenSedes.SEDE_2,
+          corriente: Math.round(resumenSedes.SEDE_2.corriente),
+          vencida: Math.round(resumenSedes.SEDE_2.vencida),
+          total: Math.round(resumenSedes.SEDE_2.total),
+        },
+      },
+      resumenAtencion: {
+        CONSULTA: { ...resumenAtencion.CONSULTA, total: Math.round(resumenAtencion.CONSULTA.total) },
+        CIRUGIA: { ...resumenAtencion.CIRUGIA, total: Math.round(resumenAtencion.CIRUGIA.total) },
+        AYUDA_DX: { ...resumenAtencion.AYUDA_DX, total: Math.round(resumenAtencion.AYUDA_DX.total) },
+        SIN_DETALLE: { ...resumenAtencion.SIN_DETALLE, total: Math.round(resumenAtencion.SIN_DETALLE.total) },
+      },
+      totalFacturasAbiertas: listaFacturasAbiertas.length,
+      facturasAbiertas: listaFacturasAbiertas
+        .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo))
+        .slice(0, 900),
       serieMensual,
     });
   } catch (err: unknown) {

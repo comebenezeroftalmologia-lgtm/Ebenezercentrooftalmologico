@@ -4,6 +4,13 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import carteraInitialData from "@/lib/cartera-data.json";
 import { FechaDelDato } from "@/components/FechaDelDato";
 import { normalizarEmpresaYNit, CAUSAS_NORMATIVAS, causaNormativaDe } from "@/components/workcenter/CarteraWorkspace";
+import {
+  claveFacturaNorm,
+  extraerFacturasFcoe,
+  homologarEmpresaYOrigen,
+  clasificarAtencionYSede,
+  limpiarNombrePersona,
+} from "@/lib/carteraCruces";
 
 type CorteSismaBack = {
   fechaCorte: string;
@@ -40,6 +47,19 @@ type AnuladaRow = {
   preagrupado: string;
   responsable: string;
   estadoGestion: string;
+  empresaHomologada?: string;
+  nit?: string;
+  esMutual?: boolean;
+  deDondeEs?: string;
+  sede?: string;
+  sedeGrupo?: string;
+  tipoAtencion?: string;
+  tipoGrupo?: string;
+  pacienteNombre?: string;
+  pacienteDoc?: string;
+  medicoNombre?: string;
+  cups?: string;
+  servicioDescripcion?: string;
 };
 
 type GlosaRow = {
@@ -69,23 +89,80 @@ type GlosaRow = {
   tipoGlosa?: string;
   alcance?: string;
   estado?: string;
+  empresaHomologada?: string;
+  nit?: string;
+  esMutual?: boolean;
+  deDondeEs?: string;
+  sede?: string;
+  sedeGrupo?: string;
+  tipoAtencion?: string;
+  tipoGrupo?: string;
+  pacienteNombre?: string;
+  pacienteDoc?: string;
+  medicoNombre?: string;
+  cups?: string;
+  servicioDescripcion?: string;
 };
 
 type PendienteRow = {
   id: string;
   empresa: string;
   empresaOriginal: string;
+  empresaHomologada?: string;
+  nit?: string;
+  esMutual?: boolean;
+  deDondeEs?: string;
+  sede?: string;
+  sedeGrupo?: string;
+  tipoAtencion?: string;
+  tipoGrupo?: string;
   contrato: string;
   unidadFuncional: string;
   cups: string;
   descripcion: string;
   fechaServicio: string;
   anio: string;
+  pacienteTipoId?: string;
+  pacienteNumId?: string;
+  pacienteDoc?: string;
+  pacienteNombre?: string;
   medico: string;
+  medicoNombre?: string;
+  autorizacion?: string;
+  cantidad?: number;
+  facturaAsociada?: string;
   valorServicio: number;
   responsable: string;
   observaciones: string;
   estado: string;
+};
+
+type FacturaSismaVivaRow = {
+  factura: string;
+  fechaFactura: string;
+  fechaRadicacion: string;
+  fechaVencimiento: string;
+  dias: number;
+  nit: string;
+  empresaCorta: string;
+  empresaHomologada: string;
+  razonSocialOriginal: string;
+  esMutual: boolean;
+  deDondeEs: string;
+  sede: string;
+  sedeGrupo: string;
+  tipoAtencion: string;
+  tipoGrupo: string;
+  cuenta: string;
+  descripcionCuenta: string;
+  tipoFactura: string;
+  pacienteNombre: string;
+  pacienteDoc: string;
+  responsable: string;
+  esPendienteRadicar: boolean;
+  corriente: number;
+  vencida: number;
+  saldo: number;
 };
 
 type ColDef = {
@@ -156,7 +233,11 @@ const normalizarEtiquetaTipo = (tipoRaw: string | undefined): string => {
 };
 
 const normalizarEmpresaCorta = (razonSocialRaw: string | undefined): string => {
-  const r = String(razonSocialRaw || "").toUpperCase().trim();
+  const r = String(razonSocialRaw || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
   if (esEmpresaMutual(r)) return "MUTUAL SER";
   if (r.includes("ECOPETROL")) return "ECOPETROL";
   if (r.includes("SEGUROS DE VIDA SURAMERICANA") || r.includes("SURA POLIZA")) return "SURA POLIZA";
@@ -477,6 +558,13 @@ export default function TableroCarteraAnalytics() {
     topEmpresas: {
       nit: string;
       razonSocial: string;
+      razonSocialOriginal?: string;
+      empresaCorta?: string;
+      nombreHomologado?: string;
+      deDondeEs?: string;
+      sede?: string;
+      sedeGrupo?: string;
+      responsable?: string;
       esMutual?: boolean;
       facturasCount: number;
       corriente: number;
@@ -487,7 +575,12 @@ export default function TableroCarteraAnalytics() {
     catalogoEmpresasPeriodo?: {
       nit: string;
       razonSocial: string;
+      razonSocialOriginal?: string;
       empresaCorta?: string;
+      nombreHomologado?: string;
+      deDondeEs?: string;
+      sede?: string;
+      sedeGrupo?: string;
       responsable?: string;
       esMutual?: boolean;
       facturasCount: number;
@@ -496,6 +589,13 @@ export default function TableroCarteraAnalytics() {
       pendienteRadicar: number;
       total: number;
     }[];
+    totalFacturasAbiertas?: number;
+    facturasAbiertas?: FacturaSismaVivaRow[];
+    resumenSedes?: Record<
+      string,
+      { etiqueta: string; facturas: number; corriente: number; vencida: number; total: number }
+    >;
+    resumenAtencion?: Record<string, { etiqueta: string; facturas: number; total: number }>;
     serieMensual?: {
       mes: string;
       etiqueta: string;
@@ -514,8 +614,10 @@ export default function TableroCarteraAnalytics() {
   const realMillones = (v: number) => (sinGiros ? "—" : formatMillones(v));
 
 
-  // 6 Top Bar Filters
-  const [tabActiva, setTabActiva] = useState<"anuladas" | "legalizadas" | "glosas" | "pendientes">("anuladas");
+  // 6 Top Bar Filters + Sede & Atención (Consulta / Cirugía)
+  const [tabActiva, setTabActiva] = useState<"glosas" | "cartera_viva" | "pendientes" | "anuladas" | "legalizadas">("glosas");
+  const [filtroSedeTop, setFiltroSedeTop] = useState<"TODAS" | "SEDE_1" | "SEDE_2">("TODAS");
+  const [filtroAtencionTop, setFiltroAtencionTop] = useState<"TODAS" | "CONSULTA" | "CIRUGIA" | "AYUDA_DX">("TODAS");
   const [filtroAnio, setFiltroAnio] = useState<string>("TODOS");
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>("TODAS");
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
@@ -821,9 +923,17 @@ export default function TableroCarteraAnalytics() {
     if (!mutAct) {
       params.set("mutual", "0");
     }
+    if (filtroSedeTop !== "TODAS") {
+      params.set("sede", filtroSedeTop);
+    }
+    if (filtroAtencionTop !== "TODAS") {
+      params.set("tipoAtencion", filtroAtencionTop);
+    }
 
     const esSinFiltro =
       mutAct &&
+      filtroSedeTop === "TODAS" &&
+      filtroAtencionTop === "TODAS" &&
       aniosAct.length === 0 &&
       mesesAct.length === 0 &&
       !diasAct &&
@@ -919,6 +1029,8 @@ export default function TableroCarteraAnalytics() {
     empresasFrecSel,
     responsablesFrecSel,
     incluirMutual,
+    filtroSedeTop,
+    filtroAtencionTop,
     filtroAnio,
     filtroEmpresa,
     filtroResponsable,
@@ -1223,6 +1335,8 @@ export default function TableroCarteraAnalytics() {
   };
 
   const limpiarTodosLosFiltros = () => {
+    setFiltroSedeTop("TODAS");
+    setFiltroAtencionTop("TODAS");
     setFiltroAnio("TODOS");
     setFiltroEmpresa("TODAS");
     setFiltroTipo("TODOS");
@@ -1307,6 +1421,8 @@ export default function TableroCarteraAnalytics() {
     filtroAnio !== "TODOS";
 
   const hayFiltrosActivos =
+    filtroSedeTop !== "TODAS" ||
+    filtroAtencionTop !== "TODAS" ||
     tieneFiltroFechaBarra ||
     filtroEmpresa !== "TODAS" ||
     filtroTipo !== "TODOS" ||
@@ -1355,6 +1471,8 @@ export default function TableroCarteraAnalytics() {
       if (!incluirMutual && !pideMutualExplicita && empEsMut) {
         return false;
       }
+      if (filtroSedeTop === "SEDE_2" && !empEsMut) return false;
+      if (filtroSedeTop === "SEDE_1" && empEsMut) return false;
       if (
         empresasFrecSel.length > 0 &&
         empresasFrecSel.length < todasLasEmpresasDisponibles.length
@@ -3395,6 +3513,167 @@ export default function TableroCarteraAnalytics() {
     });
   };
 
+  // Mapa determinístico de cruces clínicos (cf_pendientes_facturar) + contables (SISMA en vivo) por factura FCOE
+  const mapasCrucePorFactura = useMemo(() => {
+    const clinicoMap = new Map<
+      string,
+      {
+        pacientes: string[];
+        docs: string[];
+        medicos: string[];
+        cups: string[];
+        descripciones: string[];
+        contratos: string[];
+        ufs: string[];
+      }
+    >();
+    const addUniq = (arr: string[], v: string) => {
+      if (v && !arr.includes(v)) arr.push(v);
+    };
+
+    for (const p of pendientes) {
+      const facts = p.facturaAsociada
+        ? [claveFacturaNorm(p.facturaAsociada)]
+        : extraerFacturasFcoe(p.observaciones);
+      if (facts.length === 0) continue;
+      const pac = limpiarNombrePersona(p.pacienteNombre);
+      const doc = String(p.pacienteDoc || "").trim();
+      const med = limpiarNombrePersona(p.medicoNombre || p.medico);
+      for (const fk of facts) {
+        if (!fk) continue;
+        const prev = clinicoMap.get(fk) || {
+          pacientes: [],
+          docs: [],
+          medicos: [],
+          cups: [],
+          descripciones: [],
+          contratos: [],
+          ufs: [],
+        };
+        addUniq(prev.pacientes, pac);
+        addUniq(prev.docs, doc);
+        addUniq(prev.medicos, med);
+        addUniq(prev.cups, String(p.cups || "").trim());
+        addUniq(prev.descripciones, String(p.descripcion || "").trim());
+        addUniq(prev.contratos, String(p.contrato || "").trim());
+        addUniq(prev.ufs, String(p.unidadFuncional || "").trim());
+        clinicoMap.set(fk, prev);
+      }
+    }
+
+    const sismaMap = new Map<string, FacturaSismaVivaRow>();
+    const fuentesSisma = [
+      datosSismaVivo?.facturasAbiertas || [],
+      (datosSismaCompletaRef.current as { facturasAbiertas?: FacturaSismaVivaRow[] } | null)?.facturasAbiertas || [],
+    ];
+    for (const lista of fuentesSisma) {
+      for (const f of lista) {
+        const k = claveFacturaNorm(f.factura);
+        if (k && !sismaMap.has(k)) sismaMap.set(k, f);
+      }
+    }
+
+    return { clinicoMap, sismaMap };
+  }, [pendientes, datosSismaVivo]);
+
+  const cruzarFilaMaestra = (input: {
+    factura?: string;
+    empresa?: string;
+    empresaOriginal?: string;
+    empresaHomologada?: string;
+    nit?: string;
+    deDondeEs?: string;
+    sede?: string;
+    sedeGrupo?: string;
+    tipoAtencion?: string;
+    tipoGrupo?: string;
+    pacienteNombre?: string;
+    pacienteDoc?: string;
+    medicoNombre?: string;
+    cups?: string;
+    unidadFuncional?: string;
+    contrato?: string;
+    descripcion?: string;
+    motivoTexto?: string;
+  }) => {
+    const fk = input.factura ? claveFacturaNorm(input.factura) : "";
+    const clin = fk ? mapasCrucePorFactura.clinicoMap.get(fk) : undefined;
+    const sisma = fk ? mapasCrucePorFactura.sismaMap.get(fk) : undefined;
+
+    const empInfo = homologarEmpresaYOrigen({
+      empresa: input.empresa || sisma?.empresaHomologada,
+      empresaOriginal: input.empresaOriginal || sisma?.razonSocialOriginal,
+      contrato: input.contrato || clin?.contratos[0],
+      nit: input.nit || sisma?.nit,
+      descripcionCuenta: sisma?.descripcionCuenta,
+      tipoFactura: sisma?.tipoFactura,
+    });
+
+    const cupsFinal = input.cups || (clin ? clin.cups.join(", ") : "");
+    const descClin = input.descripcion || (clin ? clin.descripciones.join(" · ") : "");
+    const atInfo = clasificarAtencionYSede({
+      esMutual: empInfo.esMutual,
+      cups: clin?.cups[0] || input.cups,
+      unidadFuncional: input.unidadFuncional || clin?.ufs[0],
+      descripcion: descClin,
+      contrato: input.contrato || clin?.contratos[0],
+      cuentaContable: sisma?.cuenta,
+      descripcionCuenta: sisma?.descripcionCuenta,
+      tipoFactura: sisma?.tipoFactura,
+      motivoTexto: input.motivoTexto,
+    });
+
+    const tipoGrupoFinal =
+      input.tipoGrupo && input.tipoGrupo !== "SIN_DETALLE"
+        ? input.tipoGrupo
+        : atInfo.tipoGrupo !== "SIN_DETALLE"
+        ? atInfo.tipoGrupo
+        : sisma?.tipoGrupo || atInfo.tipoGrupo;
+
+    const tipoAtencionFinal =
+      input.tipoAtencion && input.tipoGrupo !== "SIN_DETALLE"
+        ? input.tipoAtencion
+        : atInfo.tipoGrupo !== "SIN_DETALLE"
+        ? atInfo.tipoAtencion
+        : sisma?.tipoAtencion || atInfo.tipoAtencion;
+
+    return {
+      nit: input.nit || sisma?.nit || empInfo.nit,
+      empresaHomologada: input.empresaHomologada || sisma?.empresaHomologada || empInfo.empresaHomologada,
+      esMutual: empInfo.esMutual,
+      deDondeEs: input.deDondeEs || sisma?.deDondeEs || empInfo.deDondeEs,
+      sedeGrupo: input.sedeGrupo || atInfo.sedeGrupo,
+      sede:
+        tipoGrupoFinal === "CIRUGIA"
+          ? empInfo.esMutual
+            ? "Sede 2 · Quirófano"
+            : "Sede 1 · Quirófano"
+          : input.sede || atInfo.sede,
+      tipoGrupo: tipoGrupoFinal,
+      tipoAtencion: tipoAtencionFinal,
+      pacienteNombre:
+        input.pacienteNombre ||
+        (clin && clin.pacientes.length > 0 ? clin.pacientes.join(" / ") : "") ||
+        sisma?.pacienteNombre ||
+        "",
+      pacienteDoc:
+        input.pacienteDoc ||
+        (clin && clin.docs.length > 0 ? clin.docs.join(" / ") : "") ||
+        sisma?.pacienteDoc ||
+        "",
+      medicoNombre:
+        input.medicoNombre ||
+        (clin && clin.medicos.length > 0 ? clin.medicos.join(" / ") : ""),
+      cups: cupsFinal,
+      servicioDescripcion: descClin,
+      fechaFacturaSisma: sisma?.fechaFactura || "",
+      fechaRadicacionSisma: sisma?.fechaRadicacion || "",
+      saldoSisma: sisma?.saldo,
+      diasSisma: sisma?.dias,
+      descripcionCuentaSisma: sisma?.descripcionCuenta || "",
+    };
+  };
+
   const filtrarBaseAnuladas = (lista: AnuladaRow[]) => {
     const q = busqueda.toLowerCase().trim();
     const base = lista.filter((r) => {
@@ -3435,8 +3714,11 @@ export default function TableroCarteraAnalytics() {
       ) {
         return false;
       }
+      const cr = cruzarFilaMaestra({ ...r, motivoTexto: r.motivo });
+      if (filtroSedeTop !== "TODAS" && cr.sedeGrupo !== filtroSedeTop) return false;
+      if (filtroAtencionTop !== "TODAS" && cr.tipoGrupo !== filtroAtencionTop) return false;
       if (q) {
-        const texto = `${r.factura} ${r.empresa} ${r.motivo} ${r.facturaReemplaza} ${respReal} ${r.revisionFinanciera} ${r.rips}`.toLowerCase();
+        const texto = `${r.factura} ${r.empresa} ${cr.empresaHomologada} ${cr.nit} ${cr.deDondeEs} ${cr.sede} ${cr.tipoAtencion} ${cr.pacienteNombre} ${cr.medicoNombre} ${r.motivo} ${r.facturaReemplaza} ${respReal} ${r.revisionFinanciera} ${r.rips}`.toLowerCase();
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -3466,6 +3748,9 @@ export default function TableroCarteraAnalytics() {
       diasDesde,
       diasHasta,
       diasSemanaSel,
+      filtroSedeTop,
+      filtroAtencionTop,
+      mapasCrucePorFactura,
     ]
   );
 
@@ -3491,6 +3776,9 @@ export default function TableroCarteraAnalytics() {
       diasDesde,
       diasHasta,
       diasSemanaSel,
+      filtroSedeTop,
+      filtroAtencionTop,
+      mapasCrucePorFactura,
     ]
   );
 
@@ -3516,6 +3804,9 @@ export default function TableroCarteraAnalytics() {
       diasDesde,
       diasHasta,
       diasSemanaSel,
+      filtroSedeTop,
+      filtroAtencionTop,
+      mapasCrucePorFactura,
     ]
   );
 
@@ -3557,8 +3848,11 @@ export default function TableroCarteraAnalytics() {
         if (filtroEstado === "REEMPLAZADA" && r.subtabla !== "RESPONDIDA_NO_ACEPTADA") return false;
         if (filtroEstado === "PENDIENTE" && r.subtabla === "RESPONDIDA_NO_ACEPTADA") return false;
       }
+      const cr = cruzarFilaMaestra({ ...r, motivoTexto: `${r.motivoGlosa} ${r.observacionInterna}` });
+      if (filtroSedeTop !== "TODAS" && cr.sedeGrupo !== filtroSedeTop) return false;
+      if (filtroAtencionTop !== "TODAS" && cr.tipoGrupo !== filtroAtencionTop) return false;
       if (q) {
-        const texto = `${r.factura} ${r.empresa} ${r.motivoGlosa} ${r.observacionInterna} ${r.notaCredito} ${facReal}`.toLowerCase();
+        const texto = `${r.factura} ${r.empresa} ${cr.empresaHomologada} ${cr.nit} ${cr.deDondeEs} ${cr.sede} ${cr.tipoAtencion} ${cr.pacienteNombre} ${cr.medicoNombre} ${r.motivoGlosa} ${r.observacionInterna} ${r.notaCredito} ${facReal} ${r.responsableAceptacion || ""}`.toLowerCase();
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -3583,6 +3877,9 @@ export default function TableroCarteraAnalytics() {
     diasDesde,
     diasHasta,
     diasSemanaSel,
+    filtroSedeTop,
+    filtroAtencionTop,
+    mapasCrucePorFactura,
   ]);
 
   const pendientesFiltradas = useMemo(() => {
@@ -3623,8 +3920,18 @@ export default function TableroCarteraAnalytics() {
         if (filtroEstado === "REEMPLAZADA" && r.estado !== "FACTURADO") return false;
         if (filtroEstado === "PENDIENTE" && r.estado === "FACTURADO") return false;
       }
+      const cr = cruzarFilaMaestra({
+        ...r,
+        factura: r.facturaAsociada,
+        cups: r.cups,
+        unidadFuncional: r.unidadFuncional,
+        contrato: r.contrato,
+        descripcion: r.descripcion,
+      });
+      if (filtroSedeTop !== "TODAS" && cr.sedeGrupo !== filtroSedeTop) return false;
+      if (filtroAtencionTop !== "TODAS" && cr.tipoGrupo !== filtroAtencionTop) return false;
       if (q) {
-        const texto = `${r.cups} ${r.descripcion} ${r.empresa} ${r.medico} ${r.observaciones} ${respReal}`.toLowerCase();
+        const texto = `${r.cups} ${r.descripcion} ${r.empresa} ${cr.empresaHomologada} ${cr.deDondeEs} ${cr.sede} ${cr.tipoAtencion} ${r.pacienteNombre || ""} ${r.pacienteDoc || ""} ${r.medico} ${r.observaciones} ${respReal}`.toLowerCase();
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -3649,18 +3956,86 @@ export default function TableroCarteraAnalytics() {
     diasDesde,
     diasHasta,
     diasSemanaSel,
+    filtroSedeTop,
+    filtroAtencionTop,
+    mapasCrucePorFactura,
+  ]);
+
+  const facturasSismaFiltradas = useMemo(() => {
+    const origen = datosSismaVivo?.facturasAbiertas || [];
+    const q = busqueda.toLowerCase().trim();
+    return origen.filter((f) => {
+      const cr = cruzarFilaMaestra({
+        factura: f.factura,
+        empresa: f.empresaHomologada,
+        empresaOriginal: f.razonSocialOriginal,
+        nit: f.nit,
+        deDondeEs: f.deDondeEs,
+        sede: f.sede,
+        sedeGrupo: f.sedeGrupo,
+        tipoAtencion: f.tipoAtencion,
+        tipoGrupo: f.tipoGrupo,
+        pacienteNombre: f.pacienteNombre,
+        pacienteDoc: f.pacienteDoc,
+      });
+      const anioFact = (f.fechaFactura || "").slice(0, 4);
+      if (
+        !cumpleFiltrosFrecuencias(
+          anioFact,
+          f.empresaCorta,
+          f.responsable,
+          f.fechaFactura || f.fechaRadicacion,
+          f.razonSocialOriginal
+        )
+      ) {
+        return false;
+      }
+      if (filtroSedeTop !== "TODAS" && cr.sedeGrupo !== filtroSedeTop) return false;
+      if (filtroAtencionTop !== "TODAS" && cr.tipoGrupo !== filtroAtencionTop) return false;
+      if (q) {
+        const texto = `${f.factura} ${cr.empresaHomologada} ${f.nit} ${cr.deDondeEs} ${cr.sede} ${cr.tipoAtencion} ${cr.pacienteNombre} ${cr.medicoNombre} ${f.descripcionCuenta} ${f.responsable}`.toLowerCase();
+        if (!texto.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [
+    datosSismaVivo,
+    busqueda,
+    filtroSedeTop,
+    filtroAtencionTop,
+    aniosFrecSel,
+    mesesFrecSel,
+    empresasFrecSel,
+    responsablesFrecSel,
+    incluirMutual,
+    diasFiltroActivo,
+    diasDesde,
+    diasHasta,
+    diasSemanaSel,
+    filtroEmpresa,
+    filtroAnio,
+    filtroResponsable,
+    mapasCrucePorFactura,
   ]);
 
   const listaActivaCompleta = useMemo(() => {
+    if (tabActiva === "cartera_viva") return (datosSismaVivo?.facturasAbiertas || []) as unknown as Record<string, unknown>[];
     if (tabActiva === "anuladas") return anuladas as unknown as Record<string, unknown>[];
     if (tabActiva === "legalizadas") return legalizadas as unknown as Record<string, unknown>[];
     if (tabActiva === "glosas") return glosas as unknown as Record<string, unknown>[];
     return pendientes as unknown as Record<string, unknown>[];
-  }, [tabActiva, anuladas, legalizadas, glosas, pendientes]);
+  }, [tabActiva, datosSismaVivo, anuladas, legalizadas, glosas, pendientes]);
 
   const listaActivaPaginada = useMemo(() => {
     const start = (paginaActual - 1) * filasPorPagina;
     const end = start + filasPorPagina;
+    if (tabActiva === "cartera_viva") {
+      return {
+        total: facturasSismaFiltradas.length,
+        totalPaginas: Math.max(1, Math.ceil(facturasSismaFiltradas.length / filasPorPagina)),
+        items: facturasSismaFiltradas.slice(start, end),
+      };
+    }
     if (tabActiva === "anuladas") {
       return {
         total: anuladasFiltradas.length,
@@ -3687,7 +4062,7 @@ export default function TableroCarteraAnalytics() {
       totalPaginas: Math.max(1, Math.ceil(pendientesFiltradas.length / filasPorPagina)),
       items: pendientesFiltradas.slice(start, end),
     };
-  }, [tabActiva, anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas, paginaActual]);
+  }, [tabActiva, facturasSismaFiltradas, anuladasFiltradas, legalizadasFiltradas, glosasFiltradas, pendientesFiltradas, paginaActual]);
 
   const maxValorGrafica = useMemo(() => {
     return Math.max(...listaCortesActiva.map((c) => c.carteraTotal), 1);
@@ -4238,105 +4613,222 @@ export default function TableroCarteraAnalytics() {
     mostrarMensaje(`Nuevo registro agregado en ${tabActiva.toUpperCase()}.`);
   };
 
-  // Export current filtered table to CSV (Excel compatible UTF-8 BOM)
+  // Export current filtered table to CSV (Excel compatible UTF-8 BOM) with full SISMA crossings in executive order
   const exportarVistaExcelCSV = () => {
     let headers: string[] = [];
     let rows: (string | number)[][] = [];
 
-    if (tabActiva === "anuladas" || tabActiva === "legalizadas") {
+    if (tabActiva === "glosas") {
+      headers = [
+        "Factura",
+        "Fecha Factura",
+        "Fecha Radicación",
+        "Fecha Notificación Glosa",
+        "Año",
+        "Sede",
+        "Consulta o Cirugía",
+        "Empresa Homologada",
+        "NIT",
+        "De dónde es (Convenio / Régimen)",
+        "Paciente (Cruce)",
+        "Documento Paciente",
+        "Médico / Especialista (Cruce)",
+        "CUPS",
+        "Facturador",
+        "Responsable Respuesta Glosa",
+        "Valor Facturado",
+        "Valor Glosado",
+        "Valor Aceptado",
+        "Causa Normativa (FA-CO)",
+        "Código Causal",
+        "Motivo de Glosa",
+        "Nota Crédito",
+        "Estado",
+        "Observación / Respuesta",
+      ];
+      rows = glosasFiltradas.map((r) => {
+        const cr = cruzarFilaMaestra({ ...r, motivoTexto: `${r.motivoGlosa} ${r.observacionInterna}` });
+        const facReal = normalizarResponsableReal(r.facturador, r.empresa);
+        return [
+          r.factura,
+          r.fechaFactura || cr.fechaFacturaSisma,
+          r.fechaRadicacion || cr.fechaRadicacionSisma,
+          r.fechaNotificacionGlosa || "",
+          r.anio,
+          cr.sede,
+          cr.tipoAtencion,
+          cr.empresaHomologada,
+          cr.nit,
+          cr.deDondeEs,
+          cr.pacienteNombre || "Sin detalle clínico en factura",
+          cr.pacienteDoc,
+          cr.medicoNombre,
+          cr.cups,
+          facReal,
+          r.responsableAceptacion || r.responsableRespuesta || facReal,
+          r.valorFacturado || r.valorFactura || r.valorRadicado,
+          r.valorGlosado,
+          r.valorAceptado ?? "",
+          causaNormativaDe(r.motivoCodigo),
+          r.motivoCodigo || "",
+          r.motivoGlosa,
+          r.notaCredito,
+          r.estado || r.subtabla,
+          r.observacionInterna,
+        ];
+      });
+    } else if (tabActiva === "cartera_viva") {
+      headers = [
+        "Factura",
+        "Fecha Emisión",
+        "Fecha Radicación",
+        "Días Edad",
+        "Sede",
+        "Consulta o Cirugía",
+        "Empresa Homologada",
+        "NIT",
+        "De dónde es (Convenio / Régimen)",
+        "Paciente (Cruce)",
+        "Médico (Cruce)",
+        "Responsable Cartera",
+        "Cuenta Contable SISMA",
+        "Descripción Cuenta",
+        "Corriente (<=60d)",
+        "Vencida (>60d)",
+        "Saldo Total Abierto",
+        "Estado Radicación",
+      ];
+      rows = facturasSismaFiltradas.map((f) => {
+        const cr = cruzarFilaMaestra({
+          factura: f.factura,
+          empresa: f.empresaHomologada,
+          empresaOriginal: f.razonSocialOriginal,
+          nit: f.nit,
+          deDondeEs: f.deDondeEs,
+          sede: f.sede,
+          sedeGrupo: f.sedeGrupo,
+          tipoAtencion: f.tipoAtencion,
+          tipoGrupo: f.tipoGrupo,
+          pacienteNombre: f.pacienteNombre,
+          pacienteDoc: f.pacienteDoc,
+        });
+        return [
+          f.factura,
+          f.fechaFactura,
+          f.fechaRadicacion,
+          f.dias,
+          cr.sede,
+          cr.tipoAtencion,
+          cr.empresaHomologada,
+          f.nit,
+          cr.deDondeEs,
+          cr.pacienteNombre || "Factura corporativa / Sin paciente individual",
+          cr.medicoNombre,
+          f.responsable,
+          f.cuenta,
+          f.descripcionCuenta,
+          f.corriente,
+          f.vencida,
+          f.saldo,
+          f.esPendienteRadicar ? "PENDIENTE RADICAR (130125)" : "RADICADA",
+        ];
+      });
+    } else if (tabActiva === "pendientes") {
+      headers = [
+        "Fecha Servicio",
+        "Factura Asociada",
+        "Año",
+        "Sede",
+        "Consulta o Cirugía",
+        "Empresa Homologada",
+        "NIT",
+        "De dónde es (Convenio / Régimen)",
+        "Contrato / Plan",
+        "Paciente",
+        "Documento Paciente",
+        "Médico / Especialista",
+        "Responsable Facturación",
+        "CUPS",
+        "Descripción del Servicio",
+        "Valor Servicio",
+        "Estado",
+        "Observaciones",
+      ];
+      rows = pendientesFiltradas.map((r) => {
+        const cr = cruzarFilaMaestra({
+          ...r,
+          factura: r.facturaAsociada,
+          cups: r.cups,
+          unidadFuncional: r.unidadFuncional,
+          contrato: r.contrato,
+          descripcion: r.descripcion,
+        });
+        return [
+          r.fechaServicio,
+          r.facturaAsociada || "",
+          r.anio,
+          cr.sede,
+          cr.tipoAtencion,
+          cr.empresaHomologada,
+          cr.nit,
+          cr.deDondeEs,
+          r.contrato,
+          r.pacienteNombre || "",
+          r.pacienteDoc || "",
+          r.medico,
+          normalizarResponsableReal(r.responsable, r.empresa),
+          r.cups,
+          r.descripcion,
+          r.valorServicio,
+          r.estado,
+          r.observaciones,
+        ];
+      });
+    } else {
       const source = tabActiva === "anuladas" ? anuladasFiltradas : legalizadasFiltradas;
       headers = [
-        "ID",
-        "Año",
-        "Periodo",
-        "Empresa",
         "Factura",
-        "Fecha Radicacion",
+        "Fecha Factura",
+        "Fecha Radicación",
+        "Fecha Anulación",
+        "Año",
+        "Sede",
+        "Consulta o Cirugía",
+        "Empresa Homologada",
+        "NIT",
+        "De dónde es (Convenio / Régimen)",
+        "Paciente (Cruce)",
+        "Médico (Cruce)",
+        "Responsable",
         "Valor Facturado",
-        "Valor Glosa/Devolucion",
-        "Tipo",
-        "Motivo",
-        "Factura Reemplaza",
+        "Factura Reemplazo",
         "RIPS",
-        "Revision Financiera",
-        "Responsable",
+        "Motivo",
         "Estado",
       ];
-      rows = source.map((r) => [
-        r.id,
-        r.anio,
-        r.periodo,
-        r.empresa,
-        r.factura,
-        r.fechaRadicacion,
-        r.valorRadicado,
-        r.valorGlosaDevolucion || 0,
-        r.tipo,
-        r.motivo,
-        r.facturaReemplaza,
-        r.rips,
-        r.revisionFinanciera,
-        normalizarResponsableReal(r.responsable, r.empresa),
-        r.estadoGestion,
-      ]);
-    } else if (tabActiva === "glosas") {
-      headers = [
-        "ID",
-        "Estado Glosa",
-        "Año",
-        "Empresa",
-        "Factura",
-        "Fecha Radicacion",
-        "Valor Factura",
-        "Valor Glosado",
-        "Motivo Glosa",
-        "Facturador",
-        "Observacion Interna",
-        "Nota Credito",
-      ];
-      rows = glosasFiltradas.map((r) => [
-        r.id,
-        r.subtabla,
-        r.anio,
-        r.empresa,
-        r.factura,
-        r.fechaRadicacion,
-        r.valorFactura || r.valorRadicado,
-        r.valorGlosado,
-        r.motivoGlosa,
-        normalizarResponsableReal(r.facturador, r.empresa),
-        r.observacionInterna,
-        r.notaCredito,
-      ]);
-    } else {
-      headers = [
-        "ID",
-        "Año",
-        "Empresa",
-        "Contrato",
-        "CUPS",
-        "Descripcion",
-        "Fecha Servicio",
-        "Medico",
-        "Valor Servicio",
-        "Responsable",
-        "Observaciones",
-        "Estado",
-      ];
-      rows = pendientesFiltradas.map((r) => [
-        r.id,
-        r.anio,
-        r.empresa,
-        r.contrato,
-        r.cups,
-        r.descripcion,
-        r.fechaServicio,
-        r.medico,
-        r.valorServicio,
-        normalizarResponsableReal(r.responsable, r.empresa),
-        r.observaciones,
-        r.estado,
-      ]);
+      rows = source.map((r) => {
+        const cr = cruzarFilaMaestra({ ...r, motivoTexto: r.motivo });
+        return [
+          r.factura,
+          r.fechaFactura,
+          r.fechaRadicacion,
+          r.fechaAnulacion,
+          r.anio,
+          cr.sede,
+          cr.tipoAtencion,
+          cr.empresaHomologada,
+          cr.nit,
+          cr.deDondeEs,
+          cr.pacienteNombre || "Sin detalle clínico en factura",
+          cr.medicoNombre,
+          normalizarResponsableReal(r.responsable, r.empresa),
+          r.valorRadicado,
+          r.facturaReemplaza,
+          r.rips,
+          r.motivo,
+          r.estadoGestion,
+        ];
+      });
     }
 
     const csvContent =
@@ -5132,6 +5624,89 @@ export default function TableroCarteraAnalytics() {
           Limpiar
         </button>
 
+        {/* 6B. FILTROS RÁPIDOS DE SEDE Y ATENCIÓN (CONSULTA / CIRUGÍA) */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider"
+            style={{ color: "#5B6483" }}
+          >
+            SEDE
+          </span>
+          <div
+            className="inline-flex rounded-[10px] p-0.5 border"
+            style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
+          >
+            {(
+              [
+                { id: "TODAS", label: "Todas" },
+                { id: "SEDE_1", label: "Sede 1" },
+                { id: "SEDE_2", label: "Sede 2" },
+              ] as const
+            ).map((op) => {
+              const act = filtroSedeTop === op.id;
+              return (
+                <button
+                  key={op.id}
+                  type="button"
+                  onClick={() => {
+                    setFiltroSedeTop(op.id);
+                    if (op.id === "SEDE_2" && !incluirMutual) setIncluirMutual(true);
+                    setPaginaActual(1);
+                  }}
+                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
+                  style={{
+                    backgroundColor: act ? "#0E245E" : "transparent",
+                    color: act ? "#FFFFFF" : "#5B6483",
+                  }}
+                >
+                  {op.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider"
+            style={{ color: "#5B6483" }}
+          >
+            ATENCIÓN
+          </span>
+          <div
+            className="inline-flex rounded-[10px] p-0.5 border"
+            style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
+          >
+            {(
+              [
+                { id: "TODAS", label: "Todas" },
+                { id: "CONSULTA", label: "Consulta" },
+                { id: "CIRUGIA", label: "Cirugía" },
+                { id: "AYUDA_DX", label: "Ayuda Dx" },
+              ] as const
+            ).map((op) => {
+              const act = filtroAtencionTop === op.id;
+              return (
+                <button
+                  key={op.id}
+                  type="button"
+                  onClick={() => {
+                    setFiltroAtencionTop(op.id);
+                    setPaginaActual(1);
+                  }}
+                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
+                  style={{
+                    backgroundColor: act ? "#1D58D8" : "transparent",
+                    color: act ? "#FFFFFF" : "#5B6483",
+                  }}
+                >
+                  {op.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 7. INTERRUPTOR MUTUAL DE 3 VÍAS: CON MUTUAL | SOLO MUTUAL | SIN MUTUAL */}
         {(() => {
           const modoSoloMutual =
@@ -5795,13 +6370,15 @@ export default function TableroCarteraAnalytics() {
                       ))}
                     </div>
 
-                    {/* TOP ENTIDADES EN CARTERA POR EDADES EN VIVO */}
+                    {/* TOP ENTIDADES EN CARTERA POR EDADES EN VIVO (HOMOLOGADAS POR NIT, SEDE Y ORIGEN) */}
                     <div className="overflow-x-auto border rounded-xl bg-white" style={{ borderColor: "#E2ECF8" }}>
                       <table className="w-full text-xs border-collapse">
                         <thead>
                           <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                            <th className="text-left p-2.5 font-bold">NIT</th>
-                            <th className="text-left p-2.5 font-bold">Entidad / Pagador (SISMA en Vivo)</th>
+                            <th className="text-left p-2.5 font-bold">Sede</th>
+                            <th className="text-left p-2.5 font-bold">Entidad Homologada (NIT SISMA)</th>
+                            <th className="text-left p-2.5 font-bold">De dónde es (Convenio / Régimen)</th>
+                            <th className="text-left p-2.5 font-bold">Responsable</th>
                             <th className="text-right p-2.5 font-bold">Facturas</th>
                             <th className="text-right p-2.5 font-bold">Pend. Radicar (130125)</th>
                             <th className="text-right p-2.5 font-bold">Corriente (&lt;= 60d)</th>
@@ -5810,31 +6387,56 @@ export default function TableroCarteraAnalytics() {
                           </tr>
                         </thead>
                         <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
-                          {empresasSismaFiltradas.map((emp) => (
-                            <tr key={emp.nit + emp.razonSocial} className="hover:bg-slate-50">
-                              <td className="p-2.5 font-mono" style={{ color: "#475569" }}>
-                                {emp.nit}
-                              </td>
-                              <td className="p-2.5 font-bold" style={{ color: "#0E245E" }}>
-                                {emp.razonSocial}
-                              </td>
-                              <td className="p-2.5 text-right font-mono" style={{ color: "#334155" }}>
-                                {emp.facturasCount.toLocaleString("es-CO")}
-                              </td>
-                              <td className="p-2.5 text-right font-mono" style={{ color: "#B45309" }}>
-                                {formatCOP(emp.pendienteRadicar)}
-                              </td>
-                              <td className="p-2.5 text-right font-mono font-semibold" style={{ color: "#1D58D8" }}>
-                                {formatCOP(emp.corriente)}
-                              </td>
-                              <td className="p-2.5 text-right font-mono font-semibold" style={{ color: "#BE123C" }}>
-                                {formatCOP(emp.vencida)}
-                              </td>
-                              <td className="p-2.5 text-right font-mono font-extrabold" style={{ color: "#0E245E" }}>
-                                {formatCOP(emp.total)}
-                              </td>
-                            </tr>
-                          ))}
+                          {empresasSismaFiltradas.map((emp) => {
+                            const infoH = homologarEmpresaYOrigen({
+                              empresa: emp.nombreHomologado || emp.razonSocial,
+                              empresaOriginal: emp.razonSocialOriginal || emp.razonSocial,
+                              nit: emp.nit,
+                            });
+                            const sedeLbl = emp.sede || (infoH.esMutual ? "Sede 2 · Consultorios" : "Sede 1 · Principal");
+                            const respLbl = emp.responsable || normalizarResponsableReal("", infoH.empresaCorta);
+                            return (
+                              <tr key={emp.nit + emp.razonSocial} className="hover:bg-[#EFF6FF] transition-colors">
+                                <td className="p-2.5 whitespace-nowrap">
+                                  <span
+                                    className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
+                                    style={{
+                                      backgroundColor: infoH.esMutual ? "#EFF6FF" : "#ECFDF5",
+                                      color: infoH.esMutual ? "#1D4ED8" : "#047857",
+                                      borderColor: infoH.esMutual ? "#BFDBFE" : "#A7F3D0",
+                                    }}
+                                  >
+                                    {sedeLbl}
+                                  </span>
+                                </td>
+                                <td className="p-2.5">
+                                  <div className="font-bold text-[#0E245E]">{infoH.empresaHomologada}</div>
+                                  {infoH.nit && (
+                                    <div className="text-[10.5px] font-mono text-[#64748B]">NIT {infoH.nit}</div>
+                                  )}
+                                </td>
+                                <td className="p-2.5 font-semibold text-[#334155]">
+                                  {emp.deDondeEs || infoH.deDondeEs}
+                                </td>
+                                <td className="p-2.5 font-semibold text-[#475569]">{respLbl}</td>
+                                <td className="p-2.5 text-right font-mono" style={{ color: "#334155" }}>
+                                  {emp.facturasCount.toLocaleString("es-CO")}
+                                </td>
+                                <td className="p-2.5 text-right font-mono" style={{ color: "#B45309" }}>
+                                  {formatCOP(emp.pendienteRadicar)}
+                                </td>
+                                <td className="p-2.5 text-right font-mono font-semibold" style={{ color: "#1D58D8" }}>
+                                  {formatCOP(emp.corriente)}
+                                </td>
+                                <td className="p-2.5 text-right font-mono font-semibold" style={{ color: "#BE123C" }}>
+                                  {formatCOP(emp.vencida)}
+                                </td>
+                                <td className="p-2.5 text-right font-mono font-extrabold" style={{ color: "#0E245E" }}>
+                                  {formatCOP(emp.total)}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -7915,9 +8517,753 @@ export default function TableroCarteraAnalytics() {
                 </div>
               </div>
             </div>
+
+            {/* CRUCE DE GLOSAS Y DEFENSA POR SEDE Y POR TIPO DE ATENCIÓN (CONSULTA VS CIRUGÍA) */}
+            {(() => {
+              const acumSede: Record<string, { label: string; glosado: number; defendido: number; cantidad: number }> = {
+                SEDE_1: { label: "Sede 1 · Principal (PyP, Prepagadas, EPS, Particular)", glosado: 0, defendido: 0, cantidad: 0 },
+                SEDE_2: { label: "Sede 2 · Consultorios y Convenio Mutual Ser", glosado: 0, defendido: 0, cantidad: 0 },
+              };
+              const acumAtencion: Record<string, { label: string; glosado: number; defendido: number; cantidad: number; color: string }> = {
+                CONSULTA: { label: "Consulta", glosado: 0, defendido: 0, cantidad: 0, color: "#0284C7" },
+                CIRUGIA: { label: "Cirugía (Quirófano)", glosado: 0, defendido: 0, cantidad: 0, color: "#7C3AED" },
+                AYUDA_DX: { label: "Ayuda Dx / Procedimiento", glosado: 0, defendido: 0, cantidad: 0, color: "#D97706" },
+                SIN_DETALLE: { label: "Factura global / Sin CUPS en fuente", glosado: 0, defendido: 0, cantidad: 0, color: "#64748B" },
+              };
+              for (const g of glosasDash) {
+                const m = clasificarMontosGlosa(g);
+                const cr = cruzarFilaMaestra({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
+                const sg = cr.sedeGrupo === "SEDE_2" ? "SEDE_2" : "SEDE_1";
+                acumSede[sg].glosado += m.glosado;
+                acumSede[sg].defendido += m.defendido;
+                acumSede[sg].cantidad += 1;
+
+                const tg = acumAtencion[cr.tipoGrupo] ? cr.tipoGrupo : "SIN_DETALLE";
+                acumAtencion[tg].glosado += m.glosado;
+                acumAtencion[tg].defendido += m.defendido;
+                acumAtencion[tg].cantidad += 1;
+              }
+
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
+                  <div className="p-4 rounded-xl border bg-white space-y-2.5" style={{ borderColor: "#E2ECF8" }}>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[13px] font-bold text-[#0E245E]">
+                        Glosa y Defensa por Sede (Clic para filtrar)
+                      </h4>
+                      {filtroSedeTop !== "TODAS" && (
+                        <button
+                          type="button"
+                          onClick={() => setFiltroSedeTop("TODAS")}
+                          className="text-[11px] font-bold text-[#1D58D8] cursor-pointer"
+                        >
+                          Ver ambas sedes
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {(["SEDE_1", "SEDE_2"] as const).map((sk) => {
+                        const d = acumSede[sk];
+                        const pct = totGlosado > 0 ? Math.round((d.glosado / totGlosado) * 100) : 0;
+                        const act = filtroSedeTop === sk;
+                        return (
+                          <button
+                            key={sk}
+                            type="button"
+                            onClick={() => setFiltroSedeTop(act ? "TODAS" : sk)}
+                            className="p-3 rounded-xl border text-left transition cursor-pointer"
+                            style={{
+                              borderColor: act ? "#1D58D8" : "#E2ECF8",
+                              backgroundColor: act ? "#EFF6FF" : "#F8FAFC",
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-extrabold text-[#0E245E]">
+                                {sk === "SEDE_1" ? "Sede 1 · Principal" : "Sede 2 · Consultorios"}
+                              </span>
+                              <span className="text-[11px] font-mono font-bold text-[#1D58D8]">{pct}%</span>
+                            </div>
+                            <div className="mt-1 text-sm font-mono font-extrabold text-[#0E245E]">
+                              {formatCOP(d.glosado)}
+                            </div>
+                            <div className="mt-0.5 text-[10.5px] font-mono text-[#047857] font-semibold">
+                              Defendido: {formatCOP(d.defendido)} · {d.cantidad} glosas
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl border bg-white space-y-2.5" style={{ borderColor: "#E2ECF8" }}>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[13px] font-bold text-[#0E245E]">
+                        Glosa por Atención: Consulta vs. Cirugía
+                      </h4>
+                      {filtroAtencionTop !== "TODAS" && (
+                        <button
+                          type="button"
+                          onClick={() => setFiltroAtencionTop("TODAS")}
+                          className="text-[11px] font-bold text-[#1D58D8] cursor-pointer"
+                        >
+                          Ver todas
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {(["CONSULTA", "CIRUGIA", "AYUDA_DX", "SIN_DETALLE"] as const).map((tk) => {
+                        const d = acumAtencion[tk];
+                        const pct = totGlosado > 0 ? Math.round((d.glosado / totGlosado) * 100) : 0;
+                        const filtrable = tk !== "SIN_DETALLE";
+                        const act = filtrable && filtroAtencionTop === tk;
+                        return (
+                          <button
+                            key={tk}
+                            type="button"
+                            disabled={!filtrable}
+                            onClick={() => {
+                              if (filtrable) {
+                                setFiltroAtencionTop(act ? "TODAS" : tk);
+                              }
+                            }}
+                            className={`p-2.5 rounded-xl border text-left transition ${filtrable ? "cursor-pointer hover:bg-slate-50" : "opacity-90"}`}
+                            style={{
+                              borderColor: act ? d.color : "#E2ECF8",
+                              backgroundColor: act ? "#EFF6FF" : "#F8FAFC",
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10.5px] font-extrabold" style={{ color: d.color }}>
+                                {tk === "CONSULTA" ? "Consulta" : tk === "CIRUGIA" ? "Cirugía" : tk === "AYUDA_DX" ? "Ayuda Dx" : "Sin CUPS"}
+                              </span>
+                              <span className="text-[10px] font-mono font-bold text-[#64748B]">{pct}%</span>
+                            </div>
+                            <div className="mt-1 text-xs font-mono font-extrabold text-[#0E245E]">
+                              {formatEscalaEjeY(d.glosado)}
+                            </div>
+                            <div className="mt-0.5 text-[10px] text-[#047857] font-mono">
+                              Def: {formatEscalaEjeY(d.defendido)} ({d.cantidad})
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
+
+      {/* ===================================================================== */}
+      {/* CUADRO 3: REPORTE MAESTRO CRUZADO Y ORDENADO DE CARTERA Y GLOSAS      */}
+      {/* ===================================================================== */}
+      <div
+        className="rounded-xl p-5 sm:p-6 shadow-xs border space-y-4"
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
+      >
+        <div
+          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3 border-b"
+          style={{ borderColor: "#E2ECF8" }}
+        >
+          <button
+            type="button"
+            onClick={() => setCortinaTablaAbierta((prev) => !prev)}
+            className="text-left flex items-center gap-3 cursor-pointer"
+          >
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0"
+              style={{ backgroundColor: "#EFF6FF", color: "#1D58D8" }}
+            >
+              {cortinaTablaAbierta ? "▴" : "▾"}
+            </span>
+            <div>
+              <h3 className="text-base sm:text-lg font-extrabold text-[#0E245E]">
+                Reporte Maestro Cruzado de Cartera, Facturación y Glosas (SISMA + WorkCenter)
+              </h3>
+              <p className="text-xs text-[#64748B]">
+                Ordenado con cruces reales: Factura y Fechas → Sede → Consulta o Cirugía → Empresa (NIT) y De dónde es → Nombres → Valores y Estado
+              </p>
+            </div>
+          </button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setPaginaActual(1);
+                }}
+                placeholder="🔍 Buscar factura, paciente, médico, NIT, CUPS..."
+                className="w-64 sm:w-72 rounded-xl border px-3 py-1.5 text-xs font-medium outline-none focus:border-[#1D58D8]"
+                style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={exportarVistaExcelCSV}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition border"
+              style={{ backgroundColor: "#0E245E", color: "#FFFFFF", borderColor: "#0E245E" }}
+            >
+              📥 Exportar Excel Cruzado ({listaActivaPaginada.total.toLocaleString("es-CO")})
+            </button>
+          </div>
+        </div>
+
+        {cortinaTablaAbierta && (
+          <div className="space-y-3">
+            {/* PESTAÑAS DEL REPORTE MAESTRO */}
+            <div className="flex flex-wrap items-center gap-2">
+              {(
+                [
+                  { id: "glosas", label: "Glosas y Defensa", count: glosasFiltradas.length },
+                  { id: "cartera_viva", label: "Cartera Abierta SISMA (Facturas)", count: facturasSismaFiltradas.length },
+                  { id: "pendientes", label: "Servicios / Pendientes (Consulta y Cirugía)", count: pendientesFiltradas.length },
+                  { id: "anuladas", label: "Facturas Anuladas / Reemplazadas", count: anuladasFiltradas.length },
+                ] as const
+              ).map((tb) => {
+                const act = tabActiva === tb.id;
+                return (
+                  <button
+                    key={tb.id}
+                    type="button"
+                    onClick={() => {
+                      setTabActiva(tb.id);
+                      setPaginaActual(1);
+                    }}
+                    className="px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer border"
+                    style={{
+                      backgroundColor: act ? "#1D58D8" : "#F8FAFC",
+                      color: act ? "#FFFFFF" : "#334155",
+                      borderColor: act ? "#1D58D8" : "#E2ECF8",
+                    }}
+                  >
+                    {tb.label}{" "}
+                    <span
+                      className="ml-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-mono"
+                      style={{
+                        backgroundColor: act ? "rgba(255,255,255,0.22)" : "#E2E8F0",
+                        color: act ? "#FFFFFF" : "#0E245E",
+                      }}
+                    >
+                      {tb.count.toLocaleString("es-CO")}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* TABLA ORDENADA SEGÚN PESTAÑA ACTIVA */}
+            <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "#E2ECF8" }}>
+              {tabActiva === "glosas" && (
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Factura · Fechas</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres (Paciente · Médico · Resp.)</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Vlr. Facturado</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Vlr. Glosado</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Defendido / Aceptado</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Causal · NC · Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                    {(listaActivaPaginada.items as GlosaRow[]).map((g) => {
+                      const cr = cruzarFilaMaestra({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
+                      const facReal = normalizarResponsableReal(g.facturador, g.empresa);
+                      const respR = g.responsableAceptacion && g.responsableAceptacion !== "SIN ASIGNAR"
+                        ? g.responsableAceptacion
+                        : facReal;
+                      const estUp = String(g.estado || g.subtabla || "PENDIENTE").toUpperCase();
+                      const vG = Number(g.valorGlosado || 0);
+                      const vA = g.valorAceptado !== null && g.valorAceptado !== undefined
+                        ? Number(g.valorAceptado)
+                        : estUp.includes("ACEPTADA") && !estUp.includes("NO_ACEPTADA")
+                        ? vG
+                        : 0;
+                      const vDef = estUp === "PENDIENTE" || estUp === "EN_GESTION" ? 0 : Math.max(0, vG - vA);
+                      const codNorma = causaNormativaDe(g.motivoCodigo);
+                      const expandida = Boolean(filasExpandidas[g.id]);
+                      return (
+                        <React.Fragment key={g.id}>
+                          <tr
+                            onClick={() => togglePersianaFila(g.id)}
+                            className="hover:bg-[#EFF6FF] transition-colors cursor-pointer align-top"
+                          >
+                            <td className="p-2.5 font-mono whitespace-nowrap">
+                              <div className="font-extrabold text-[#0E245E]">{g.factura || "—"}</div>
+                              <div className="text-[10.5px] text-[#64748B]">
+                                F: {(g.fechaFactura || cr.fechaFacturaSisma || g.anio || "—").slice(0, 10)}
+                              </div>
+                              {(g.fechaNotificacionGlosa || g.fechaRadicacion) && (
+                                <div className="text-[10px] text-[#1D58D8]">
+                                  {g.fechaNotificacionGlosa
+                                    ? `Notif: ${g.fechaNotificacionGlosa.slice(0, 10)}`
+                                    : `Rad: ${g.fechaRadicacion.slice(0, 10)}`}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-2.5 whitespace-nowrap">
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
+                                style={{
+                                  backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
+                                  color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
+                                  borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
+                                }}
+                              >
+                                {cr.sede}
+                              </span>
+                            </td>
+                            <td className="p-2.5 whitespace-nowrap">
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
+                                style={{
+                                  backgroundColor:
+                                    cr.tipoGrupo === "CIRUGIA"
+                                      ? "#F5F3FF"
+                                      : cr.tipoGrupo === "CONSULTA"
+                                      ? "#F0F9FF"
+                                      : cr.tipoGrupo === "AYUDA_DX"
+                                      ? "#FFFBEB"
+                                      : "#F8FAFC",
+                                  color:
+                                    cr.tipoGrupo === "CIRUGIA"
+                                      ? "#6D28D9"
+                                      : cr.tipoGrupo === "CONSULTA"
+                                      ? "#0369A1"
+                                      : cr.tipoGrupo === "AYUDA_DX"
+                                      ? "#B45309"
+                                      : "#64748B",
+                                  borderColor:
+                                    cr.tipoGrupo === "CIRUGIA"
+                                      ? "#DDD6FE"
+                                      : cr.tipoGrupo === "CONSULTA"
+                                      ? "#BAE6FD"
+                                      : cr.tipoGrupo === "AYUDA_DX"
+                                      ? "#FDE68A"
+                                      : "#E2E8F0",
+                                }}
+                              >
+                                {cr.tipoAtencion}
+                              </span>
+                            </td>
+                            <td className="p-2.5">
+                              <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
+                              {cr.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {cr.nit}</div>}
+                            </td>
+                            <td className="p-2.5 text-[11px] font-semibold text-[#334155]">
+                              {cr.deDondeEs}
+                            </td>
+                            <td className="p-2.5 text-[11px]">
+                              {cr.pacienteNombre ? (
+                                <div className="font-bold text-[#0E245E]">
+                                  Pac: {cr.pacienteNombre}
+                                  {cr.pacienteDoc ? ` (${cr.pacienteDoc})` : ""}
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-[#94A3B8]">Factura contable sin detalle clínico</div>
+                              )}
+                              {cr.medicoNombre && (
+                                <div className="text-[10.5px] text-[#334155]">Dr(a): {cr.medicoNombre}</div>
+                              )}
+                              <div className="text-[10.5px] text-[#475569]">
+                                Resp: <strong className="text-[#0E245E]">{respR}</strong>
+                                {facReal && facReal !== respR ? ` · Fact: ${facReal}` : ""}
+                              </div>
+                            </td>
+                            <td className="p-2.5 text-right font-mono text-[#334155]">
+                              {formatCOP(g.valorFacturado || g.valorFactura || g.valorRadicado)}
+                            </td>
+                            <td className="p-2.5 text-right font-mono font-extrabold text-[#BE123C]">
+                              {formatCOP(vG)}
+                            </td>
+                            <td className="p-2.5 text-right font-mono whitespace-nowrap">
+                              <div className="font-bold text-[#047857]">Def: {formatCOP(vDef)}</div>
+                              <div className="text-[10px] text-[#6D28D9]">Acp: {formatCOP(vA)}</div>
+                            </td>
+                            <td className="p-2.5">
+                              <div className="flex flex-wrap items-center gap-1">
+                                {codNorma && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#EFF6FF] text-[#1D4ED8] font-mono font-bold text-[10px]">
+                                    {codNorma}
+                                  </span>
+                                )}
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-[#0E245E]">
+                                  {estUp === "RESPONDIDA_NO_ACEPTADA" || estUp === "NO_ACEPTADA"
+                                    ? "Defendida"
+                                    : estUp.includes("ACEPTADA")
+                                    ? "Conciliada / NC"
+                                    : "En Gestión"}
+                                </span>
+                              </div>
+                              <div className="mt-0.5 text-[10px] font-mono text-[#64748B]">
+                                NC: {g.notaCredito || "Pendiente"}
+                              </div>
+                            </td>
+                          </tr>
+                          {expandida && (
+                            <tr className="bg-[#F8FAFC]">
+                              <td colSpan={10} className="p-3 text-[11.5px] text-[#334155] space-y-1">
+                                <div>
+                                  <strong className="text-[#0E245E]">Motivo de Glosa:</strong> {g.motivoGlosa || "—"}
+                                </div>
+                                {g.observacionInterna && (
+                                  <div>
+                                    <strong className="text-[#0E245E]">Respuesta / Observación:</strong> {g.observacionInterna}
+                                  </div>
+                                )}
+                                {cr.servicioDescripcion && (
+                                  <div>
+                                    <strong className="text-[#0E245E]">Servicio Clínico Cruzado ({cr.cups}):</strong>{" "}
+                                    {cr.servicioDescripcion}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              {tabActiva === "cartera_viva" && (
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Factura · Fechas · Edad</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es · Cuenta SISMA</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres / Responsable</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Corriente (&lt;=60d)</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Vencida (&gt;60d)</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Saldo Abierto</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Radicación</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                    {(listaActivaPaginada.items as FacturaSismaVivaRow[]).map((f, idx) => {
+                      const cr = cruzarFilaMaestra({
+                        factura: f.factura,
+                        empresa: f.empresaHomologada,
+                        empresaOriginal: f.razonSocialOriginal,
+                        nit: f.nit,
+                        deDondeEs: f.deDondeEs,
+                        sede: f.sede,
+                        sedeGrupo: f.sedeGrupo,
+                        tipoAtencion: f.tipoAtencion,
+                        tipoGrupo: f.tipoGrupo,
+                        pacienteNombre: f.pacienteNombre,
+                        pacienteDoc: f.pacienteDoc,
+                      });
+                      return (
+                        <tr key={`${f.factura}-${f.cuenta}-${idx}`} className="hover:bg-[#EFF6FF] transition-colors align-top">
+                          <td className="p-2.5 font-mono whitespace-nowrap">
+                            <div className="font-extrabold text-[#0E245E]">{f.factura || "—"}</div>
+                            <div className="text-[10.5px] text-[#64748B]">
+                              Emis: {f.fechaFactura || "—"} · {f.dias}d
+                            </div>
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
+                              style={{
+                                backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
+                                color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
+                                borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
+                              }}
+                            >
+                              {cr.sede}
+                            </span>
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border border-slate-200 bg-slate-50 text-[#334155]">
+                              {cr.tipoAtencion}
+                            </span>
+                          </td>
+                          <td className="p-2.5">
+                            <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
+                            {f.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {f.nit}</div>}
+                          </td>
+                          <td className="p-2.5 text-[11px]">
+                            <div className="font-semibold text-[#334155]">{cr.deDondeEs}</div>
+                            <div className="text-[10px] text-[#64748B] truncate max-w-[210px]" title={f.descripcionCuenta}>
+                              {f.cuenta} · {f.descripcionCuenta}
+                            </div>
+                          </td>
+                          <td className="p-2.5 text-[11px]">
+                            {cr.pacienteNombre && (
+                              <div className="font-bold text-[#0E245E]">Pac: {cr.pacienteNombre}</div>
+                            )}
+                            {cr.medicoNombre && (
+                              <div className="text-[10.5px] text-[#334155]">Dr(a): {cr.medicoNombre}</div>
+                            )}
+                            <div className="text-[10.5px] text-[#475569]">Resp: {f.responsable}</div>
+                          </td>
+                          <td className="p-2.5 text-right font-mono font-semibold text-[#1D58D8]">
+                            {formatCOP(f.corriente)}
+                          </td>
+                          <td className="p-2.5 text-right font-mono font-semibold text-[#BE123C]">
+                            {formatCOP(f.vencida)}
+                          </td>
+                          <td className="p-2.5 text-right font-mono font-extrabold text-[#0E245E]">
+                            {formatCOP(f.saldo)}
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{
+                                backgroundColor: f.esPendienteRadicar ? "#FEF3C7" : "#DCFCE7",
+                                color: f.esPendienteRadicar ? "#92400E" : "#047857",
+                              }}
+                            >
+                              {f.esPendienteRadicar ? "Pend. Radicar" : "Radicada"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              {tabActiva === "pendientes" && (
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Fecha · Factura</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres (Paciente · Médico · Resp.)</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Servicio Clínico / CUPS</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Valor Servicio</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                    {(listaActivaPaginada.items as PendienteRow[]).map((p) => {
+                      const cr = cruzarFilaMaestra({
+                        ...p,
+                        factura: p.facturaAsociada,
+                        cups: p.cups,
+                        unidadFuncional: p.unidadFuncional,
+                        contrato: p.contrato,
+                        descripcion: p.descripcion,
+                      });
+                      const respR = normalizarResponsableReal(p.responsable, p.empresa);
+                      return (
+                        <tr key={p.id} className="hover:bg-[#EFF6FF] transition-colors align-top">
+                          <td className="p-2.5 font-mono whitespace-nowrap">
+                            <div className="font-bold text-[#0E245E]">{p.fechaServicio || p.anio || "—"}</div>
+                            {p.facturaAsociada && (
+                              <div className="text-[10.5px] font-extrabold text-[#1D58D8]">{p.facturaAsociada}</div>
+                            )}
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
+                              style={{
+                                backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
+                                color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
+                                borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
+                              }}
+                            >
+                              {cr.sede}
+                            </span>
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
+                              style={{
+                                backgroundColor:
+                                  cr.tipoGrupo === "CIRUGIA"
+                                    ? "#F5F3FF"
+                                    : cr.tipoGrupo === "CONSULTA"
+                                    ? "#F0F9FF"
+                                    : "#FFFBEB",
+                                color:
+                                  cr.tipoGrupo === "CIRUGIA"
+                                    ? "#6D28D9"
+                                    : cr.tipoGrupo === "CONSULTA"
+                                    ? "#0369A1"
+                                    : "#B45309",
+                                borderColor:
+                                  cr.tipoGrupo === "CIRUGIA"
+                                    ? "#DDD6FE"
+                                    : cr.tipoGrupo === "CONSULTA"
+                                    ? "#BAE6FD"
+                                    : "#FDE68A",
+                              }}
+                            >
+                              {cr.tipoAtencion}
+                            </span>
+                          </td>
+                          <td className="p-2.5">
+                            <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
+                            {cr.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {cr.nit}</div>}
+                          </td>
+                          <td className="p-2.5 text-[11px]">
+                            <div className="font-semibold text-[#334155]">{cr.deDondeEs}</div>
+                            {p.contrato && (
+                              <div className="text-[10px] text-[#64748B] truncate max-w-[180px]" title={p.contrato}>
+                                {p.contrato}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2.5 text-[11px]">
+                            {p.pacienteNombre && (
+                              <div className="font-bold text-[#0E245E]">
+                                Pac: {p.pacienteNombre}
+                                {p.pacienteDoc ? ` (${p.pacienteDoc})` : ""}
+                              </div>
+                            )}
+                            {p.medico && <div className="text-[10.5px] font-medium text-[#334155]">Dr(a): {p.medico}</div>}
+                            <div className="text-[10px] text-[#64748B]">Resp: {respR}</div>
+                          </td>
+                          <td className="p-2.5 max-w-[260px]">
+                            {p.cups && <span className="font-mono font-bold text-[#0E245E] mr-1">[{p.cups}]</span>}
+                            <span className="text-[#334155]">{p.descripcion}</span>
+                          </td>
+                          <td className="p-2.5 text-right font-mono font-extrabold text-[#0E245E]">
+                            {formatCOP(p.valorServicio)}
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{
+                                backgroundColor: p.estado === "FACTURADO" ? "#DCFCE7" : "#FEF3C7",
+                                color: p.estado === "FACTURADO" ? "#047857" : "#92400E",
+                              }}
+                            >
+                              {p.estado}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Factura · Fechas</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres / Responsable</th>
+                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Valor Facturado</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Reemplazo</th>
+                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Motivo / Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
+                    {(listaActivaPaginada.items as AnuladaRow[]).map((a) => {
+                      const cr = cruzarFilaMaestra({ ...a, motivoTexto: a.motivo });
+                      const respR = normalizarResponsableReal(a.responsable, a.empresa);
+                      return (
+                        <tr key={a.id} className="hover:bg-[#EFF6FF] transition-colors align-top">
+                          <td className="p-2.5 font-mono whitespace-nowrap">
+                            <div className="font-extrabold text-[#0E245E]">{a.factura}</div>
+                            <div className="text-[10.5px] text-[#64748B]">
+                              F: {(a.fechaFactura || a.anio || "—").slice(0, 10)}
+                            </div>
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
+                              style={{
+                                backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
+                                color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
+                                borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
+                              }}
+                            >
+                              {cr.sede}
+                            </span>
+                          </td>
+                          <td className="p-2.5 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border border-slate-200 bg-slate-50 text-[#334155]">
+                              {cr.tipoAtencion}
+                            </span>
+                          </td>
+                          <td className="p-2.5">
+                            <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
+                            {cr.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {cr.nit}</div>}
+                          </td>
+                          <td className="p-2.5 text-[11px] font-semibold text-[#334155]">{cr.deDondeEs}</td>
+                          <td className="p-2.5 text-[11px]">
+                            {cr.pacienteNombre && (
+                              <div className="font-bold text-[#0E245E]">Pac: {cr.pacienteNombre}</div>
+                            )}
+                            <div className="text-[#475569]">Resp: {respR}</div>
+                          </td>
+                          <td className="p-2.5 text-right font-mono font-extrabold text-[#0E245E]">
+                            {formatCOP(a.valorRadicado)}
+                          </td>
+                          <td className="p-2.5 font-mono font-bold text-[#1D58D8]">
+                            {a.facturaReemplaza || "SIN REEMPLAZO"}
+                          </td>
+                          <td className="p-2.5 max-w-[260px]">
+                            <div className="text-[11px] text-[#334155]">{a.motivo || "—"}</div>
+                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700">
+                              {a.estadoGestion}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* PAGINACIÓN DEL REPORTE MAESTRO */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs text-[#475569]">
+              <div>
+                Mostrando página <strong className="text-[#0E245E]">{paginaActual}</strong> de{" "}
+                <strong className="text-[#0E245E]">{listaActivaPaginada.totalPaginas}</strong> —{" "}
+                <strong className="text-[#0E245E]">{listaActivaPaginada.total.toLocaleString("es-CO")}</strong> registros filtrados
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={paginaActual <= 1}
+                  onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-lg border font-bold disabled:opacity-40 cursor-pointer"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  ← Anterior
+                </button>
+                <button
+                  type="button"
+                  disabled={paginaActual >= listaActivaPaginada.totalPaginas}
+                  onClick={() => setPaginaActual((p) => Math.min(listaActivaPaginada.totalPaginas, p + 1))}
+                  className="px-3 py-1.5 rounded-lg border font-bold disabled:opacity-40 cursor-pointer"
+                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* MODAL REGISTRAR CORTE */}
       {mostrarModalCorte && (

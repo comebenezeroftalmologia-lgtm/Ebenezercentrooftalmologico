@@ -18,6 +18,11 @@ import {
   Users,
   X,
 } from "lucide-react";
+import {
+  claveFacturaNorm,
+  homologarEmpresaYOrigen,
+  clasificarAtencionYSede,
+} from "@/lib/carteraCruces";
 
 /* ---------------------------------------------------------------------
    MESA DE TRABAJO DE CARTERA — GLOSAS, DEVOLUCIONES Y CONTROL DE FACTURAS
@@ -134,6 +139,19 @@ type Glosa = {
   factura: string;
   empresa: string;
   empresaOriginal: string;
+  empresaHomologada?: string;
+  nit?: string;
+  esMutual?: boolean;
+  deDondeEs?: string;
+  sede?: string;
+  sedeGrupo?: string;
+  tipoAtencion?: string;
+  tipoGrupo?: string;
+  pacienteNombre?: string;
+  pacienteDoc?: string;
+  medicoNombre?: string;
+  cups?: string;
+  servicioDescripcion?: string;
   fechaFactura: string;
   fechaRadicacion: string;
   fechaNotificacionGlosa: string;
@@ -159,6 +177,18 @@ type Anulada = {
   factura: string;
   empresa: string;
   empresaOriginal: string;
+  empresaHomologada?: string;
+  nit?: string;
+  esMutual?: boolean;
+  deDondeEs?: string;
+  sede?: string;
+  sedeGrupo?: string;
+  tipoAtencion?: string;
+  tipoGrupo?: string;
+  pacienteNombre?: string;
+  pacienteDoc?: string;
+  medicoNombre?: string;
+  cups?: string;
   fechaFactura: string;
   fechaRadicacion: string;
   fechaAnulacion: string;
@@ -168,6 +198,52 @@ type Anulada = {
   facturaReemplaza: string;
   responsable: string;
   estadoGestion: string;
+};
+
+type PendienteWc = {
+  id: string;
+  empresa: string;
+  empresaOriginal: string;
+  empresaHomologada?: string;
+  nit?: string;
+  esMutual?: boolean;
+  deDondeEs?: string;
+  sede?: string;
+  sedeGrupo?: string;
+  tipoAtencion?: string;
+  tipoGrupo?: string;
+  contrato: string;
+  unidadFuncional: string;
+  cups: string;
+  descripcion: string;
+  fechaServicio: string;
+  anio: string;
+  pacienteDoc?: string;
+  pacienteNombre?: string;
+  medico: string;
+  medicoNombre?: string;
+  facturaAsociada?: string;
+  valorServicio: number;
+  responsable: string;
+  observaciones: string;
+  estado: string;
+};
+
+type SismaFacturaCruce = {
+  factura: string;
+  fechaFactura: string;
+  fechaRadicacion: string;
+  nit: string;
+  empresaHomologada: string;
+  deDondeEs: string;
+  sede: string;
+  sedeGrupo: string;
+  tipoAtencion: string;
+  tipoGrupo: string;
+  descripcionCuenta: string;
+  pacienteNombre: string;
+  pacienteDoc: string;
+  saldo: number;
 };
 
 type Causal = { codigo: string; familia: string; nombre: string };
@@ -260,6 +336,8 @@ export function CarteraWorkspace({
 }) {
   const [glosas, setGlosas] = useState<Glosa[]>([]);
   const [anuladas, setAnuladas] = useState<Anulada[]>([]);
+  const [pendientes, setPendientes] = useState<PendienteWc[]>([]);
+  const [mapaSismaFacturas, setMapaSismaFacturas] = useState<Record<string, SismaFacturaCruce>>({});
   const [cat, setCat] = useState<Catalogos>(VACIO);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState("");
@@ -268,6 +346,9 @@ export function CarteraWorkspace({
   const [busqueda, setBusqueda] = useState("");
   const [fEstado, setFEstado] = useState("SIN_RESOLVER");
   const [fEmpresa, setFEmpresa] = useState("");
+  const [fSede, setFSede] = useState("");
+  const [fAtencion, setFAtencion] = useState("");
+  const [fMutual, setFMutual] = useState<"CON" | "SOLO" | "SIN">("CON");
   const [fCausaNorma, setFCausaNorma] = useState("");
   const [fAnio, setFAnio] = useState("");
   const [fMes, setFMes] = useState("");
@@ -275,7 +356,7 @@ export function CarteraWorkspace({
   const [fFamilia, setFFamilia] = useState("");
   const [soloSinCausal, setSoloSinCausal] = useState(false);
 
-  const [vista, setVista] = useState<"cuadricula" | "anuladas" | "resumen">("cuadricula");
+  const [vista, setVista] = useState<"cuadricula" | "anuladas" | "pendientes" | "resumen">("cuadricula");
   const [guardando, setGuardando] = useState<string | null>(null);
   const [guardado, setGuardado] = useState<string | null>(null);
   const [fichaDe, setFichaDe] = useState<string | null>(null);
@@ -297,6 +378,19 @@ export function CarteraWorkspace({
         factura: String(g.factura || ""),
         empresa: String(g.empresa || ""),
         empresaOriginal: String(g.empresaOriginal || ""),
+        empresaHomologada: String(g.empresaHomologada || ""),
+        nit: String(g.nit || ""),
+        esMutual: Boolean(g.esMutual),
+        deDondeEs: String(g.deDondeEs || ""),
+        sede: String(g.sede || ""),
+        sedeGrupo: String(g.sedeGrupo || ""),
+        tipoAtencion: String(g.tipoAtencion || ""),
+        tipoGrupo: String(g.tipoGrupo || ""),
+        pacienteNombre: String(g.pacienteNombre || ""),
+        pacienteDoc: String(g.pacienteDoc || ""),
+        medicoNombre: String(g.medicoNombre || ""),
+        cups: String(g.cups || ""),
+        servicioDescripcion: String(g.servicioDescripcion || ""),
         fechaFactura: String(g.fechaFactura || ""),
         fechaRadicacion: String(g.fechaRadicacion || ""),
         fechaNotificacionGlosa: String(g.fechaNotificacionGlosa || ""),
@@ -318,6 +412,7 @@ export function CarteraWorkspace({
       }));
       setGlosas(listaGlosas);
       setAnuladas((j.anuladas || []) as Anulada[]);
+      setPendientes((j.pendientes || []) as PendienteWc[]);
       if (j.catalogos) setCat({ ...VACIO, ...(j.catalogos as Catalogos) });
     } catch (e) {
       setFallo(e instanceof Error ? e.message : "Sin conexión con la base.");
@@ -329,6 +424,28 @@ export function CarteraWorkspace({
   useEffect(() => {
     void traer();
   }, [traer]);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/cartera/sisma", { cache: "no-store" });
+        const j = await r.json();
+        if (!vivo || !r.ok || !j?.ok || !Array.isArray(j.facturasAbiertas)) return;
+        const mSisma: Record<string, SismaFacturaCruce> = {};
+        for (const f of j.facturasAbiertas as SismaFacturaCruce[]) {
+          const k = claveFacturaNorm(f.factura);
+          if (k && !mSisma[k]) mSisma[k] = f;
+        }
+        setMapaSismaFacturas(mSisma);
+      } catch {
+        // Si SISMA en vivo tarda o no está disponible, se mantiene el cruce local de BD.
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   const avisar = useCallback((msg: string) => {
     setAviso(msg);
@@ -397,9 +514,75 @@ export function CarteraWorkspace({
     return mapC;
   }, [cat.causales]);
 
+  const cruzarFila = useCallback(
+    (base: {
+      factura?: string;
+      empresa?: string;
+      empresaOriginal?: string;
+      empresaHomologada?: string;
+      nit?: string;
+      deDondeEs?: string;
+      sede?: string;
+      sedeGrupo?: string;
+      tipoAtencion?: string;
+      tipoGrupo?: string;
+      pacienteNombre?: string;
+      pacienteDoc?: string;
+      medicoNombre?: string;
+      cups?: string;
+      motivoTexto?: string;
+    }) => {
+      const sisma = base.factura ? mapaSismaFacturas[claveFacturaNorm(base.factura)] : undefined;
+      const empInfo = homologarEmpresaYOrigen({
+        empresa: base.empresa,
+        empresaOriginal: base.empresaOriginal,
+        nit: base.nit || sisma?.nit,
+        descripcionCuenta: sisma?.descripcionCuenta,
+      });
+      const atInfo = clasificarAtencionYSede({
+        esMutual: empInfo.esMutual,
+        cups: base.cups,
+        descripcionCuenta: sisma?.descripcionCuenta,
+        motivoTexto: base.motivoTexto,
+      });
+      return {
+        nit: base.nit || sisma?.nit || empInfo.nit,
+        empresaHomologada: base.empresaHomologada || sisma?.empresaHomologada || empInfo.empresaHomologada,
+        esMutual: empInfo.esMutual,
+        deDondeEs: base.deDondeEs || sisma?.deDondeEs || empInfo.deDondeEs,
+        sede: base.sede || (atInfo.tipoGrupo !== "SIN_DETALLE" ? atInfo.sede : sisma?.sede || atInfo.sede),
+        sedeGrupo: base.sedeGrupo || atInfo.sedeGrupo,
+        tipoAtencion:
+          base.tipoAtencion && base.tipoGrupo !== "SIN_DETALLE"
+            ? base.tipoAtencion
+            : atInfo.tipoGrupo !== "SIN_DETALLE"
+            ? atInfo.tipoAtencion
+            : sisma?.tipoAtencion || atInfo.tipoAtencion,
+        tipoGrupo:
+          base.tipoGrupo && base.tipoGrupo !== "SIN_DETALLE"
+            ? base.tipoGrupo
+            : atInfo.tipoGrupo !== "SIN_DETALLE"
+            ? atInfo.tipoGrupo
+            : sisma?.tipoGrupo || atInfo.tipoGrupo,
+        pacienteNombre: base.pacienteNombre || sisma?.pacienteNombre || "",
+        pacienteDoc: base.pacienteDoc || sisma?.pacienteDoc || "",
+        medicoNombre: base.medicoNombre || "",
+        fechaFacturaSisma: sisma?.fechaFactura || "",
+        fechaRadicacionSisma: sisma?.fechaRadicacion || "",
+        saldoSisma: sisma?.saldo,
+      };
+    },
+    [mapaSismaFacturas],
+  );
+
   const visibles = useMemo(() => {
     const q = busqueda.trim().toUpperCase();
     return glosas.filter((g) => {
+      const cr = cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
+      if (fMutual === "SOLO" && !cr.esMutual) return false;
+      if (fMutual === "SIN" && cr.esMutual) return false;
+      if (fSede && cr.sedeGrupo !== fSede) return false;
+      if (fAtencion && cr.tipoGrupo !== fAtencion) return false;
       if (fEstado === "SIN_RESOLVER" && g.estado !== "PENDIENTE") return false;
       if (fEstado !== "TODAS" && fEstado !== "SIN_RESOLVER" && g.estado !== fEstado) return false;
       if (fEmpresa) {
@@ -422,6 +605,12 @@ export function CarteraWorkspace({
       return (
         g.factura.toUpperCase().includes(q) ||
         g.empresa.toUpperCase().includes(q) ||
+        cr.empresaHomologada.toUpperCase().includes(q) ||
+        cr.deDondeEs.toUpperCase().includes(q) ||
+        cr.sede.toUpperCase().includes(q) ||
+        cr.tipoAtencion.toUpperCase().includes(q) ||
+        cr.pacienteNombre.toUpperCase().includes(q) ||
+        cr.medicoNombre.toUpperCase().includes(q) ||
         infoNit.nombre.includes(q) ||
         infoNit.nit.includes(q) ||
         (g.motivoGlosa || "").toUpperCase().includes(q) ||
@@ -432,12 +621,18 @@ export function CarteraWorkspace({
       );
     });
   }, [
-    glosas, busqueda, fEstado, fEmpresa, fCausaNorma, fAnio, fMes, fFacturador, fFamilia, soloSinCausal, causalPorCodigo,
+    glosas, busqueda, fEstado, fEmpresa, fSede, fAtencion, fMutual, fCausaNorma, fAnio, fMes,
+    fFacturador, fFamilia, soloSinCausal, causalPorCodigo, cruzarFila,
   ]);
 
   const anuladasVisibles = useMemo(() => {
     const q = busqueda.trim().toUpperCase();
     return anuladas.filter((a) => {
+      const cr = cruzarFila({ ...a, motivoTexto: a.motivo });
+      if (fMutual === "SOLO" && !cr.esMutual) return false;
+      if (fMutual === "SIN" && cr.esMutual) return false;
+      if (fSede && cr.sedeGrupo !== fSede) return false;
+      if (fAtencion && cr.tipoGrupo !== fAtencion) return false;
       if (fEmpresa) {
         const info = normalizarEmpresaYNit(a.empresa || a.empresaOriginal);
         if (info.nombre !== fEmpresa && a.empresa !== fEmpresa) return false;
@@ -447,11 +642,43 @@ export function CarteraWorkspace({
       return (
         a.factura.toUpperCase().includes(q) ||
         a.empresa.toUpperCase().includes(q) ||
+        cr.empresaHomologada.toUpperCase().includes(q) ||
+        cr.deDondeEs.toUpperCase().includes(q) ||
+        cr.pacienteNombre.toUpperCase().includes(q) ||
         (a.motivo || "").toUpperCase().includes(q) ||
         (a.responsable || "").toUpperCase().includes(q)
       );
     });
-  }, [anuladas, fEmpresa, fAnio, busqueda]);
+  }, [anuladas, fEmpresa, fSede, fAtencion, fMutual, fAnio, busqueda, cruzarFila]);
+
+  const pendientesVisibles = useMemo(() => {
+    const q = busqueda.trim().toUpperCase();
+    return pendientes.filter((p) => {
+      const esMut = Boolean(p.esMutual || /MUTUAL/i.test(`${p.empresa} ${p.empresaOriginal}`));
+      if (fMutual === "SOLO" && !esMut) return false;
+      if (fMutual === "SIN" && esMut) return false;
+      if (fSede && p.sedeGrupo && p.sedeGrupo !== fSede) return false;
+      if (fAtencion && p.tipoGrupo && p.tipoGrupo !== fAtencion) return false;
+      if (fEmpresa) {
+        const info = normalizarEmpresaYNit(p.empresa || p.empresaOriginal);
+        if (info.nombre !== fEmpresa && p.empresa !== fEmpresa) return false;
+      }
+      if (fAnio && p.anio && p.anio !== fAnio) return false;
+      if (fFacturador && p.responsable !== fFacturador) return false;
+      if (!q) return true;
+      return (
+        (p.facturaAsociada || "").toUpperCase().includes(q) ||
+        (p.pacienteNombre || "").toUpperCase().includes(q) ||
+        (p.pacienteDoc || "").toUpperCase().includes(q) ||
+        (p.medico || "").toUpperCase().includes(q) ||
+        (p.cups || "").toUpperCase().includes(q) ||
+        (p.descripcion || "").toUpperCase().includes(q) ||
+        (p.empresaHomologada || p.empresa || "").toUpperCase().includes(q) ||
+        (p.deDondeEs || "").toUpperCase().includes(q) ||
+        (p.observaciones || "").toUpperCase().includes(q)
+      );
+    });
+  }, [pendientes, fMutual, fSede, fAtencion, fEmpresa, fAnio, fFacturador, busqueda]);
 
   const mesesEnDatos = useMemo(() => {
     const c: Record<string, number> = {};
@@ -523,22 +750,56 @@ export function CarteraWorkspace({
 
   const exportarExcelCsv = () => {
     const encabezados = [
-      "Factura", "Empresa Unificada", "NIT", "Empresa Original",
-      "Fecha Factura", "Fecha Radicación", "Fecha Notificación Glosa", "Año",
-      "Clase", "Causal Código", "Causa Normativa", "Motivo Glosa",
-      "Valor Facturado", "Valor Glosado", "Valor Aceptado",
-      "Estado", "Nota Crédito", "Facturador", "Responsable Respuesta Glosa", "Observación Interna",
+      "Factura", "Fecha Factura", "Fecha Radicación", "Fecha Notificación Glosa", "Año",
+      "Sede", "Consulta o Cirugía", "Empresa Homologada", "NIT", "De dónde es (Convenio / Régimen)",
+      "Paciente (Cruce)", "Documento Paciente", "Médico / Especialista (Cruce)", "CUPS",
+      "Facturador", "Responsable Respuesta Glosa",
+      "Valor Facturado", "Valor Glosado", "Valor Aceptado", "Valor Defendido",
+      "Causa Normativa (FA-CO)", "Código Causal", "Clase", "Motivo Glosa",
+      "Nota Crédito", "Estado", "Observación Interna",
     ];
     const filasCsv = visibles.map((g) => {
-      const empInfo = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
+      const cr = cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
       const cn = causaNormativaDe(g.motivoCodigo);
       const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "";
+      const vGlosa = Number(g.valorGlosado || 0);
+      const vAcep = g.valorAceptado ?? null;
+      const vDef =
+        g.estado === "PENDIENTE"
+          ? 0
+          : vAcep !== null
+          ? Math.max(0, vGlosa - vAcep)
+          : g.estado === "NO_ACEPTADA"
+          ? vGlosa
+          : 0;
       return [
-        g.factura, empInfo.nombre || g.empresa, empInfo.nit, g.empresaOriginal || g.empresa,
-        g.fechaFactura, g.fechaRadicacion, g.fechaNotificacionGlosa, g.anio,
-        cl, g.motivoCodigo, cn, g.motivoGlosa,
-        g.valorFacturado || g.valorRadicado, g.valorGlosado, g.valorAceptado ?? "",
-        ETIQUETA[g.estado] || g.estado, g.notaCredito, g.facturador, g.responsableAceptacion, g.observacionInterna,
+        g.factura,
+        g.fechaFactura || cr.fechaFacturaSisma,
+        g.fechaRadicacion || cr.fechaRadicacionSisma,
+        g.fechaNotificacionGlosa,
+        g.anio,
+        cr.sede,
+        cr.tipoAtencion,
+        cr.empresaHomologada,
+        cr.nit,
+        cr.deDondeEs,
+        cr.pacienteNombre || "Sin detalle clínico en factura",
+        cr.pacienteDoc,
+        cr.medicoNombre,
+        g.cups || "",
+        g.facturador,
+        g.responsableAceptacion,
+        g.valorFacturado || g.valorRadicado,
+        vGlosa,
+        vAcep ?? "",
+        vDef,
+        cn,
+        g.motivoCodigo,
+        cl,
+        g.motivoGlosa,
+        g.notaCredito,
+        ETIQUETA[g.estado] || g.estado,
+        g.observacionInterna,
       ];
     });
     const contenido =
@@ -576,10 +837,14 @@ export function CarteraWorkspace({
   );
 
   const limpiarFiltros = () => {
-    setFEmpresa(""); setFCausaNorma(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
+    setFEmpresa(""); setFSede(""); setFAtencion(""); setFMutual("CON");
+    setFCausaNorma(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
     setSoloSinCausal(false); setBusqueda("");
   };
-  const hayFiltro = !!(fEmpresa || fCausaNorma || fAnio || fMes || fFacturador || fFamilia || soloSinCausal || busqueda);
+  const hayFiltro = !!(
+    fEmpresa || fSede || fAtencion || fMutual !== "CON" || fCausaNorma || fAnio || fMes ||
+    fFacturador || fFamilia || soloSinCausal || busqueda
+  );
 
   const sel =
     "rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12.5px] text-[#47597A] outline-none focus:border-[#1D58D8]";
@@ -666,6 +931,33 @@ export function CarteraWorkspace({
             ))}
           </select>
 
+          <label htmlFor="f-sede" className="sr-only">Filtrar por Sede</label>
+          <select id="f-sede" value={fSede} onChange={(e) => setFSede(e.target.value)} className={sel}>
+            <option value="">Todas las sedes</option>
+            <option value="SEDE_1">Sede 1 · Principal</option>
+            <option value="SEDE_2">Sede 2 · Consultorios (Mutual)</option>
+          </select>
+
+          <label htmlFor="f-aten" className="sr-only">Filtrar por Consulta o Cirugía</label>
+          <select id="f-aten" value={fAtencion} onChange={(e) => setFAtencion(e.target.value)} className={sel}>
+            <option value="">Consulta y Cirugía (Todas)</option>
+            <option value="CONSULTA">Consulta</option>
+            <option value="CIRUGIA">Cirugía</option>
+            <option value="AYUDA_DX">Ayuda Dx / Proc.</option>
+          </select>
+
+          <label htmlFor="f-mut" className="sr-only">Filtro Mutual Ser</label>
+          <select
+            id="f-mut"
+            value={fMutual}
+            onChange={(e) => setFMutual(e.target.value as "CON" | "SOLO" | "SIN")}
+            className={sel}
+          >
+            <option value="CON">Con Mutual Ser</option>
+            <option value="SOLO">Solo Mutual Ser</option>
+            <option value="SIN">Excluir Mutual Ser</option>
+          </select>
+
           <label htmlFor="f-emp" className="sr-only">Filtrar por empresa (NIT)</label>
           <select id="f-emp" value={fEmpresa} onChange={(e) => setFEmpresa(e.target.value)} className={sel}>
             <option value="">Todas las empresas (por NIT)</option>
@@ -741,13 +1033,16 @@ export function CarteraWorkspace({
       {/* ---------- pestañas de vista ---------- */}
       <div className="flex flex-wrap items-center gap-1.5">
         <Pestana activa={vista === "cuadricula"} onClick={() => setVista("cuadricula")}>
-          Cuadrícula de glosas ({visibles.length})
+          Cuadrícula cruzada de glosas ({visibles.length})
+        </Pestana>
+        <Pestana activa={vista === "pendientes"} onClick={() => setVista("pendientes")}>
+          Servicios clínicos / Pendientes ({pendientesVisibles.length})
         </Pestana>
         <Pestana activa={vista === "anuladas"} onClick={() => setVista("anuladas")}>
           Facturas anuladas ({anuladasVisibles.length})
         </Pestana>
         <Pestana activa={vista === "resumen"} onClick={() => setVista("resumen")}>
-          Resumen normativo
+          Resumen normativo y defensa
         </Pestana>
         <span className="ml-2 font-cifra text-[11.5px] text-[#94A3B8]">
           Facturado: {pesos(m.facturado)} · Glosado: {pesos(m.glosado)}
@@ -975,14 +1270,14 @@ export function CarteraWorkspace({
             <table className="w-full border-collapse text-[12.5px]">
               <thead>
                 <tr className="border-b border-[#E2EBF8] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">
-                  <th className="py-2 pr-3">Factura</th>
-                  <th className="py-2 pr-3">Empresa / NIT</th>
-                  <th className="py-2 pr-3">Fecha factura</th>
-                  <th className="py-2 pr-3">Fecha radicación</th>
-                  <th className="py-2 pr-3">Fecha anulación</th>
+                  <th className="py-2 pr-3">Factura · Fechas</th>
+                  <th className="py-2 pr-3">Sede</th>
+                  <th className="py-2 pr-3">Consulta / Cirugía</th>
+                  <th className="py-2 pr-3">Empresa Homologada (NIT)</th>
+                  <th className="py-2 pr-3">De dónde es</th>
+                  <th className="py-2 pr-3">Nombres / Responsable</th>
                   <th className="py-2 pr-3 text-right">Valor facturado</th>
-                  <th className="py-2 pr-3">Motivo de anulación</th>
-                  <th className="py-2 pr-3">Responsable</th>
+                  <th className="py-2 pr-3">Motivo / Reemplazo</th>
                   <th className="py-2">Estado</th>
                 </tr>
               </thead>
@@ -1002,25 +1297,207 @@ export function CarteraWorkspace({
                   </tr>
                 )}
                 {anuladasVisibles.slice(0, 200).map((a) => {
-                  const infoEmp = normalizarEmpresaYNit(a.empresa || a.empresaOriginal);
+                  const cr = cruzarFila({ ...a, motivoTexto: a.motivo });
                   return (
                     <tr key={a.id} className="border-b border-[#F1F5F9] align-top hover:bg-[#F8FAFC]">
-                      <td className="py-2 pr-3 font-cifra font-semibold text-[#0E245E]">{a.factura}</td>
-                      <td className="py-2 pr-3 text-[#47597A]">
-                        <span className="block font-medium text-[#0E245E]">{infoEmp.nombre || a.empresa || "—"}</span>
-                        {infoEmp.nit && <span className="block font-cifra text-[10.5px] text-[#64748B]">NIT {infoEmp.nit}</span>}
+                      <td className="py-2 pr-3 font-cifra">
+                        <span className="block font-semibold text-[#0E245E]">{a.factura}</span>
+                        <span className="block text-[10.5px] text-[#64748B]">
+                          F: {fecha(a.fechaFactura)} · Rad: {fecha(a.fechaRadicacion)}
+                        </span>
+                        {a.fechaAnulacion && (
+                          <span className="block text-[10px] text-[#BE123C]">Anul: {fecha(a.fechaAnulacion)}</span>
+                        )}
                       </td>
-                      <td className="py-2 pr-3 font-cifra text-[#64748B]">{fecha(a.fechaFactura)}</td>
-                      <td className="py-2 pr-3 font-cifra text-[#64748B]">{fecha(a.fechaRadicacion)}</td>
-                      <td className="py-2 pr-3 font-cifra text-[#64748B]">{fecha(a.fechaAnulacion)}</td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-block rounded-pill border px-2 py-0.5 text-[10.5px] font-semibold ${
+                            cr.sedeGrupo === "SEDE_2"
+                              ? "border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]"
+                              : "border-[#A7F3D0] bg-[#ECFDF5] text-[#047857]"
+                          }`}
+                        >
+                          {cr.sede}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-block rounded-pill border px-2 py-0.5 text-[10.5px] font-semibold ${
+                            cr.tipoGrupo === "CIRUGIA"
+                              ? "border-[#DDD6FE] bg-[#F5F3FF] text-[#6D28D9]"
+                              : cr.tipoGrupo === "CONSULTA"
+                              ? "border-[#BAE6FD] bg-[#F0F9FF] text-[#0369A1]"
+                              : cr.tipoGrupo === "AYUDA_DX"
+                              ? "border-[#FDE68A] bg-[#FFFBEB] text-[#B45309]"
+                              : "border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"
+                          }`}
+                        >
+                          {cr.tipoAtencion}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-[#47597A]">
+                        <span className="block font-semibold text-[#0E245E]">{cr.empresaHomologada || a.empresa || "—"}</span>
+                        {cr.nit && <span className="block font-cifra text-[10.5px] text-[#64748B]">NIT {cr.nit}</span>}
+                      </td>
+                      <td className="py-2 pr-3 text-[11.5px] text-[#334155]">{cr.deDondeEs}</td>
+                      <td className="py-2 pr-3 text-[11.5px]">
+                        {cr.pacienteNombre && (
+                          <span className="block font-semibold text-[#0E245E]">Pac: {cr.pacienteNombre}</span>
+                        )}
+                        {cr.medicoNombre && (
+                          <span className="block text-[10.5px] text-[#47597A]">Dr(a): {cr.medicoNombre}</span>
+                        )}
+                        <span className="block text-[10.5px] text-[#64748B]">Resp: {a.responsable || "—"}</span>
+                      </td>
                       <td className="py-2 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
                         {pesos(a.valorRadicado)}
                       </td>
-                      <td className="max-w-[320px] py-2 pr-3 text-[#47597A]">{a.motivo || "—"}</td>
-                      <td className="py-2 pr-3 text-[#64748B]">{a.responsable || "—"}</td>
+                      <td className="max-w-[260px] py-2 pr-3 text-[#47597A]">
+                        <span className="block">{a.motivo || "—"}</span>
+                        {a.facturaReemplaza && (
+                          <span className="block font-cifra text-[10.5px] font-semibold text-[#1D58D8]">
+                            Reemplazo: {a.facturaReemplaza}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2">
                         <span className="rounded-pill border border-[#FECDD3] bg-[#FFF1F2] px-2 py-0.5 text-[10.5px] font-semibold text-[#BE123C]">
                           {a.estadoGestion || "ANULADA"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- SERVICIOS CLÍNICOS / PENDIENTES POR FACTURAR ---------- */}
+      {vista === "pendientes" && (
+        <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
+          <div className="mb-3">
+            <h3 className="text-[14.5px] font-bold text-[#0E245E]">
+              Servicios clínicos y pendientes por facturar ({pendientesVisibles.length})
+            </h3>
+            <p className="text-[11.5px] text-[#64748B]">
+              Cruce directo por CUPS, unidad funcional, sede, convenio, paciente, médico tratante y factura FCOE asociada.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[12.5px]">
+              <thead>
+                <tr className="border-b border-[#E2EBF8] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">
+                  <th className="py-2 pr-3">Fecha · Factura</th>
+                  <th className="py-2 pr-3">Sede</th>
+                  <th className="py-2 pr-3">Consulta / Cirugía</th>
+                  <th className="py-2 pr-3">Empresa Homologada (NIT)</th>
+                  <th className="py-2 pr-3">De dónde es</th>
+                  <th className="py-2 pr-3">Nombres (Paciente · Médico · Resp.)</th>
+                  <th className="py-2 pr-3">Servicio / CUPS</th>
+                  <th className="py-2 pr-3 text-right">Valor</th>
+                  <th className="py-2">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendientesVisibles.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-[#94A3B8]">
+                      No hay servicios clínicos pendientes que coincidan con el filtro.
+                    </td>
+                  </tr>
+                )}
+                {pendientesVisibles.slice(0, 200).map((p) => {
+                  const empInfo = homologarEmpresaYOrigen({
+                    empresa: p.empresa,
+                    empresaOriginal: p.empresaOriginal,
+                    contrato: p.contrato,
+                  });
+                  const atInfo = clasificarAtencionYSede({
+                    esMutual: empInfo.esMutual,
+                    cups: p.cups,
+                    unidadFuncional: p.unidadFuncional,
+                    descripcion: p.descripcion,
+                    contrato: p.contrato,
+                  });
+                  const sedeTxt = p.sede || atInfo.sede;
+                  const sedeGrp = p.sedeGrupo || atInfo.sedeGrupo;
+                  const tipoTxt = p.tipoAtencion || atInfo.tipoAtencion;
+                  const tipoGrp = p.tipoGrupo || atInfo.tipoGrupo;
+                  return (
+                    <tr key={p.id} className="border-b border-[#F1F5F9] align-top hover:bg-[#F8FAFC]">
+                      <td className="py-2 pr-3 font-cifra">
+                        <span className="block font-semibold text-[#0E245E]">{fecha(p.fechaServicio)}</span>
+                        {p.facturaAsociada && (
+                          <span className="block text-[10.5px] font-bold text-[#1D58D8]">{p.facturaAsociada}</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-block rounded-pill border px-2 py-0.5 text-[10.5px] font-semibold ${
+                            sedeGrp === "SEDE_2"
+                              ? "border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]"
+                              : "border-[#A7F3D0] bg-[#ECFDF5] text-[#047857]"
+                          }`}
+                        >
+                          {sedeTxt}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-block rounded-pill border px-2 py-0.5 text-[10.5px] font-semibold ${
+                            tipoGrp === "CIRUGIA"
+                              ? "border-[#DDD6FE] bg-[#F5F3FF] text-[#6D28D9]"
+                              : tipoGrp === "CONSULTA"
+                              ? "border-[#BAE6FD] bg-[#F0F9FF] text-[#0369A1]"
+                              : "border-[#FDE68A] bg-[#FFFBEB] text-[#B45309]"
+                          }`}
+                        >
+                          {tipoTxt}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span className="block font-semibold text-[#0E245E]">
+                          {p.empresaHomologada || empInfo.empresaHomologada}
+                        </span>
+                        {(p.nit || empInfo.nit) && (
+                          <span className="block font-cifra text-[10.5px] text-[#64748B]">
+                            NIT {p.nit || empInfo.nit}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 text-[11.5px] text-[#334155]">
+                        <span className="block font-medium">{p.deDondeEs || empInfo.deDondeEs}</span>
+                        {p.contrato && <span className="block truncate max-w-[180px] text-[10px] text-[#64748B]" title={p.contrato}>{p.contrato}</span>}
+                      </td>
+                      <td className="py-2 pr-3 text-[11.5px]">
+                        {p.pacienteNombre ? (
+                          <span className="block font-semibold text-[#0E245E]">
+                            Pac: {p.pacienteNombre}{p.pacienteDoc ? ` (${p.pacienteDoc})` : ""}
+                          </span>
+                        ) : (
+                          <span className="block text-[10.5px] text-[#94A3B8]">Sin paciente en fila</span>
+                        )}
+                        {p.medico && <span className="block text-[11px] text-[#334155]">Dr(a): {p.medico}</span>}
+                        {p.responsable && <span className="block text-[10.5px] text-[#64748B]">Resp: {p.responsable}</span>}
+                      </td>
+                      <td className="max-w-[260px] py-2 pr-3 text-[11.5px] text-[#47597A]">
+                        {p.cups && <span className="mr-1.5 font-cifra font-bold text-[#0E245E]">[{p.cups}]</span>}
+                        <span>{p.descripcion}</span>
+                      </td>
+                      <td className="py-2 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
+                        {pesos(p.valorServicio)}
+                      </td>
+                      <td className="py-2">
+                        <span
+                          className={`rounded-pill border px-2 py-0.5 text-[10.5px] font-semibold ${
+                            p.estado === "FACTURADO"
+                              ? "border-[#BFE0CC] bg-[#DCEEE3] text-[#146138]"
+                              : "border-[#FDE68A] bg-[#FFFBEB] text-[#B45309]"
+                          }`}
+                        >
+                          {p.estado}
                         </span>
                       </td>
                     </tr>
@@ -1040,9 +1517,10 @@ export function CarteraWorkspace({
               <thead>
                 <tr className="border-b border-[#E2EBF8] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">
                   <th className="w-6 py-2" />
-                  <th className="py-2 pr-3">Factura</th>
-                  <th className="py-2 pr-3">Empresa / NIT</th>
-                  <th className="py-2 pr-3">Fechas</th>
+                  <th className="py-2 pr-3">Factura · Fechas</th>
+                  <th className="py-2 pr-3">Sede · Atención</th>
+                  <th className="py-2 pr-3">Empresa (NIT) · De dónde es</th>
+                  <th className="py-2 pr-3">Nombres / Resp. Glosa</th>
                   <th className="py-2 pr-3">Clase</th>
                   <th className="py-2 pr-3">Causal</th>
                   <th className="py-2 pr-3 text-right">Facturado</th>
@@ -1050,7 +1528,6 @@ export function CarteraWorkspace({
                   <th className="py-2 pr-3 text-right">Aceptado</th>
                   <th className="py-2 pr-3">Desenlace</th>
                   <th className="py-2 pr-3">Nota crédito *</th>
-                  <th className="py-2 pr-3">Resp. glosa</th>
                   <th className="w-6 py-2" />
                 </tr>
               </thead>
@@ -1073,6 +1550,7 @@ export function CarteraWorkspace({
                   <FilaGlosa
                     key={g.id}
                     glosa={g}
+                    cruce={cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` })}
                     causales={cat.causales}
                     causal={causalPorCodigo[g.motivoCodigo]}
                     guardando={guardando === g.id}
@@ -1702,9 +2180,25 @@ function PanelClasificar({
 /* ====================================================================== */
 
 function FilaGlosa({
-  glosa, causales, causal, guardando, guardado, avisar, onGuardar, onFicha,
+  glosa, cruce, causales, causal, guardando, guardado, avisar, onGuardar, onFicha,
 }: {
   glosa: Glosa;
+  cruce: {
+    nit: string;
+    empresaHomologada: string;
+    esMutual: boolean;
+    deDondeEs: string;
+    sede: string;
+    sedeGrupo: string;
+    tipoAtencion: string;
+    tipoGrupo: string;
+    pacienteNombre: string;
+    pacienteDoc: string;
+    medicoNombre: string;
+    fechaFacturaSisma: string;
+    fechaRadicacionSisma: string;
+    saldoSisma?: number;
+  };
   causales: Causal[];
   causal?: Causal;
   guardando: boolean;
@@ -1909,19 +2403,72 @@ function FilaGlosa({
             {abierta ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </button>
         </td>
-        <td className="py-1.5 pr-3 font-cifra text-[12.5px] font-semibold text-[#0E245E]">{glosa.factura}</td>
-        <td className="py-1.5 pr-3 text-[#47597A]">
-          <span className="block text-[12px] font-medium text-[#0E245E]">{empInfo.nombre || glosa.empresa || "—"}</span>
-          {empInfo.nit && <span className="block font-cifra text-[10px] text-[#64748B]">NIT {empInfo.nit}</span>}
-        </td>
-        <td className="py-1.5 pr-3 font-cifra text-[11px] text-[#64748B]">
-          <span className="block" title="Fecha de factura">
-            F: {fechaFact ? fecha(fechaFact) : glosa.anio || "—"}
+        <td className="py-1.5 pr-3 font-cifra">
+          <span className="block text-[12.5px] font-semibold text-[#0E245E]">{glosa.factura}</span>
+          <span className="block text-[10.5px] text-[#64748B]" title="Fecha de factura">
+            F: {fechaFact ? fecha(fechaFact) : cruce.fechaFacturaSisma ? fecha(cruce.fechaFacturaSisma) : glosa.anio || "—"}
           </span>
           {fechaNotif && (
             <span className="block text-[10px] text-[#1D58D8]" title="Fecha de notificación de glosa">
               Notif: {fecha(fechaNotif)}
             </span>
+          )}
+        </td>
+        <td className="py-1.5 pr-3">
+          <span
+            className={`inline-block rounded-pill border px-1.5 py-0.5 text-[10px] font-semibold ${
+              cruce.sedeGrupo === "SEDE_2"
+                ? "border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]"
+                : "border-[#A7F3D0] bg-[#ECFDF5] text-[#047857]"
+            }`}
+          >
+            {cruce.sede}
+          </span>
+          <span
+            className={`mt-1 block w-fit rounded-pill border px-1.5 py-0.5 text-[10px] font-semibold ${
+              cruce.tipoGrupo === "CIRUGIA"
+                ? "border-[#DDD6FE] bg-[#F5F3FF] text-[#6D28D9]"
+                : cruce.tipoGrupo === "CONSULTA"
+                ? "border-[#BAE6FD] bg-[#F0F9FF] text-[#0369A1]"
+                : cruce.tipoGrupo === "AYUDA_DX"
+                ? "border-[#FDE68A] bg-[#FFFBEB] text-[#B45309]"
+                : "border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"
+            }`}
+          >
+            {cruce.tipoAtencion}
+          </span>
+        </td>
+        <td className="py-1.5 pr-3 text-[#47597A]">
+          <span className="block text-[12px] font-semibold text-[#0E245E]">
+            {cruce.empresaHomologada || empInfo.nombre || glosa.empresa || "—"}
+          </span>
+          {(cruce.nit || empInfo.nit) && (
+            <span className="block font-cifra text-[10px] text-[#64748B]">NIT {cruce.nit || empInfo.nit}</span>
+          )}
+          <span className="block text-[10.5px] font-medium text-[#1D58D8]">{cruce.deDondeEs}</span>
+        </td>
+        <td className="py-1.5 pr-3">
+          {cruce.pacienteNombre && (
+            <span className="block text-[11px] font-semibold text-[#0E245E]" title={cruce.pacienteDoc}>
+              Pac: {cruce.pacienteNombre}
+            </span>
+          )}
+          {cruce.medicoNombre && (
+            <span className="block text-[10.5px] text-[#47597A]">Dr(a): {cruce.medicoNombre}</span>
+          )}
+          <label htmlFor={`rg-${glosa.id}`} className="sr-only">Responsable de responder la glosa</label>
+          <input
+            id={`rg-${glosa.id}`}
+            list="cat-responsables"
+            value={respGlosa}
+            onChange={(e) => setRespGlosa(e.target.value.toUpperCase())}
+            onBlur={salir}
+            placeholder="Resp. glosa"
+            title="Responsable de responder la glosa"
+            className={`${celda} min-w-[112px] text-[11.5px] font-medium text-[#47597A]`}
+          />
+          {facturador && (
+            <span className="block px-1.5 text-[10px] text-[#94A3B8]">Fact: {facturador}</span>
           )}
         </td>
         <td className="py-1.5 pr-3">
@@ -2030,18 +2577,6 @@ function FilaGlosa({
                 ? "border-transparent bg-transparent text-[#0E245E] hover:border-[#DCE8FA]"
                 : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E]"
             }`}
-          />
-        </td>
-        <td className="py-1.5 pr-3">
-          <label htmlFor={`rg-${glosa.id}`} className="sr-only">Responsable de responder la glosa</label>
-          <input
-            id={`rg-${glosa.id}`}
-            list="cat-responsables"
-            value={respGlosa}
-            onChange={(e) => setRespGlosa(e.target.value.toUpperCase())}
-            onBlur={salir}
-            placeholder="Sin asignar"
-            className={`${celda} min-w-[110px] text-[11.5px] text-[#47597A]`}
           />
         </td>
         <td className="py-1.5 text-right">
@@ -2175,6 +2710,9 @@ function FilaGlosa({
                   etiqueta="Empresa unificada / NIT"
                   valor={empInfo.nit ? `${empInfo.nombre} · NIT ${empInfo.nit}` : empInfo.nombre || glosa.empresa || "—"}
                 />
+                <Detalle etiqueta="Sede y atención" valor={`${cruce.sede} · ${cruce.tipoAtencion}`} />
+                <Detalle etiqueta="De dónde es" valor={cruce.deDondeEs || "—"} />
+                <Detalle etiqueta="Paciente / Médico (cruce)" valor={cruce.pacienteNombre ? `${cruce.pacienteNombre}${cruce.medicoNombre ? ` · Dr(a). ${cruce.medicoNombre}` : ""}` : "Factura contable sin detalle clínico"} />
                 <Detalle etiqueta="Empresa original (fuente)" valor={glosa.empresaOriginal || glosa.empresa || "—"} />
                 <Detalle etiqueta="Nota crédito" valor={nota || "Pendiente (obligatorio N° o N/A)"} />
                 <Detalle etiqueta="Fecha factura" valor={fecha(fechaFact)} />
