@@ -4452,9 +4452,9 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 3550,
+          "recibidas": 3579,
           "contestadas": 595,
-          "perdidas": 2955,
+          "perdidas": 2984,
           "esperaMin": 12.0,
           "slaPct": 0.2,
           "agents": [
@@ -4488,11 +4488,11 @@
           "id": "506013",
           "name": "Mutual Contributivo",
           "isMutual": true,
-          "recibidas": 806,
+          "recibidas": 814,
           "contestadas": 327,
-          "perdidas": 479,
-          "esperaMin": 9.2,
-          "slaPct": 2.48,
+          "perdidas": 487,
+          "esperaMin": 9.1,
+          "slaPct": 2.46,
           "agents": [
             {
               "id": "1003",
@@ -4532,11 +4532,11 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 490,
+          "recibidas": 494,
           "contestadas": 442,
-          "perdidas": 48,
-          "esperaMin": 0.9,
-          "slaPct": 74.9,
+          "perdidas": 52,
+          "esperaMin": 1.0,
+          "slaPct": 74.29,
           "agents": [
             {
               "id": "1005",
@@ -4670,7 +4670,7 @@
     }
   ],
   "_parcial": {
-    "intento": "2026-11-12 12:27:09",
+    "intento": "2026-11-13 07:10:22",
     "digiturno": "FALLO",
     "contactCenter": "ok",
     "nota": "La fecha de arriba NO se movio: hay datos sin actualizar."
