@@ -6388,13 +6388,22 @@ export default function TableroCarteraAnalytics() {
                         </thead>
                         <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
                           {empresasSismaFiltradas.map((emp) => {
+                            const empExt = emp as {
+                              nit: string;
+                              razonSocial: string;
+                              razonSocialOriginal?: string;
+                              nombreHomologado?: string;
+                              deDondeEs?: string;
+                              sede?: string;
+                              responsable?: string;
+                            };
                             const infoH = homologarEmpresaYOrigen({
-                              empresa: emp.nombreHomologado || emp.razonSocial,
-                              empresaOriginal: emp.razonSocialOriginal || emp.razonSocial,
+                              empresa: empExt.nombreHomologado || emp.razonSocial,
+                              empresaOriginal: empExt.razonSocialOriginal || emp.razonSocial,
                               nit: emp.nit,
                             });
-                            const sedeLbl = emp.sede || (infoH.esMutual ? "Sede 2 · Consultorios" : "Sede 1 · Principal");
-                            const respLbl = emp.responsable || normalizarResponsableReal("", infoH.empresaCorta);
+                            const sedeLbl = empExt.sede || (infoH.esMutual ? "Sede 2 · Consultorios" : "Sede 1 · Principal");
+                            const respLbl = empExt.responsable || normalizarResponsableReal("", infoH.empresaCorta);
                             return (
                               <tr key={emp.nit + emp.razonSocial} className="hover:bg-[#EFF6FF] transition-colors">
                                 <td className="p-2.5 whitespace-nowrap">
@@ -6416,7 +6425,7 @@ export default function TableroCarteraAnalytics() {
                                   )}
                                 </td>
                                 <td className="p-2.5 font-semibold text-[#334155]">
-                                  {emp.deDondeEs || infoH.deDondeEs}
+                                  {empExt.deDondeEs || infoH.deDondeEs}
                                 </td>
                                 <td className="p-2.5 font-semibold text-[#475569]">{respLbl}</td>
                                 <td className="p-2.5 text-right font-mono" style={{ color: "#334155" }}>
