@@ -3564,7 +3564,7 @@ export default function TableroCarteraAnalytics() {
     const sismaMap = new Map<string, FacturaSismaVivaRow>();
     const fuentesSisma = [
       datosSismaVivo?.facturasAbiertas || [],
-      (datosSismaCompletaRef.current as { facturasAbiertas?: FacturaSismaVivaRow[] } | null)?.facturasAbiertas || [],
+      (datosSismaCompletaRef.current as unknown as { facturasAbiertas?: FacturaSismaVivaRow[] } | null)?.facturasAbiertas || [],
     ];
     for (const lista of fuentesSisma) {
       for (const f of lista) {
@@ -8775,7 +8775,7 @@ export default function TableroCarteraAnalytics() {
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as GlosaRow[]).map((g) => {
+                    {(listaActivaPaginada.items as unknown as GlosaRow[]).map((g) => {
                       const cr = cruzarFilaMaestra({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
                       const facReal = normalizarResponsableReal(g.facturador, g.empresa);
                       const respR = g.responsableAceptacion && g.responsableAceptacion !== "SIN ASIGNAR"
@@ -8953,7 +8953,7 @@ export default function TableroCarteraAnalytics() {
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as FacturaSismaVivaRow[]).map((f, idx) => {
+                    {(listaActivaPaginada.items as unknown as FacturaSismaVivaRow[]).map((f, idx) => {
                       const cr = cruzarFilaMaestra({
                         factura: f.factura,
                         empresa: f.empresaHomologada,
@@ -9054,7 +9054,7 @@ export default function TableroCarteraAnalytics() {
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as PendienteRow[]).map((p) => {
+                    {(listaActivaPaginada.items as unknown as PendienteRow[]).map((p) => {
                       const cr = cruzarFilaMaestra({
                         ...p,
                         factura: p.facturaAsociada,
@@ -9174,7 +9174,7 @@ export default function TableroCarteraAnalytics() {
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as AnuladaRow[]).map((a) => {
+                    {(listaActivaPaginada.items as unknown as AnuladaRow[]).map((a) => {
                       const cr = cruzarFilaMaestra({ ...a, motivoTexto: a.motivo });
                       const respR = normalizarResponsableReal(a.responsable, a.empresa);
                       return (
