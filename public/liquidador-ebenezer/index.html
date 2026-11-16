@@ -7352,7 +7352,6 @@ function mHojaDe(n){
     const tn=mNtoks(n); let best=null,bs=0;
     // Dr. Álvaro Pérez (cirujano externo) NO es el Dr. Iván Pérez: el apellido solo no basta
     if(tn.has('ALVARO') && tn.has('PEREZ')){ M_MAPA[n]=null; return null; }
-    // «DR. NESTOR» en los informes es el Dr. Néstor Ramírez (no el Dr. Javier Néstor)
     if(tn.has('NESTOR') && !tn.has('JAVIER') && TARIFAS_V2['NESTOR RAMIREZ']){ M_MAPA[n]='NESTOR RAMIREZ'; return M_MAPA[n]; }
     // La hoja pagada del anestesiólogo se llama «DR. CHRISTIAN FERNANDO» (sin apellido Acosta)
     if(tn.has('CRISTIAN') && tn.has('FERNANDO') && TARIFAS_V2['CRISTIAN ACOSTA']){ M_MAPA[n]='CRISTIAN ACOSTA'; return M_MAPA[n]; }
@@ -7417,7 +7416,6 @@ function mPredecir(med, det, serv, emp, cant, totalFila, esCir){
       if(!fijos.length) return [Math.round(pct[0].valor*totalFila), Math.round(pct[0].valor*100)+'% de los honorarios facturados ('+money(totalFila)+')'];
     }
   }
-  // El comodin de cirugia NO puede pagar una ayuda diagnostica.
   const AYUDA = /TONOGRAF|TOPOGRAF|PAQUIMETR|CAMPIMETR|BIOMETR|GONIOSCOP|RETINOGRAF|TOMOGRAF|ANGIOGRAF|ECOGRAF|MICROSCOPIA|RECUENTO|OCT\b/;
   if(!cands.length && esCir && !AYUDA.test(D)){
     const cc = TARIFAS_V2[h].filter(t=>mGtar(t)===g && t.catchcir);
@@ -9471,7 +9469,7 @@ function semaforoPintar(){
     }
     let rv = (typeof revDe==='function')? revDe(m, tot, f, _manoRes) : null;
     let rvCambio = null;
-    if(rv && rv.origen==='acta' && rv.tot!=null && Math.round(rv.tot)!==Math.round(tot)){ rvCambio=rv; rv=null; estado='ambar';
+    if(rv && rv.origen==='acta' && !rv._legacy && rv.tot!=null && Math.round(rv.tot)!==Math.round(tot)){ rvCambio=rv; rv=null; estado='ambar';
       razones.push(rvCambio.estado==='devolver' ? '<b>Corregido después de devuelto</b> — falta aprobar' : '<b>Cambió después de aprobado</b> ('+money(rvCambio.tot)+' → '+money(tot)+') — falta aprobar'); }
     const _yaAprob = !!(rv && (rv.estado==='ok' || rv.estado==='ajuste'));
     if(f){
@@ -10812,7 +10810,9 @@ function irMedico(m){
 
 // ---------- liquidación manual de items sin tarifa ----------
 // ---------- nombres del informe que NO son profesionales a liquidar (queda aprendido) ----------
-function leerNoMed(){ try{ return JSON.parse(localStorage.getItem('liq_no_medicos')||'{}'); }catch(e){ return {}; } }
+var NO_MED_FIJOS = {'MAIRENA JARABA':{usuario:'sistema',motivo:'Agenda de ejecucion, no es un medico'}};
+function leerNoMed(){ var o={}; try{ o=JSON.parse(localStorage.getItem('liq_no_medicos')||'{}'); }catch(e){}
+  for(var k in NO_MED_FIJOS){ if(!o[k]) o[k]=NO_MED_FIJOS[k]; } return o; }
 function guardarNoMed(o){ try{ localStorage.setItem('liq_no_medicos', JSON.stringify(o)); }catch(e){} }
 function noEsMedico(nombre){
   if(!confirm('¿Quitar a «'+nombre+'» de la lista de profesionales?\n\nDejará de liquidarse y desaparecerá para TODO el equipo, no solo en este computador.\n\nSe puede devolver después en la pestaña Excluidos.')) return;
@@ -14991,6 +14991,7 @@ function revDe(med, tot, f, manoRes){
       return null;
     }
   }
+  rl._legacy=true;
   return rl;
 }
 function revGuardar(med, obj){
@@ -17748,22 +17749,12 @@ function pdfActaEn(doc, h, primera){
   // cierres
   const H = doc.internal.pageSize.getHeight();
   const lineas = [];
-  let __usoRuf = false;
-  try{
-    const RS = (typeof resumenUF === 'function') ? resumenUF(h) : null;
-    if(RS && RS.cuadra && RS.cats.length){
-      const nLin = RS.cats.length + RS.cats.reduce((a,c)=>a+c.items.length,0);
-      for(const ct of RS.cats){
-        lineas.push([ct.nombre + '  ·  ' + ct.actos + ' acto(s)'
-          + (ct.pacientes ? ' · ' + ct.pacientes + ' pac.' : '')
-          + (ct.dias ? ' · ' + ct.dias + ' día(s)' : ''), ct.valor]);
-        if(nLin <= 18) for(const it of ct.items)
-          lineas.push(['      ' + String(it.servicio).slice(0,44) + ' — ' + it.actos + ' acto(s)'
-            + (it.dias ? ' / ' + it.dias + ' día(s)' : ''), it.valor]);
-      }
-      __usoRuf = true;
-    }
-  }catch(e){}
+  let __usoRuf=false;
+  try{ const RS=(typeof resumenUF==='function')?resumenUF(h):null;
+    if(RS && RS.cuadra && RS.cats.length){ const nLin=RS.cats.length+RS.cats.reduce((a,c)=>a+c.items.length,0);
+      for(const ct of RS.cats){ lineas.push([ct.nombre+'  ·  '+ct.actos+' acto(s)'+(ct.pacientes?' · '+ct.pacientes+' pac.':'')+(ct.dias?' · '+ct.dias+' día(s)':''), ct.valor]);
+        if(nLin<=18) for(const it of ct.items) lineas.push(['      '+String(it.servicio).slice(0,44)+' — '+it.actos+' acto(s)'+(it.dias?' / '+it.dias+' día(s)':''), it.valor]); }
+      __usoRuf=true; } }catch(e){}
   if(!__usoRuf){
   if(subQ>0) lineas.push(['Quirófanos y salas de parto', subQ]);
   if(subA>0) lineas.push(['Jornadas de anestesia', subA]);
@@ -20137,250 +20128,6 @@ try{
 
 
 
-/* === El precio sale de la ficha técnica ===
-   Hoy hay 196 valores de cirugía escritos dentro del código. La regla del código
-   sigue decidiendo QUÉ servicio es y si es uno o los dos ojos — eso no se toca —
-   pero el VALOR se busca en la ficha de ese médico.
-   Viene APAGADO a propósito. Con el interruptor apagado no cambia ni un peso: solo
-   anota las diferencias y las muestra abajo, para que usted vea qué se movería
-   antes de que se mueva. Cuando lo prenda, manda la ficha.
-   === */
-(function(){
-  if(window.__fichaManda) return; window.__fichaManda = true;
-  if(typeof v4CirFija !== "function" || typeof REGLAS_DOC === "undefined") return;
-
-  var LLAVE = "ficha_manda_v1";
-  function prendido(){
-    try{ return localStorage.getItem(LLAVE) === "1"; }catch(e){ return false; }
-  }
-  function prender(v){
-    try{ localStorage.setItem(LLAVE, v ? "1" : "0"); }catch(e){}
-  }
-
-  var MED_DE = new Map();
-  try{ Object.keys(REGLAS_DOC).forEach(function(h){ MED_DE.set(REGLAS_DOC[h], h); }); }catch(e){}
-
-  function nz(s){
-    return String(s==null?"":s).toUpperCase().normalize("NFD")
-      .replace(/[̀-ͯ]/g,"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
-  }
-  function grupoFicha(f){
-    var t = nz((f.empresa||"") + " " + (f.seccion||""));
-    if(/MUTUAL/.test(t)) return "M";
-    if(/SURA/.test(t))   return "S";
-    if(/PARTICULAR/.test(t)) return "PART";
-    if(/PREPAGAD/.test(t))   return "P";
-    return "";
-  }
-  function lateralidad(f){
-    var t = nz(f.tipo);
-    if(/\bUNILATERAL Y BILATERAL\b/.test(t)) return "ambos";
-    if(/\bBILATERAL\b/.test(t)) return "bil";
-    if(/\bUNILATERAL\b/.test(t) || /UN SOLO OJO/.test(t)) return "uni";
-    if(/POR PACIENTE/.test(t)) return "pac";
-    return "";
-  }
-
-  window.__fichaValor = function(med, src, g, lado){
-    var filas = [];
-    /* OJO: TARIFAS_V2 es «const» del bloque, NO está en window. Preguntar por
-       window.TARIFAS_V2 da undefined y la ficha queda muda sin avisar. Se nombra directo. */
-    try{ filas = TARIFAS_V2[med] || []; }catch(e){ return null; }
-    if(!filas.length || !src) return null;
-    var re;
-    try{ re = new RegExp(src); }catch(e){ return null; }
-
-    var quiero = (g === "M") ? "M" : (g === "S") ? "S" : (g === "PART") ? "PART" : "P";
-    var cand = filas.filter(function(f){
-      if(f.valor == null) return false;
-      if(Number(f.valor) > 0 && Number(f.valor) <= 1) return false;   /* los % los maneja otra rama */
-      if(!re.test(nz(f.servicio))) return false;
-      var gf = grupoFicha(f);
-      if(quiero === "PART") return gf === "PART" || gf === "P";       /* «prepagadas y particulares» */
-      if(quiero === "P")    return gf === "P" || gf === "PART";
-      return gf === quiero;
-    });
-    if(!cand.length) return null;
-
-    function porLado(l){
-      var x = cand.filter(function(f){ return lateralidad(f) === l; });
-      return x.length === 1 ? x[0] : null;
-    }
-    var f = null;
-    if(lado === "un ojo")      f = porLado("uni");
-    else if(lado === "ambos ojos") f = porLado("bil");
-    if(!f) f = porLado(lado === "un ojo" ? "uni" : "bil");
-    if(!f) f = porLado("pac") || porLado("ambos");
-    if(!f && cand.length === 1) f = cand[0];
-    if(!f) return {ambiguo:true, cuantas:cand.length,
-                   valores:cand.map(function(x){ return Math.round(x.valor); })};
-    return {v: Math.round(f.valor), srv: f.servicio, tipo: f.tipo, emp: f.empresa || f.seccion};
-  };
-
-  window.__fichaAudit = [];
-  /* Cada liquidación llama aquí miles de veces seguidas. Si entre dos llamadas pasa
-     más de un segundo y medio, es que empezó otra liquidación: la lista arranca de cero.
-     (Antes se borraba al apretar el botón, y como el motor calcula de una, se borraba
-     JUSTO DESPUÉS de haberla llenado: la lista salía siempre vacía.) */
-  var ultima = 0;
-  var _orig = v4CirFija;
-  v4CirFija = function(cfg, proc, emp, q){
-    var r = _orig.apply(this, arguments);
-    try{
-      var ahora = Date.now();
-      if(ahora - ultima > 1500) window.__fichaAudit = [];
-      ultima = ahora;
-      if(!r || !r.src) return r;
-      var med = MED_DE.get(cfg);
-      if(!med) return r;
-      var g = (typeof v4EmpG === "function") ? v4EmpG(emp) : "";
-      if(g !== "M" && g !== "S"){
-        g = (typeof v4EsParticular === "function" && v4EsParticular(emp)) ? "PART" : "P";
-      }
-      var h = window.__fichaValor(med, r.src, g, r.lado);
-      var fila = {med:med, srv:String(proc||"").slice(0,54), emp:String(emp||"").slice(0,26),
-                  g:g, lado:r.lado||"", codigo:Math.round(r.v||0)};
-      if(!h){
-        fila.ficha = null; fila.caso = "no está escrito en la ficha";
-        window.__fichaAudit.push(fila);
-        r.sinFicha = true;
-        return r;
-      }
-      if(h.ambiguo){
-        fila.ficha = h.valores; fila.caso = "la ficha tiene varios renglones que sirven";
-        window.__fichaAudit.push(fila);
-        r.fichaAmbigua = true;
-        return r;
-      }
-      if(Math.round(h.v) !== Math.round(r.v)){
-        fila.ficha = h.v; fila.caso = "la ficha dice otro valor";
-        fila.renglon = h.srv + " | " + h.tipo + " | " + h.emp;
-        window.__fichaAudit.push(fila);
-      }
-      if(prendido()){ r.v = h.v; r.deFicha = true; }   /* apagado: no se toca ni un peso */
-    }catch(e){}
-    return r;
-  };
-
-  /* ---------- el panel ---------- */
-  var CSS = ".fman{margin:0 0 16px;border:1px solid #cfe0f5;background:#f6faff;border-radius:10px;padding:12px 14px}"
-    + ".fman h3{margin:0 0 3px;font-size:15px;color:#1e3a6b}"
-    + ".fman .sub{font-size:12px;color:#6b7a90;margin:0 0 9px;line-height:1.45}"
-    + ".fman .sw{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:#1e3a6b;cursor:pointer}"
-    + ".fman .est{font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:2px 8px;border-radius:9px}"
-    + ".fman .est.on{background:#dff3e6;color:#17683f}"
-    + ".fman .est.off{background:#eceff4;color:#5a6a80}"
-    + ".fman table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;margin-top:10px}"
-    + ".fman th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:#6b7a90;padding:5px 7px;border-bottom:1px solid #e6ecf5}"
-    + ".fman td{padding:5px 7px;border-bottom:1px solid #f1f5fa}"
-    + ".fman .num{text-align:right;white-space:nowrap}"
-    + ".fman .sube{color:#1a7f4b;font-weight:700}.fman .baja{color:#b3261e;font-weight:700}"
-    + ".fman .ok{color:#1a7f4b;font-weight:700}";
-  try{ var st=document.createElement("style"); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
-
-  function mny(n){ return "$ " + (Math.round(Number(n)||0)).toLocaleString("es-CO"); }
-  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-
-  function pintar(){
-    var sec = document.getElementById("fichasPanel"); if(!sec) return;
-    var vieja = sec.querySelector(".fman"); if(vieja) vieja.remove();
-    var on = prendido();
-    var A = window.__fichaAudit || [];
-    var dist = A.filter(function(x){ return x.caso === "la ficha dice otro valor"; });
-    var sinF = A.filter(function(x){ return x.caso === "no está escrito en la ficha"; });
-    var amb  = A.filter(function(x){ return /varios renglones/.test(x.caso); });
-
-    /* una línea por médico+servicio, no una por paciente */
-    function juntar(L){
-      var m = {};
-      L.forEach(function(x){
-        var k = x.med + "|" + x.srv + "|" + x.emp + "|" + x.codigo + "|" + JSON.stringify(x.ficha);
-        if(!m[k]) m[k] = {x:x, n:0};
-        m[k].n++;
-      });
-      return Object.keys(m).map(function(k){ return m[k]; })
-        .sort(function(a,b){ return Math.abs((b.x.ficha-b.x.codigo)*b.n) - Math.abs((a.x.ficha-a.x.codigo)*a.n); });
-    }
-    var D = juntar(dist), S = juntar(sinF), M = juntar(amb);
-    var mueve = D.reduce(function(a,o){ return a + ((Number(o.x.ficha)||0) - o.x.codigo) * o.n; }, 0);
-
-    var box = document.createElement("div"); box.className = "fman";
-    var cab = "<h3>⚖ El precio sale de la ficha técnica</h3>"
-      + '<p class="sub">La regla del código sigue decidiendo <b>qué</b> servicio es y si es uno o los dos ojos. '
-      + 'Lo que cambia es de dónde sale el <b>valor</b>: de la ficha de ese médico, no de un número escrito adentro del programa. '
-      + 'Mientras esté apagado no cambia ni un peso — solo le muestra abajo qué se movería.</p>'
-      + '<label class="sw"><input type="checkbox" id="fmanSw"' + (on?" checked":"") + '> '
-      + 'Que mande la ficha <span class="est ' + (on?"on":"off") + '">' + (on?"prendido":"apagado") + "</span></label>";
-
-    if(!A.length){
-      box.innerHTML = cab + '<p class="sub" style="margin:9px 0 0">Todavía no hay nada que mostrar: liquide una sede y vuelva aquí.</p>';
-    } else {
-      var t = "";
-      if(D.length){
-        t += '<p class="sub" style="margin:10px 0 0"><b>' + D.length + "</b> servicio(s) donde la ficha dice otro valor"
-           + (mueve ? ". En este corte movería " + (mueve>0?"+":"") + mny(mueve) : "") + ":</p>"
-           + "<table><thead><tr><th>Médico</th><th>Servicio</th><th>Empresa</th><th class='num'>Veces</th>"
-           + "<th class='num'>Paga hoy</th><th class='num'>Dice la ficha</th></tr></thead><tbody>"
-           + D.slice(0,25).map(function(o){
-               var d = (Number(o.x.ficha)||0) - o.x.codigo;
-               return "<tr><td>" + esc(o.x.med) + "</td><td>" + esc(o.x.srv) + "</td><td>" + esc(o.x.emp) + "</td>"
-                 + '<td class="num">' + o.n + "</td>"
-                 + '<td class="num">' + mny(o.x.codigo) + "</td>"
-                 + '<td class="num ' + (d>0?"sube":"baja") + '">' + mny(o.x.ficha) + "</td></tr>";
-             }).join("") + "</tbody></table>";
-      } else {
-        t += '<p class="sub" style="margin:10px 0 0"><span class="ok">Ningún servicio cambia de valor:</span> lo que paga el programa es lo que dice la ficha.</p>';
-      }
-      if(S.length){
-        t += '<p class="sub" style="margin:10px 0 0"><b>' + S.length + "</b> servicio(s) que el programa paga pero <b>no están escritos en la ficha</b>. "
-           + "Estos hay que escribirlos en la ficha o decidir qué se hace; mientras tanto se siguen pagando como hoy:</p>"
-           + "<table><thead><tr><th>Médico</th><th>Servicio</th><th>Empresa</th><th class='num'>Veces</th><th class='num'>Paga hoy</th></tr></thead><tbody>"
-           + S.slice(0,20).map(function(o){
-               return "<tr><td>" + esc(o.x.med) + "</td><td>" + esc(o.x.srv) + "</td><td>" + esc(o.x.emp) + "</td>"
-                 + '<td class="num">' + o.n + '</td><td class="num">' + mny(o.x.codigo) + "</td></tr>";
-             }).join("") + "</tbody></table>";
-      }
-      if(M.length){
-        t += '<p class="sub" style="margin:10px 0 0"><b>' + M.length + "</b> servicio(s) donde la ficha tiene varios renglones que servirían y no se puede saber cuál. "
-           + "No se adivina: se sigue pagando como hoy hasta que la ficha lo aclare.</p>";
-      }
-      box.innerHTML = cab + t;
-    }
-
-    var ref = sec.querySelector(".searchbar");
-    if(ref && ref.parentNode) ref.parentNode.insertBefore(box, ref);
-    else sec.appendChild(box);
-
-    var sw = document.getElementById("fmanSw");
-    if(sw) sw.onclick = function(){
-      var v = sw.checked;
-      if(v && !confirm("Con esto el valor de cada cirugía sale de la ficha técnica y ya no del número escrito adentro del programa.\n\nSe va a volver a liquidar. ¿Sigo?")) { sw.checked = false; return; }
-      prender(v);
-      try{
-        if(typeof NUBE!=="undefined" && NUBE.audit) NUBE.audit({accion: v?"LA FICHA MANDA: PRENDIDO":"LA FICHA MANDA: APAGADO",
-          periodo:(typeof nubePeriodoActual==="function"?nubePeriodoActual():"")||"—", parte:"", detalle:""});
-      }catch(e){}
-      var b = document.getElementById("btnCalc");
-      if(b && window.RESULT) b.click(); else pintar();
-    };
-  }
-  window.__fichaPintar = pintar;
-
-  try{
-    var b = document.getElementById("btnCalc");
-    if(b) b.addEventListener("click", function(){
-      setTimeout(pintar, 7000); setTimeout(pintar, 18000); setTimeout(pintar, 35000);
-    });
-  }catch(e){}
-  try{
-    var bf = document.getElementById("btnFichas");
-    if(bf) bf.addEventListener("click", function(){ setTimeout(pintar, 300); });
-  }catch(e){}
-  setTimeout(pintar, 2500);
-})();
-
-
-
 /* === No se liquida con los archivos a medio llegar ===
    Los archivos del mes llegan de la nube de a pedazos. Si se aprieta «Liquidar»
    mientras están llegando, se liquida con la mitad de la información y el número
@@ -20601,8 +20348,29 @@ try{
     }catch(e){ try{ console.warn("ruf pintar", e); }catch(e2){} }
   }
 
+  /* La pantalla donde de verdad se trabaja: el acta que se abre desde la lista de
+     médicos, la que tiene «Frente a la liquidación manual» y los botones Aprobar y
+     Devolver. Es «#semActaBox .actabody», y el médico abierto es semAbrir._m. */
+  function pintarActa(){
+    try{
+      var body = document.querySelector("#semActaBox .actabody");
+      if(!body || body.getAttribute("data-ruf") === "1") return;
+      var med = "";
+      try{ med = (window.semAbrir && semAbrir._m) || ""; }catch(e){}
+      if(!med) return;
+      var R = window.resumenUF(med);
+      if(!R || !R.cuadra) return;
+      body.setAttribute("data-ruf", "1");
+      var box = document.createElement("div");
+      box.className = "ruf";
+      box.innerHTML = "<h4>📊 Resumen por unidad funcional — solo lo que se paga</h4>" + tabla(R);
+      body.insertBefore(box, body.firstChild);
+    }catch(e){ try{ console.warn("ruf acta", e); }catch(e2){} }
+  }
+
   function barrer(){
     try{
+      pintarActa();
       document.querySelectorAll(".doc-card .doc-body").forEach(pintarEn);
       document.querySelectorAll(".srvp").forEach(function(sp){
         if(sp.parentNode) pintarEn(sp.parentNode);
@@ -20638,6 +20406,77 @@ try{
       };
     }
   }catch(e){}
+})();
+
+
+
+/* === Cirugía lee el valor de la FICHA TÉCNICA, no del código ===
+   FICHA_FIEL es la ficha técnica 2026 leída del Excel, renglón por renglón, por médico.
+   La regla del código sigue decidiendo QUÉ servicio es y si es uno o dos ojos; el VALOR
+   sale de aquí. Si la ficha no tiene ese servicio, NO se inventa: se deja el valor que
+   traía y se marca «falta en la ficha», para que la liquidadora de esa sede lo complete.
+   Esto va PRENDIDO fijo: de noviembre en adelante manda la ficha. (Octubre está cerrado.)
+   === */
+const FICHA_FIEL = {"ANA ALVAREZ":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",600000.0,"PYP"],["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CAMPOS VISUALES","UNILATERAL Y BILATERAL",0.15,"PYP"],["CIRUGIAS","",1.0,"PYP"],["CIRUGIAS","",0.4,"PYP"],["CIRUGIAS PACIENTES EBENEZER","UNILATERAL Y BILATERAL",0.9,"PYP"],["CIRUGIAS PACIENTES DE LA DRA ANA","",0.9,"PYP"],["EXAMEN BAJO ANESTESIA GENERAL","",450000.0,"PYP"],["EXAMEN BAJO ANESTESIA GENERAL","",0.7,"PYP"],["RETINOBLASTOMA","",0.7,"PYP"],["CONSULTA NEUROOFTALMOLOGIA","PRIMERA VEZ Y CONTROL",0.9,"PYP"],["CONSULTA NEUROOFTALMOLOGIA","PRIMERA VEZ Y CONTROL",0.9,"PYP"],["Consultas Atendidas","",2200000.0,"M"],["Consultas Neuroftalmologia","",66000.0,"M"],["Consultas Neuroftalmologia","",1221.0,"M"],["Cirugias de estrabismo","",3465000.0,"M"],["Cirugias de estrabismo","",495000.0,"M"],["RETINOBLASTOMA UNILATERAL","",322740.0,"M"],["RETINOBLASTOMA BILATERAL","",564795.0,"M"],["ENUCLEACION","",385000.0,"M"],["Cirugias de oculoplastia","",330000.0,"M"],["Lectura de Campo Visual UNILATERAL","",8422.0,"M"],["Lectura de Campo Visual BILATERAL","",16845.0,"M"],["EXAMEN BAJO ANESTESIA GENERAL","",162990.0,"M"]],"OSCAR TEHERAN":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",0.7,"PYP"],["TRABECULOPLASTIA","UNILATERAL",450000.0,"PYP"],["TRABECULOPLASTIA","BILATERAL",900000.0,"PYP"],["TRABECULOPLASTIA","UNILATERAL",500000.0,"PYP"],["TRABECULOPLASTIA","BILATERAL",1000000.0,"PYP"],["TONOGRAFIA OCULAR","UNILATERAL",200000.0,"PYP"],["TONOGRAFIA OCULAR","BILATERAL",350000.0,"PYP"],["TONOGRAFIA OCULAR","UNILATERAL",220000.0,"PYP"],["TONOGRAFIA OCULAR","BILATERAL",380000.0,"PYP"],["TONOGRAFIA OCULAR","UNILATERAL",120000.0,"S"],["TONOGRAFIA OCULAR","BILATERAL",160000.0,"S"],["IRIDOTOMIA - IRIDOPLASTIA - CAPSULOTOMIA","UNILATERAL",300000.0,"PYP"],["IRIDOTOMIA - IRIDOPLASTIA - CAPSULOTOMIA","BILATERAL",600000.0,"PYP"],["IRIDOTOMIA - IRIDOPLASTIA - CAPSULOTOMIA","UNILATERAL",430000.0,"PYP"],["IRIDOTOMIA - IRIDOPLASTIA - CAPSULOTOMIA","BILATERAL",860000.0,"PYP"],["IRIDOTOMIA","UNILATERAL",150000.0,"S"],["IRIDOTOMIA","BILATERAL",262500.0,"S"],["INSERCION DE DISPOSITIVO VIA EXTERNA O ANCLADO A ESCLERA","UNILATERAL",3000000.0,"PYP"],["TRABECULECTOMIA + VALVULA","UNILATERAL",3000000.0,"PYP"],["TRABECULECTOMIA SIN VALVULA (INCLUYE IRIDECTOMIA)","UNILATERAL",2338000.0,"PYP"],["TRABECULECTOMIA + VALVULA","UNILATERAL",0.7,"PYP"],["TRABECULECTOMIA SIN VALVULA","UNILATERAL",0.7,"PYP"],["TRABECULECTOMIA + IRIDECTOMIA","UNILATERAL",0.7,"PYP"],["OTROS PROCEDIMIENTOS QUIRURGICOS","UNILATERAL",0.7,"PYP"],["PARACENTESIS TERAPEUTICA DE CAMARA","UNILATERAL",0.7,"PYP"],["Consultas Atendidas","",14000.0,"M"],["Laser (Trabeculoplastia) Unilateral o Bilateral","",250000.0,"M"],["Cirugia Trabeculectomia con o sin valvula","",400000.0,"M"],["Laser micropulsado transescleral","",350000.0,"M"],["IRIDOTOMIA - CAPSULOTOMIA","",55000.0,"M"],["EXAMEN BAJO ANESTESIA GENERAL","",162990.0,"M"],["TERAPIA INTRAVITREA","",220000.0,"M"],["PARACENTESIS DIAGNÓSTICA DE CÁMARA ANTERIOR DEL OJO","",38100.0,"M"]],"MONICA MUÑOZ":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CAPSULOTOMIA - IRIDOTOMIA","",200000.0,"PYP"],["CAPSULOTOMIAS - IRIDITOMIAS","",55000.0,"S"],["CIRUGIAS","UNILATERAL O BILATERAL",0.7,"PYP"],["RESECCION DE TUMOR DE PARPADO UN TERCIO","UNILATERAL",200000.0,"PYP"],["PTERIGION","UNILATERAL",250000.0,"PYP"],["PTERIGION","UNILATERAL",102057.0,"S"],["Paciente Qx Dr.","",1.0,""],["Paciente Consulta Dr.","",0.7,""],["Consultas Atendidas","",6720000.0,"M"],["Consultas Atendidas","",14000.0,"M"],["Procedimiento menores","",38100.0,"M"],["RECUBRIMIENTO DE CORNEA CON COLGAJO CONJUNTIVAL","",165100.0,"M"],["CICLOCRIOCOAGULACIÓN/en quirofano","",150000.0,"M"],["CICLOCRIOCOAGULACIÓN/en quirofano","",142004.0,"M"],["Cirgias de faco","",1200000.0,"M"],["Cirgias de faco","",200000.0,"M"]],"CYNTHIA TIRADO":[["Consultas Atendidas","",50000.0,"PYP"],["CONSULTA EXTERNA","",14000.0,"M"]],"CESAR ATENCIA":[["CONSULTA","PRIMERA VEZ Y CONTROL",30000.0,"PYP"],["CONSULTA","PRIMERA VEZ Y CONTROL",0.5,"PYP"],["RETINOBLASTOMA","",0.7,"PYP"],["CAPSULOTOMIA","",250000.0,"PYP"],["APLICACIÓN DE POMEDROL","UNILATERAL",200000.0,"PYP"],["FOTOCOAGULACION LASER","UNILATERAL",460000.0,"PYP"],["FOTOCOAGULACION LASER","UNILATERAL",160000.0,"S"],["TERAPIA INTRAVITREA","UNILATERAL",450000.0,"PYP"],["TERAPIA INTRAVITREA","BILATERAL",787500.0,"PYP"],["TERAPIA INTRAVITREA","UNILATERAL",160000.0,"S"],["VITRECTOMIA COMPLETA","UNILATERAL",700000.0,"PYP"],["VITRECTOMIA + FACO","UNILATERAL",900000.0,"PYP"],["VITRECTOMIA POSTERIOR","UNILATERAL",550000.0,"PYP"],["VITREOLISIS","UNILATERAL",450000.0,"PYP"],["VITRECTOMIA POSTERIOR","UNILATERAL",500000.0,"S"],["CONSULTA EXTERNA","",14000.0,"M"],["CIRUGIAS DE RETINA","",500000.0,"M"],["FOTOCOAGULACION LASER","",200000.0,"M"],["FOTOCOAGULACION LASER","",400000.0,"M"],["TERAPIA INTRAVITREA","",220000.0,"M"],["TERAPIA INTRAVITREA","",440000.0,"M"],["RECUBRIMIENTO DE CORNEA","",114300.0,"M"],["EXAMEN BAJO ANESTESIA GENERAL","",162990.0,"M"],["INYECCION SUBCONJUNTIVAL","",67923.0,"M"],["RETINOBLASTOMA UNILATERAL","",293400.0,"M"],["RETINOBLASTOMA","",513450.0,"M"]],"HECTOR GOMEZ":[["CONSULTA EXTERNA","",0.7,"PYP"],["TRABECULPLASTIA CON LASER","BILATERAL",800000.0,"PYP"],["FACO","UNILATERAL",600000.0,"PYP"],["USO DE EQUIPO TRABE","BILATERAL",800000.0,"PYP"],["USO DE EQUIPO TRABE","BILATERAL",0.5,"PYP"],["TRABECULPLASTIA CON LASER","BILATERAL",450000.0,"S"],["USO DE EQUIPO TRABE","BILATERAL",0.5,"S"]],"SAID MENESES":[["Consulta Externa","",40000.0,"P"],["Consulta Externa","",0.4,"PART"],["CONSULTA EXTERNA","",14000.0,""],["CIRUGIAS DE RETINA","",500000.0,""],["FOTOCOAGULACION LASER","",200000.0,""],["FOTOCOAGULACION LASER","",400000.0,""],["TERAPIA INTRAVITREA","",220000.0,""],["TERAPIA INTRAVITREA","",440000.0,""],["COMITE / AUDITORIA CIENTIFICA","",1600000.0,""],["CONSULTA EXTERNA","",2380000.0,"M"],["CONSULTA EXTERNA","",10200.0,"M"],["CONSULTA EXTERNA","",10200.0,"M"],["CIRUGIAS DE RETINA","",500000.0,"M"],["FOTOCOAGULACION LASER","",200000.0,"M"]],"JUDY GOMEZ":[["CONSULTAS EN CONJUNTO CON PEDIATRIA + VALORACIONES POR PROTE","",2500000.0,"M"]],"LILIANA OSPINO":[["CONSULTA","PRIMERA VEZ Y CONTROL",40000.0,"PYP"],["CONSULTA","PRIMERA VEZ Y CONTROL",0.5,"PYP"],["CAPSULOTOMIA","POR PACIENTE",250000.0,"PYP"],["APLICACIÓN DE POMEDROL","UNILATERAL",200000.0,"PYP"],["FOTOCOAGULACION LASER","POR PACIENTE",460000.0,"PYP"],["FOTOCOAGULACION LASER","POR PACIENTE",200000.0,"S"],["TERAPIA INTRAVITREA","UNILATERAL",450000.0,"PYP"],["TERAPIA INTRAVITREA","BILATERAL",787500.0,"PYP"],["TERAPIA INTRAVITREA","UNILATERAL",220000.0,"S"],["TERAPIA INTRAVITREA","BILATERAL",385000.0,"S"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",300000.0,"PYP"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",200000.0,"S"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",528000.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",800000.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",400000.0,"S"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",2059200.0,"PYP"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",650000.0,"PYP"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",260000.0,"S"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",1872000.0,"PYP"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",550000.0,"PYP"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",260000.0,"S"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",1632000.0,"PYP"],["PARACENTESIS TERAPEUTICA DE CAMARA","UNILATERAL",0.6,"PYP"],["CONSULTA EXTERNA","",20000.0,"PYP"],["CIRUGIAS DE RETINA","",909000.0,"PYP"],["CIRUGIAS DE RETINA","",500000.0,"PYP"],["CONSULTA EXTERNA","",20000.0,"M"],["CIRUGIAS DE RETINA","",8500000.0,"M"],["CIRUGIAS DE RETINA","",909000.0,"M"],["CIRUGIAS DE RETINA","",8500000.0,"M"],["CIRUGIAS DE RETINA","",500000.0,"M"]],"MILENA ROMERO":[["CONSULTA","PRIMERA VEZ Y CONTROL",30000.0,"PYP"],["CONSULTA","PRIMERA VEZ Y CONTROL",0.5,"PYP"],["CAPSULOTOMIA - IRIDOTOMIA","POR PACIENTE",250000.0,"PYP"],["CAPSULOTOMIA - IRIDOTOMIA","POR PACIENTE",150000.0,"S"],["APLICACIÓN DE POMEDROL","UNILATERAL",200000.0,"PYP"],["FOTOCOAGULACION LASER","POR PACIENTE",600000.0,"PYP"],["FOTOCOAGULACION LASER","POR PACIENTE",200000.0,"S"],["TERAPIA INTRAVITREA","UNILATERAL",500000.0,"PYP"],["TERAPIA INTRAVITREA","BILATERAL",875000.0,"PYP"],["TERAPIA INTRAVITREA","UNILATERAL",220000.0,"S"],["TERAPIA INTRAVITREA","BILATERAL",385000.0,"S"],["FACO + LIO","UNILATERAL",900000.0,"PYP"],["FACO + LIO","UNILATERAL",200000.0,"S"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",200000.0,"S"],["VITRECTOMIA DE RETINA Y VITREO TODAS/CON O SIN FACO + LIO","UNILATERAL",1650000.0,"PYP"],["VITRECTOMIA DE RETINA Y VITREO TODAS/CON O SIN FACO + LIO","UNILATERAL",2250000.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",400000.0,"S"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",260000.0,"S"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",260000.0,"S"],["Otros procedimiento QX","UNILATERAL/BILATERAL",0.7,"PYP"],["PARACENTESIS TERAPEUTICA DE CAMARA","UNILATERAL",0.6,"PYP"],["CONSULTA EXTERNA","",20000.0,"PYP"],["CIRUGIAS DE RETINA","",909000.0,"PYP"],["CIRUGIAS DE RETINA","",700000.0,"PYP"],["FOTOCOAGULACION LASER","",150000.0,"PYP"],["CONSULTA EXTERNA","",20000.0,"M"],["CIRUGIAS DE RETINA","",909000.0,"M"],["CIRUGIAS DE RETINA","",700000.0,"M"],["FOTOCOAGULACION LASER","",150000.0,"M"]],"IVAN PEREZ":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",0.7,"PYP"],["CIRUGIAS OCULOPLASTIA","TODAS",0.7,"PYP"],["TUMOR DE PARPADO","UNILATERAL",400000.0,"PYP"],["BLEFAROPLASTIA + PTOSIS","BILATERAL",1700000.0,"PYP"],["TOXINA BOTULINICA","UNILATERAL",330000.0,"PYP"],["BLEFAROPLASTIA SUPERIOR","BILATERAL",1040000.0,"PYP"],["BLEFAROPLASTIA INFERIOR","BILATERAL",1040000.0,"PYP"],["BLEFAROPLASTIA SUPERIOR + INFERIOR","BILATERAL",1700000.0,"PYP"],["EXTRACCION DE CUERPO EXTRAÑO EN ORBITA","UNILATERAL",600000.0,"PYP"],["ORBITOTOMIA CON INSERCION DE IMPLANTE ORBITAL","UNILATERAL",700000.0,"PYP"],["OTRAS CIRUGIAS OCULOPLASTIA","UNILATERAL",0.7,"PYP"]],"KATIA GUTIERREZ":[["CONSULTA/JORNADA","PRIMERA VEZ Y CONTROL",600000.0,"PYP"],["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",60000.0,"PYP"],["CONTROL MIOPIA UNILATERAL","BIOMETRIA NIÑOS",35000.0,"PYP"],["CONTROL MIOPIA BILATERAL","BIOMETRIA NIÑOS",70000.0,"PYP"],["CIRUGIAS ESTRABISMO","",0.7,"PYP"],["CIRUGIAS ESTRABISMO 4 MUSCULOS","",2209640.0,"PYP"],["CIRUGIAS ESTRABISMO 3 MUSCULOS","",1940000.0,"PYP"],["CIRUGIAS ESTRABISMO","",450000.0,"S"],["OTRAS CIRUGIAS","",0.7,"PYP"],["RESECION DE CHALAZION","UNILATERAL",115000.0,"PYP"],["PTERIGION","UNILATERAL",200000.0,"PYP"],["CIRUGIAS ESTRABISMO 2 MUSCULOS","",1380000.0,"PYP"],["CONSULTAS ATENDIDAS","",500000.0,"M"],["Cirugias de estrabismo","",3000000.0,"M"],["Cirugias de estrabismo","",450000.0,"M"],["Cirugias varias","",2001.0,"M"]],"CARLOS GRANADOS":[["CONSULTAS (1 - 200)","PRIMERA VEZ Y CONTROL",14000000.0,"PYP"],["CONSULTAS (201 - 353)","PRIMERA VEZ Y CONTROL",30000.0,"PYP"],["ECOGRAFIAS OCULARES","UNILATERAL Y BILATERAL",35000.0,"PYP"],["CAPSULOTOMIA CON LASER","UNILATERAL Y BILATERAL",250000.0,"PYP"],["IRIDOTOMIA CON LASER","UNILATERAL Y BILATERAL",250000.0,"PYP"],["CAPSULOTOMIA E IRIDOTOMIA","UNILATERAL Y BILATERAL",150000.0,"S"],["PLASTIA DE CANALICULOS LAGRIMALES","UNILATERAL",200000.0,"PYP"],["PLASTIA DE CANALICULOS LAGRIMALES","BILATERAL",400000.0,"PYP"],["FACO + LIO","UNILATERAL",1000000.0,"PYP"],["FACO + LIO","UNILATERAL",200000.0,"S"],["FACO + LIO","UNILATERAL",500000.0,"PYP"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",300000.0,"PYP"],["CHALAZION","UNILATERAL",115000.0,"PYP"],["OTRAS CIRUGIAS","UNILATERAL",0.007,"PYP"],["RETIRO DE SUTURA DE CORNEA","UNILATERAL",159600.0,"PYP"],["RESECCION DE TUMOR DE PARPADO","UNILATERAL",284600.0,"PYP"],["PTERIGION","UNILATERAL",250000.0,"PYP"],["QUERATOPLASTIA PENETRANTE","UNILATERAL",717150.0,"PYP"],["QUERATOPLASTIA PENETRANTE","UNILATERAL",400000.0,"S"],["BONIFICACION DE LENTES NO TORICOS","PANOPTIX-VIVITY",200000.0,"PYP"],["BONIFICACION DE LENTES TORICOS","PANOPTIX TORICO-VIVITY T",300000.0,"PYP"],["BONIFICACION DE LENTES BIOTECH MONOFOCALES CON Y SIN TORICID","",200000.0,"PYP"],["BONIFICACION DE LENTES EDOF Y MULTIFOCAL BIOTECH CON Y  SIN ","",500000.0,"PYP"],["CONSULTA EXTERNA","",14000.0,"M"],["ECOGRAFIAS OCULARES","",951302.0,"M"],["ECOGRAFIAS OCULARES","",35000.0,"M"],["ECOGRAFIAS OCULARES","",951302.0,"M"],["ECOGRAFIAS OCULARES","",70000.0,"M"],["FACO + LIO","",200000.0,"M"],["FACO + LIO","",130003.0,"M"],["BONIFICACION LENTES","",200000.0,"M"],["SUTURA DE CORNEA","",115801.0,"M"],["SUTURA DE CORNEA","",101600.0,"M"],["RETIRO  DE SUTURA  EN CÓRNEA","",115801.0,"M"],["RETIRO  DE SUTURA  EN CÓRNEA","",38100.0,"M"],["QUERATOPLASTIA PENETRANTE","",400000.0,"M"],["QUERATOPLASTIA PENETRANTE","",116200.0,"M"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE QUERATOPLA","",150000.0,"M"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE QUERATOPLA","",116200.0,"M"],["VITRECTOMIA ANTERIOR","",171450.0,"M"],["VITRECTOMIA ANTERIOR","",147101.0,"M"],["INYECCION SUBCONJUNTIVAL","",169003.0,"M"],["INYECCION SUBCONJUNTIVAL","",67923.0,"M"],["PLASTIA DE CANALICULOS LAGRIMALES SOD","",38100.0,"M"],["RECUBRIMIENTO DE CORNEA CON COLGAJO CONJUNTIVAL","",165100.0,"M"],["PARACENTESIS TERAPEUTICA DE CAMARA ANTERIOR","",129101.0,"M"],["PARACENTESIS TERAPEUTICA DE CAMARA ANTERIOR","",38100.0,"M"],["CAPSULOTOMIA CON LASER","",136505.0,"M"],["CAPSULOTOMIA CON LASER","",55000.0,"M"],["RESECCION DE TUMOR DE PARPADO","",63500.0,"M"]],"KAREN MURCIA OPTOMETRA":[["CONSULTA/JORNADA","PRIMERA VEZ Y CONTROL",150000.0,"PYP"]],"SHIRLEY POMARES":[["CONSULTAS ATENDIDAS","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CAPSULOTOMIA  E IRIDOTOMIA CON LASER","UNILATERAL",250000.0,"PYP"],["CAPSULOTOMIA  E IRIDOTOMIA CON LASER","BILATERAL",437500.0,"PYP"],["CAPSULOTOMIA  E IRIDOTOMIA CON LASER","UNILATERAL",70000.0,"S"],["CAPSULOTOMIA  E IRIDOTOMIA CON LASER","BILATERAL",70000.0,"S"],["CIRUGIAS","UNILATERAL/BILATERAL",0.7,"PYP"],["CONSULTAS ATENDIDAS","",14000.0,"M"],["CIRUGIAS GENERALES","",60000.0,"M"],["CIRUGIAS DE PTERIGION","",95000.0,"M"]],"ANDRES BUSTAMANTE":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",1.0,"PYP"],["CIRUGIAS","UNILATERAL",0.85,"PYP"]],"GERARDO COY":[["CIRUGIAS","",2001.0,"M"],["TOXINA","",38100.0,"M"]],"SOFIA JACOME OPTOMETRA":[["CONSULTA","PRIMERA VEZ Y CONTROL",3000000.0,"PYP"]],"DIANA CIFUENTES":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CAPSULOTOMIA - IRIDOTOMIA","",0.35,"PYP"],["CAPSULOTOMIAS - IRIDITOMIAS","",55000.0,"S"],["CIRUGIAS","UNILATERAL",0.7,"PYP"]],"MARIA SERGINA":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",40000.0,"PYP"],["CAPSULOTOMIA - IRIDOTOMIA","",200000.0,"PYP"],["CAPSULOTOMIAS - IRIDITOMIAS","",55000.0,"S"],["RESECCION DE TUMOR DE PARPADO","UNILATERAL",200000.0,"PYP"],["Consultas Atendidas","",6328000.0,"M"],["Consultas Atendidas","",14000.0,"M"],["ABLACION DE PESTAÑAS POR ELECTROLISIS  UNILATERAL","",38100.0,"M"],["ABLACION DE PESTAÑAS POR ELECTROLISIS  BILATERAL","",66675.0,"M"],["Cirugías Seg. Anterior","",200000.0,"M"],["Cirugia de oft general (CHALAZION)","",120000.0,"M"],["Cirugia de oft general (CHALAZION)","",60000.0,"M"],["CIRUGIAS DE PTERIGION","",760000.0,"M"],["CIRUGIAS DE PTERIGION","",95000.0,"M"]],"JAYSI PASTRANA":[["CONSULTA/JORNADA","PRIMERA VEZ Y CONTROL",500000.0,"PYP"],["CONSULTA","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CAPSULOTOMIA","POR PACIENTE",250000.0,"PYP"],["APLICACIÓN DE POMEDROL","POR PACIENTE",200000.0,"PYP"],["FOTOCOAGULACION LASER","POR PACIENTE",460000.0,"PYP"],["FOTOCOAGULACION LASER","POR PACIENTE",200000.0,"S"],["PANFOTOCOAGULACION LASER","POR PACIENTE",560000.0,"PYP"],["TERAPIA INTRAVITREA","UNILATERAL",450000.0,"PYP"],["TERAPIA INTRAVITREA","BILATERAL",787500.0,"PYP"],["TERAPIA INTRAVITREA","UNILATERAL",220000.0,"S"],["TERAPIA INTRAVITREA","BILATERAL",385000.0,"S"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",300000.0,"PYP"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",200000.0,"S"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",528000.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",800000.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",400000.0,"S"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",2059200.0,"PYP"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",650000.0,"PYP"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",260000.0,"S"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",1872000.0,"PYP"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",550000.0,"PYP"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",260000.0,"S"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",1632000.0,"PYP"],["Otros procedimiento QX","UNILATERAL/BILATERAL",0.7,"PYP"],["CONSULTA EXTERNA","",20000.0,"M"],["TERAPIA INTRAVITREA","",100000.0,"M"]],"JENNIFER CORREDOR":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CIRUGIAS (Pacientes de la Dra.)","CIRUGIAS",0.88,"PYP"],["CIRUGIAS","CIRUGIAS",0.7,"PYP"],["CAPSULOTOMIA CON LASER","UNILATERAL",250000.0,"PYP"],["CAPSULOTOMIA CON LASER","BILATERAL",437500.0,"PYP"],["CAPSULOTOMIA CON LASER","UNILATERAL",70000.0,"S"],["CAPSULOTOMIA CON LASER","BILATERAL",70000.0,"S"],["IRIDOTOMIA CON LASER","UNILATERAL",250000.0,"PYP"],["IRIDOTOMIA CON LASER","BILATERAL",437500.0,"PYP"],["IRIDOTOMIA CON LASER","UNILATERAL",70000.0,"S"],["IRIDOTOMIA CON LASER","BILATERAL",70000.0,"S"],["FACO + LIO","UNILATERAL",700000.0,"PYP"],["FACO + LIO","UNILATERAL",200000.0,"S"],["FACO + LIO","UNILATERAL",500000.0,"PYP"],["ANILLOS INTRAESTOMALES","UNILATERAL",700000.0,"PYP"],["ANILLOS INTRAESTOMALES","BILATERAL",1225000.0,"PYP"],["PTERIGION","UNILATERAL",250000.0,"PYP"],["PTERIGION","UNILATERAL",102057.0,"S"],["TERAPIA DE LUZ PULSADA REGULADA ULTRA INTENSA (IURPL) 3 SECI","",400000.0,"PYP"],["TERAPIA DE LUZ PULSADA REGULADA ULTRA INTENSA (IURPL) 3 SECI","",320000.0,"PYP"],["FOTOBIOMODULACIÓN 3 SECIONES - DRENAJE DE LUZ MODULADA (LUZ ","",300000.0,"PYP"],["QUERATOPLASTIA","UNILATERAL",717150.0,"PYP"],["PLASTIA DE CANALICULOS LAGRIMALES","UNILATERAL",200000.0,"PYP"],["PLASTIA DE CANALICULOS LAGRIMALES","BILATERAL",400000.0,"PYP"],["PLASTIA DE CANALICULOS LAGRIMALES","UNILATERAL",0.6,"S"],["PLASTIA DE CANALICULOS LAGRIMALES","BILATERAL",0.6,"S"],["BONIFICACION DE LENTES NO TORICO","PANOPTIX-VIVITY",200000.0,"PYP"],["BONIFICACION DE LENTES TORICO","PANOPTIX TORICO-VIVITY T",300000.0,"PYP"],["BONIFICACION DE LENTE","APLICA LENTES PREMIUM PA",300000.0,"PYP"],["LECTURA TOPOGRAFIA OJO SECO","UNILATERAL/BILATERAL",25000.0,"PYP"],["LECTURA TOPOGRAFIA OJO SECO","UNILATERAL/BILATERAL",15000.0,"S"],["CONSULTA EXTERNA","",14000.0,"M"],["FACO + LIO","",200000.0,"M"],["SUTURA DE CORNEA","",101600.0,"M"],["RETIRO  DE SUTURA  EN CÓRNEA","",38100.0,"M"],["EXTRACCIÓN DE CUERPO  EXTRAÑO PROFUNDO EN CÓRNEA","",63500.0,"M"],["PARACENTESIS TERAPEUTICA","",38100.0,"M"]],"MARIA AUXILIADRA":[["Consultas Atendidas","",50000.0,"PYP"]],"MARIA CAROLINA CAUSIL":[["Consultas Atendidas","",50000.0,"PYP"],["Consultas Atendidas","",5600000.0,"M"],["Consultas Atendidas","",14000.0,"M"]],"ALFREDO RAMIREZ":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL IN",50000.0,"PYP"],["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",0.5,"PYP"],["CAPSULOTOMIA - IRIDOTOMIA","",0.35,"PYP"],["CAPSULOTOMIAS - IRIDITOMIAS","",55000.0,"S"],["Cirugia Refractiva","BILATERAL",1400000.0,"PYP"],["Cirugia Refractiva","UNILATERAL",700000.0,"PYP"],["CIRUGIAS","UNILATERAL O BILATERAL",0.7,"PYP"],["FACO + LIO","UNILATERAL",200000.0,"S"],["FACO + LIO","UNILATERAL",900000.0,"PYP"],["FACO + LIO","UNILATERAL",500000.0,"PYP"],["BONIFICACION DE LENTES NO TORICO","PANOPTIX-VIVITY",200000.0,"PYP"],["BONIFICACION DE LENTES TORICO","PANOPTIX TORICO-VIVITY T",300000.0,"PYP"],["BONIFICACION DE LENTES BIOTECH MONOFOCALES CON Y SIN TORICID","",200000.0,"PYP"],["BONIFICACION DE LENTES EDOF Y MULTIFOCAL BIOTECH CON Y  SIN ","",500000.0,"PYP"],["CONSULTAS ATENDIDAS","PRIMERA VEZ Y CONTROL",14000.0,"PYP"],["PROCEDIMIENTOS CONSULTORIO","EXTRACCION DE CUERPO EXT",38100.0,"PYP"],["BONIFICACION DE LENTE","APLICA LENTES PREMIUM PA",300000.0,"PYP"],["CIRUGIAS DE SEGMENTO ANTERIOR","FACO + LIO",200000.0,"PYP"]],"RICARDO INFANTE":[["CONSULTA","PRIMERA VEZ Y CONTROL",1000000.0,"PYP"],["FOTOCOAGULACION LASER","POR PACIENTE",460000.0,"PYP"],["TERAPIA INTRAVITREA","UNILATERAL",450000.0,"PYP"],["TERAPIA INTRAVITREA","BILATERAL",787500.0,"PYP"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",300000.0,"PYP"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE RETINA","UNILATERAL",528000.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",800000.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",2059200.0,"PYP"],["VITRECTOMIA COMPLETA CON RETINOPEXIA","UNILATERAL",3000000.0,"PYP"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",650000.0,"PYP"],["VITRECTOMIA POSTERIOR CON INSERCION DE SILICON O GAS","UNILATERAL",1872000.0,"PYP"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",550000.0,"PYP"],["VITRECTOMIA POSTERIOR CON RETIRO DE MATERIAL IMPLANTADO","UNILATERAL",1632000.0,"PYP"],["Otros procedimiento QX","UNILATERAL/BILATERAL",0.7,"PYP"]],"ANA ELLES":[["EVALUACIONES Y TERAPIAS ORTOPTICAS","PRIMERA VEZ Y CONTROL",0.5,"PYP"]],"PATRICIA OSORIO":[["CONSULTA EXTERNA","",14000.0,"M"],["FACO + LIO","",200000.0,"M"],["QUERATOPLASTIA PENETRANTE","",400000.0,"M"],["FACO COMO SEGUNDO PROCEDIMIENTO EN UNA CIRUGÍA DE QUERATOPLA","",150000.0,"M"],["VITRECTOMIA ANTERIOR + FACO","",294000.0,"M"],["RECUBRIMIENTO DE CORNEA CON COLGAJO CONJUNTIVAL","",165100.0,"M"],["SUTURA DE CORNEA","",101600.0,"M"],["EXTRACCIÓN DE CUERPO  EXTRAÑO PROFUNDO EN CÓRNEA","",63500.0,"M"],["RETIRO  DE SUTURA  EN CÓRNEA","",38100.0,"M"],["INYECCION SUBCONJUNTIVAL","",67923.0,"M"],["PARACENTESIS TERAPEUTICA","",38100.0,"M"],["ANILLOS INTRAESTOMALES","",400000.0,"M"],["ANILLOS INTRAESTOMALES","",640000.0,"M"],["BONIFICACION LENTES","",200000.0,"M"]],"ANALITH BARRIGA":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",0.7,"PYP"],["CAPSULOTOMIAS - IRIDITOMIAS","UNILATERAL/BILATERAL",0.7,"PYP"],["CAPSULOTOMIAS - IRIDITOMIAS","UNILATERAL/BILATERAL",150000.0,"S"],["PLASTIA DE CANALICULOS LAGRIMALES","UNILATERAL",200000.0,"PYP"],["PLASTIA DE CANALICULOS LAGRIMALES","BILATERAL",400000.0,"PYP"],["PLASTIA DE CANALICULOS LAGRIMALES","BILATERAL",200000.0,"PYP"],["PLASTIA DE CANALICULOS LAGRIMALES","UNILATERAL/BILATERAL",0.6,"S"],["PROCEDIMIENTOS CQ Y NO CQ","",0.7,"PYP"],["ANGIOGRAFIAS","UNILATERAL/BILATERAL",0.3,"PYP"],["TOMOGRAFIAS Y ANGIOTOMOGRAFIAS","UNILATERAL/BILATERAL",50000.0,"PYP"],["PROCEDIMIENTOS CQ Y NO CQ","",0.9,"PYP"],["FOTOGRAFIAS A COLOR","UNILATERAL/BILATERAL",0.3,"PYP"],["Capsulotomia","",55000.0,"M"],["Iridotomia","",55000.0,"M"],["citologia ocular","",36200.0,"M"]],"HAROLD NOEL":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTROL",50000.0,"PYP"],["CIRUGIAS OCULOPLASTIA","TODAS",0.7,"PYP"]]};(function(){
+  if(window.__fichaFuente) return; window.__fichaFuente = true;
+  if(typeof v4CirFija !== "function" || typeof REGLAS_DOC === "undefined") return;
+  var MED_DE = new Map();
+  try{ Object.keys(REGLAS_DOC).forEach(function(h){ MED_DE.set(REGLAS_DOC[h], h); }); }catch(e){}
+  function nz(s){ return String(s==null?"":s).toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim(); }
+  function grupoFila(f){ // f = [servicio, tipo, valor, grupo]
+    var g=f[3];
+    if(g==="M"||g==="S"||g==="PART"||g==="P"||g==="PYP") return g; return "";
+  }
+  function lat(f){ var t=nz(f[1]);
+    if(/UNILATERAL.{0,3}(Y|O|\/).{0,3}BILATERAL/.test(t)) return "ambos";
+    if(t.indexOf("BILATERAL")>=0) return "bil";
+    if(t.indexOf("UNILATERAL")>=0||t.indexOf("UN SOLO OJO")>=0) return "uni";
+    if(t.indexOf("POR PACIENTE")>=0||t.indexOf("PAQUETE")>=0) return "pac"; return ""; }
+  var SIN=[["INTRAVITRE","TERAPIA INTRAVITREA"],["ABLACION","FOTOCOAGULACION"],["REPARACION","FOTOCOAGULACION"],["CICLOFOTOCOAGULA","MICROPULSADO"],["ESCISION","OCULOPLAST"],["RESECCION","OCULOPLAST"],["IDENTACION","INDENTACION"],["FOTOBIOMOD","LUZ PULSADA"]];
+  function nombreOk(f,re,src){ var s=nz(f[0]); if(re.test(s)) return true;
+    for(var i=0;i<SIN.length;i++){ if(new RegExp(SIN[i][0]).test(src)&&s.indexOf(SIN[i][1])>=0) return true; } return false; }
+  window.__fichaValor = function(med, src, g, lado){
+    var filas = FICHA_FIEL[med]; if(!filas||!src) return null;
+    var re; try{ re=new RegExp(src); }catch(e){ return null; }
+    var base = filas.filter(function(f){ return f[2]>1 && nombreOk(f,re,src); });
+    if(!base.length) return null;
+    var want = (g==="PART")?["PART","PYP","P"]:(g==="P")?["P","PYP","PART"]:[g];
+    var cand=null;
+    for(var w=0;w<want.length;w++){ var xs=base.filter(function(f){return grupoFila(f)===want[w];}); if(xs.length){cand=xs;break;} }
+    if(!cand) return null;
+    var orden=(lado==="un ojo")?["uni","pac","ambos",""]:["bil","pac","ambos",""];
+    for(var o=0;o<orden.length;o++){ var x=cand.filter(function(f){return lat(f)===orden[o];});
+      if(x.length===1) return {v:Math.round(x[0][2]), srv:x[0][0]};
+      if(x.length>1){ var vs={}; x.forEach(function(f){vs[Math.round(f[2])]=1;}); var k=Object.keys(vs);
+        if(k.length===1) return {v:Math.round(x[0][2]), srv:x[0][0]};
+        return {ambiguo:true, valores:k.map(Number)}; } }
+    if(cand.length===1) return {v:Math.round(cand[0][2]), srv:cand[0][0]};
+    var vs2={}; cand.forEach(function(f){vs2[Math.round(f[2])]=1;}); var k2=Object.keys(vs2);
+    if(k2.length===1) return {v:Math.round(cand[0][2]), srv:cand[0][0]};
+    return {ambiguo:true, valores:k2.map(Number)};
+  };
+  window.__fichaAudit=[];
+  var _orig = v4CirFija;
+  v4CirFija = function(cfg, proc, emp, q){
+    var r=_orig.apply(this,arguments);
+    try{
+      if(!r||!r.src) return r;
+      var med=MED_DE.get(cfg); if(!med) return r;
+      var g=(typeof v4EmpG==="function")?v4EmpG(emp):"";
+      if(g!=="M"&&g!=="S") g=(typeof v4EsParticular==="function"&&v4EsParticular(emp))?"PART":"P";
+      var h=window.__fichaValor(med, r.src, g, r.lado);
+      if(!h || h.ambiguo){
+        r.sinFicha=true;   // la ficha no lo cubre: se deja el valor y se marca, no se inventa
+        window.__fichaAudit.push({med:med, srv:String(proc||"").slice(0,54), emp:String(emp||"").slice(0,24), g:g, codigo:r.v, caso: h?"varias filas":"no esta en la ficha"});
+        return r;
+      }
+      if(Math.round(h.v)!==Math.round(r.v)){
+        window.__fichaAudit.push({med:med, srv:String(proc||"").slice(0,54), emp:String(emp||"").slice(0,24), g:g, codigo:r.v, ficha:h.v, caso:"la ficha dice otro valor"});
+      }
+      r.v=h.v; r.deFicha=true;   // manda la ficha
+    }catch(e){}
+    return r;
+  };
 })();
 
 
