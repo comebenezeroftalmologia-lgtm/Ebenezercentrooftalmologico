@@ -8615,14 +8615,14 @@ export default function TableroCarteraAnalytics() {
                         const d = acumAtencion[tk];
                         const pct = totGlosado > 0 ? Math.round((d.glosado / totGlosado) * 100) : 0;
                         const filtrable = tk !== "SIN_DETALLE";
-                        const act = filtrable && filtroAtencionTop === tk;
+                        const act = tk !== "SIN_DETALLE" && filtroAtencionTop === tk;
                         return (
                           <button
                             key={tk}
                             type="button"
                             disabled={!filtrable}
                             onClick={() => {
-                              if (filtrable) {
+                              if (tk !== "SIN_DETALLE") {
                                 setFiltroAtencionTop(act ? "TODAS" : tk);
                               }
                             }}
