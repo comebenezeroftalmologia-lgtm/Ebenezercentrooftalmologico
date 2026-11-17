@@ -4,13 +4,20 @@ import { TalentoHumanoWorkspace } from "@/components/workcenter/TalentoHumanoWor
 /* ---------------------------------------------------------------------
    La mesa de trabajo de Talento Humano.
 
-   Ojo con el permiso: el marco de WorkCenter pide "proyectos", pero esta
-   pantalla pide ADEMAS "talento_humano". Aqui hay salarios, cedulas y
-   diagnosticos: no puede entrar cualquiera que tenga WorkCenter.
+   EL PERMISO, COMO QUEDO (revisado el 17-11-2026):
 
-   (Pendiente con Faber: revisar si quien diligencia en TH necesita
-   tambien "proyectos" para llegar hasta aca, o si conviene que esta
-   pantalla cuelgue de otro lado.)
+   Con "talento_humano" basta y sobra. El marco de WorkCenter deja entrar
+   a quien tenga CUALQUIERA de sus modulos (ver MODULOS_WORKCENTER), y la
+   bandeja lateral solo pinta los archivos que esa persona puede abrir:
+   quien solo tenga Talento Humano no ve ni el Liquidador ni Cartera.
+
+   Esta pantalla ademas lo exige por su cuenta, aqui abajo, y no se fia de
+   que el marco ya lo haya mirado. Aqui hay salarios, cedulas y
+   diagnosticos: dos candados en serie, no uno.
+
+   (El comentario anterior decia que el marco pedia "proyectos". Dejo de
+   ser cierto y por eso se cambia: un comentario que miente hace perder
+   mas tiempo que no tener ninguno.)
    --------------------------------------------------------------------- */
 
 export const dynamic = "force-dynamic";
