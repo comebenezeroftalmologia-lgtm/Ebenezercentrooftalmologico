@@ -521,7 +521,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
   }
 
-  let body: { entidad?: string; accion?: string; fila?: Fila; filas?: Fila[] };
+  let body: {
+    entidad?: string;
+    accion?: string;
+    archivoNombre?: string;
+    fila?: Fila;
+    filas?: Fila[];
+    glosas?: Fila[];
+    pendientes?: Fila[];
+    anuladas?: Fila[];
+  };
   try {
     body = await request.json();
   } catch {
@@ -530,7 +539,10 @@ export async function POST(request: Request) {
 
   const { entidad, accion = "EDITAR" } = body;
   const fila: Fila = (body.fila && !Array.isArray(body.fila) ? body.fila : {}) as Fila;
-  if (!entidad || (!body.fila && !Array.isArray(body.filas))) {
+  if (
+    !entidad ||
+    (entidad !== "importar-excel" && !body.fila && !Array.isArray(body.filas))
+  ) {
     return NextResponse.json({ ok: false, error: "Faltan entidad o fila" }, { status: 400 });
   }
 
@@ -928,6 +940,378 @@ export async function POST(request: Request) {
         importadas++;
       }
       return NextResponse.json({ ok: true, importadas });
+    }
+
+    // ---- importar libro Excel completo (.xlsx / .csv) con autodetección y upsert sin duplicados ----
+    if (entidad === "importar-excel") {
+      const listaGlosas: Fila[] = Array.isArray(body.glosas) ? body.glosas : [];
+      const listaPendientes: Fila[] = Array.isArray(body.pendientes) ? body.pendientes : [];
+      const listaAnuladas: Fila[] = Array.isArray(body.anuladas) ? body.anuladas : [];
+      const archivoNombre = txt(body.archivoNombre) || "carga_excel.xlsx";
+      const hoyCarga = new Date().toISOString().slice(0, 10);
+
+      // Precarga en memoria de catálogos y llaves existentes para upsert rápido e idempotente
+      const [empExist, respExist, causExist, factExist, glosaExist, pendExist] = await Promise.all([
+        db.from("cf_empresas").select("id, nombre"),
+        db.from("cf_responsables").select("id, nombre"),
+        db.from("cf_causales").select("codigo"),
+        db.from("cf_facturas").select("id, numero"),
+        db.from("cf_glosas").select("id, factura_id, motivo_texto, valor_glosado"),
+        db.from("cf_pendientes_facturar").select("id, paciente_num_id, fecha_servicio, cups, valor_servicio, descripcion"),
+      ]);
+
+      const mapaEmp = new Map<string, string>();
+      for (const e of (empExist.data || []) as { id: string; nombre: string }[]) {
+        if (e.nombre) mapaEmp.set(e.nombre.trim().toUpperCase(), e.id);
+      }
+      const obtenerEmpresaId = async (nombreRaw: unknown): Promise<string | null> => {
+        const n = txt(nombreRaw)?.trim().toUpperCase();
+        if (!n) return null;
+        const prev = mapaEmp.get(n);
+        if (prev) return prev;
+        const ins = await db.from("cf_empresas").insert({ nombre: n }).select("id").maybeSingle();
+        const nuevoId = (ins.data?.id as string) ?? null;
+        if (nuevoId) mapaEmp.set(n, nuevoId);
+        return nuevoId;
+      };
+
+      const mapaResp = new Map<string, string>();
+      for (const r of (respExist.data || []) as { id: string; nombre: string }[]) {
+        if (r.nombre) mapaResp.set(r.nombre.trim().toUpperCase(), r.id);
+      }
+      const obtenerRespId = async (nombreRaw: unknown): Promise<string | null> => {
+        const n = txt(nombreRaw)?.trim().toUpperCase();
+        if (!n || n === "SIN ASIGNAR" || n === "N/A") return null;
+        const prev = mapaResp.get(n);
+        if (prev) return prev;
+        const ins = await db.from("cf_responsables").insert({ nombre: n, activo: true }).select("id").maybeSingle();
+        const nuevoId = (ins.data?.id as string) ?? null;
+        if (nuevoId) mapaResp.set(n, nuevoId);
+        return nuevoId;
+      };
+
+      const setCausales = new Set<string>(
+        ((causExist.data || []) as { codigo: string }[]).map((c) => String(c.codigo || "").toUpperCase())
+      );
+      const resolverCodigoCausalSeguro = async (rawCod: unknown): Promise<string | null> => {
+        const c = txt(rawCod)?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "";
+        if (!c) return null;
+        if (setCausales.has(c)) return c;
+        if (CAUSALES_NORMATIVAS_BASE.some((b) => b.codigo === c)) {
+          await asegurarCausalNormativa(db, c);
+          setCausales.add(c);
+          return c;
+        }
+        const c4 = c.slice(0, 4);
+        if (c4.length === 4 && setCausales.has(c4)) return c4;
+        const c2 = c.slice(0, 2);
+        if (CAUSALES_NORMATIVAS_BASE.some((b) => b.codigo === c2)) {
+          await asegurarCausalNormativa(db, c2);
+          setCausales.add(c2);
+          return c2;
+        }
+        return null;
+      };
+
+      const mapaFact = new Map<string, string>();
+      for (const f of (factExist.data || []) as { id: string; numero: string }[]) {
+        const k = claveFacturaNorm(f.numero);
+        if (k) mapaFact.set(k, f.id);
+      }
+
+      const normClaveTxt = (s: unknown) =>
+        strLimpio(s).toUpperCase().replace(/\s+/g, " ").trim().slice(0, 140);
+
+      const mapaGlosaNatural = new Map<string, string>();
+      for (const g of (glosaExist.data || []) as { id: string; factura_id: string; motivo_texto: string | null; valor_glosado: number | null }[]) {
+        const k = `${g.factura_id}|${Math.round(Number(g.valor_glosado || 0))}|${normClaveTxt(g.motivo_texto)}`;
+        if (!mapaGlosaNatural.has(k)) mapaGlosaNatural.set(k, g.id);
+      }
+
+      const mapaPendNatural = new Map<string, string>();
+      for (const p of (pendExist.data || []) as {
+        id: string;
+        paciente_num_id: string | null;
+        fecha_servicio: string | null;
+        cups: string | null;
+        valor_servicio: number | null;
+        descripcion: string | null;
+      }[]) {
+        const k = `${strLimpio(p.paciente_num_id)}|${strLimpio(p.fecha_servicio)}|${strLimpio(p.cups)}|${Math.round(Number(p.valor_servicio || 0))}|${normClaveTxt(p.descripcion)}`;
+        if (!mapaPendNatural.has(k)) mapaPendNatural.set(k, p.id);
+      }
+
+      let creados = 0;
+      let actualizados = 0;
+      let glosasProcesadas = 0;
+      let pendientesProcesados = 0;
+      let anuladasProcesadas = 0;
+
+      // 1. Procesar Anuladas / Reemplazadas / Legalizadas (cf_facturas)
+      for (const item of listaAnuladas) {
+        const numero = claveFacturaNorm(strLimpio(item.factura));
+        if (!numero) continue;
+
+        const empId = await obtenerEmpresaId(item.empresa);
+        const respId = await obtenerRespId(item.responsable);
+        const reempNum = claveFacturaNorm(strLimpio(item.facturaReemplaza));
+        let reempId: string | null = null;
+        if (reempNum && reempNum.startsWith("FCOE")) {
+          reempId = mapaFact.get(reempNum) || (await idFactura(db, reempNum, { empresa_id: empId }));
+          if (reempId) mapaFact.set(reempNum, reempId);
+        }
+
+        const estGest = String(item.estadoGestion || "ANULADA").toUpperCase();
+        const estadoFact =
+          estGest === "LEGALIZADA"
+            ? "LEGALIZADA"
+            : reempId || estGest === "REEMPLAZADA"
+            ? "REEMPLAZADA"
+            : "ANULADA";
+
+        const camposFact: Record<string, unknown> = {
+          estado: estadoFact,
+          origen: {
+            archivo: archivoNombre,
+            hoja: strLimpio(item.hojaExcel) || "ANULACION",
+            fila: Number(item.filaExcel) || null,
+            cargado: hoyCarga,
+            datos: (item.datosOriginales as Record<string, unknown>) || {},
+          },
+        };
+        if (empId) camposFact.empresa_id = empId;
+        if (txt(item.empresaOriginal) || txt(item.empresa)) {
+          camposFact.empresa_nombre_original = txt(item.empresaOriginal) ?? txt(item.empresa);
+        }
+        if (item.anio && Number(item.anio) >= 2000) camposFact.anio = Number(item.anio);
+        if (txt(item.periodo)) camposFact.periodo = txt(item.periodo);
+        if (fecha(item.fechaFactura)) camposFact.fecha_elaboracion = fecha(item.fechaFactura);
+        if (fecha(item.fechaRadicacion)) camposFact.fecha_radicacion = fecha(item.fechaRadicacion);
+        if (fecha(item.fechaAnulacion)) camposFact.fecha_anulacion = fecha(item.fechaAnulacion);
+        if (num(item.valorRadicado) > 0) camposFact.valor_radicado = num(item.valorRadicado);
+        if (num(item.copagos) > 0) camposFact.copagos = num(item.copagos);
+        if (num(item.valorGlosaDevolucion) > 0) camposFact.valor_glosa_devolucion = num(item.valorGlosaDevolucion);
+        if (txt(item.motivo)) camposFact.motivo_anulacion_texto = txt(item.motivo);
+        if (reempId) camposFact.reemplaza_a_id = reempId;
+        if (txt(item.rips)) camposFact.rips = txt(item.rips);
+        if (txt(item.revisionFinanciera)) camposFact.revision_financiera = txt(item.revisionFinanciera);
+        if (respId) camposFact.responsable_id = respId;
+
+        const idExist = mapaFact.get(numero);
+        if (idExist) {
+          await db.from("cf_facturas").update(camposFact).eq("id", idExist);
+          actualizados++;
+        } else {
+          const ins = await db
+            .from("cf_facturas")
+            .insert({ numero, valor_radicado: num(item.valorRadicado), ...camposFact })
+            .select("id")
+            .maybeSingle();
+          if (ins.data?.id) {
+            mapaFact.set(numero, String(ins.data.id));
+            creados++;
+          }
+        }
+        anuladasProcesadas++;
+      }
+
+      // 2. Procesar Glosas (cf_facturas + cf_glosas)
+      for (const item of listaGlosas) {
+        const numero = claveFacturaNorm(strLimpio(item.factura));
+        if (!numero) continue;
+
+        const empId = await obtenerEmpresaId(item.empresa);
+        let factId = mapaFact.get(numero) || null;
+        const vRad = num(item.valorFacturado ?? item.valorRadicado);
+        const fElab = fecha(item.fechaFactura);
+        const fRad = fecha(item.fechaRadicacion);
+
+        if (!factId) {
+          const insF = await db
+            .from("cf_facturas")
+            .insert({
+              numero,
+              empresa_id: empId,
+              empresa_nombre_original: txt(item.empresaOriginal) ?? txt(item.empresa),
+              anio: item.anio && Number(item.anio) >= 2000 ? Number(item.anio) : fElab ? Number(fElab.slice(0, 4)) : null,
+              fecha_elaboracion: fElab,
+              fecha_radicacion: fRad,
+              valor_radicado: vRad,
+            })
+            .select("id")
+            .maybeSingle();
+          factId = (insF.data?.id as string) ?? null;
+          if (factId) mapaFact.set(numero, factId);
+        } else {
+          const upF: Record<string, unknown> = {};
+          if (empId) upF.empresa_id = empId;
+          if (fElab) upF.fecha_elaboracion = fElab;
+          if (fRad) upF.fecha_radicacion = fRad;
+          if (vRad > 0) upF.valor_radicado = vRad;
+          if (Object.keys(upF).length > 0) {
+            await db.from("cf_facturas").update(upF).eq("id", factId);
+          }
+        }
+        if (!factId) continue;
+
+        const fId = await obtenerRespId(item.facturador);
+        const rId = await obtenerRespId(item.responsableRespuesta || item.responsableAceptacion);
+        const codCausal = await resolverCodigoCausalSeguro(item.motivoCodigo);
+        const rawNc = txt(item.notaCredito)?.trim() || "";
+        const nc =
+          !rawNc
+            ? null
+            : rawNc.toUpperCase() === "NA" || rawNc.toUpperCase() === "NO APLICA"
+            ? "N/A"
+            : rawNc;
+
+        const estUp = String(item.estado || "PENDIENTE").toUpperCase();
+        const estadoValido = ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(estUp)
+          ? estUp
+          : "PENDIENTE";
+
+        const vGlosado = num(item.valorGlosado);
+        const motivoTxt = txt(item.motivoGlosa);
+        const valoresGlosa: Record<string, unknown> = {
+          factura_id: factId,
+          tipo: String(item.tipoGlosa || "GLOSA").toUpperCase().startsWith("DEVOL") ? "DEVOLUCION" : "GLOSA",
+          alcance: ["PARCIAL", "TOTAL"].includes(String(item.alcance || "").toUpperCase())
+            ? String(item.alcance).toUpperCase()
+            : null,
+          motivo_codigo: codCausal,
+          motivo_texto: motivoTxt,
+          observacion: txt(item.observacionInterna),
+          valor_glosado: vGlosado,
+          valor_aceptado:
+            item.valorAceptado === null || item.valorAceptado === undefined || item.valorAceptado === ""
+              ? null
+              : num(item.valorAceptado),
+          estado: estadoValido,
+          fecha_glosa: fecha(item.fechaNotificacionGlosa),
+          nota_credito: nc,
+          facturador_id: fId,
+          responsable_aceptacion_id: rId,
+          origen: {
+            archivo: archivoNombre,
+            hoja: strLimpio(item.hojaExcel) || "GLOSAS",
+            fila: Number(item.filaExcel) || null,
+            cargado: hoyCarga,
+            datos: (item.datosOriginales as Record<string, unknown>) || {},
+          },
+        };
+
+        const claveNat = `${factId}|${Math.round(vGlosado)}|${normClaveTxt(motivoTxt)}`;
+        const idGlosaExist = mapaGlosaNatural.get(claveNat);
+        if (idGlosaExist) {
+          await db.from("cf_glosas").update(valoresGlosa).eq("id", idGlosaExist);
+          actualizados++;
+        } else {
+          const insG = await db.from("cf_glosas").insert(valoresGlosa).select("id").maybeSingle();
+          if (insG.data?.id) {
+            mapaGlosaNatural.set(claveNat, String(insG.data.id));
+            creados++;
+          }
+        }
+        glosasProcesadas++;
+      }
+
+      // 3. Procesar Servicios Clínicos / Pendientes por Facturar (cf_pendientes_facturar)
+      for (const item of listaPendientes) {
+        const empId = await obtenerEmpresaId(item.empresa);
+        const respId = await obtenerRespId(item.responsable);
+        const numFactAsoc = claveFacturaNorm(strLimpio(item.facturaAsociada));
+        let factAsocId: string | null = null;
+        if (numFactAsoc && numFactAsoc.startsWith("FCOE")) {
+          factAsocId = mapaFact.get(numFactAsoc) || (await idFactura(db, numFactAsoc, { empresa_id: empId }));
+          if (factAsocId) mapaFact.set(numFactAsoc, factAsocId);
+        }
+
+        const fServ = fecha(item.fechaServicio);
+        const vServ = num(item.valorServicio);
+        const cupsTxt = txt(item.cups);
+        const descTxt = txt(item.descripcion);
+        const pacNumTxt = txt(item.pacienteNumId);
+        const estP = String(item.estado || (factAsocId ? "FACTURADO" : "PENDIENTE")).toUpperCase();
+        const estadoPend = ["PENDIENTE", "FACTURADO", "ANULADO", "NO_FACTURABLE"].includes(estP)
+          ? estP
+          : "PENDIENTE";
+
+        const valoresPend: Record<string, unknown> = {
+          paciente_tipo_id: txt(item.pacienteTipoId),
+          paciente_num_id: pacNumTxt,
+          paciente_nombre: txt(item.pacienteNombre),
+          empresa_id: empId,
+          empresa_nombre_original: txt(item.empresaOriginal) ?? txt(item.empresa),
+          contrato: txt(item.contrato),
+          fecha_servicio: fServ,
+          anio: item.anio && Number(item.anio) >= 2000 ? Number(item.anio) : fServ ? Number(fServ.slice(0, 4)) : null,
+          unidad_funcional: txt(item.unidadFuncional),
+          cups: cupsTxt,
+          descripcion: descTxt,
+          medico: txt(item.medico),
+          autorizacion: txt(item.autorizacion),
+          cantidad: Math.max(1, Math.round(num(item.cantidad) || 1)),
+          valor_servicio: vServ,
+          estado: estadoPend,
+          factura_id: factAsocId,
+          responsable_id: respId,
+          observaciones: txt(item.observaciones),
+          origen: {
+            archivo: archivoNombre,
+            hoja: strLimpio(item.hojaExcel) || "PENDIENTES",
+            fila: Number(item.filaExcel) || null,
+            cargado: hoyCarga,
+            datos: (item.datosOriginales as Record<string, unknown>) || {},
+          },
+        };
+
+        const claveP = `${strLimpio(pacNumTxt)}|${strLimpio(fServ)}|${strLimpio(cupsTxt)}|${Math.round(vServ)}|${normClaveTxt(descTxt)}`;
+        const idPendExist = mapaPendNatural.get(claveP);
+        if (idPendExist) {
+          await db.from("cf_pendientes_facturar").update(valoresPend).eq("id", idPendExist);
+          actualizados++;
+        } else {
+          const insP = await db.from("cf_pendientes_facturar").insert(valoresPend).select("id").maybeSingle();
+          if (insP.data?.id) {
+            mapaPendNatural.set(claveP, String(insP.data.id));
+            creados++;
+          }
+        }
+        pendientesProcesados++;
+      }
+
+      const totalProcesados = glosasProcesadas + pendientesProcesados + anuladasProcesadas;
+      try {
+        await db.from("cf_cargas").insert({
+          archivo: archivoNombre,
+          filas_leidas: totalProcesados,
+          filas_cargadas: creados + actualizados,
+          concilia: true,
+          detalle: {
+            creados,
+            actualizados,
+            glosasProcesadas,
+            pendientesProcesados,
+            anuladasProcesadas,
+            usuario: unombre,
+          },
+          ejecutada_por: uid,
+        });
+      } catch {
+        // Si cf_cargas no está activa en algún entorno, no bloquea el guardado principal.
+      }
+
+      return NextResponse.json({
+        ok: true,
+        importadas: creados + actualizados,
+        resumen: {
+          creados,
+          actualizados,
+          glosasProcesadas,
+          pendientesProcesados,
+          anuladasProcesadas,
+        },
+      });
     }
 
     return NextResponse.json({ ok: false, error: "Entidad desconocida: " + entidad }, { status: 400 });

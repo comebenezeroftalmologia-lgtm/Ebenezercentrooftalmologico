@@ -11,6 +11,7 @@ import {
   clasificarAtencionYSede,
   limpiarNombrePersona,
 } from "@/lib/carteraCruces";
+import { ModalImportarCarteraExcel } from "@/components/workcenter/ModalImportarCarteraExcel";
 
 type CorteSismaBack = {
   fechaCorte: string;
@@ -724,78 +725,84 @@ export default function TableroCarteraAnalytics() {
   //
   // Si la base no responde o aun no tiene registros, el tablero CONSERVA lo que
   // ya muestra y avisa, en vez de quedarse en blanco.
-  useEffect(() => {
-    let vigente = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/cartera/registros", { cache: "no-store" });
-        const json = await res.json();
-        if (!vigente) return;
-        if (!res.ok || !json.ok) {
+  const [mostrarModalSubirExcel, setMostrarModalSubirExcel] = useState<boolean>(false);
+
+  const recargarRegistrosDesdeBase = async (esMontaje = false, sigueVigente?: () => boolean) => {
+    try {
+      const res = await fetch("/api/cartera/registros", { cache: "no-store" });
+      const json = await res.json();
+      if (sigueVigente && !sigueVigente()) return;
+      if (!res.ok || !json.ok) {
+        if (esMontaje) {
           mostrarMensaje(
             "No se pudo leer la base de datos: " + (json?.error || res.statusText) +
             ". Lo que ves es la ultima foto del archivo y NO se esta guardando."
           );
-          return;
         }
-        if (Array.isArray(json.facturasBase) && json.facturasBase.length > 0) {
-          setFacturasBaseDb(
-            json.facturasBase.map((r: AnuladaRow) => ({
-              ...r,
-              responsable: normalizarResponsableReal(r.responsable, r.empresa),
-            }))
-          );
-        }
-        if (Array.isArray(json.anuladas) && json.anuladas.length > 0) {
-          setAnuladas(
-            json.anuladas.map((r: AnuladaRow) => ({
-              ...r,
-              responsable: normalizarResponsableReal(r.responsable, r.empresa),
-            }))
-          );
-        }
-        if (Array.isArray(json.legalizadas) && json.legalizadas.length > 0) {
-          setLegalizadas(
-            json.legalizadas.map((r: AnuladaRow) => ({
-              ...r,
-              responsable: normalizarResponsableReal(r.responsable, r.empresa),
-            }))
-          );
-        }
-        if (Array.isArray(json.glosas) && json.glosas.length > 0) {
-          setGlosas(
-            json.glosas.map((r: GlosaRow) => ({
-              ...r,
-              facturador: normalizarResponsableReal(r.facturador, r.empresa),
-            }))
-          );
-        }
-        if (Array.isArray(json.pendientes) && json.pendientes.length > 0) {
-          setPendientes(
-            json.pendientes.map((r: PendienteRow) => ({
-              ...r,
-              responsable: normalizarResponsableReal(r.responsable, r.empresa),
-            }))
-          );
-        }
-        const vacio =
-          (json.anuladas?.length ?? 0) === 0 &&
-          (json.legalizadas?.length ?? 0) === 0 &&
-          (json.glosas?.length ?? 0) === 0 &&
-          (json.pendientes?.length ?? 0) === 0;
-        if (vacio) {
-          mostrarMensaje(
-            "La base aun no tiene registros cargados. Lo que ves es la foto del archivo; lo que registres si se guarda."
-          );
-        }
-      } catch {
-        if (vigente) {
-          mostrarMensaje(
-            "Sin conexion con la base de datos. Lo que ves es la ultima foto del archivo y NO se esta guardando."
-          );
-        }
+        return;
       }
-    })();
+      if (Array.isArray(json.facturasBase) && json.facturasBase.length > 0) {
+        setFacturasBaseDb(
+          json.facturasBase.map((r: AnuladaRow) => ({
+            ...r,
+            responsable: normalizarResponsableReal(r.responsable, r.empresa),
+          }))
+        );
+      }
+      if (Array.isArray(json.anuladas) && json.anuladas.length > 0) {
+        setAnuladas(
+          json.anuladas.map((r: AnuladaRow) => ({
+            ...r,
+            responsable: normalizarResponsableReal(r.responsable, r.empresa),
+          }))
+        );
+      }
+      if (Array.isArray(json.legalizadas) && json.legalizadas.length > 0) {
+        setLegalizadas(
+          json.legalizadas.map((r: AnuladaRow) => ({
+            ...r,
+            responsable: normalizarResponsableReal(r.responsable, r.empresa),
+          }))
+        );
+      }
+      if (Array.isArray(json.glosas) && json.glosas.length > 0) {
+        setGlosas(
+          json.glosas.map((r: GlosaRow) => ({
+            ...r,
+            facturador: normalizarResponsableReal(r.facturador, r.empresa),
+          }))
+        );
+      }
+      if (Array.isArray(json.pendientes) && json.pendientes.length > 0) {
+        setPendientes(
+          json.pendientes.map((r: PendienteRow) => ({
+            ...r,
+            responsable: normalizarResponsableReal(r.responsable, r.empresa),
+          }))
+        );
+      }
+      const vacio =
+        (json.anuladas?.length ?? 0) === 0 &&
+        (json.legalizadas?.length ?? 0) === 0 &&
+        (json.glosas?.length ?? 0) === 0 &&
+        (json.pendientes?.length ?? 0) === 0;
+      if (esMontaje && vacio) {
+        mostrarMensaje(
+          "La base aun no tiene registros cargados. Lo que ves es la foto del archivo; lo que registres si se guarda."
+        );
+      }
+    } catch {
+      if (!sigueVigente || sigueVigente()) {
+        mostrarMensaje(
+          "Sin conexion con la base de datos. Lo que ves es la ultima foto del archivo y NO se esta guardando."
+        );
+      }
+    }
+  };
+
+  useEffect(() => {
+    let vigente = true;
+    void recargarRegistrosDesdeBase(true, () => vigente);
     return () => {
       vigente = false;
     };
@@ -4943,6 +4950,21 @@ export default function TableroCarteraAnalytics() {
           />
         )}
 
+        {/* BOTÓN SUBIR EXCEL (.XLSX / .CSV) A LA BASE DE DATOS COMPARTIDA */}
+        <button
+          type="button"
+          onClick={() => setMostrarModalSubirExcel(true)}
+          className="inline-flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-extrabold transition cursor-pointer border whitespace-nowrap"
+          style={{
+            backgroundColor: "#ECFDF5",
+            borderColor: "#A7F3D0",
+            color: "#047857",
+          }}
+          title="Subir archivo Excel (.xlsx o .csv) y almacenarlo en la base de datos compartida"
+        >
+          <span>📤 Subir Excel (.xlsx)</span>
+        </button>
+
         {/* 1. DESPLEGABLE DE AÑO */}
         <div className="relative z-40">
           <button
@@ -8713,6 +8735,14 @@ export default function TableroCarteraAnalytics() {
             </div>
             <button
               type="button"
+              onClick={() => setMostrarModalSubirExcel(true)}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition border"
+              style={{ backgroundColor: "#059669", color: "#FFFFFF", borderColor: "#059669" }}
+            >
+              📤 Subir Excel (.xlsx / .csv)
+            </button>
+            <button
+              type="button"
               onClick={exportarVistaExcelCSV}
               className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition border"
               style={{ backgroundColor: "#0E245E", color: "#FFFFFF", borderColor: "#0E245E" }}
@@ -9273,6 +9303,18 @@ export default function TableroCarteraAnalytics() {
           </div>
         )}
       </div>
+
+      {/* MODAL SUBIR Y ALMACENAR EXCEL (.XLSX / .CSV) EN BASE DE DATOS COMPARTIDA */}
+      {mostrarModalSubirExcel && (
+        <ModalImportarCarteraExcel
+          onCerrar={() => setMostrarModalSubirExcel(false)}
+          onImportado={(mensaje) => {
+            setMostrarModalSubirExcel(false);
+            mostrarMensaje(mensaje);
+            void recargarRegistrosDesdeBase(false);
+          }}
+        />
+      )}
 
       {/* MODAL REGISTRAR CORTE */}
       {mostrarModalCorte && (

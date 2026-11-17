@@ -23,6 +23,7 @@ import {
   homologarEmpresaYOrigen,
   clasificarAtencionYSede,
 } from "@/lib/carteraCruces";
+import { ModalImportarCarteraExcel } from "@/components/workcenter/ModalImportarCarteraExcel";
 
 /* ---------------------------------------------------------------------
    MESA DE TRABAJO DE CARTERA — GLOSAS, DEVOLUCIONES Y CONTROL DE FACTURAS
@@ -880,7 +881,7 @@ export function CarteraWorkspace({
             onClick={() => setImportarAbierto(true)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-[#DCE8FA] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#47597A] transition hover:border-[#94A3B8]"
           >
-            <Upload className="h-3.5 w-3.5" /> Importar Excel
+            <Upload className="h-3.5 w-3.5" /> Subir Excel (.xlsx / .csv)
           </button>
           <button
             type="button"
@@ -1619,7 +1620,7 @@ export function CarteraWorkspace({
       )}
 
       {importarAbierto && (
-        <ModalImportarExcel
+        <ModalImportarCarteraExcel
           onCerrar={() => setImportarAbierto(false)}
           onImportado={(msg) => {
             avisar(msg);
