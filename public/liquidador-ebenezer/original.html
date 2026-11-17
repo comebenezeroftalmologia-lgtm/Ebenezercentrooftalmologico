@@ -8216,7 +8216,7 @@ function liquidarV4(recs, actos, actosAll){
     if(esCirUf(r)) continue;
     if(/MEDICAMENTOS|FARMACIA|INSUMOS|DISPENSAC/.test(mNorm(r.sv||''))) continue;
     let h0=mHojaDe(r.m);
-    if(!h0 && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h0='ANA ALVAREZ';
+    if(!h0 && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h0='ANA ALVAREZ'; if(!h0 && /KATERINE/i.test(r.m||'') && /ORTOPTIC/i.test(mNorm((r.d||'')+' '+(r.sv||'')))) h0='ANA ELLES';
     if(!h0 || !dkAplica(r)) continue;
     dkTotal.set(dkClave(h0,r), (dkTotal.get(dkClave(h0,r))||0)+1);
   }
@@ -8225,12 +8225,12 @@ function liquidarV4(recs, actos, actosAll){
     if(esCirUf(r)){ marcar(r._src, (esLente(r)||esProced(r))? 'quirofano' : 'insumos_quirofano'); continue; }
     if(/MEDICAMENTOS|FARMACIA|INSUMOS|DISPENSAC/.test(mNorm(r.sv||''))){ marcar(r._src,'medicamentos'); continue; } // no son honorarios
     let h=mHojaDe(r.m);
-    if(!h && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h='ANA ALVAREZ';
+    if(!h && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h='ANA ALVAREZ'; if(!h && /KATERINE/i.test(r.m||'') && /ORTOPTIC/i.test(mNorm((r.d||'')+' '+(r.sv||'')))) h='ANA ELLES';
     if(!h){ marcar(r._src,'sin_ficha'); continue; }
     marcar(r._src,'liquidado_sede');   // entra a la liquidación; abajo puede cambiar de destino
     const M=get(h), cfg=REGLAS_DOC[h]||{}, RM=REGLAS_MES[h]||{};
     const g=v4EmpG(r.e+' '+r.ct);
-    if(dkAplica(r)){
+    if(dkAplica(r) && !(cfg.unaPorPaciente && cfg.unaPorPaciente.test(mNorm((r.d||"")+" "+(r.sv||""))))){
       const dk = dkClave(h,r);
       const dkTot = dkTotal.get(dk)||1;
       const dkI = (dkSeen.get(dk)||0)+1; dkSeen.set(dk, dkI);
@@ -20509,6 +20509,29 @@ const FICHA_FIEL = {"DIANA CIFUENTES":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTRO
     }catch(e){}
     return r;
   };
+})();
+
+
+
+/* === Fuera la comparación con la liquidación manual ===
+   Pedro Luis no la pidió y confunde. La comparación del acta («Frente a la
+   liquidación manual») vive del archivo que se sube en la tarjeta «Su liquidación
+   manual» (#fileCmp, sección 2 «Para comparar» = #cgB2). Si esa tarjeta no está,
+   nunca se sube nada y la comparación nunca aparece. No se borra el motor de
+   comparación (104 referencias entrelazadas); solo se quita la entrada, que es lo
+   que se ve. === */
+(function(){
+  if(window.__sinComparar) return; window.__sinComparar = true;
+  var st=document.createElement("style");
+  st.textContent="#cgB2{display:none!important}";
+  (document.head||document.documentElement).appendChild(st);
+  function quitar(){
+    try{ var b=document.getElementById("cgB2"); if(b) b.style.display="none"; }catch(e){}
+    try{ var f=document.getElementById("fileCmp"); if(f){ f.disabled=true; f.value=""; } }catch(e){}
+  }
+  if(document.readyState!=="loading") quitar();
+  else document.addEventListener("DOMContentLoaded", quitar);
+  setTimeout(quitar,500); setTimeout(quitar,1500);
 })();
 
 
