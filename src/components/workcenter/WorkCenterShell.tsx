@@ -15,21 +15,30 @@ import {
 import type { Modulo } from "@/lib/modulos";
 import { BANDEJA_BLANCA_STYLE, RielGlobal, TramaArquitectonicaBandeja } from "@/components/Sidebar";
 
-const ARCHIVOS_TRABAJO = [
+const ARCHIVOS_TRABAJO: {
+  id: string;
+  modulo: Modulo;
+  nombre: string;
+  subtitulo: string;
+  href: string;
+}[] = [
   {
     id: "liquidador",
+    modulo: "proyectos",
     nombre: "Liquidador de Honorarios",
     subtitulo: "Archivo de trabajo · Clave propia",
     href: "/workcenter/liquidador",
   },
   {
     id: "cartera",
+    modulo: "cartera",
     nombre: "Cartera — Mesa de trabajo",
     subtitulo: "Glosas, devoluciones y anulaciones",
     href: "/workcenter/cartera",
   },
   {
     id: "talento-humano",
+    modulo: "talento_humano",
     nombre: "Talento Humano — Base de datos",
     subtitulo: "Planta, ausentismos, cursos y capacitaciones",
     href: "/workcenter/talento-humano",
@@ -41,7 +50,7 @@ export function WorkCenterShell({
   modulos = [],
   children,
 }: {
-  usuario: { id: string; nombre: string; esAdmin: boolean };
+  usuario: { id: string; nombre: string; esAdmin: boolean; puedeUsuarios?: boolean };
   modulos?: Modulo[];
   children: React.ReactNode;
 }) {
@@ -52,12 +61,14 @@ export function WorkCenterShell({
 
   useEffect(() => setMenuMovil(false), [pathname]);
 
+  const permitidos = new Set(modulos);
   const q = busqueda.trim().toLowerCase();
   const filtrados = ARCHIVOS_TRABAJO.filter(
     (h) =>
-      !q ||
-      h.nombre.toLowerCase().includes(q) ||
-      h.subtitulo.toLowerCase().includes(q)
+      (usuario.esAdmin || permitidos.has(h.modulo)) &&
+      (!q ||
+        h.nombre.toLowerCase().includes(q) ||
+        h.subtitulo.toLowerCase().includes(q))
   );
 
   return (
@@ -65,6 +76,7 @@ export function WorkCenterShell({
       <RielGlobal
         modulos={modulos}
         isAdmin={usuario.esAdmin}
+        puedeUsuarios={usuario.puedeUsuarios ?? usuario.esAdmin}
         onToggleBandeja={() => setAbierto((v) => !v)}
         onOpenBandeja={() => setAbierto(true)}
       />

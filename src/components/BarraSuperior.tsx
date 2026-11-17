@@ -37,6 +37,8 @@ const CORTO: Partial<Record<Modulo, string>> = {
   leads: "Clientes Potenciales",
   no_quirurgicos: "Ord. No Quirúrgicos",
   quirurgicos: "Ord. Quirúrgicos",
+  cartera_radicacion: "Cartera",
+  digiturno_contact: "Digiturno",
 };
 
 function Pestana({

@@ -1,8 +1,24 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
-import { MODULOS, type Modulo } from "@/lib/modulos";
+import { esModuloValido, MODULOS, type Modulo } from "@/lib/modulos";
 import type { AppUser, Rol, RolPlataforma } from "@/lib/procesos/types";
+
+export function resolverModulosEfectivos(
+  dbModulosRaw: string[],
+  appMetadata?: Record<string, unknown> | null
+): Modulo[] {
+  const dbModulos = dbModulosRaw.filter(esModuloValido);
+  if (appMetadata && appMetadata.modulos_v2 === true && Array.isArray(appMetadata.modulos_asignados)) {
+    const metaModulos = appMetadata.modulos_asignados.map(String).filter(esModuloValido);
+    return Array.from(new Set<Modulo>([...dbModulos, ...metaModulos]));
+  }
+  // Usuarios anteriores a la separación de slugs conservan lo que ya veían hasta que se edite su acceso.
+  const legacy = new Set<Modulo>(dbModulos);
+  if (legacy.has("frecuencias")) legacy.add("cartera_radicacion");
+  if (legacy.has("venta_del_dia")) legacy.add("digiturno_contact");
+  return Array.from(legacy);
+}
 
 export const getCurrentAppUser = cache(async (): Promise<AppUser | null> => {
   const supabase = createSessionServerClient();
@@ -26,8 +42,6 @@ export const getCurrentAppUser = cache(async (): Promise<AppUser | null> => {
     .eq("id", userId)
     .single()) as { data: any; error: any };
 
-  // Si la migración 019 (roles) aún no se ha corrido, las columnas nuevas no
-  // existen: se cae al esquema anterior en vez de sacar a todos de la plataforma.
   if (error && /rol|lider_id|es_gestor/.test(String(error.message))) {
     const legacy = await admin
       .from("app_users")
@@ -41,12 +55,13 @@ export const getCurrentAppUser = cache(async (): Promise<AppUser | null> => {
   if (error || !data) return null;
 
   const rol: RolPlataforma = data.rol ?? (data.is_admin ? "administrador" : "usuario_basico");
+  const isAdmin = rol === "desarrollador" || rol === "administrador" || Boolean(data.is_admin);
 
   return {
     id: data.id,
     nombreCompleto: data.nombre_completo,
     email: data.email,
-    isAdmin: data.is_admin,
+    isAdmin,
     rol,
     liderId: data.lider_id ?? null,
     esGestorConocimiento: data.es_gestor_conocimiento ?? false,
@@ -56,7 +71,8 @@ export const getCurrentAppUser = cache(async (): Promise<AppUser | null> => {
 
 export async function requireAppUser(): Promise<AppUser> {
   const user = await getCurrentAppUser();
-  if (!user || !user.activo) redirect("/login");
+  if (!user) redirect("/login");
+  if (!user.activo) redirect("/login?desactivado=1");
   return user;
 }
 
@@ -117,12 +133,13 @@ export async function getAppUserById(id: string): Promise<AppUser | null> {
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
+  const rol = (data.rol ?? (data.is_admin ? "administrador" : "usuario_basico")) as RolPlataforma;
   return {
     id: data.id,
     nombreCompleto: data.nombre_completo,
     email: data.email,
-    isAdmin: data.is_admin,
-    rol: (data.rol ?? (data.is_admin ? "administrador" : "usuario_basico")) as RolPlataforma,
+    isAdmin: rol === "desarrollador" || rol === "administrador" || Boolean(data.is_admin),
+    rol,
     liderId: data.lider_id ?? null,
     esGestorConocimiento: data.es_gestor_conocimiento ?? false,
     activo: data.activo,
@@ -134,9 +151,13 @@ export const getMisModulos = cache(async (userId: string, isAdmin: boolean): Pro
     return new Set(MODULOS.map((m) => m.slug));
   }
   const admin = createServiceClient();
-  const { data, error } = await admin.from("modulo_accesos").select("modulo").eq("user_id", userId);
-  if (error || !data) return new Set();
-  return new Set(data.map((r) => r.modulo as Modulo));
+  const [{ data, error }, authRes] = await Promise.all([
+    admin.from("modulo_accesos").select("modulo").eq("user_id", userId),
+    admin.auth.admin.getUserById(userId).catch(() => ({ data: { user: null }, error: null })),
+  ]);
+  const dbRaw = !error && data ? data.map((r) => String(r.modulo)) : [];
+  const appMeta = (authRes?.data?.user?.app_metadata ?? null) as Record<string, unknown> | null;
+  return new Set(resolverModulosEfectivos(dbRaw, appMeta));
 });
 
 export async function requireModuloAccess(modulo: Modulo): Promise<AppUser> {
@@ -144,6 +165,14 @@ export async function requireModuloAccess(modulo: Modulo): Promise<AppUser> {
   if (user.isAdmin) return user;
   const modulos = await getMisModulos(user.id, false);
   if (!modulos.has(modulo)) redirect("/");
+  return user;
+}
+
+export async function requireAnyModuloAccess(permitidos: Modulo[]): Promise<AppUser> {
+  const user = await requireAppUser();
+  if (user.isAdmin) return user;
+  const modulos = await getMisModulos(user.id, false);
+  if (!permitidos.some((m) => modulos.has(m))) redirect("/");
   return user;
 }
 

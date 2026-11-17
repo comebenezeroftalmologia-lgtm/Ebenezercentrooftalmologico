@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createServiceClient } from "@/lib/supabase/server";
+import { resolverModulosEfectivos } from "@/lib/auth";
 import type { Modulo } from "@/lib/modulos";
 import type {
   Actividad,
@@ -131,33 +132,69 @@ export async function listAppUsers(): Promise<AppUser[]> {
   return (data ?? []).map(mapAppUser);
 }
 
-/** Para cada usuario, cuándo fue invitado y cuándo ingresó por última vez
- * (auth.users). `ultimoIngreso` null = la invitación aún no se ha usado. */
-export async function getEstadoAccesoPorUsuario(): Promise<Record<string, EstadoAcceso>> {
+const listarAuthUsers = cache(async () => {
   const supabase = createServiceClient();
   const POR_PAGINA = 200;
-  const map: Record<string, EstadoAcceso> = {};
+  const todos: Array<{
+    id: string;
+    invited_at?: string | null;
+    created_at?: string | null;
+    last_sign_in_at?: string | null;
+    app_metadata?: Record<string, unknown>;
+  }> = [];
   for (let pagina = 1; pagina <= 25; pagina++) {
     const { data, error } = await supabase.auth.admin.listUsers({ page: pagina, perPage: POR_PAGINA });
     if (error) throw new Error(error.message);
-    for (const u of data.users) {
-      map[u.id] = { invitadoAt: u.invited_at ?? u.created_at ?? null, ultimoIngreso: u.last_sign_in_at ?? null };
-    }
+    todos.push(...data.users);
     if (data.users.length < POR_PAGINA) break;
+  }
+  return todos;
+});
+
+/** Para cada usuario, cuándo fue invitado, cuándo ingresó por última vez y si ya tiene clave directa activa. */
+export async function getEstadoAccesoPorUsuario(): Promise<Record<string, EstadoAcceso>> {
+  const users = await listarAuthUsers();
+  const map: Record<string, EstadoAcceso> = {};
+  for (const u of users) {
+    const appMeta = (u.app_metadata ?? {}) as Record<string, unknown>;
+    map[u.id] = {
+      invitadoAt: u.invited_at ?? u.created_at ?? null,
+      ultimoIngreso: u.last_sign_in_at ?? null,
+      claveAsignada: Boolean(appMeta.clave_asignada || u.last_sign_in_at),
+    };
   }
   return map;
 }
 
 export async function listModuloAccesosPorUsuario(): Promise<Record<string, Modulo[]>> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase.from("modulo_accesos").select("user_id, modulo");
+  const [{ data, error }, authUsers] = await Promise.all([
+    supabase.from("modulo_accesos").select("user_id, modulo"),
+    listarAuthUsers().catch(() => []),
+  ]);
   if (error) throw new Error(error.message);
-  const map: Record<string, Modulo[]> = {};
+
+  const dbPorUsuario: Record<string, string[]> = {};
   for (const row of data ?? []) {
     const uid = (row as { user_id: string }).user_id;
-    const modulo = (row as { modulo: Modulo }).modulo;
-    if (!map[uid]) map[uid] = [];
-    map[uid].push(modulo);
+    const modulo = String((row as { modulo: string }).modulo);
+    if (!dbPorUsuario[uid]) dbPorUsuario[uid] = [];
+    dbPorUsuario[uid].push(modulo);
+  }
+
+  const metaPorUsuario = new Map<string, Record<string, unknown>>();
+  for (const u of authUsers) {
+    if (u.app_metadata) metaPorUsuario.set(u.id, u.app_metadata);
+  }
+
+  const todosIds = new Set<string>([
+    ...Object.keys(dbPorUsuario),
+    ...Array.from(metaPorUsuario.keys()),
+  ]);
+
+  const map: Record<string, Modulo[]> = {};
+  for (const uid of todosIds) {
+    map[uid] = resolverModulosEfectivos(dbPorUsuario[uid] ?? [], metaPorUsuario.get(uid) ?? null);
   }
   return map;
 }

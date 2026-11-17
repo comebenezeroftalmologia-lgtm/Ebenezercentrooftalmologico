@@ -34,12 +34,20 @@ import { IconoIA } from "@/components/IconoIA";
 import { BotonFlotanteIA } from "@/components/BotonFlotanteIA";
 
 const ANALYTICS_ITEMS = MODULOS.filter((m) => m.grupo === "Analytics");
-const OPERACION_ORDER: Modulo[] = ["frecuencias", "venta_del_dia"];
+const OPERACION_ORDER: Modulo[] = [
+  "frecuencias",
+  "venta_del_dia",
+  "cartera_radicacion",
+  "digiturno_contact",
+  "talento_humano",
+];
 const OPERACION_SLUGS = new Set<Modulo>(OPERACION_ORDER);
 
 const NOMBRE_CORTO: Partial<Record<Modulo, string>> = {
   frecuencias: "Frecuencias",
   venta_del_dia: "Venta del Día",
+  cartera_radicacion: "Cartera y Radicación",
+  digiturno_contact: "Digiturno y Contact",
   leads: "Clientes Potenciales",
   no_quirurgicos: "Ord. No Quirúrgicos",
   quirurgicos: "Ord. Quirúrgicos",
@@ -50,6 +58,8 @@ const NOMBRE_CORTO: Partial<Record<Modulo, string>> = {
 const SUBTITULO_MODULO: Partial<Record<Modulo, string>> = {
   frecuencias: "Producción y facturación",
   venta_del_dia: "Atención diaria y espera",
+  cartera_radicacion: "Cartera, glosas y giros SISMA",
+  digiturno_contact: "Tiempos de espera y PBX",
   leads: "Embudo general CRM",
   no_quirurgicos: "Exámenes y procedimientos",
   quirurgicos: "Conversión a cirugía",
@@ -60,7 +70,9 @@ const SUBTITULO_MODULO: Partial<Record<Modulo, string>> = {
 function IconoModulo({ slug, className }: { slug: Modulo; className?: string }) {
   switch (slug) {
     case "venta_del_dia": return <CalendarClock className={className} strokeWidth={1.75} />;
+    case "digiturno_contact": return <CalendarClock className={className} strokeWidth={1.75} />;
     case "frecuencias": return <LineChart className={className} strokeWidth={1.75} />;
+    case "cartera_radicacion": return <Wallet className={className} strokeWidth={1.75} />;
     case "leads": return <Target className={className} strokeWidth={1.75} />;
     case "quirurgicos": return <Wallet className={className} strokeWidth={1.75} />;
     case "no_quirurgicos": return <Wallet className={className} strokeWidth={1.75} />;
@@ -135,6 +147,8 @@ export function RielGlobal({
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug));
   const procesosPermitido = allowed.has("procesos") || isAdmin;
   const proyectosPermitido = allowed.has("proyectos") || isAdmin;
+  const workcenterPermitido =
+    allowed.has("proyectos") || allowed.has("cartera") || allowed.has("talento_humano") || isAdmin;
 
   const pathname = usePathname();
   const router = useRouter();
@@ -224,7 +238,7 @@ export function RielGlobal({
           </Link>
         )}
 
-        {proyectosPermitido && (
+        {workcenterPermitido && (
           <Link href="/workcenter" className={itemClass(enWorkCenter)} title="WorkCenter">
             {enWorkCenter && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-[4px] rounded-r bg-[#60A5FA] shadow-[0_0_8px_rgba(96,165,250,0.65)]" />}
             <FileSpreadsheet className="h-[19px] w-[19px]" strokeWidth={1.75} />
@@ -305,6 +319,8 @@ export function Sidebar({
   const analyticsAllowed = ANALYTICS_ITEMS.filter((m) => allowed.has(m.slug) || isAdmin);
   const procesosPermitido = allowed.has("procesos") || isAdmin;
   const proyectosPermitido = allowed.has("proyectos") || isAdmin;
+  const workcenterPermitido =
+    allowed.has("proyectos") || allowed.has("cartera") || allowed.has("talento_humano") || isAdmin;
 
   const pathname = usePathname();
   const router = useRouter();
@@ -398,45 +414,49 @@ export function Sidebar({
                   </div>
                 </Link>
               </div>
-              <div className="mb-4">
-                <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Módulos de Plataforma</div>
-                <div className="flex flex-col gap-1">
-                  <Link href="/analytics" className={pill(false)}>
-                    <BarChart2 className={iconCls(false)} strokeWidth={1.85} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] leading-tight">Resumen Analytics</p>
-                      <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">6 tableros e indicadores</p>
-                    </div>
-                  </Link>
-                  {procesosPermitido && (
-                    <Link href="/procesos" className={pill(false)}>
-                      <Settings className={iconCls(false)} strokeWidth={1.85} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] leading-tight">Procesos y Áreas</p>
-                        <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">13 áreas y cadena de valor</p>
-                      </div>
-                    </Link>
-                  )}
-                  {proyectosPermitido && (
-                    <Link href="/proyectos" className={pill(false)}>
-                      <Folder className={iconCls(false)} strokeWidth={1.85} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] leading-tight">Tareas</p>
-                        <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Espacios, listas y Kanban</p>
-                      </div>
-                    </Link>
-                  )}
-                  {proyectosPermitido && (
-                    <Link href="/workcenter" className={pill(false)}>
-                      <FileSpreadsheet className={iconCls(false)} strokeWidth={1.85} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] leading-tight">WorkCenter</p>
-                        <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Apps y archivos operativos</p>
-                      </div>
-                    </Link>
-                  )}
+              {(analyticsAllowed.length > 0 || procesosPermitido || proyectosPermitido || workcenterPermitido) && (
+                <div className="mb-4">
+                  <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Módulos de Plataforma</div>
+                  <div className="flex flex-col gap-1">
+                    {analyticsAllowed.length > 0 && (
+                      <Link href="/analytics" className={pill(false)}>
+                        <BarChart2 className={iconCls(false)} strokeWidth={1.85} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] leading-tight">Resumen Analytics</p>
+                          <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Tableros e indicadores asignados</p>
+                        </div>
+                      </Link>
+                    )}
+                    {procesosPermitido && (
+                      <Link href="/procesos" className={pill(false)}>
+                        <Settings className={iconCls(false)} strokeWidth={1.85} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] leading-tight">Procesos y Áreas</p>
+                          <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">13 áreas y cadena de valor</p>
+                        </div>
+                      </Link>
+                    )}
+                    {proyectosPermitido && (
+                      <Link href="/proyectos" className={pill(false)}>
+                        <Folder className={iconCls(false)} strokeWidth={1.85} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] leading-tight">Tareas</p>
+                          <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Espacios, listas y Kanban</p>
+                        </div>
+                      </Link>
+                    )}
+                    {workcenterPermitido && (
+                      <Link href="/workcenter" className={pill(false)}>
+                        <FileSpreadsheet className={iconCls(false)} strokeWidth={1.85} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] leading-tight">WorkCenter</p>
+                          <p className="mt-0.5 truncate text-[11px] font-normal text-[#64748B]">Apps y archivos operativos</p>
+                        </div>
+                      </Link>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
               {operacion.length > 0 && (
                 <div>
                   <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Accesos Directos</div>
@@ -563,7 +583,7 @@ export function Sidebar({
             </>
           ) : (
             <>
-              {!q && (
+              {!q && analyticsAllowed.length > 0 && (
                 <div className="mb-4">
                   <div className="px-2.5 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#8E9BB0]">Vista General</div>
                   <Link href="/analytics" className={pill(pathname === "/analytics")}>

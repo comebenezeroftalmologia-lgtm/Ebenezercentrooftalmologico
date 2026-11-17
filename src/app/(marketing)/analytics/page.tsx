@@ -7,6 +7,7 @@ import {
   Target,
   Wallet,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { requireAppUser, getMisModulos } from "@/lib/auth";
 import { MODULOS, type Modulo } from "@/lib/modulos";
 import { traerDiasTipicos } from "@/lib/diaTipico";
@@ -29,6 +30,8 @@ const aFecha = (f: string) => new Date(f + "T12:00:00");
 const SUBTITULOS: Record<Modulo, string> = {
   venta_del_dia: "Atenciones del día, oportunidad de primera vez y programación de cirugía.",
   frecuencias: "Producción histórica por unidad funcional, convenio, médico y facturación.",
+  cartera_radicacion: "Cartera corriente (< 60 días), vencida (>= 60 días), radicación, glosas y giros SISMA.",
+  digiturno_contact: "Tiempos de atención en Digiturno (Sede 1 y 2) y Contact Center PBX.",
   leads: "Captación de pacientes potenciales, inversión en pauta y retorno comercial.",
   quirurgicos: "Seguimiento de pacientes con orden de cirugía hasta programación efectiva.",
   no_quirurgicos: "Conversión de órdenes de exámenes diagnósticos y procedimientos.",
@@ -43,7 +46,10 @@ function IconoTarjeta({ slug }: { slug: Modulo }) {
   const cls = "h-[18px] w-[18px] shrink-0 text-[#1D58D8]";
   switch (slug) {
     case "venta_del_dia":
+    case "digiturno_contact":
       return <CalendarClock className={cls} strokeWidth={1.9} />;
+    case "cartera_radicacion":
+      return <Wallet className={cls} strokeWidth={1.9} />;
     case "frecuencias":
       return <LineChart className={cls} strokeWidth={1.9} />;
     case "leads":
@@ -68,6 +74,9 @@ export default async function AnalyticsOverview({
   const disponibles = MODULOS.filter(
     (m) => (modulos.has(m.slug) || user.isAdmin) && m.grupo === "Analytics"
   );
+  if (!user.isAdmin && disponibles.length === 0) {
+    redirect("/");
+  }
 
   const archivo =
     modulos.has("frecuencias") || modulos.has("venta_del_dia") || user.isAdmin
@@ -120,7 +129,12 @@ export default async function AnalyticsOverview({
     : null;
 
   const operacion = disponibles.filter(
-    (m) => m.slug === "venta_del_dia" || m.slug === "frecuencias"
+    (m) =>
+      m.slug === "venta_del_dia" ||
+      m.slug === "frecuencias" ||
+      m.slug === "cartera_radicacion" ||
+      m.slug === "digiturno_contact" ||
+      m.slug === "talento_humano"
   );
   const comercial = disponibles.filter(
     (m) =>
@@ -430,7 +444,7 @@ export default async function AnalyticsOverview({
           </section>
         ))}
       </div>
-      <TableroCarteraAnalytics />
+      {(user.isAdmin || modulos.has("cartera_radicacion")) && <TableroCarteraAnalytics />}
     </div>
   );
 }

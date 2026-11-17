@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServiceClient, createSessionServerClient } from "@/lib/supabase/server";
 import {
@@ -12,11 +13,81 @@ import {
   requireGestorUsuarios,
   rolesAsignables,
 } from "@/lib/auth";
-import type { RolPlataforma } from "@/lib/procesos/types";
-import type { Modulo } from "@/lib/modulos";
+import type { ResultadoInvitacion, RolPlataforma } from "@/lib/procesos/types";
+import { esModuloValido, MODULOS_TABLA_CLASICA, type Modulo } from "@/lib/modulos";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function obtenerSiteUrl(): string {
+  const envUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/+$/, "");
+  if (envUrl && !/localhost|127\.0\.0\.1/i.test(envUrl)) return envUrl;
+  try {
+    const h = headers();
+    const origin = h.get("origin")?.trim().replace(/\/+$/, "");
+    if (origin && /^https?:\/\//i.test(origin)) return origin;
+    const host = h.get("x-forwarded-host") || h.get("host");
+    if (host) {
+      const proto = h.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+      return `${proto}://${host}`.replace(/\/+$/, "");
+    }
+  } catch {}
+  return process.env.NODE_ENV === "production" ? "https://www.ebenezer-app.com" : envUrl || "http://localhost:3000";
+}
+
+async function buscarAuthUserPorEmail(admin: ReturnType<typeof createServiceClient>, email: string) {
+  const target = email.trim().toLowerCase();
+  for (let pagina = 1; pagina <= 25; pagina++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page: pagina, perPage: 200 });
+    if (error || !data?.users?.length) break;
+    const match = data.users.find((u) => (u.email ?? "").toLowerCase() === target);
+    if (match) return match;
+    if (data.users.length < 200) break;
+  }
+  return null;
+}
+
+async function guardarModulosUsuario(
+  admin: ReturnType<typeof createServiceClient>,
+  userId: string,
+  modulosInput: Modulo[],
+  extraAppMeta?: Record<string, unknown>
+): Promise<string | null> {
+  const finales = Array.from(new Set(modulosInput.filter(esModuloValido)));
+
+  const { error: delError } = await admin.from("modulo_accesos").delete().eq("user_id", userId);
+  if (delError) return delError.message;
+
+  if (finales.length > 0) {
+    const { error: insError } = await admin
+      .from("modulo_accesos")
+      .insert(finales.map((modulo) => ({ user_id: userId, modulo })));
+
+    if (insError) {
+      // Si la restricción CHECK de Supabase aún no incluye los nuevos slugs, guardamos los clásicos en la tabla
+      // y la lista completa exacta queda sincronizada en app_metadata.
+      const clasicos = finales.filter((m) => MODULOS_TABLA_CLASICA.has(m));
+      if (clasicos.length > 0) {
+        const { error: fallbackErr } = await admin
+          .from("modulo_accesos")
+          .insert(clasicos.map((modulo) => ({ user_id: userId, modulo })));
+        if (fallbackErr) return fallbackErr.message;
+      }
+    }
+  }
+
+  const previo = await admin.auth.admin.getUserById(userId).catch(() => ({ data: { user: null }, error: null }));
+  const metaActual = ((previo?.data?.user?.app_metadata ?? {}) as Record<string, unknown>);
+  const { error: metaErr } = await admin.auth.admin.updateUserById(userId, {
+    app_metadata: {
+      ...metaActual,
+      modulos_v2: true,
+      modulos_asignados: finales,
+      ...(extraAppMeta ?? {}),
+    },
+  });
+  if (metaErr) return metaErr.message;
+  return null;
+}
 
 function dbForUser(user: { isAdmin: boolean }) {
   return user.isAdmin ? createServiceClient() : createSessionServerClient();
@@ -35,10 +106,24 @@ export async function loginAction(
     return { error: "Ingresa correo y contraseña." };
   }
 
+  const admin = createServiceClient();
+  const { data: perfil } = await admin
+    .from("app_users")
+    .select("activo")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (perfil && perfil.activo === false) {
+    return { error: "Tu cuenta está desactivada. Comunícate con el administrador." };
+  }
+
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    if (/banned/i.test(error.message)) {
+      return { error: "Tu cuenta está desactivada. Comunícate con el administrador." };
+    }
     return { error: "Correo o contraseña incorrectos." };
   }
 
@@ -63,7 +148,16 @@ export async function establecerPasswordInicialAction(
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: error.message };
 
-  void user;
+  try {
+    const admin = createServiceClient();
+    const previo = await admin.auth.admin.getUserById(user.id);
+    const metaActual = ((previo?.data?.user?.app_metadata ?? {}) as Record<string, unknown>);
+    await admin.auth.admin.updateUserById(user.id, {
+      email_confirm: true,
+      app_metadata: { ...metaActual, clave_asignada: true },
+    });
+  } catch {}
+
   redirect("/");
 }
 
@@ -92,9 +186,10 @@ export async function solicitarRecuperacionAction(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!EMAIL_PATTERN.test(email)) return { error: "Ingresa un correo válido." };
 
+  const siteUrl = obtenerSiteUrl();
   const supabase = createSessionServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${SITE_URL}/auth/callback?next=/restablecer-password`,
+    redirectTo: `${siteUrl}/auth/callback?next=/restablecer-password`,
   });
 
   if (error) return { error: "No se pudo enviar el correo. Intenta de nuevo en unos minutos." };
@@ -104,31 +199,46 @@ export async function solicitarRecuperacionAction(
 // --- Administración de usuarios (solo admin) ---------------------------
 
 export async function invitarUsuarioAction(
-  _prevState: { error: string | null; ok?: boolean },
+  _prevState: ResultadoInvitacion,
   formData: FormData
-): Promise<{ error: string | null; ok?: boolean }> {
+): Promise<ResultadoInvitacion> {
   const actor = await requireGestorUsuarios();
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const nombreCompleto = String(formData.get("nombreCompleto") ?? "").trim();
   const rol = String(formData.get("rol") ?? "usuario_basico") as RolPlataforma;
-  // Set: en MODULOS hay slugs repetidos (p. ej. "Cartera y Radicación" comparte
-  // "frecuencias"), y un duplicado viola unique (user_id, modulo).
-  const modulos = Array.from(new Set(formData.getAll("modulos").map(String))) as Modulo[];
+  const passwordInicial = String(formData.get("passwordInicial") ?? "").trim();
+  const esRolAdmin = rol === "desarrollador" || rol === "administrador";
+  const modulos = esRolAdmin
+    ? []
+    : (Array.from(new Set(formData.getAll("modulos").map(String).filter(esModuloValido))) as Modulo[]);
 
   if (!EMAIL_PATTERN.test(email)) return { error: "Correo inválido." };
   if (!nombreCompleto) return { error: "Falta el nombre completo." };
   if (!rolesAsignables(actor).includes(rol)) {
     return { error: "No tienes permiso para crear usuarios con ese rol." };
   }
+  if (passwordInicial.length > 0 && passwordInicial.length < 8) {
+    return { error: "La contraseña inicial debe tener al menos 8 caracteres (o déjala vacía para enviar invitación por correo)." };
+  }
 
   let liderId: string | null = null;
   if (rol === "usuario_basico") {
-    liderId = actor.rol === "lider" ? actor.id : String(formData.get("liderId") ?? "").trim();
-    if (!liderId) return { error: "Selecciona el líder de este usuario básico." };
-    const lider = await getAppUserById(liderId);
-    if (!lider || !lider.activo || lider.rol !== "lider") {
-      return { error: "El líder seleccionado no es válido." };
+    if (actor.rol === "lider") {
+      liderId = actor.id;
+    } else {
+      const rawLider = String(formData.get("liderId") ?? "").trim();
+      if (rawLider) {
+        const lider = await getAppUserById(rawLider);
+        const rolValido =
+          lider &&
+          lider.activo &&
+          (lider.rol === "lider" || lider.rol === "administrador" || lider.rol === "desarrollador");
+        if (!rolValido) {
+          return { error: "La persona seleccionada como líder no es válida o está desactivada." };
+        }
+        liderId = lider.id;
+      }
     }
   }
 
@@ -141,37 +251,186 @@ export async function invitarUsuarioAction(
 
   const admin = createServiceClient();
 
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${SITE_URL}/auth/callback?next=/invitacion`,
-  });
+  const { data: yaEnDirectorio } = await admin
+    .from("app_users")
+    .select("id")
+    .ilike("email", email)
+    .maybeSingle();
 
-  if (inviteError || !invited.user) {
-    return { error: `No se pudo invitar: ${inviteError?.message ?? "error desconocido"}` };
+  if (yaEnDirectorio) {
+    return {
+      error: "Ese correo ya está incluido en el directorio de usuarios. Búscalo abajo para editar sus permisos o su contraseña.",
+    };
   }
 
-  const { error: profileError } = await admin.from("app_users").insert({
-    id: invited.user.id,
-    nombre_completo: nombreCompleto,
-    email,
-    rol,
-    lider_id: liderId,
-  });
+  let authUserId: string | null = null;
+  let modo: "clave_directa" | "correo_enviado" | "link_manual" = "correo_enviado";
+  let inviteLink: string | null = null;
+  const siteUrl = obtenerSiteUrl();
+  const redirectInvite = `${siteUrl}/auth/callback?next=/invitacion`;
 
-  if (profileError) {
-    return { error: `Invitación enviada pero falló el perfil: ${profileError.message}` };
-  }
+  if (passwordInicial.length >= 8) {
+    modo = "clave_directa";
+    const { data: creado, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password: passwordInicial,
+      email_confirm: true,
+      user_metadata: { nombre_completo: nombreCompleto },
+      app_metadata: {
+        modulos_v2: true,
+        modulos_asignados: modulos,
+        clave_asignada: true,
+      },
+    });
 
-  if (modulos.length > 0) {
-    const { error: modulosError } = await admin
-      .from("modulo_accesos")
-      .insert(modulos.map((modulo) => ({ user_id: invited.user!.id, modulo })));
-    if (modulosError) {
-      return { error: `Invitación enviada pero falló el acceso a módulos: ${modulosError.message}` };
+    if (createErr || !creado?.user) {
+      const existente = await buscarAuthUserPorEmail(admin, email);
+      if (!existente) {
+        return { error: `No se pudo crear el usuario: ${createErr?.message ?? "error desconocido"}` };
+      }
+      const { error: updErr } = await admin.auth.admin.updateUserById(existente.id, {
+        password: passwordInicial,
+        email_confirm: true,
+        ban_duration: "none",
+        user_metadata: { ...(existente.user_metadata ?? {}), nombre_completo: nombreCompleto },
+      });
+      if (updErr) return { error: `No se pudo activar la cuenta: ${updErr.message}` };
+      authUserId = existente.id;
+    } else {
+      authUserId = creado.user.id;
+    }
+  } else {
+    const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: redirectInvite,
+      data: { nombre_completo: nombreCompleto },
+    });
+
+    if (!inviteError && invited?.user) {
+      authUserId = invited.user.id;
+      modo = "correo_enviado";
+    } else {
+      // Si el correo de Supabase está limitado por cuota o el correo ya existía en Auth sin perfil,
+      // generamos un enlace directo de activación para que la inclusión nunca falle.
+      const linkInvite = await admin.auth.admin.generateLink({
+        type: "invite",
+        email,
+        options: { redirectTo: redirectInvite, data: { nombre_completo: nombreCompleto } },
+      });
+
+      if (!linkInvite.error && linkInvite.data?.user) {
+        authUserId = linkInvite.data.user.id;
+        inviteLink = linkInvite.data.properties?.action_link ?? null;
+        modo = "link_manual";
+      } else {
+        const linkRecovery = await admin.auth.admin.generateLink({
+          type: "recovery",
+          email,
+          options: { redirectTo: redirectInvite },
+        });
+        if (!linkRecovery.error && linkRecovery.data?.user) {
+          authUserId = linkRecovery.data.user.id;
+          inviteLink = linkRecovery.data.properties?.action_link ?? null;
+          modo = "link_manual";
+        } else {
+          return {
+            error: `No se pudo invitar (${inviteError?.message ?? linkInvite.error?.message ?? "error desconocido"}). Puedes escribir una Contraseña inicial arriba para crear la cuenta de inmediato.`,
+          };
+        }
+      }
     }
   }
 
+  const { error: profileError } = await admin.from("app_users").upsert(
+    {
+      id: authUserId!,
+      nombre_completo: nombreCompleto,
+      email,
+      rol,
+      is_admin: esRolAdmin,
+      lider_id: liderId,
+      activo: true,
+    },
+    { onConflict: "id" }
+  );
+
+  if (profileError) {
+    return { error: `Se creó la cuenta pero falló el perfil en directorio: ${profileError.message}` };
+  }
+
+  const modulosErr = await guardarModulosUsuario(admin, authUserId!, modulos, {
+    clave_asignada: passwordInicial.length >= 8,
+  });
+  if (modulosErr) {
+    return { error: `Usuario creado pero falló la asignación de módulos: ${modulosErr}` };
+  }
+
   revalidatePath("/usuarios");
-  return { error: null, ok: true };
+  return { error: null, ok: true, modo, inviteLink, emailCreado: email };
+}
+
+export async function reenviarInvitacionOLinkAction(
+  userId: string,
+  accion: "correo" | "link"
+): Promise<{ ok: boolean; error?: string; link?: string | null; mensaje?: string }> {
+  const actor = await requireGestorUsuarios();
+  const objetivo = await getAppUserById(userId);
+  if (!objetivo) return { ok: false, error: "Usuario no encontrado." };
+  if (!puedeAdministrarA(actor, objetivo)) {
+    return { ok: false, error: "No tienes permiso sobre esta persona." };
+  }
+
+  const admin = createServiceClient();
+  const siteUrl = obtenerSiteUrl();
+  const redirectInvite = `${siteUrl}/auth/callback?next=/invitacion`;
+
+  if (accion === "correo") {
+    const inv = await admin.auth.admin.inviteUserByEmail(objetivo.email, {
+      redirectTo: redirectInvite,
+      data: { nombre_completo: objetivo.nombreCompleto },
+    });
+    if (!inv.error) {
+      return { ok: true, mensaje: `Correo de invitación enviado a ${objetivo.email}.` };
+    }
+    const supabase = createSessionServerClient();
+    const rec = await supabase.auth.resetPasswordForEmail(objetivo.email, {
+      redirectTo: redirectInvite,
+    });
+    if (!rec.error) {
+      return { ok: true, mensaje: `Correo para activar contraseña enviado a ${objetivo.email}.` };
+    }
+  }
+
+  // Generar enlace directo (cuando pide copiar link o como respaldo si el envío de correo falló)
+  const genInvite = await admin.auth.admin.generateLink({
+    type: "invite",
+    email: objetivo.email,
+    options: { redirectTo: redirectInvite },
+  });
+  if (!genInvite.error && genInvite.data?.properties?.action_link) {
+    return {
+      ok: true,
+      link: genInvite.data.properties.action_link,
+      mensaje: accion === "correo" ? "El servidor de correo limitó el envío; usa este enlace directo:" : undefined,
+    };
+  }
+
+  const genRec = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: objetivo.email,
+    options: { redirectTo: redirectInvite },
+  });
+  if (!genRec.error && genRec.data?.properties?.action_link) {
+    return {
+      ok: true,
+      link: genRec.data.properties.action_link,
+      mensaje: accion === "correo" ? "El servidor de correo limitó el envío; usa este enlace directo:" : undefined,
+    };
+  }
+
+  return {
+    ok: false,
+    error: genRec.error?.message ?? genInvite.error?.message ?? "No se pudo generar el enlace.",
+  };
 }
 
 export async function actualizarAccesoUsuarioAction(
@@ -192,47 +451,50 @@ export async function actualizarAccesoUsuarioAction(
 
   let nuevoLider: string | null = null;
   if (rol === "usuario_basico") {
-    nuevoLider = actor.rol === "lider" ? actor.id : liderId;
-    if (!nuevoLider) throw new Error("Selecciona el líder de este usuario básico.");
-    const lider = await getAppUserById(nuevoLider);
-    if (!lider || !lider.activo || lider.rol !== "lider") throw new Error("El líder seleccionado no es válido.");
+    if (actor.rol === "lider") {
+      nuevoLider = actor.id;
+    } else if (liderId && liderId.trim()) {
+      const lider = await getAppUserById(liderId.trim());
+      const rolValido =
+        lider &&
+        lider.activo &&
+        (lider.rol === "lider" || lider.rol === "administrador" || lider.rol === "desarrollador");
+      if (!rolValido) throw new Error("La persona seleccionada como líder no es válida o está desactivada.");
+      nuevoLider = lider.id;
+    }
   }
 
+  const esRolAdmin = rol === "desarrollador" || rol === "administrador";
   const admin = createServiceClient();
 
   const { error: updateError } = await admin
     .from("app_users")
-    .update({ rol, lider_id: nuevoLider })
+    .update({ rol, is_admin: esRolAdmin, lider_id: nuevoLider })
     .eq("id", userId);
   if (updateError) throw new Error(updateError.message);
 
-  // Si alguien deja de ser líder, su equipo queda sin líder hasta que se reasigne.
-  if (objetivo.rol === "lider" && rol !== "lider") {
+  // Si alguien deja de ser líder/admin, su equipo queda con autorización general hasta reasignar.
+  if (
+    (objetivo.rol === "lider" || objetivo.rol === "administrador" || objetivo.rol === "desarrollador") &&
+    rol === "usuario_basico"
+  ) {
     await admin.from("app_users").update({ lider_id: null }).eq("lider_id", userId);
   }
 
-  // Un actor sin acceso total solo toca los módulos que él mismo tiene: los demás
-  // módulos de la persona se conservan tal cual.
-  const pedidos = Array.from(new Set(modulos));
+  const pedidos = esRolAdmin ? [] : Array.from(new Set(modulos.filter(esModuloValido)));
   let finales = pedidos;
-  if (!actor.isAdmin) {
+  if (!actor.isAdmin && !esRolAdmin) {
     const permitidos = await getMisModulos(actor.id, false);
-    const { data: actuales } = await admin.from("modulo_accesos").select("modulo").eq("user_id", userId);
-    const conservar = (actuales ?? []).map((r) => r.modulo as Modulo).filter((m) => !permitidos.has(m));
+    const actualesSet = await getMisModulos(userId, false);
+    const conservar = Array.from(actualesSet).filter((m) => !permitidos.has(m));
     finales = Array.from(new Set([...pedidos.filter((m) => permitidos.has(m)), ...conservar]));
   }
 
-  const { error: deleteError } = await admin.from("modulo_accesos").delete().eq("user_id", userId);
-  if (deleteError) throw new Error(deleteError.message);
-
-  if (finales.length > 0) {
-    const { error: insertError } = await admin
-      .from("modulo_accesos")
-      .insert(finales.map((modulo) => ({ user_id: userId, modulo })));
-    if (insertError) throw new Error(insertError.message);
-  }
+  const modErr = await guardarModulosUsuario(admin, userId, finales);
+  if (modErr) throw new Error(modErr);
 
   revalidatePath("/usuarios");
+  revalidatePath("/", "layout");
 }
 
 export async function toggleActivoUsuarioAction(userId: string, activo: boolean) {
@@ -244,6 +506,9 @@ export async function toggleActivoUsuarioAction(userId: string, activo: boolean)
   const admin = createServiceClient();
   const { error } = await admin.from("app_users").update({ activo }).eq("id", userId);
   if (error) throw new Error(error.message);
+  await admin.auth.admin
+    .updateUserById(userId, { ban_duration: activo ? "none" : "876000h" })
+    .catch(() => {});
   revalidatePath("/usuarios");
 }
 
@@ -274,12 +539,17 @@ export async function restablecerPasswordAction(
   if (password.length < 8) return { error: "La contraseña debe tener al menos 8 caracteres." };
 
   const admin = createServiceClient();
+  const previo = await admin.auth.admin.getUserById(userId).catch(() => ({ data: { user: null }, error: null }));
+  const metaActual = ((previo?.data?.user?.app_metadata ?? {}) as Record<string, unknown>);
   const { error } = await admin.auth.admin.updateUserById(userId, {
     password,
     email_confirm: true,
+    ban_duration: objetivo.activo ? "none" : "876000h",
+    app_metadata: { ...metaActual, clave_asignada: true },
   });
   if (error) return { error: error.message };
 
+  revalidatePath("/usuarios");
   return { error: null, ok: true };
 }
 

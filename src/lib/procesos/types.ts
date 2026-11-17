@@ -46,6 +46,15 @@ export interface AppUser {
 export interface EstadoAcceso {
   invitadoAt: string | null;
   ultimoIngreso: string | null;
+  claveAsignada?: boolean;
+}
+
+export interface ResultadoInvitacion {
+  error: string | null;
+  ok?: boolean;
+  modo?: "clave_directa" | "correo_enviado" | "link_manual";
+  inviteLink?: string | null;
+  emailCreado?: string;
 }
 
 export interface Area {

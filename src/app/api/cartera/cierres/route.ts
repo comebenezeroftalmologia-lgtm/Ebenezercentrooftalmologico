@@ -24,7 +24,7 @@ async function conPermiso() {
   if (!me || !me.activo) return null;
   if (me.isAdmin) return me;
   const modulos = await getMisModulos(me.id, false);
-  return modulos.has("frecuencias") ? me : null; // el modulo de Cartera
+  return modulos.has("cartera_radicacion") || modulos.has("cartera") ? me : null;
 }
 
 /** Ultimo dia del mes, o el dia anterior cerrado si el mes es el actual. */

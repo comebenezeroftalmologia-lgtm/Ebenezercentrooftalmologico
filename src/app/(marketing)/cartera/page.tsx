@@ -1,11 +1,11 @@
-import { requireAppUser } from "@/lib/auth";
+import { requireModuloAccess } from "@/lib/auth";
 import { ExecutiveHeader } from "@/components/ExecutiveHeader";
 import TableroCarteraAnalytics from "../analytics/TableroCarteraAnalytics";
 
 export const dynamic = "force-dynamic";
 
 export default async function CarteraPage() {
-  await requireAppUser();
+  await requireModuloAccess("cartera_radicacion");
   return (
     <div className="mx-auto max-w-[1360px] pb-12">
       <ExecutiveHeader

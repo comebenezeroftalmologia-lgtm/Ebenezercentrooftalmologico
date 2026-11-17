@@ -1,10 +1,9 @@
-/** Los módulos del dashboard de mercadeo – el admin decide, persona por
- * persona, a cuáles tiene acceso (tabla modulo_accesos). Un admin ve
- * todos sin necesidad de asignación explícita.
+/** Los módulos de la plataforma – el administrador o líder decide, persona por
+ * persona, a cuáles tiene acceso cada usuario. Desarrolladores y administradores
+ * ven todos los módulos automáticamente.
  *
- * grupo es solo agrupación de navegación/UI (el ícono "Analytics" en
- * el Sidebar y los encabezados en /usuarios) – el acceso sigue siendo
- * granular por cada slug individual, no por grupo. */
+ * Cada casilla tiene su propio `slug` único para que ningún tablero quede
+ * pegado con otro al asignar o quitar permisos. */
 export type Modulo =
   | "leads"
   | "no_quirurgicos"
@@ -12,18 +11,12 @@ export type Modulo =
   | "redes_sociales"
   | "frecuencias"
   | "venta_del_dia"
-  | "procesos"
-  | "proyectos"
-  // Talento Humano va aparte, con su propio slug, a proposito: trae nombres,
-  // salarios, incapacidades y evaluaciones. No puede colgar del permiso de
-  // otro tablero ni entrar con los de "Analytics" en bloque: se asigna
-  // persona por persona en /usuarios, como cualquier otro modulo, pero sin
-  // que nadie lo herede por error.
+  | "cartera_radicacion"
+  | "digiturno_contact"
   | "talento_humano"
-  // Cartera va aparte por la misma razon que Talento Humano: aqui se registra
-  // la plata glosada y devuelta. La vista de Analytics entraba con el permiso
-  // de "frecuencias"; esta superficie de trabajo se asigna persona por persona.
-  | "cartera";
+  | "cartera"
+  | "procesos"
+  | "proyectos";
 
 export type GrupoModulo = "Analytics" | "Procesos";
 
@@ -34,13 +27,35 @@ export const MODULOS: { slug: Modulo; label: string; href: string; grupo: GrupoM
   { slug: "redes_sociales", label: "Redes Sociales", href: "/redes-sociales", grupo: "Analytics" },
   { slug: "frecuencias", label: "Frecuencias", href: "/frecuencias", grupo: "Analytics" },
   { slug: "venta_del_dia", label: "Venta del Día", href: "/venta-del-dia", grupo: "Analytics" },
-  { slug: "frecuencias", label: "Cartera y Radicación", href: "/cartera", grupo: "Analytics" },
-  { slug: "venta_del_dia", label: 'Digiturno y Contact', href: '/digiturno-contact', grupo: "Analytics" },
+  { slug: "cartera_radicacion", label: "Cartera y Radicación", href: "/cartera", grupo: "Analytics" },
+  { slug: "digiturno_contact", label: "Digiturno y Contact", href: "/digiturno-contact", grupo: "Analytics" },
   { slug: "talento_humano", label: "Talento Humano", href: "/talento-humano", grupo: "Analytics" },
   { slug: "cartera", label: "Cartera — Mesa de trabajo", href: "/workcenter/cartera", grupo: "Procesos" },
   { slug: "procesos", label: "Procesos", href: "/procesos", grupo: "Procesos" },
   { slug: "proyectos", label: "Tareas", href: "/proyectos", grupo: "Procesos" },
 ];
+
+export const MODULOS_SLUGS = new Set<Modulo>(MODULOS.map((m) => m.slug));
+
+/** Slugs incluidos en la restricción original 024 de `modulo_accesos`, usados como respaldo si la migración 033 aún no se ha corrido en Supabase. */
+export const MODULOS_TABLA_CLASICA = new Set<Modulo>([
+  "leads",
+  "no_quirurgicos",
+  "quirurgicos",
+  "redes_sociales",
+  "frecuencias",
+  "venta_del_dia",
+  "procesos",
+  "proyectos",
+  "talento_humano",
+  "cartera",
+]);
+
+export const MODULOS_WORKCENTER: Modulo[] = ["proyectos", "cartera", "talento_humano"];
+
+export function esModuloValido(valor: string): valor is Modulo {
+  return MODULOS_SLUGS.has(valor as Modulo);
+}
 
 export function moduloLabel(slug: Modulo): string {
   return MODULOS.find((m) => m.slug === slug)?.label ?? slug;

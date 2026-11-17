@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import Image from "next/image";
 import { loginAction } from "@/lib/procesos/actions";
@@ -14,6 +16,16 @@ function BotonEntrar() {
     >
       {pending ? "Entrando…" : "Entrar"}
     </button>
+  );
+}
+
+function AvisoDesactivado() {
+  const searchParams = useSearchParams();
+  if (searchParams.get("desactivado") !== "1") return null;
+  return (
+    <p className="mb-4 rounded-lg bg-[#FBEAE8] px-3 py-2 text-xs text-[#B3261E]">
+      Tu cuenta está desactivada. Comunícate con el administrador de la plataforma.
+    </p>
   );
 }
 
@@ -33,6 +45,10 @@ export default function LoginPage() {
         <h1 className="text-lg font-semibold text-navy">Ebenezer</h1>
         <p className="mt-1 text-xs text-ink-3">Tableros y procesos internos</p>
       </div>
+
+      <Suspense fallback={null}>
+        <AvisoDesactivado />
+      </Suspense>
 
       <form action={formAction} className="flex flex-col gap-4">
         <div>
