@@ -20411,6 +20411,7 @@ try{
 
 
 
+
 /* === Cirugía lee el valor de la FICHA TÉCNICA, no del código ===
    FICHA_FIEL es la ficha técnica 2026 leída del Excel, renglón por renglón, por médico.
    La regla del código sigue decidiendo QUÉ servicio es y si es uno o dos ojos; el VALOR
@@ -20466,11 +20467,29 @@ const FICHA_FIEL = {"DIANA CIFUENTES":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTRO
     return elegir(cand, pw);
   };
   window.__fichaAudit=[];
+  // Compuerta: la ficha SOLO manda de noviembre 2026 en adelante.
+  // Octubre 2026 y antes quedan EXACTOS como se liquidaron/aprobaron: el motor
+  // devuelve el valor del codigo sin tocar nada. (Octubre esta cerrado.)
+  function fichaAplica(){
+    try{
+      var p="";
+      try{ p=String(nubePeriodoActual()); }catch(e){}
+      if(!/\d{4}-\d{2}/.test(p)){
+        try{ var a=document.getElementById("periodoAno"), m=document.getElementById("periodoMes");
+             if(a&&m) p=a.value+"-"+("0"+m.value).slice(-2); }catch(e2){}
+      }
+      var mm=/(\d{4})-(\d{2})/.exec(p);
+      if(!mm) return true;                 // si no se puede saber, aplica (de ahora en adelante es nov+)
+      var y=+mm[1], mo=+mm[2];
+      return (y>2026) || (y===2026 && mo>=11);   // nov-2026 o despues
+    }catch(e){ return true; }
+  }
   var _orig = v4CirFija;
   v4CirFija = function(cfg, proc, emp, q){
     var r=_orig.apply(this,arguments);
     try{
       if(!r||!r.src) return r;
+      if(!fichaAplica()) return r;   // octubre y antes: queda igual, la ficha no lo toca
       var med=MED_DE.get(cfg); if(!med) return r;
       var g=(typeof v4EmpG==="function")?v4EmpG(emp):"";
       if(g!=="M"&&g!=="S") g=(typeof v4EsParticular==="function"&&v4EsParticular(emp))?"PART":"P";
