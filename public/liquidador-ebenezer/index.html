@@ -20452,7 +20452,7 @@ const FICHA_FIEL = {"DIANA CIFUENTES":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTRO
     return {ambiguo:true, valores:k.map(Number)};
   }
   window.__fichaValor = function(med, src, g, lado, proc){
-    var filas = FICHA_FIEL[med]; if(!filas||!src) return null;
+    var filas = (window.__fichaLive && window.__fichaLive[med]) || FICHA_FIEL[med]; if(!filas||!src) return null;
     var re; try{ re=new RegExp(src); }catch(e){ return null; }
     var base = filas.filter(function(f){ return f[2]>1 && nombreOk(f,re,src); });
     if(!base.length) return null;
@@ -20532,6 +20532,131 @@ const FICHA_FIEL = {"DIANA CIFUENTES":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTRO
   if(document.readyState!=="loading") quitar();
   else document.addEventListener("DOMContentLoaded", quitar);
   setTimeout(quitar,500); setTimeout(quitar,1500);
+})();
+
+
+/* === Ficha viva: el motor lee el Excel de la ficha técnica directo ===
+   Hasta hoy el motor traía la ficha copiada por dentro (FICHA_FIEL). Con esto, si
+   suben el Excel de la ficha, el motor lo LEE y usa esos valores — sin que nadie la
+   copie a mano. Reusa el parser propio del aplicativo (cmpLeerXlsx).
+   Seguridad: si no se sube ningún Excel, el motor sigue con su copia de siempre
+   (FICHA_FIEL). El lector usa las mismas defensas que la extracción verificada
+   (ancla al encabezado, no toma cantidades como precio, hereda «MUTUAL SER»). A unas
+   pocas hojas de formato raro (Said: retina) el lector no les llega; para esas va un
+   complemento fijo, igual que la copia. El cruce del motor sigue marcando y dejando
+   el valor actual cuando no hay match seguro, así que una lectura incompleta nunca
+   pone un precio malo. === */
+(function(){
+  if(window.__fichaViva) return; window.__fichaViva = true;
+
+  function nz(s){ return String(s==null?'':s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+  function money(x){
+    if(x==null) return null;
+    if(typeof x==='number'){ return x>=1000?Math.round(x):null; }
+    var s=String(x); if(s.indexOf('$')<0 && !/\d/.test(s)) return null;
+    var d=s.replace(/\./g,'').replace(/\s/g,'').replace(/[^\d]/g,'');
+    return d && +d>=1000 ? +d : null;
+  }
+  function grupo(e){ e=nz(e); if(!e) return null;
+    if(e.indexOf('MUTUAL')>=0 && (e.indexOf('PARTICULAR')>=0||e.indexOf('PREPAG')>=0)) return 'ALL';
+    if(e.indexOf('MUTUAL')>=0) return 'M'; if(e.indexOf('SURA')>=0) return 'S';
+    if(e.indexOf('CAMPA')>=0) return 'CAMP';
+    if(e.indexOf('PARTICULAR')>=0||e.indexOf('PREPAG')>=0) return 'PART'; return null; }
+  function esNum(x){ if(x==null) return false; if(typeof x==='number') return true; return /^[\d.\s]+$/.test(String(x).trim()); }
+  var HV={'VALOR':1,'TARIFA':1,'VALOR UNITARIO':1};
+  function isHeader(r){ var hs=false,hv=false; for(var c of r){ var n=nz(c); if(n==='SERVICIO')hs=true; if(HV[n])hv=true; } return hs&&hv; }
+  function mapCols(r){ var m={}; for(var j=0;j<r.length;j++){ var n=nz(r[j]);
+    if(n==='SERVICIO'&&m.srv==null)m.srv=j; else if((n==='TIPO'||n==='LATERALIDAD')&&m.tipo==null)m.tipo=j;
+    else if(HV[n]&&m.val==null)m.val=j; else if((n==='EMPRESA'||n==='ENTIDAD')&&m.emp==null)m.emp=j; } return m; }
+  var SKIP=/OBSERVACION|HORARIO|TARIFARIO|^DR\b|^DRA\b|^TOTAL|VALOR TOTAL|^NOTA|BONIFICACION DE LENTE|^LENTES |DIRECTORIO|^FRECUENCIA/;
+  function secDef(rows,h){ for(var k=h-1;k>=Math.max(0,h-8);k--){ for(var c of rows[k]){ if(grupo(c)) return c; } } return ''; }
+
+  /* Complemento de hojas de formato raro que el lector no alcanza (el honorario va en
+     una columna sin título). Hoy: Said Meneses (retina, Mutual). */
+  var COMPLEMENTO = {
+    "SAID MENESES":[["CIRUGIAS DE RETINA","UNILATERAL",500000,"M"],["FOTOCOAGULACION LASER","UNILATERAL",200000,"M"],["FOTOCOAGULACION LASER","BILATERAL",400000,"M"],["TERAPIA INTRAVITREA","UNILATERAL",220000,"M"]]
+  };
+
+  function extraer(wb){
+    var ficha={}, gmap={M:'M',S:'S',PART:'PYP',CAMP:'CAMP',ALL:'ALL'};
+    for(var sh of wb){
+      var s=sh.name; if(s==='Hoja1'||s==='DIRECTORIO DE EMAIL'||/OPTOMETRA/.test(nz(s))) continue;
+      var rows=sh.rows||[]; var hdrs=[]; for(var i=0;i<rows.length;i++) if(isHeader(rows[i])) hdrs.push(i);
+      if(!hdrs.length) continue;
+      var out=[];
+      for(var hi=0;hi<hdrs.length;hi++){ var h=hdrs[hi]; var cols=mapCols(rows[h]); var end=hi+1<hdrs.length?hdrs[hi+1]:rows.length;
+        var has_emp=cols.emp!=null; var run=secDef(rows,h);
+        for(var ri=h+1;ri<end;ri++){ var r=rows[ri];
+          var val=cols.val!=null&&cols.val<r.length?money(r[cols.val]):null;
+          var lab=null; for(var c of r){ if(grupo(c)){lab=c;break;} }
+          if(lab!=null && val==null){ run=lab; continue; }
+          var srv=cols.srv!=null&&cols.srv<r.length?r[cols.srv]:null;
+          if(!srv||!String(srv).trim()||SKIP.test(nz(srv))||val==null) continue;
+          var tipo=cols.tipo!=null&&cols.tipo<r.length?r[cols.tipo]:'';
+          var empcell=has_emp&&cols.emp<r.length?r[cols.emp]:null;
+          if(esNum(empcell)) empcell=null;
+          var emp=(empcell!=null&&empcell!=='')?empcell:run;
+          var g=grupo(emp);
+          out.push([String(srv).trim(), String(tipo||'').trim(), Math.round(val), gmap[g]||'']);
+        }
+      }
+      if(out.length) ficha[s]=out;
+    }
+    // sumar el complemento donde el lector no llegó
+    for(var med in COMPLEMENTO){ if(!(ficha[med]&&ficha[med].length)) ficha[med]=[]; COMPLEMENTO[med].forEach(function(x){ ficha[med].push(x.slice()); }); }
+    return ficha;
+  }
+
+  window.__extraerFicha = extraer;
+
+  async function cargarFichaExcel(file){
+    if(!file) return;
+    try{
+      var buf = await file.arrayBuffer();
+      var wb  = await cmpLeerXlsx(buf);
+      var fj  = extraer(wb);
+      var nMed = Object.keys(fj).length;
+      var nFil = Object.keys(fj).reduce(function(a,k){return a+fj[k].length;},0);
+      if(nMed < 20 || nFil < 150){ alert('Ese Excel no parece la ficha técnica (leí '+nMed+' médicos). No se aplicó.'); return; }
+      window.__fichaLive = fj;
+      try{ localStorage.setItem('eb_ficha_viva', JSON.stringify(fj)); }catch(e){}
+      toast('Ficha técnica leída: '+nMed+' médicos, '+nFil+' valores. El motor ya la usa.');
+      if(typeof construirFichas==='function') construirFichas();
+      var b=document.getElementById('btnCalc'); if(b && !b.disabled) b.click();
+    }catch(e){ alert('No pude leer ese Excel de ficha: '+e.message); }
+  }
+  window.cargarFichaExcel = cargarFichaExcel;
+
+  function toast(msg){
+    try{ var d=document.createElement('div'); d.textContent=msg;
+      d.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0f766e;color:#fff;padding:10px 16px;border-radius:10px;z-index:99999;font:14px sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)';
+      document.body.appendChild(d); setTimeout(function(){ d.remove(); },5000);
+    }catch(e){ alert(msg); }
+  }
+
+  /* al arrancar, si ya habían subido una ficha antes, se vuelve a usar */
+  try{ var g=localStorage.getItem('eb_ficha_viva'); if(g){ var o=JSON.parse(g); if(o && Object.keys(o).length>=20) window.__fichaLive=o; } }catch(e){}
+
+  /* botón para subir la ficha, dentro del panel «Fichas técnicas» */
+  function ponerBoton(){
+    if(document.getElementById('btnFichaViva')) return;
+    var cont=null;
+    var hs=[].slice.call(document.querySelectorAll('h1,h2,h3,h4,div,button'));
+    for(var el of hs){ if(/Fichas t[eé]cnicas/i.test(el.textContent||'') && (el.textContent||'').length<40){ cont=el.closest('section,div')||el.parentElement; break; } }
+    var wrap=document.createElement('div'); wrap.style.cssText='margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+    var lbl=document.createElement('label'); lbl.id='btnFichaViva';
+    lbl.textContent='⬆ Cargar ficha técnica (Excel)';
+    lbl.style.cssText='background:#0f766e;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px';
+    var inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls,.xlsm'; inp.style.display='none';
+    inp.addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; if(f) cargarFichaExcel(f); inp.value=''; });
+    lbl.appendChild(inp);
+    var est=document.createElement('span'); est.id='fichaVivaEst'; est.style.cssText='font-size:12px;color:#475569';
+    est.textContent = window.__fichaLive ? ('✔ usando ficha subida ('+Object.keys(window.__fichaLive).length+' médicos)') : '(hoy usa la copia interna)';
+    wrap.appendChild(lbl); wrap.appendChild(est);
+    if(cont) cont.insertBefore(wrap, cont.firstChild); else { wrap.style.cssText+=';position:fixed;top:8px;right:8px;z-index:9000;background:#fff;padding:6px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.15)'; document.body.appendChild(wrap); }
+  }
+  if(document.readyState!=='loading') ponerBoton(); else document.addEventListener('DOMContentLoaded', ponerBoton);
+  setTimeout(ponerBoton,1000); setTimeout(ponerBoton,2500);
 })();
 
 
