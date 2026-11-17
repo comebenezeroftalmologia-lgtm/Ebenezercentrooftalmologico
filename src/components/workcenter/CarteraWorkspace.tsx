@@ -339,6 +339,7 @@ export function CarteraWorkspace({
   const [anuladas, setAnuladas] = useState<Anulada[]>([]);
   const [pendientes, setPendientes] = useState<PendienteWc[]>([]);
   const [mapaSismaFacturas, setMapaSismaFacturas] = useState<Record<string, SismaFacturaCruce>>({});
+  const [saldoCarteraSisma, setSaldoCarteraSisma] = useState<{ con: number; solo: number; sin: number } | null>(null);
   const [cat, setCat] = useState<Catalogos>(VACIO);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState("");
@@ -439,6 +440,17 @@ export function CarteraWorkspace({
           if (k && !mSisma[k]) mSisma[k] = f;
         }
         setMapaSismaFacturas(mSisma);
+        const du = j.desgloseUniverso;
+        if (du?.conMutual) {
+          setSaldoCarteraSisma({
+            con: Number(du.conMutual.carteraTotal || 0),
+            solo: Number(du.soloMutual?.carteraTotal || 0),
+            sin: Number(du.sinMutual?.carteraTotal || 0),
+          });
+        } else if (j.edades?.saldoTotal) {
+          const st = Number(j.edades.saldoTotal || 0);
+          setSaldoCarteraSisma({ con: st, solo: st, sin: st });
+        }
       } catch {
         // Si SISMA en vivo tarda o no está disponible, se mantiene el cruce local de BD.
       }
@@ -1045,8 +1057,20 @@ export function CarteraWorkspace({
         <Pestana activa={vista === "resumen"} onClick={() => setVista("resumen")}>
           Resumen normativo y defensa
         </Pestana>
-        <span className="ml-2 font-cifra text-[11.5px] text-[#94A3B8]">
-          Facturado: {pesos(m.facturado)} · Glosado: {pesos(m.glosado)}
+        <span className="ml-2 font-cifra text-[11.5px] text-[#47597A]">
+          {(() => {
+            const totCart = saldoCarteraSisma
+              ? fMutual === "SOLO"
+                ? saldoCarteraSisma.solo
+                : fMutual === "SIN"
+                ? saldoCarteraSisma.sin
+                : saldoCarteraSisma.con
+              : 0;
+            const pctC = totCart > 0 ? ((m.glosado / totCart) * 100).toFixed(2) : null;
+            return totCart > 0
+              ? `Cartera SISMA: ${pesos(totCart)} · De lo que hay, es Glosa: ${pesos(m.glosado)} (${pctC}%)`
+              : `Facturado: ${pesos(m.facturado)} · Glosado: ${pesos(m.glosado)}`;
+          })()}
         </span>
         {m.sinNC > 0 && (
           <span className="ml-2 rounded-pill bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#92400E]">

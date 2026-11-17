@@ -166,6 +166,16 @@ type FacturaSismaVivaRow = {
   saldo: number;
 };
 
+type ResumenGlosaSobreCartera = {
+  totalGlosado: number;
+  totalPendiente: number;
+  totalDefendido: number;
+  totalAceptado: number;
+  cantidadGlosas: number;
+  porMes: Record<string, number>;
+  porEntidad: Record<string, { glosado: number; pendiente: number; cantidad: number }>;
+};
+
 type ColDef = {
   key: string;
   label: string;
@@ -2184,7 +2194,7 @@ export default function TableroCarteraAnalytics() {
     );
   };
 
-  const renderTarjetaTendenciaTotalCartera = () => {
+  const renderTarjetaTendenciaTotalCartera = (glosaInfo: ResumenGlosaSobreCartera) => {
     const uConMismoCorte = datosSismaVivo?.desgloseUniverso?.conMutual;
     const totalBaseRef =
       uConMismoCorte?.carteraTotal ||
@@ -2383,6 +2393,9 @@ export default function TableroCarteraAnalytics() {
         ? `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)}${esCorteCongeladoAyer ? " (Ayer)" : ""}`
         : formatearISOaLatam(c.fechaCorte);
 
+      const ymClave = `${c.anio}-${String(c.mes).padStart(2, "0")}`;
+      const glosaMesVal = glosaInfo.porMes[ymClave] || 0;
+
       return {
         id: `cierre-${c.anio}-${c.mes}`,
         idxCorte: listaCortesActiva.length - 1,
@@ -2394,6 +2407,7 @@ export default function TableroCarteraAnalytics() {
         carteraCorriente: cCorr,
         carteraVencida: cVenc,
         anticiposPorCruzar: cGiros,
+        glosaMonto: glosaMesVal,
         mostrarLabel: true,
       };
     });
@@ -2427,6 +2441,7 @@ export default function TableroCarteraAnalytics() {
               carteraCorriente: corteSeleccionado.carteraCorriente,
               carteraVencida: corteSeleccionado.carteraVencida,
               anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
+              glosaMonto: glosaInfo.porMes[`${anioCorteVivo}-${mmCorteVivo}`] || 0,
               mostrarLabel: true,
             },
           ]
@@ -2435,28 +2450,37 @@ export default function TableroCarteraAnalytics() {
     const puntosGrafica =
       modoTendenciaCartera === "MES"
         ? puntosMeses
-        : puntosTablaCortes.map((c) => ({
-            id: c.id,
-            idxCorte: c.idxCorte,
-            etiquetaEje: c.etiquetaEje,
-            fechaDetalle: c.etiquetaTabla,
-            esCongeladoAyer: c.esCongeladoAyer,
-            carteraTotal: c.carteraTotal,
-            totalCarteraReal: c.totalCarteraReal,
-            carteraCorriente: c.carteraCorriente,
-            carteraVencida: c.carteraVencida,
-            anticiposPorCruzar: c.anticiposPorCruzar,
-            mostrarLabel: true,
-          }));
+        : puntosTablaCortes.map((c) => {
+            const ymCorte =
+              c.fechaRaw.length === 10
+                ? `${c.fechaRaw.slice(6, 10)}-${c.fechaRaw.slice(3, 5)}`
+                : "";
+            return {
+              id: c.id,
+              idxCorte: c.idxCorte,
+              etiquetaEje: c.etiquetaEje,
+              fechaDetalle: c.etiquetaTabla,
+              esCongeladoAyer: c.esCongeladoAyer,
+              carteraTotal: c.carteraTotal,
+              totalCarteraReal: c.totalCarteraReal,
+              carteraCorriente: c.carteraCorriente,
+              carteraVencida: c.carteraVencida,
+              anticiposPorCruzar: c.anticiposPorCruzar,
+              glosaMonto: c.esVivo
+                ? glosaInfo.totalGlosado
+                : (ymCorte && glosaInfo.porMes[ymCorte]) || glosaInfo.totalGlosado,
+              mostrarLabel: true,
+            };
+          });
 
     const n = puntosGrafica.length;
-    const svgW = 760;
-    const svgH = 352;
-    const padL = 82;
-    const padR = 34;
+    const svgW = 1160;
+    const svgH = 400;
+    const padL = 84;
+    const padR = 38;
     const padT = 26;
-    const baseLineY = 314;
-    const yFloor = 314;
+    const baseLineY = 356;
+    const yFloor = 356;
     const plotW = svgW - padL - padR;
     const plotH = yFloor - padT;
 
@@ -2523,6 +2547,13 @@ export default function TableroCarteraAnalytics() {
     );
     const pathCorriente = hayDesglose ? construirCurvaSuave(coordsCorriente) : "";
     const pathVencida = hayDesglose ? construirCurvaSuave(coordsVencida) : "";
+    const coordsGlosa = puntosGrafica.map((p, i) => ({
+      x: getX(i),
+      y: getYRaw(p.glosaMonto),
+      val: p.glosaMonto,
+    }));
+    const hayGlosaEnCurva = puntosGrafica.some((p) => p.glosaMonto > 0);
+    const pathGlosa = hayGlosaEnCurva ? construirCurvaSuave(coordsGlosa) : "";
 
     const areaTotal =
       coordsTotal.length > 1
@@ -2647,6 +2678,17 @@ export default function TableroCarteraAnalytics() {
               />
               <span>Vencida</span>
             </div>
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold shadow-2xs"
+              style={{ backgroundColor: "#F5F3FF", borderColor: "#DDD6FE", color: "#5B21B6" }}
+              title="De lo que hay en cartera, monto glosado real registrado"
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: "#7C3AED" }}
+              />
+              <span>Glosa: {formatMillones(glosaInfo.totalGlosado)}</span>
+            </div>
 
             <div
               className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px]"
@@ -2715,9 +2757,62 @@ export default function TableroCarteraAnalytics() {
           </div>
         </div>
 
-        {/* CUERPO: GRÁFICA LIMPIA A LA IZQUIERDA + TABLA DE FECHAS DE CORTE A LA DERECHA */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-center">
-          <div className="xl:col-span-8">
+        {/* FRANJA HORIZONTAL COMPACTA DE FECHAS DE CORTE (REUBICADA ARRIBA PARA DAR 100% DE ANCHO A LA GRÁFICA) */}
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2"
+          style={{ backgroundColor: "#F8FAFC", borderColor: "#E2ECF8" }}
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#475569] mr-1">
+              Cortes disponibles:
+            </span>
+            {puntosTablaCortes.map((c, idx) => {
+              const esUltimaViva = c.esVivo && idx === puntosTablaCortes.length - 1;
+              const esActivo = c.idxCorte === indiceCorteActivo;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    seleccionarCorteYSincronizar(c.idxCorte, c.fechaRaw);
+                    setModoTendenciaCartera("CORTES");
+                  }}
+                  title={`Cartera Total: ${formatCOP(c.carteraTotal)} · Real: ${realCOP(c.totalCarteraReal)}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition cursor-pointer"
+                  style={{
+                    backgroundColor: esUltimaViva
+                      ? "#15803D"
+                      : esActivo
+                      ? "#EFF6FF"
+                      : "#FFFFFF",
+                    borderColor: esUltimaViva
+                      ? "#15803D"
+                      : esActivo
+                      ? "#1D58D8"
+                      : "#CBD5E1",
+                    color: esUltimaViva ? "#FFFFFF" : esActivo ? "#1D4ED8" : "#0F172A",
+                  }}
+                >
+                  <span>{c.etiquetaTabla}</span>
+                  <span className="font-mono opacity-90">{formatMillones(c.carteraTotal)}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-mono">
+            <span className="rounded-full bg-[#F5F3FF] border border-[#DDD6FE] px-2.5 py-0.5 font-extrabold text-[#6D28D9]">
+              De lo que hay ({formatMillones(corteSeleccionado.carteraTotal)}), es Glosa: {formatCOP(glosaInfo.totalGlosado)} (
+              {corteSeleccionado.carteraTotal > 0
+                ? ((glosaInfo.totalGlosado / corteSeleccionado.carteraTotal) * 100).toFixed(2)
+                : "0.00"}
+              %)
+            </span>
+          </div>
+        </div>
+
+        {/* GRÁFICA GRANDE DE ANCHO COMPLETO (100% DE LADO A LADO) */}
+        <div className="w-full">
+          <div className="w-full">
             {modoTendenciaCartera === "MES" && puntosGrafica.length === 0 ? (
               /* Sin cierres guardados NO se dibuja nada. Antes, en este
                  hueco, se fabricaba una curva interpolando cuatro cortes.
@@ -2813,6 +2908,13 @@ export default function TableroCarteraAnalytics() {
                     </span>
                     <span className="text-[#047857] font-extrabold">
                       <strong>Real:</strong> {realCOP(puntoInspeccionado.totalCarteraReal)}
+                    </span>
+                    <span className="text-[#6D28D9] font-extrabold">
+                      <strong>Glosa:</strong> {formatCOP(puntoInspeccionado.glosaMonto)} (
+                      {puntoInspeccionado.carteraTotal > 0
+                        ? ((puntoInspeccionado.glosaMonto / puntoInspeccionado.carteraTotal) * 100).toFixed(2)
+                        : "0.00"}
+                      %)
                     </span>
                   </div>
                 </div>
@@ -2973,6 +3075,25 @@ export default function TableroCarteraAnalytics() {
                 stroke="#059669"
                 strokeWidth="2.5"
               />
+
+              {/* Curva Violeta: Cuánto es Glosa */}
+              {pathGlosa ? (
+                <path
+                  d={pathGlosa}
+                  fill="none"
+                  stroke="#7C3AED"
+                  strokeWidth="2"
+                  strokeDasharray="6 3"
+                  opacity="0.95"
+                />
+              ) : null}
+              {hayGlosaEnCurva
+                ? coordsGlosa.map((cg, i) => (
+                    <circle key={`pg-${i}`} cx={cg.x} cy={cg.y} r="3" fill="#7C3AED">
+                      <title>{`${puntosGrafica[i].etiquetaEje} · Glosa: ${formatCOP(cg.val)}`}</title>
+                    </circle>
+                  ))
+                : null}
 
               {/* LAS CUATRO CIFRAS DEL MES, DENTRO DEL DIBUJO.
 
@@ -3225,72 +3346,6 @@ export default function TableroCarteraAnalytics() {
             </div>
             )}
           </div>
-
-          {/* PANEL DERECHO: TABLA ESTRUCTURADA "FECHAS DE CORTE (EXCEL / SISMA)" */}
-          <div className="xl:col-span-4">
-            <div
-              className="rounded-xl p-3.5 border space-y-2"
-              style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div
-                  className="text-[13px] font-bold"
-                  style={{ color: "#0F172A" }}
-                >
-                  Fechas de Corte (Excel / SISMA)
-                </div>
-                {esCorteCongeladoAyer && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Congelado ayer
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-12 text-[10.5px] font-semibold pb-1 border-b" style={{ color: "#475569", borderColor: "#E2ECF8" }}>
-                <div className="col-span-5">Fecha de Corte</div>
-                <div className="col-span-4 text-right">Cartera Total</div>
-                <div className="col-span-3 text-right">Cartera Real</div>
-              </div>
-
-              <div className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                {puntosTablaCortes.map((c, idx) => {
-                  const esUltimaViva =
-                    c.esVivo && idx === puntosTablaCortes.length - 1;
-                  const esActivo = c.idxCorte === indiceCorteActivo;
-                  return (
-                    <div
-                      key={c.id}
-                      onClick={() => {
-                        seleccionarCorteYSincronizar(c.idxCorte, c.fechaRaw);
-                        setModoTendenciaCartera("CORTES");
-                      }}
-                      title="Clic para seleccionar este corte y verlo en la gráfica"
-                      className={`grid grid-cols-12 items-center py-1.5 px-2 text-[11px] cursor-pointer transition ${
-                        esUltimaViva ? "rounded-full mt-1" : "rounded-md hover:bg-slate-50"
-                      }`}
-                      style={{
-                        backgroundColor: esUltimaViva
-                          ? "#15803D"
-                          : esActivo
-                          ? "#EFF6FF"
-                          : "transparent",
-                        color: esUltimaViva ? "#FFFFFF" : "#0F172A",
-                        fontWeight: esUltimaViva || esActivo ? 700 : 600,
-                      }}
-                    >
-                      <div className="col-span-5 truncate">{c.etiquetaTabla}</div>
-                      <div className="col-span-4 text-right font-mono font-bold">
-                        {formatMillones(c.carteraTotal)}
-                      </div>
-                      <div className="col-span-3 text-right font-mono font-bold">
-                        {realMillones(c.totalCarteraReal)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* TABLA DE DATOS INFERIOR SINCRONIZADA CON EL CURSOR */}
@@ -3417,6 +3472,22 @@ export default function TableroCarteraAnalytics() {
                         title={realCOP(pt.totalCarteraReal)}
                       >
                         {realMillones(pt.totalCarteraReal)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2 font-extrabold text-[#6D28D9] sticky left-0 bg-[#FAF5FF] border-r" style={{ borderColor: "#E2ECF8" }}>
+                      Cuánto es Glosa ($)
+                    </td>
+                    {puntosGrafica.map((pt, i) => (
+                      <td
+                        key={`td-glosa-${pt.id}`}
+                        onMouseEnter={() => setHoverTendenciaIdx(i)}
+                        className="p-2 text-right font-mono font-extrabold text-[#6D28D9] cursor-pointer transition-colors"
+                        style={{ backgroundColor: hoverTendenciaIdx === i ? "#EDE9FE" : "#FAF5FF" }}
+                        title={formatCOP(pt.glosaMonto)}
+                      >
+                        {pt.glosaMonto > 0 ? formatCOP(pt.glosaMonto) : "$0"}
                       </td>
                     ))}
                   </tr>
@@ -4024,6 +4095,69 @@ export default function TableroCarteraAnalytics() {
     filtroResponsable,
     mapasCrucePorFactura,
   ]);
+
+  const resumenGlosaSobreCartera = useMemo<ResumenGlosaSobreCartera>(() => {
+    let totalGlosado = 0;
+    let totalPendiente = 0;
+    let totalDefendido = 0;
+    let totalAceptado = 0;
+    const porMes: Record<string, number> = {};
+    const porEntidad: Record<string, { glosado: number; pendiente: number; cantidad: number }> = {};
+
+    for (const g of glosasFiltradas) {
+      const vGlosa = Math.max(0, Number(g.valorGlosado || 0));
+      const est = String(g.estado || g.subtabla || "PENDIENTE").toUpperCase();
+      const tieneAcept = g.valorAceptado !== null && g.valorAceptado !== undefined;
+      const vAceptExp = tieneAcept ? Math.min(vGlosa, Math.max(0, Number(g.valorAceptado || 0))) : null;
+
+      let pend = 0;
+      let def = 0;
+      let acep = 0;
+      if (est === "PENDIENTE" || est === "EN_GESTION") {
+        pend = vGlosa;
+      } else if (est === "NO_ACEPTADA" || est === "RESPONDIDA_NO_ACEPTADA") {
+        acep = vAceptExp !== null && vAceptExp > 0 ? vAceptExp : 0;
+        def = Math.max(0, vGlosa - acep);
+      } else {
+        acep = vAceptExp !== null ? vAceptExp : vGlosa;
+        def = Math.max(0, vGlosa - acep);
+      }
+
+      totalGlosado += vGlosa;
+      totalPendiente += pend;
+      totalDefendido += def;
+      totalAceptado += acep;
+
+      const fRef = (g.fechaFactura || g.fechaNotificacionGlosa || g.fechaRadicacion || "").slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(fRef)) {
+        porMes[fRef] = (porMes[fRef] || 0) + vGlosa;
+      }
+
+      const infoEmp = homologarEmpresaYOrigen({
+        empresa: g.empresaHomologada || g.empresa,
+        empresaOriginal: g.empresaOriginal,
+        nit: g.nit,
+      });
+      const claves = Array.from(new Set([infoEmp.nit, infoEmp.empresaCorta].filter(Boolean)));
+      for (const k of claves) {
+        const prev = porEntidad[k] || { glosado: 0, pendiente: 0, cantidad: 0 };
+        prev.glosado += vGlosa;
+        prev.pendiente += pend;
+        prev.cantidad += 1;
+        porEntidad[k] = prev;
+      }
+    }
+
+    return {
+      totalGlosado,
+      totalPendiente,
+      totalDefendido,
+      totalAceptado,
+      cantidadGlosas: glosasFiltradas.length,
+      porMes,
+      porEntidad,
+    };
+  }, [glosasFiltradas]);
 
   const listaActivaCompleta = useMemo(() => {
     if (tabActiva === "cartera_viva") return (datosSismaVivo?.facturasAbiertas || []) as unknown as Record<string, unknown>[];
@@ -4950,7 +5084,7 @@ export default function TableroCarteraAnalytics() {
           />
         )}
 
-        {/* BOTÓN SUBIR EXCEL (.XLSX / .CSV) A LA BASE DE DATOS COMPARTIDA */}
+        {/* BOTONES SUBIR Y EXPORTAR EXCEL EN LA BARRA SUPERIOR */}
         <button
           type="button"
           onClick={() => setMostrarModalSubirExcel(true)}
@@ -4963,6 +5097,19 @@ export default function TableroCarteraAnalytics() {
           title="Subir archivo Excel (.xlsx o .csv) y almacenarlo en la base de datos compartida"
         >
           <span>📤 Subir Excel (.xlsx)</span>
+        </button>
+        <button
+          type="button"
+          onClick={exportarVistaExcelCSV}
+          className="inline-flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-extrabold transition cursor-pointer border whitespace-nowrap"
+          style={{
+            backgroundColor: "#EFF6FF",
+            borderColor: "#BFDBFE",
+            color: "#1D4ED8",
+          }}
+          title="Exportar datos filtrados a Excel UTF-8"
+        >
+          <span>📥 Exportar Excel</span>
         </button>
 
         {/* 1. DESPLEGABLE DE AÑO */}
@@ -6205,8 +6352,8 @@ export default function TableroCarteraAnalytics() {
 
         {persianaResumenAbierta && (
           <div className="space-y-5">
-            {/* 5 TARJETAS EJECUTIVAS DE LA FÓRMULA */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {/* 6 TARJETAS EJECUTIVAS: CARTERA TOTAL, CARTERA REAL Y CUÁNTO ES GLOSA DE LO QUE HAY */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
               <div
                 className="rounded-xl p-4 border"
                 style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }}
@@ -6286,7 +6433,77 @@ export default function TableroCarteraAnalytics() {
                   Saldo real neto por cobrar
                 </div>
               </div>
+
+              <div
+                className="rounded-xl p-4 border-2"
+                style={{ backgroundColor: "#F5F3FF", borderColor: "#8B5CF6" }}
+              >
+                <div className="flex items-center justify-between text-xs font-extrabold" style={{ color: "#6D28D9" }}>
+                  <span>CUÁNTO ES GLOSA</span>
+                  <span className="px-2 py-0.5 rounded bg-purple-200 text-purple-950 font-mono">
+                    {corteSeleccionado.carteraTotal > 0
+                      ? `${((resumenGlosaSobreCartera.totalGlosado / corteSeleccionado.carteraTotal) * 100).toFixed(2)}%`
+                      : "0%"}
+                  </span>
+                </div>
+                <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#4C1D95" }}>
+                  {formatCOP(resumenGlosaSobreCartera.totalGlosado)}
+                </div>
+                <div className="text-[10.5px] mt-1 font-semibold" style={{ color: "#6D28D9" }}>
+                  En gestión: {formatCOP(resumenGlosaSobreCartera.totalPendiente)} ({resumenGlosaSobreCartera.cantidadGlosas} glosas)
+                </div>
+              </div>
             </div>
+
+            {/* BARRA DIRECTA: DE LO QUE HAY EN CARTERA, CUÁNTO ESTÁ EN GLOSA VS LIBRE DE GLOSA */}
+            {corteSeleccionado.carteraTotal > 0 && (() => {
+              const pctGlosaTotal = Math.min(
+                100,
+                (resumenGlosaSobreCartera.totalGlosado / corteSeleccionado.carteraTotal) * 100
+              );
+              const carteraSinGlosa = Math.max(
+                0,
+                corteSeleccionado.carteraTotal - resumenGlosaSobreCartera.totalGlosado
+              );
+              return (
+                <div
+                  className="rounded-xl border px-4 py-3 space-y-2"
+                  style={{ backgroundColor: "#FAF5FF", borderColor: "#DDD6FE" }}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-extrabold text-[#0E245E]">
+                      De lo que hay en Cartera Total ({formatCOP(corteSeleccionado.carteraTotal)}),{" "}
+                      <span className="text-[#6D28D9]">
+                        {formatCOP(resumenGlosaSobreCartera.totalGlosado)} ({pctGlosaTotal.toFixed(2)}%) corresponde a Glosa
+                      </span>{" "}
+                      y{" "}
+                      <span className="text-[#047857]">
+                        {formatCOP(carteraSinGlosa)} ({(100 - pctGlosaTotal).toFixed(2)}%) está libre de glosa
+                      </span>
+                    </span>
+                    <span className="font-mono text-[11px] font-bold text-[#475569]">
+                      En gestión: {formatCOP(resumenGlosaSobreCartera.totalPendiente)} · Defendido: {formatCOP(resumenGlosaSobreCartera.totalDefendido)} · Aceptado/NC: {formatCOP(resumenGlosaSobreCartera.totalAceptado)}
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 rounded-full overflow-hidden flex bg-emerald-100">
+                    <div
+                      style={{
+                        width: `${Math.max(0, 100 - pctGlosaTotal)}%`,
+                        backgroundColor: "#10B981",
+                      }}
+                      title={`Cartera sin glosa: ${formatCOP(carteraSinGlosa)}`}
+                    />
+                    <div
+                      style={{
+                        width: `${Math.max(pctGlosaTotal > 0 ? 1.5 : 0, pctGlosaTotal)}%`,
+                        backgroundColor: "#7C3AED",
+                      }}
+                      title={`Monto en Glosa: ${formatCOP(resumenGlosaSobreCartera.totalGlosado)}`}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* 2 TORTAS EJECUTIVAS POR EMPRESA (CARTERA TOTAL Y CARTERA VENCIDA > 60 DÍAS) */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -6303,7 +6520,7 @@ export default function TableroCarteraAnalytics() {
             </div>
 
             {/* TARJETA ÚNICA DE TENDENCIA DEL TOTAL DE CARTERA POR MES Y FECHA DE CORTE (EXCEL / SISMA) */}
-            {renderTarjetaTendenciaTotalCartera()}
+            {renderTarjetaTendenciaTotalCartera(resumenGlosaSobreCartera)}
 
             {/* CORTINA DESPLEGABLE: DESGLOSE EN VIVO POR EDADES Y ENTIDADES (API SISMA CONTABILIDAD) */}
             {datosSismaVivo && (
@@ -6406,6 +6623,7 @@ export default function TableroCarteraAnalytics() {
                             <th className="text-right p-2.5 font-bold">Corriente (&lt;= 60d)</th>
                             <th className="text-right p-2.5 font-bold">Vencida (&gt; 60d)</th>
                             <th className="text-right p-2.5 font-bold">Saldo Total</th>
+                            <th className="text-right p-2.5 font-bold">Cuánto es Glosa ($ / %)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y" style={{ borderColor: "#E2ECF8" }}>
@@ -6464,6 +6682,25 @@ export default function TableroCarteraAnalytics() {
                                 </td>
                                 <td className="p-2.5 text-right font-mono font-extrabold" style={{ color: "#0E245E" }}>
                                   {formatCOP(emp.total)}
+                                </td>
+                                <td className="p-2.5 text-right font-mono whitespace-nowrap">
+                                  {(() => {
+                                    const gEnt =
+                                      (infoH.nit && resumenGlosaSobreCartera.porEntidad[infoH.nit]) ||
+                                      resumenGlosaSobreCartera.porEntidad[infoH.empresaCorta];
+                                    if (!gEnt || gEnt.glosado <= 0) {
+                                      return <span className="text-[11px] text-[#94A3B8]">Sin glosa</span>;
+                                    }
+                                    const pctE = emp.total > 0 ? ((gEnt.glosado / emp.total) * 100).toFixed(1) : "0.0";
+                                    return (
+                                      <div>
+                                        <div className="font-extrabold text-[#6D28D9]">{formatCOP(gEnt.glosado)}</div>
+                                        <div className="text-[10px] text-[#64748B]">
+                                          {pctE}% · {gEnt.cantidad} glosas
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
                               </tr>
                             );
@@ -8686,623 +8923,6 @@ export default function TableroCarteraAnalytics() {
           </div>
         );
       })()}
-
-      {/* ===================================================================== */}
-      {/* CUADRO 3: REPORTE MAESTRO CRUZADO Y ORDENADO DE CARTERA Y GLOSAS      */}
-      {/* ===================================================================== */}
-      <div
-        className="rounded-xl p-5 sm:p-6 shadow-xs border space-y-4"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
-      >
-        <div
-          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3 border-b"
-          style={{ borderColor: "#E2ECF8" }}
-        >
-          <button
-            type="button"
-            onClick={() => setCortinaTablaAbierta((prev) => !prev)}
-            className="text-left flex items-center gap-3 cursor-pointer"
-          >
-            <span
-              className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0"
-              style={{ backgroundColor: "#EFF6FF", color: "#1D58D8" }}
-            >
-              {cortinaTablaAbierta ? "▴" : "▾"}
-            </span>
-            <div>
-              <h3 className="text-base sm:text-lg font-extrabold text-[#0E245E]">
-                Reporte Maestro Cruzado de Cartera, Facturación y Glosas (SISMA + WorkCenter)
-              </h3>
-              <p className="text-xs text-[#64748B]">
-                Ordenado con cruces reales: Factura y Fechas → Sede → Consulta o Cirugía → Empresa (NIT) y De dónde es → Nombres → Valores y Estado
-              </p>
-            </div>
-          </button>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <input
-                type="text"
-                value={busqueda}
-                onChange={(e) => {
-                  setBusqueda(e.target.value);
-                  setPaginaActual(1);
-                }}
-                placeholder="🔍 Buscar factura, paciente, médico, NIT, CUPS..."
-                className="w-64 sm:w-72 rounded-xl border px-3 py-1.5 text-xs font-medium outline-none focus:border-[#1D58D8]"
-                style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setMostrarModalSubirExcel(true)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition border"
-              style={{ backgroundColor: "#059669", color: "#FFFFFF", borderColor: "#059669" }}
-            >
-              📤 Subir Excel (.xlsx / .csv)
-            </button>
-            <button
-              type="button"
-              onClick={exportarVistaExcelCSV}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition border"
-              style={{ backgroundColor: "#0E245E", color: "#FFFFFF", borderColor: "#0E245E" }}
-            >
-              📥 Exportar Excel Cruzado ({listaActivaPaginada.total.toLocaleString("es-CO")})
-            </button>
-          </div>
-        </div>
-
-        {cortinaTablaAbierta && (
-          <div className="space-y-3">
-            {/* PESTAÑAS DEL REPORTE MAESTRO */}
-            <div className="flex flex-wrap items-center gap-2">
-              {(
-                [
-                  { id: "glosas", label: "Glosas y Defensa", count: glosasFiltradas.length },
-                  { id: "cartera_viva", label: "Cartera Abierta SISMA (Facturas)", count: facturasSismaFiltradas.length },
-                  { id: "pendientes", label: "Servicios / Pendientes (Consulta y Cirugía)", count: pendientesFiltradas.length },
-                  { id: "anuladas", label: "Facturas Anuladas / Reemplazadas", count: anuladasFiltradas.length },
-                ] as const
-              ).map((tb) => {
-                const act = tabActiva === tb.id;
-                return (
-                  <button
-                    key={tb.id}
-                    type="button"
-                    onClick={() => {
-                      setTabActiva(tb.id);
-                      setPaginaActual(1);
-                    }}
-                    className="px-3.5 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer border"
-                    style={{
-                      backgroundColor: act ? "#1D58D8" : "#F8FAFC",
-                      color: act ? "#FFFFFF" : "#334155",
-                      borderColor: act ? "#1D58D8" : "#E2ECF8",
-                    }}
-                  >
-                    {tb.label}{" "}
-                    <span
-                      className="ml-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-mono"
-                      style={{
-                        backgroundColor: act ? "rgba(255,255,255,0.22)" : "#E2E8F0",
-                        color: act ? "#FFFFFF" : "#0E245E",
-                      }}
-                    >
-                      {tb.count.toLocaleString("es-CO")}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* TABLA ORDENADA SEGÚN PESTAÑA ACTIVA */}
-            <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "#E2ECF8" }}>
-              {tabActiva === "glosas" && (
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Factura · Fechas</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres (Paciente · Médico · Resp.)</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Vlr. Facturado</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Vlr. Glosado</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Defendido / Aceptado</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Causal · NC · Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as unknown as GlosaRow[]).map((g) => {
-                      const cr = cruzarFilaMaestra({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
-                      const facReal = normalizarResponsableReal(g.facturador, g.empresa);
-                      const respR = g.responsableAceptacion && g.responsableAceptacion !== "SIN ASIGNAR"
-                        ? g.responsableAceptacion
-                        : facReal;
-                      const estUp = String(g.estado || g.subtabla || "PENDIENTE").toUpperCase();
-                      const vG = Number(g.valorGlosado || 0);
-                      const vA = g.valorAceptado !== null && g.valorAceptado !== undefined
-                        ? Number(g.valorAceptado)
-                        : estUp.includes("ACEPTADA") && !estUp.includes("NO_ACEPTADA")
-                        ? vG
-                        : 0;
-                      const vDef = estUp === "PENDIENTE" || estUp === "EN_GESTION" ? 0 : Math.max(0, vG - vA);
-                      const codNorma = causaNormativaDe(g.motivoCodigo);
-                      const expandida = Boolean(filasExpandidas[g.id]);
-                      return (
-                        <React.Fragment key={g.id}>
-                          <tr
-                            onClick={() => togglePersianaFila(g.id)}
-                            className="hover:bg-[#EFF6FF] transition-colors cursor-pointer align-top"
-                          >
-                            <td className="p-2.5 font-mono whitespace-nowrap">
-                              <div className="font-extrabold text-[#0E245E]">{g.factura || "—"}</div>
-                              <div className="text-[10.5px] text-[#64748B]">
-                                F: {(g.fechaFactura || cr.fechaFacturaSisma || g.anio || "—").slice(0, 10)}
-                              </div>
-                              {(g.fechaNotificacionGlosa || g.fechaRadicacion) && (
-                                <div className="text-[10px] text-[#1D58D8]">
-                                  {g.fechaNotificacionGlosa
-                                    ? `Notif: ${g.fechaNotificacionGlosa.slice(0, 10)}`
-                                    : `Rad: ${g.fechaRadicacion.slice(0, 10)}`}
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-2.5 whitespace-nowrap">
-                              <span
-                                className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
-                                style={{
-                                  backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
-                                  color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
-                                  borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
-                                }}
-                              >
-                                {cr.sede}
-                              </span>
-                            </td>
-                            <td className="p-2.5 whitespace-nowrap">
-                              <span
-                                className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
-                                style={{
-                                  backgroundColor:
-                                    cr.tipoGrupo === "CIRUGIA"
-                                      ? "#F5F3FF"
-                                      : cr.tipoGrupo === "CONSULTA"
-                                      ? "#F0F9FF"
-                                      : cr.tipoGrupo === "AYUDA_DX"
-                                      ? "#FFFBEB"
-                                      : "#F8FAFC",
-                                  color:
-                                    cr.tipoGrupo === "CIRUGIA"
-                                      ? "#6D28D9"
-                                      : cr.tipoGrupo === "CONSULTA"
-                                      ? "#0369A1"
-                                      : cr.tipoGrupo === "AYUDA_DX"
-                                      ? "#B45309"
-                                      : "#64748B",
-                                  borderColor:
-                                    cr.tipoGrupo === "CIRUGIA"
-                                      ? "#DDD6FE"
-                                      : cr.tipoGrupo === "CONSULTA"
-                                      ? "#BAE6FD"
-                                      : cr.tipoGrupo === "AYUDA_DX"
-                                      ? "#FDE68A"
-                                      : "#E2E8F0",
-                                }}
-                              >
-                                {cr.tipoAtencion}
-                              </span>
-                            </td>
-                            <td className="p-2.5">
-                              <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
-                              {cr.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {cr.nit}</div>}
-                            </td>
-                            <td className="p-2.5 text-[11px] font-semibold text-[#334155]">
-                              {cr.deDondeEs}
-                            </td>
-                            <td className="p-2.5 text-[11px]">
-                              {cr.pacienteNombre ? (
-                                <div className="font-bold text-[#0E245E]">
-                                  Pac: {cr.pacienteNombre}
-                                  {cr.pacienteDoc ? ` (${cr.pacienteDoc})` : ""}
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-[#94A3B8]">Factura contable sin detalle clínico</div>
-                              )}
-                              {cr.medicoNombre && (
-                                <div className="text-[10.5px] text-[#334155]">Dr(a): {cr.medicoNombre}</div>
-                              )}
-                              <div className="text-[10.5px] text-[#475569]">
-                                Resp: <strong className="text-[#0E245E]">{respR}</strong>
-                                {facReal && facReal !== respR ? ` · Fact: ${facReal}` : ""}
-                              </div>
-                            </td>
-                            <td className="p-2.5 text-right font-mono text-[#334155]">
-                              {formatCOP(g.valorFacturado || g.valorFactura || g.valorRadicado)}
-                            </td>
-                            <td className="p-2.5 text-right font-mono font-extrabold text-[#BE123C]">
-                              {formatCOP(vG)}
-                            </td>
-                            <td className="p-2.5 text-right font-mono whitespace-nowrap">
-                              <div className="font-bold text-[#047857]">Def: {formatCOP(vDef)}</div>
-                              <div className="text-[10px] text-[#6D28D9]">Acp: {formatCOP(vA)}</div>
-                            </td>
-                            <td className="p-2.5">
-                              <div className="flex flex-wrap items-center gap-1">
-                                {codNorma && (
-                                  <span className="px-1.5 py-0.5 rounded bg-[#EFF6FF] text-[#1D4ED8] font-mono font-bold text-[10px]">
-                                    {codNorma}
-                                  </span>
-                                )}
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-[#0E245E]">
-                                  {estUp === "RESPONDIDA_NO_ACEPTADA" || estUp === "NO_ACEPTADA"
-                                    ? "Defendida"
-                                    : estUp.includes("ACEPTADA")
-                                    ? "Conciliada / NC"
-                                    : "En Gestión"}
-                                </span>
-                              </div>
-                              <div className="mt-0.5 text-[10px] font-mono text-[#64748B]">
-                                NC: {g.notaCredito || "Pendiente"}
-                              </div>
-                            </td>
-                          </tr>
-                          {expandida && (
-                            <tr className="bg-[#F8FAFC]">
-                              <td colSpan={10} className="p-3 text-[11.5px] text-[#334155] space-y-1">
-                                <div>
-                                  <strong className="text-[#0E245E]">Motivo de Glosa:</strong> {g.motivoGlosa || "—"}
-                                </div>
-                                {g.observacionInterna && (
-                                  <div>
-                                    <strong className="text-[#0E245E]">Respuesta / Observación:</strong> {g.observacionInterna}
-                                  </div>
-                                )}
-                                {cr.servicioDescripcion && (
-                                  <div>
-                                    <strong className="text-[#0E245E]">Servicio Clínico Cruzado ({cr.cups}):</strong>{" "}
-                                    {cr.servicioDescripcion}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-
-              {tabActiva === "cartera_viva" && (
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Factura · Fechas · Edad</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es · Cuenta SISMA</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres / Responsable</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Corriente (&lt;=60d)</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Vencida (&gt;60d)</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Saldo Abierto</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Radicación</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as unknown as FacturaSismaVivaRow[]).map((f, idx) => {
-                      const cr = cruzarFilaMaestra({
-                        factura: f.factura,
-                        empresa: f.empresaHomologada,
-                        empresaOriginal: f.razonSocialOriginal,
-                        nit: f.nit,
-                        deDondeEs: f.deDondeEs,
-                        sede: f.sede,
-                        sedeGrupo: f.sedeGrupo,
-                        tipoAtencion: f.tipoAtencion,
-                        tipoGrupo: f.tipoGrupo,
-                        pacienteNombre: f.pacienteNombre,
-                        pacienteDoc: f.pacienteDoc,
-                      });
-                      return (
-                        <tr key={`${f.factura}-${f.cuenta}-${idx}`} className="hover:bg-[#EFF6FF] transition-colors align-top">
-                          <td className="p-2.5 font-mono whitespace-nowrap">
-                            <div className="font-extrabold text-[#0E245E]">{f.factura || "—"}</div>
-                            <div className="text-[10.5px] text-[#64748B]">
-                              Emis: {f.fechaFactura || "—"} · {f.dias}d
-                            </div>
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
-                              style={{
-                                backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
-                                color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
-                                borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
-                              }}
-                            >
-                              {cr.sede}
-                            </span>
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border border-slate-200 bg-slate-50 text-[#334155]">
-                              {cr.tipoAtencion}
-                            </span>
-                          </td>
-                          <td className="p-2.5">
-                            <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
-                            {f.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {f.nit}</div>}
-                          </td>
-                          <td className="p-2.5 text-[11px]">
-                            <div className="font-semibold text-[#334155]">{cr.deDondeEs}</div>
-                            <div className="text-[10px] text-[#64748B] truncate max-w-[210px]" title={f.descripcionCuenta}>
-                              {f.cuenta} · {f.descripcionCuenta}
-                            </div>
-                          </td>
-                          <td className="p-2.5 text-[11px]">
-                            {cr.pacienteNombre && (
-                              <div className="font-bold text-[#0E245E]">Pac: {cr.pacienteNombre}</div>
-                            )}
-                            {cr.medicoNombre && (
-                              <div className="text-[10.5px] text-[#334155]">Dr(a): {cr.medicoNombre}</div>
-                            )}
-                            <div className="text-[10.5px] text-[#475569]">Resp: {f.responsable}</div>
-                          </td>
-                          <td className="p-2.5 text-right font-mono font-semibold text-[#1D58D8]">
-                            {formatCOP(f.corriente)}
-                          </td>
-                          <td className="p-2.5 text-right font-mono font-semibold text-[#BE123C]">
-                            {formatCOP(f.vencida)}
-                          </td>
-                          <td className="p-2.5 text-right font-mono font-extrabold text-[#0E245E]">
-                            {formatCOP(f.saldo)}
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              style={{
-                                backgroundColor: f.esPendienteRadicar ? "#FEF3C7" : "#DCFCE7",
-                                color: f.esPendienteRadicar ? "#92400E" : "#047857",
-                              }}
-                            >
-                              {f.esPendienteRadicar ? "Pend. Radicar" : "Radicada"}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-
-              {tabActiva === "pendientes" && (
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Fecha · Factura</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres (Paciente · Médico · Resp.)</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Servicio Clínico / CUPS</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Valor Servicio</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as unknown as PendienteRow[]).map((p) => {
-                      const cr = cruzarFilaMaestra({
-                        ...p,
-                        factura: p.facturaAsociada,
-                        cups: p.cups,
-                        unidadFuncional: p.unidadFuncional,
-                        contrato: p.contrato,
-                        descripcion: p.descripcion,
-                      });
-                      const respR = normalizarResponsableReal(p.responsable, p.empresa);
-                      return (
-                        <tr key={p.id} className="hover:bg-[#EFF6FF] transition-colors align-top">
-                          <td className="p-2.5 font-mono whitespace-nowrap">
-                            <div className="font-bold text-[#0E245E]">{p.fechaServicio || p.anio || "—"}</div>
-                            {p.facturaAsociada && (
-                              <div className="text-[10.5px] font-extrabold text-[#1D58D8]">{p.facturaAsociada}</div>
-                            )}
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
-                              style={{
-                                backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
-                                color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
-                                borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
-                              }}
-                            >
-                              {cr.sede}
-                            </span>
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
-                              style={{
-                                backgroundColor:
-                                  cr.tipoGrupo === "CIRUGIA"
-                                    ? "#F5F3FF"
-                                    : cr.tipoGrupo === "CONSULTA"
-                                    ? "#F0F9FF"
-                                    : "#FFFBEB",
-                                color:
-                                  cr.tipoGrupo === "CIRUGIA"
-                                    ? "#6D28D9"
-                                    : cr.tipoGrupo === "CONSULTA"
-                                    ? "#0369A1"
-                                    : "#B45309",
-                                borderColor:
-                                  cr.tipoGrupo === "CIRUGIA"
-                                    ? "#DDD6FE"
-                                    : cr.tipoGrupo === "CONSULTA"
-                                    ? "#BAE6FD"
-                                    : "#FDE68A",
-                              }}
-                            >
-                              {cr.tipoAtencion}
-                            </span>
-                          </td>
-                          <td className="p-2.5">
-                            <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
-                            {cr.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {cr.nit}</div>}
-                          </td>
-                          <td className="p-2.5 text-[11px]">
-                            <div className="font-semibold text-[#334155]">{cr.deDondeEs}</div>
-                            {p.contrato && (
-                              <div className="text-[10px] text-[#64748B] truncate max-w-[180px]" title={p.contrato}>
-                                {p.contrato}
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-2.5 text-[11px]">
-                            {p.pacienteNombre && (
-                              <div className="font-bold text-[#0E245E]">
-                                Pac: {p.pacienteNombre}
-                                {p.pacienteDoc ? ` (${p.pacienteDoc})` : ""}
-                              </div>
-                            )}
-                            {p.medico && <div className="text-[10.5px] font-medium text-[#334155]">Dr(a): {p.medico}</div>}
-                            <div className="text-[10px] text-[#64748B]">Resp: {respR}</div>
-                          </td>
-                          <td className="p-2.5 max-w-[260px]">
-                            {p.cups && <span className="font-mono font-bold text-[#0E245E] mr-1">[{p.cups}]</span>}
-                            <span className="text-[#334155]">{p.descripcion}</span>
-                          </td>
-                          <td className="p-2.5 text-right font-mono font-extrabold text-[#0E245E]">
-                            {formatCOP(p.valorServicio)}
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              style={{
-                                backgroundColor: p.estado === "FACTURADO" ? "#DCFCE7" : "#FEF3C7",
-                                color: p.estado === "FACTURADO" ? "#047857" : "#92400E",
-                              }}
-                            >
-                              {p.estado}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-
-              {(tabActiva === "anuladas" || tabActiva === "legalizadas") && (
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr style={{ backgroundColor: "#0E245E", color: "#FFFFFF" }}>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Factura · Fechas</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Sede</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Consulta / Cirugía</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Empresa Homologada (NIT)</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">De dónde es</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Nombres / Responsable</th>
-                      <th className="p-2.5 text-right font-bold whitespace-nowrap">Valor Facturado</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Reemplazo</th>
-                      <th className="p-2.5 text-left font-bold whitespace-nowrap">Motivo / Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: "#F1F5F9" }}>
-                    {(listaActivaPaginada.items as unknown as AnuladaRow[]).map((a) => {
-                      const cr = cruzarFilaMaestra({ ...a, motivoTexto: a.motivo });
-                      const respR = normalizarResponsableReal(a.responsable, a.empresa);
-                      return (
-                        <tr key={a.id} className="hover:bg-[#EFF6FF] transition-colors align-top">
-                          <td className="p-2.5 font-mono whitespace-nowrap">
-                            <div className="font-extrabold text-[#0E245E]">{a.factura}</div>
-                            <div className="text-[10.5px] text-[#64748B]">
-                              F: {(a.fechaFactura || a.anio || "—").slice(0, 10)}
-                            </div>
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border"
-                              style={{
-                                backgroundColor: cr.sedeGrupo === "SEDE_2" ? "#EFF6FF" : "#ECFDF5",
-                                color: cr.sedeGrupo === "SEDE_2" ? "#1D4ED8" : "#047857",
-                                borderColor: cr.sedeGrupo === "SEDE_2" ? "#BFDBFE" : "#A7F3D0",
-                              }}
-                            >
-                              {cr.sede}
-                            </span>
-                          </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold border border-slate-200 bg-slate-50 text-[#334155]">
-                              {cr.tipoAtencion}
-                            </span>
-                          </td>
-                          <td className="p-2.5">
-                            <div className="font-bold text-[#0E245E]">{cr.empresaHomologada}</div>
-                            {cr.nit && <div className="text-[10px] font-mono text-[#64748B]">NIT {cr.nit}</div>}
-                          </td>
-                          <td className="p-2.5 text-[11px] font-semibold text-[#334155]">{cr.deDondeEs}</td>
-                          <td className="p-2.5 text-[11px]">
-                            {cr.pacienteNombre && (
-                              <div className="font-bold text-[#0E245E]">Pac: {cr.pacienteNombre}</div>
-                            )}
-                            <div className="text-[#475569]">Resp: {respR}</div>
-                          </td>
-                          <td className="p-2.5 text-right font-mono font-extrabold text-[#0E245E]">
-                            {formatCOP(a.valorRadicado)}
-                          </td>
-                          <td className="p-2.5 font-mono font-bold text-[#1D58D8]">
-                            {a.facturaReemplaza || "SIN REEMPLAZO"}
-                          </td>
-                          <td className="p-2.5 max-w-[260px]">
-                            <div className="text-[11px] text-[#334155]">{a.motivo || "—"}</div>
-                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700">
-                              {a.estadoGestion}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* PAGINACIÓN DEL REPORTE MAESTRO */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs text-[#475569]">
-              <div>
-                Mostrando página <strong className="text-[#0E245E]">{paginaActual}</strong> de{" "}
-                <strong className="text-[#0E245E]">{listaActivaPaginada.totalPaginas}</strong> —{" "}
-                <strong className="text-[#0E245E]">{listaActivaPaginada.total.toLocaleString("es-CO")}</strong> registros filtrados
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={paginaActual <= 1}
-                  onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-lg border font-bold disabled:opacity-40 cursor-pointer"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                >
-                  ← Anterior
-                </button>
-                <button
-                  type="button"
-                  disabled={paginaActual >= listaActivaPaginada.totalPaginas}
-                  onClick={() => setPaginaActual((p) => Math.min(listaActivaPaginada.totalPaginas, p + 1))}
-                  className="px-3 py-1.5 rounded-lg border font-bold disabled:opacity-40 cursor-pointer"
-                  style={{ borderColor: "#CBD5E1", color: "#0E245E" }}
-                >
-                  Siguiente →
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* MODAL SUBIR Y ALMACENAR EXCEL (.XLSX / .CSV) EN BASE DE DATOS COMPARTIDA */}
       {mostrarModalSubirExcel && (
