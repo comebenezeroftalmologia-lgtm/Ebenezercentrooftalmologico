@@ -664,98 +664,11 @@ function honFilasDetalle(){
   det.push(['','','','','','',{b:'TOTAL GENERAL ('+MEDS.length+' médicos · '+n+' registros)'},{bm:gran}]);
   return {filas:det, anchos:[26,13,12,24,20,32,46,14]};
 }
-
-/* === Hoja nueva: «Por unidad funcional» ===
-   Qué hizo cada médico, agrupado en las cuatro categorías que usa el liquidador, y
-   adentro de cada una qué fue exactamente, con cuántos actos, cuántos pacientes y
-   en cuántos días. Solo lo que se paga: un renglón en $0 no entra.
-   Es el mismo criterio del liquidador, para que la pantalla, el acta y este Excel
-   digan lo mismo.
-   Comprobado el 12/11/2026: los 28 médicos de la página suman exactamente su total. === */
-var UF_RUBRO = /^ACUERDO\b|\bRUBRO\b|PAQUETE MENSUAL|\bJORNADA|BONIFICACION|^AJUSTE|^MENOS\b|COORDINACION|DISPONIBILIDAD|^LENTE\b/;
-var UF_CONS  = /CONSULTA|VALORACION/;
-var UF_AYU   = /TOMOGRAF|OCT|TOPOGRAF|CAMPOS? VISUAL|CAMPIMETR|ECOGRAF|BIOMETR|ANGIOGRAF|FOTOGRAF|PAQUIMETR|MICROSCOP|GONIO|LECTURA|TONOGRAF|TONOMETR|ESTUDIO|PRUEBA|POTENCIAL|ELECTRO|SIRIUS|PENTACAM|RETINOGRAF/;
-var UF_CIR   = /CIRUG|FACO|LIO|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|INYECCION|IMPLANTE|ABLACION|REPARACION|DRENAJE|BIOPSIA|CRIOTERAPIA|QUERATO/;
-var UF_NOM = {1:'Consultas', 2:'Ayudas diagnósticas', 3:'Cirugías y procedimientos', 4:'Jornadas, rubros y acuerdos'};
-
-function ufNz(s){
-  return String(s==null?'':s).toUpperCase().normalize('NFD')
-    .replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-}
-function ufCat(servicio){
-  var s = ufNz(servicio);
-  if(UF_RUBRO.test(s)) return 4;     /* un acuerdo o un lente no es una consulta */
-  if(UF_CONS.test(s))  return 1;
-  if(UF_AYU.test(s))   return 2;
-  if(UF_CIR.test(s))   return 3;
-  return 4;
-}
-/* los lentes se juntan en un solo renglón: cada modelo aparte no le dice nada a nadie */
-function ufNombre(servicio){
-  var s = String(servicio||'');
-  if(/^\s*LENTE\b/i.test(s)) return 'Lentes intraoculares (bonificación)';
-  return s;
-}
-
-function honFilasUF(){
-  var res = [[{b:'HONORARIOS MÉDICOS'}],[{b:'Qué hizo cada médico, por unidad funcional'}],
-             [D.periodo||''],
-             ['Solo lo que se paga. Los actos que no se cobran (no cobra, cortesía, convenio propio) no entran.'],[]];
-  var gran = 0, granAct = 0;
-
-  var ord = MEDS.slice().sort(function(a,b){
-    var ta=Math.round((D.medicos[a]||{}).t||0), tb=Math.round((D.medicos[b]||{}).t||0);
-    return tb-ta || String(a).localeCompare(String(b));
-  });
-
-  ord.forEach(function(m){
-    var d = D.medicos[m] || {t:0, f:[]};
-    var t = Math.round(d.t||0);
-    var cats = {};
-    (d.f||[]).forEach(function(r){
-      var v = Math.round(Number(r[6])||0);
-      if(v === 0) return;                      /* solo lo que se paga */
-      var c = ufCat(r[5]);
-      var C = cats[c] || (cats[c] = {items:{}, actos:0, valor:0, dias:{}, pacs:{}});
-      var nom = ufNombre(r[5]);
-      var it = C.items[nom] || (C.items[nom] = {actos:0, valor:0, dias:{}, pacs:{}});
-      it.actos++; it.valor += v;
-      C.actos++;  C.valor += v;
-      var f = String(r[1]||'').slice(0,10);
-      if(f){ it.dias[f]=1; C.dias[f]=1; }
-      var p = String(r[4]||'').trim();
-      if(p){ it.pacs[p]=1; C.pacs[p]=1; }
-      granAct++;
-    });
-
-    res.push([{b:tit(m)}, '', '', '', {b:'VALOR A FACTURAR'}, {bm:t}]);
-    res.push([{b:'Unidad funcional'},{b:'Qué se hizo'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
-    [1,2,3,4].forEach(function(c){
-      var C = cats[c]; if(!C) return;
-      res.push([{b:UF_NOM[c]}, '', {b:C.actos}, {b:Object.keys(C.pacs).length||''},
-                {b:Object.keys(C.dias).length||''}, {bm:C.valor}]);
-      Object.keys(C.items).sort(function(a,b){ return C.items[b].valor - C.items[a].valor; })
-        .forEach(function(nom){
-          var it = C.items[nom];
-          res.push(['', '   '+nom, it.actos, Object.keys(it.pacs).length||'',
-                    Object.keys(it.dias).length||'', it.valor]);
-        });
-    });
-    res.push(['', {b:'TOTAL DE '+tit(m)}, '', '', '', {bm:t}]);
-    res.push([]);
-    gran += t;
-  });
-
-  res.push([{b:'TOTAL GENERAL ('+ord.length+' médicos · '+granAct+' actos pagados)'}, '', '', '', '', {bm:gran}]);
-  return {filas:res, anchos:[30,50,9,11,8,17]};
-}
-
 window.hoExcelGeneral=function(b){
   var fin=avisar(b,'armando…');
   try{
-    var r=honFilasResumen(), u=honFilasUF(), d=honFilasDetalle();
+    var r=honFilasResumen(), d=honFilasDetalle();
     bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)},
-                {nombre:'Por unidad funcional', xml:hoja(u.filas,u.anchos)},
                 {nombre:'Detalle', xml:hoja(d.filas,d.anchos)}]),
           'Honorarios todos los medicos.xlsx');
   }catch(e){ alert('No se pudo generar el Excel: '+(e.message||e)); }
@@ -764,9 +677,8 @@ window.hoExcelGeneral=function(b){
 window.hoResumenExcel=function(b){
   var fin=avisar(b,'armando…');
   try{
-    var r=honFilasResumen(), u=honFilasUF();
-    bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)},
-                {nombre:'Por unidad funcional', xml:hoja(u.filas,u.anchos)}]),
+    var r=honFilasResumen();
+    bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)}]),
           'Resumen honorarios.xlsx');
   }catch(e){ alert('No se pudo generar el resumen: '+(e.message||e)); }
   fin();
@@ -794,6 +706,165 @@ setTimeout(ponerBotonesGenerales,250);
 setTimeout(ponerBotonesGenerales,1500);
 setTimeout(ponerBotonesGenerales,5000);
 document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,120); }, true);
+
+
+/* === ADICIONAL: vista y Excel por sede y unidad funcional (no quita nada) === */
+(function(){
+  if(window.__ufAdd) return; window.__ufAdd=true;
+  var RE_RUBRO=/^ACUERDO\b|\bRUBRO\b|PAQUETE MENSUAL|\bJORNADA|BONIFICACION|^AJUSTE|^MENOS\b|COORDINACION|DISPONIBILIDAD/;
+  var RE_CONS=/CONSULTA|VALORACION/;
+  var RE_AYU=/TOMOGRAF|OCT|TOPOGRAF|CAMPOS? VISUAL|CAMPIMETR|ECOGRAF|BIOMETR|ANGIOGRAF|FOTOGRAF|PAQUIMETR|MICROSCOP|GONIO|LECTURA|TONOGRAF|TONOMETR|ESTUDIO|PRUEBA|POTENCIAL|ELECTRO|SIRIUS|PENTACAM/;
+  var RE_CIR=/CIRUG|FACO|LIO|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|TERAPIA|INYECCION|BIOPSIA|SUTURA|RETIRO|APLICACION|PROCEDIMIENTO/;
+  var CATS=["Consultas","Ayudas diagnósticas","Cirugías y procedimientos","Jornadas, rubros y acuerdos"];
+  var SEDES=["Sede 2","Sede Principal","Cirugía"];
+  function clasif(sv){var s=(sv||'').toUpperCase();
+    if(RE_RUBRO.test(s))return 3; if(RE_CONS.test(s))return 0; if(RE_AYU.test(s))return 1; if(RE_CIR.test(s))return 2; return 3;}
+  function ced(p){ if(!p) return null; var m=String(p).match(/^\s*[A-Z]{1,3}\s*-\s*([0-9]+)/); return m?m[1]:String(p).split(':')[0].trim(); }
+  function fmt(n){ var neg=n<0; n=Math.abs(Math.round(n)); return (neg?'−$ ':'$ ')+n.toLocaleString('es-CO'); }
+  function cap(s){ return s? s.charAt(0)+s.slice(1).toLowerCase() : s; }
+  function tt(m){ return (typeof tit==='function')?tit(m):m; }
+
+  // ---- agregación por médico -> sede -> cat -> servicio ----
+  function build(){
+    var meds=[];
+    (typeof MEDS!=='undefined'?MEDS:Object.keys(D.medicos)).forEach(function(k){
+      var md=D.medicos[k]||{}; var rows=md.f||[]; var agg={}, stot={};
+      rows.forEach(function(r){
+        var sede=r[0],fecha=r[1],pac=r[4],sv=r[5],val=r[6];
+        if(!val) return;
+        var c=clasif(sv);
+        agg[sede]=agg[sede]||{}; agg[sede][c]=agg[sede][c]||{};
+        var g=agg[sede][c][sv]||(agg[sede][c][sv]={a:0,ced:{},dias:{},v:0});
+        g.a++; var cc=ced(pac); if(cc)g.ced[cc]=1; if(fecha)g.dias[fecha]=1; g.v+=val;
+        stot[sede]=(stot[sede]||0)+val;
+      });
+      var msede=[];
+      SEDES.forEach(function(sede){ if(!agg[sede])return; var cats=[];
+        for(var c=0;c<4;c++){ if(!agg[sede][c])continue; var svs=[],sub=0;
+          Object.keys(agg[sede][c]).forEach(function(sv){var g=agg[sede][c][sv];
+            svs.push({sv:sv,a:g.a,p:Object.keys(g.ced).length,d:Object.keys(g.dias).length,v:g.v}); sub+=g.v;});
+          svs.sort(function(x,y){return y.v-x.v;});
+          cats.push({cat:CATS[c],ci:c,sub:sub,svs:svs});
+        }
+        msede.push({sede:sede,sub:stot[sede]||0,cats:cats});
+      });
+      meds.push({key:k,name:tt(k),t:Math.round(md.t||0),s:md.s||{},sedes:msede});
+    });
+    return meds;
+  }
+  var MED=build();
+
+  // ---- estilos (scoped uf-) ----
+  var css=document.createElement('style'); css.textContent=
+   ".uf-wrap{display:none;margin-top:10px}.uf-wrap.on{display:block}"
+  +".uf-ctrls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0 2px}"
+  +".uf-q{flex:1;min-width:180px;padding:9px 12px;border:1px solid #e2e7f0;border-radius:9px;font:inherit;background:#fff}"
+  +".uf-q:focus{outline:none;border-color:#294e9d;box-shadow:0 0 0 3px #eaf0fa}"
+  +".uf-fil{display:flex;gap:6px;flex-wrap:wrap}"
+  +".uf-chip{padding:7px 12px;border:1px solid #e2e7f0;border-radius:999px;background:#fff;color:#6b7a93;font-size:12.5px;font-weight:600;cursor:pointer}"
+  +".uf-chip.on{background:#294e9d;border-color:#294e9d;color:#fff}"
+  +".uf-cuenta{color:#8a97ab;font-size:12px;margin:10px 2px 2px}"
+  +".uf-med{background:#fff;border:1px solid #e2e7f0;border-radius:12px;margin-top:10px;overflow:hidden}"
+  +".uf-mh{display:flex;align-items:center;gap:12px;padding:14px 15px;cursor:pointer}.uf-mh:hover{background:#f6f9fd}"
+  +".uf-av{width:36px;height:36px;border-radius:9px;background:#eaf0fa;color:#294e9d;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:0 0 auto}"
+  +".uf-mn{flex:1;min-width:0}.uf-nm{font-weight:700;font-size:15px;color:#15306b}"
+  +".uf-sd{margin-top:3px;display:flex;gap:6px;flex-wrap:wrap}.uf-sdt{font-size:11px;color:#6b7a93;background:#eef1f6;border:1px solid #e2e7f0;border-radius:6px;padding:2px 7px}.uf-sdt b{color:#15306b}"
+  +".uf-mt{text-align:right;flex:0 0 auto}.uf-mt .v{font-size:17px;font-weight:800;color:#15306b;font-variant-numeric:tabular-nums}.uf-mt .c{font-size:11px;color:#8a97ab}"
+  +".uf-arr{color:#8a97ab;transition:transform .18s}.uf-med.open .uf-arr{transform:rotate(90deg)}"
+  +".uf-body{display:none;border-top:1px solid #e2e7f0;padding:4px 15px 15px}.uf-med.open .uf-body{display:block}"
+  +".uf-sb{margin-top:13px}.uf-sh{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:2px solid #294e9d}.uf-sh .a{font-weight:700;color:#15306b}.uf-sh .b{font-weight:700;color:#15306b;font-variant-numeric:tabular-nums}"
+  +".uf-cat{margin-top:10px}.uf-ch{display:flex;justify-content:space-between;align-items:center}.uf-ch .a{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:7px}.uf-dot{width:8px;height:8px;border-radius:3px}.uf-ch .b{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}"
+  +".uf-c0{color:#1f6f52}.uf-c1{color:#8a4e1a}.uf-c2{color:#294e9d}.uf-c3{color:#6b4a9e}"
+  +".uf-t{width:100%;border-collapse:collapse;margin-top:6px}.uf-t th{font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:#8a97ab;font-weight:600;text-align:right;padding:4px 8px;border-bottom:1px solid #e2e7f0;white-space:nowrap}.uf-t th.l{text-align:left}"
+  +".uf-t td{padding:6px 8px;border-bottom:1px solid #eef2f8;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}.uf-t td.l{text-align:left;white-space:normal;width:99%}.uf-t td.v{font-weight:700;color:#15306b}.uf-t tr:last-child td{border-bottom:none}.uf-mutx{color:#b5bfce}";
+  document.head.appendChild(css);
+
+  var filtro='', query='';
+  function ini(nm){return nm.split(' ').filter(Boolean).slice(0,2).map(function(w){return w[0];}).join('').toUpperCase();}
+  var DOT=['#1f6f52','#8a4e1a','#294e9d','#6b4a9e'];
+  function medHTML(m){
+    var sedes=filtro?m.sedes.filter(function(s){return s.sede===filtro;}):m.sedes;
+    if(!sedes.length) return '';
+    var totShown=filtro?sedes.reduce(function(a,s){return a+s.sub;},0):m.t;
+    var sd=m.sedes.map(function(s){return '<span class="uf-sdt">'+s.sede+' <b>'+fmt(s.sub)+'</b></span>';}).join('');
+    var body='';
+    sedes.forEach(function(s){
+      body+='<div class="uf-sb"><div class="uf-sh"><div class="a">'+s.sede+'</div><div class="b">'+fmt(s.sub)+'</div></div>';
+      s.cats.forEach(function(c){
+        body+='<div class="uf-cat"><div class="uf-ch"><div class="a uf-c'+c.ci+'"><span class="uf-dot" style="background:'+DOT[c.ci]+'"></span>'+c.cat+'</div><div class="b uf-c'+c.ci+'">'+fmt(c.sub)+'</div></div>';
+        body+='<table class="uf-t"><thead><tr><th class="l">Servicio</th><th>Actos</th><th>Pacientes</th><th>Días</th><th>Valor</th></tr></thead><tbody>';
+        c.svs.forEach(function(v){
+          body+='<tr><td class="l">'+cap(v.sv)+'</td><td>'+v.a+'</td><td>'+(v.p||'<span class="uf-mutx">—</span>')+'</td><td>'+(v.d||'<span class="uf-mutx">—</span>')+'</td><td class="v">'+fmt(v.v)+'</td></tr>';
+        });
+        body+='</tbody></table></div>';
+      });
+      body+='</div>';
+    });
+    return '<div class="uf-med"><div class="uf-mh"><div class="uf-av">'+ini(m.name)+'</div><div class="uf-mn"><div class="uf-nm">'+m.name+'</div><div class="uf-sd">'+sd+'</div></div><div class="uf-mt"><div class="v">'+fmt(totShown)+'</div><div class="c">'+(filtro?'en '+filtro:'total')+'</div></div><div class="uf-arr">▸</div></div><div class="uf-body">'+body+'</div></div>';
+  }
+  function render(){
+    var box=document.getElementById('ufLista'); if(!box)return;
+    var meds=MED.filter(function(m){return !query||m.name.toLowerCase().indexOf(query)>=0;});
+    if(filtro) meds=meds.filter(function(m){return m.sedes.some(function(s){return s.sede===filtro;});});
+    meds.sort(function(a,b){var av=filtro?((a.sedes.find(function(s){return s.sede===filtro;})||{}).sub||0):a.t;var bv=filtro?((b.sedes.find(function(s){return s.sede===filtro;})||{}).sub||0):b.t;return bv-av;});
+    document.getElementById('ufCuenta').textContent=meds.length+' de '+MED.length+' médicos'+(filtro?' · '+filtro:'');
+    box.innerHTML=meds.length?meds.map(medHTML).join(''):'<div class="uf-cuenta">Ningún médico coincide.</div>';
+    [].slice.call(box.querySelectorAll('.uf-mh')).forEach(function(h){h.onclick=function(){h.parentElement.classList.toggle('open');};});
+  }
+
+  // ---- montar toggle + contenedor (aditivo, sin quitar la lista actual) ----
+  function montar(){
+    if(document.getElementById('ufWrap')) return;
+    var lista=document.getElementById('lista'); if(!lista) return;
+    // barra de toggle antes de la lista
+    var bar=document.createElement('div'); bar.id='ufBar';
+    bar.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 2px';
+    bar.innerHTML='<span style="font-size:12px;color:#8a97ab;font-weight:600">Ver:</span>'
+      +'<button id="ufBtnLista" type="button" class="uf-chip on">Lista actual</button>'
+      +'<button id="ufBtnUF" type="button" class="uf-chip">Por sede y unidad funcional</button>';
+    lista.parentNode.insertBefore(bar, lista);
+    // contenedor nuevo
+    var wrap=document.createElement('div'); wrap.id='ufWrap'; wrap.className='uf-wrap';
+    var fh='<span class="uf-chip on" data-s="">Todas las sedes</span>'+SEDES.map(function(s){return '<span class="uf-chip" data-s="'+s+'">'+s+'</span>';}).join('');
+    wrap.innerHTML='<div class="uf-ctrls"><input id="ufQ" class="uf-q" type="search" placeholder="Buscar médico…" autocomplete="off">'
+      +'<div class="uf-fil" id="ufFil">'+fh+'</div>'
+      +'<button id="ufXls" type="button" class="uf-chip" style="background:#1f7a4d;border-color:#1f7a4d;color:#fff">⬇ Excel por unidad funcional</button></div>'
+      +'<div class="uf-cuenta" id="ufCuenta"></div><div id="ufLista"></div>';
+    lista.parentNode.insertBefore(wrap, lista.nextSibling);
+    // eventos toggle
+    document.getElementById('ufBtnLista').onclick=function(){ this.classList.add('on'); document.getElementById('ufBtnUF').classList.remove('on'); wrap.classList.remove('on'); lista.style.display=''; };
+    document.getElementById('ufBtnUF').onclick=function(){ this.classList.add('on'); document.getElementById('ufBtnLista').classList.remove('on'); wrap.classList.add('on'); lista.style.display='none'; render(); };
+    document.getElementById('ufFil').onclick=function(e){var c=e.target.closest('.uf-chip'); if(!c)return; filtro=c.getAttribute('data-s')||''; [].slice.call(this.querySelectorAll('.uf-chip')).forEach(function(x){x.classList.toggle('on',x===c);}); render();};
+    document.getElementById('ufQ').addEventListener('input',function(e){query=e.target.value.trim().toLowerCase(); render();});
+    document.getElementById('ufXls').onclick=function(){ hoDesgloseExcel(); };
+  }
+
+  // ---- Excel por unidad funcional (calca hoja/xlsx/bajar) ----
+  window.hoDesgloseExcel=function(){
+    try{
+      var f=[[{b:'HONORARIOS MÉDICOS'}],[{b:'Desglose por sede y unidad funcional'}],[D.periodo||''],[]];
+      f.push([{b:'Médico'},{b:'Sede'},{b:'Unidad funcional'},{b:'Servicio'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
+      var gran=0;
+      MED.forEach(function(m){
+        m.sedes.forEach(function(s){
+          s.cats.forEach(function(c){
+            c.svs.forEach(function(v){
+              f.push([m.name, s.sede, c.cat, cap(v.sv), String(v.a), v.p?String(v.p):'', v.d?String(v.d):'', {m:v.v}]);
+              gran+=v.v;
+            });
+          });
+        });
+      });
+      f.push([]);
+      f.push([{b:'TOTAL'}, '', '', '', '', '', '', {bm:gran}]);
+      var anchos=[26,15,24,46,8,11,7,16];
+      bajar(xlsx([{nombre:'Por unidad funcional', xml:hoja(f,anchos)}]), 'Honorarios por unidad funcional.xlsx');
+    }catch(e){ alert('No se pudo generar el Excel por unidad funcional: '+(e.message||e)); }
+  };
+
+  if(document.readyState!=='loading') montar(); else document.addEventListener('DOMContentLoaded', montar);
+  setTimeout(montar,300); setTimeout(montar,1200);
+})();
 
 ponerBotonesLista(); ponerBotonesMedico();
 
