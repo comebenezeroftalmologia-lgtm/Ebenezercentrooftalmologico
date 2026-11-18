@@ -8216,7 +8216,7 @@ function liquidarV4(recs, actos, actosAll){
     if(esCirUf(r)) continue;
     if(/MEDICAMENTOS|FARMACIA|INSUMOS|DISPENSAC/.test(mNorm(r.sv||''))) continue;
     let h0=mHojaDe(r.m);
-    if(!h0 && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h0='ANA ALVAREZ'; if(!h0 && /KATERINE/i.test(r.m||'') && /ORTOPTIC/i.test(mNorm((r.d||'')+' '+(r.sv||'')))) h0='ANA ELLES';
+    if(!h0 && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h0='ANA ALVAREZ'; if(!h0 && /KATERINE/i.test(r.m||'') && /ORTOPTIC/i.test(mNorm((r.d||'')+' '+(r.sv||'')))) h0='ANA ELLES'; if(!h0 && /MAIRENA/.test(mNorm(r.m||'')) && String(r.f||'').slice(0,10)>='2026-10-26') h0='ANALITH BARRIGA';
     if(!h0 || !dkAplica(r)) continue;
     dkTotal.set(dkClave(h0,r), (dkTotal.get(dkClave(h0,r))||0)+1);
   }
@@ -8225,7 +8225,7 @@ function liquidarV4(recs, actos, actosAll){
     if(esCirUf(r)){ marcar(r._src, (esLente(r)||esProced(r))? 'quirofano' : 'insumos_quirofano'); continue; }
     if(/MEDICAMENTOS|FARMACIA|INSUMOS|DISPENSAC/.test(mNorm(r.sv||''))){ marcar(r._src,'medicamentos'); continue; } // no son honorarios
     let h=mHojaDe(r.m);
-    if(!h && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h='ANA ALVAREZ'; if(!h && /KATERINE/i.test(r.m||'') && /ORTOPTIC/i.test(mNorm((r.d||'')+' '+(r.sv||'')))) h='ANA ELLES';
+    if(!h && /AGENDA/i.test(r.m||'') && /CAMPO VISUAL/i.test((r.d||'')+' '+(r.sv||''))) h='ANA ALVAREZ'; if(!h && /KATERINE/i.test(r.m||'') && /ORTOPTIC/i.test(mNorm((r.d||'')+' '+(r.sv||'')))) h='ANA ELLES'; if(!h && /MAIRENA/.test(mNorm(r.m||'')) && String(r.f||'').slice(0,10)>='2026-10-26') h='ANALITH BARRIGA';
     if(!h){ marcar(r._src,'sin_ficha'); continue; }
     marcar(r._src,'liquidado_sede');   // entra a la liquidación; abajo puede cambiar de destino
     const M=get(h), cfg=REGLAS_DOC[h]||{}, RM=REGLAS_MES[h]||{};
@@ -9469,7 +9469,7 @@ function semaforoPintar(){
     }
     let rv = (typeof revDe==='function')? revDe(m, tot, f, _manoRes) : null;
     let rvCambio = null;
-    if(rv && rv.origen==='acta' && !rv._legacy && rv.tot!=null && Math.round(rv.tot)!==Math.round(tot)){ rvCambio=rv; rv=null; estado='ambar';
+    if(rv && rv.origen==='acta' && !rv._legacy && rv.estado==='devolver' && rv.tot!=null && Math.round(rv.tot)!==Math.round(tot)){ rvCambio=rv; rv=null; estado='ambar';
       razones.push(rvCambio.estado==='devolver' ? '<b>Corregido después de devuelto</b> — falta aprobar' : '<b>Cambió después de aprobado</b> ('+money(rvCambio.tot)+' → '+money(tot)+') — falta aprobar'); }
     const _yaAprob = !!(rv && (rv.estado==='ok' || rv.estado==='ajuste'));
     if(f){
