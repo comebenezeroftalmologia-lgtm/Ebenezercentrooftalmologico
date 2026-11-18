@@ -16116,6 +16116,32 @@ async function nubeEnviarValidacion(){
     return;
   }
   if(!confirm('¿Enviar esta liquidación a validación? Quedará firmada con su nombre y el administrador la verá en su tablero.')) return;
+  /* El envío recalcula solo: el cierre sale de una corrida fresca (⚡ Liquidar trae antes los
+     cambios guardados por el equipo en la nube), nunca de una pantalla vieja. Si no se puede
+     recalcular, NO se envía. (Era el paso manual obligatorio; ahora es automático.) */
+  {
+    const _bc=document.getElementById('btnCalc');
+    if(!_bc || _bc.disabled){
+      alert('No se puede recalcular en este momento (falta algún archivo), y sin recalcular no se envía.\n\nCargue los archivos, apriete ⚡ Liquidar y envíe de nuevo.');
+      return;
+    }
+    const _antes=(RESULT._datos||[]).reduce((a,x)=>a+x.cir+x.sed+(x.man||0),0);
+    const _ref=RESULT;
+    _bc.click();
+    const _t0=Date.now();
+    while(Date.now()-_t0<120000){
+      await new Promise(r=>setTimeout(r,400));
+      if(typeof RESULT!=='undefined' && RESULT && RESULT!==_ref && RESULT._datos && RESULT._datos.length) break;
+    }
+    if(typeof RESULT==='undefined' || !RESULT || RESULT===_ref || !RESULT._datos || !RESULT._datos.length){
+      alert('No se pudo recalcular antes de enviar, así que NO se envió nada.\n\nApriete ⚡ Liquidar y, cuando termine, envíe de nuevo.');
+      return;
+    }
+    const _desp=(RESULT._datos||[]).reduce((a,x)=>a+x.cir+x.sed+(x.man||0),0);
+    if(Math.round(_desp)!==Math.round(_antes)){
+      if(!confirm('Al recalcular con lo último guardado, el total cambió:\n\n  En la pantalla tenía: '+money(_antes)+'\n  Recalculado ahora:  '+money(_desp)+'\n\nSe envía el recalculado, que incluye lo que el equipo guardó de último. ¿Enviar '+money(_desp)+'?')) return;
+    }
+  }
   await nubeGuardarCierre(true);
 }
 // lo que enviaron las liquidadoras entra al comparativo como si fuera un archivo — sin Excel
