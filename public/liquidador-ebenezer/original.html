@@ -8339,8 +8339,10 @@ function liquidarV4(recs, actos, actosAll){
     const vx = A.extras*(cfg.extra||250000) + A.extrasEsp*(cfg.extraEsp||cfg.extra||250000);
     if(vx){ M.P += vx; M.filas.push({fuente:'anestesia', det:(A.extras+A.extrasEsp)+' paciente(s) extra a la jornada — '+A.sueltos.slice(0,12).join(' · '), emp:'', pago:vx, regla:'Paciente extra ($'+(cfg.extra||250000).toLocaleString()+(A.extrasEsp?' · retina/trasplante $'+(cfg.extraEsp||0).toLocaleString():'')+')',
       lista:(A.sueltosObj||[]).map(x=>Object.assign({v: x.esp?(cfg.extraEsp||cfg.extra||250000):(cfg.extra||250000), tipo:'Paciente extra'},x))}); }
-    if(cfg.consDia){
-      // pactado por jornada: un día de agenda es una jornada, sin importar si vienen mezcladas Mutual y PYP
+    if(cfg.consDia || (fechasP.length && fechasP[0]>='2026-10-26')){
+      // La agenda es la jornada (regla única para los 7 anestesiólogos, decisión de Pedro Luis 06/11/2026):
+      // un día de agenda atendida = una jornada, sin dividir entre 30. Rige para cortes desde el
+      // 26/10/2026 (noviembre en adelante); octubre y antes quedan por el camino viejo, como se enviaron.
       const dd = [...(C.dias||[])].sort();
       if(dd.length){ const v=dd.length*cfg.jornada;
         M.filas.push({fuente:'anestesia', emp:(C.M>=C.P?'MUTUAL SER':''), pago:v, regla:'Jornada de consulta preanestésica (por día de agenda)',
@@ -16171,6 +16173,27 @@ async function nubeEnviarValidacion(){
       if(!confirm('Al recalcular con lo último guardado, el total cambió:\n\n  En la pantalla tenía: '+money(_antes)+'\n  Recalculado ahora:  '+money(_desp)+'\n\nSe envía el recalculado, que incluye lo que el equipo guardó de último. ¿Enviar '+money(_desp)+'?')) return;
     }
   }
+  /* Cuadre obligatorio al cerrar (falla 5): un $0 con motivo de traslado necesita su
+     contrapartida (un acuerdo con valor en otra parte) en este período. Si falta, no se envía. */
+  try{
+    const _per=(RESULT?RESULT.periodoInicio:'');
+    const _pa=nubeParteActual();
+    const _RE=/OTRA\s+SEDE|SE\s+PAGA\s+EN|PAGA\s+EN\s+(LA\s+)?(CIRUG|CONSULTA|SEDE)/i;
+    const _CAM=cambiosDelMes();
+    const _tras=(_CAM.lista||[]).filter(x=>Math.round(x.despues||0)===0 && _RE.test(String(x.motivo||'')));
+    if(_tras.length){
+      const _acs=(typeof acLeer==='function')?acLeer():{};
+      const _parteDe=function(a){ return a.bloque==='cir' ? 'CIR' : (a.mutual ? 'S2' : 'S1'); };
+      const _sin=_tras.filter(function(x){
+        return !Object.values(_acs).some(function(a){ return a && !a.quitado && a.med===x.medico && Math.round(a.valor||0)>0 && String(a.periodo||'')===String(_per) && _parteDe(a)!==_pa; });
+      });
+      if(_sin.length){
+        const _ls=_sin.slice(0,10).map(function(x){ return '  · '+x.medico+' — '+String(x.servicio||'').slice(0,45)+' ('+String(x.motivo||'').slice(0,40)+')'; }).join('\n')+(_sin.length>10?'\n  · y '+(_sin.length-10)+' más':'');
+        alert('NO SE ENVIÓ. Hay '+_sin.length+' renglón(es) en $0 con motivo «se paga en la otra sede» SIN la contrapartida creada:\n\n'+_ls+'\n\nCree el acuerdo en la otra sede (con su valor y sus pacientes) o corrija el motivo, y vuelva a enviar. Sin contrapartida, cada sede dice que paga la otra y el médico se queda sin pagar.');
+        return;
+      }
+    }
+  }catch(e){ console.warn('cuadre', e); }
   await nubeGuardarCierre(true);
 }
 // lo que enviaron las liquidadoras entra al comparativo como si fuera un archivo — sin Excel
