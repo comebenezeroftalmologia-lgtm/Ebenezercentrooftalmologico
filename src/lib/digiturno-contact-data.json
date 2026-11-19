@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-19 14:16:59",
+  "updatedAt": "2026-11-19 15:29:32",
   "sources": {
     "digiturno": "http://192.168.200.11:6663/SGTWidgetGestureApi",
     "contactCenter": "https://pbx.itmsas.com/sonata/service/v1/api"
@@ -387,48 +387,48 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 1758,
+            "turnos": 1787,
             "espera": 7.2,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 3126,
-            "espera": 28.8,
+            "turnos": 3167,
+            "espera": 28.9,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 1758,
+            "turnos": 1787,
             "espera": 0.0,
-            "atencion": 4.2
+            "atencion": 4.3
           },
           "sede2": {
-            "turnos": 3126,
+            "turnos": 3167,
             "espera": 0.0,
             "atencion": 1.8
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 723,
-            "espera": 14.9,
-            "atencion": 15.8
+            "turnos": 740,
+            "espera": 14.8,
+            "atencion": 15.7
           },
           "sede2": {
-            "turnos": 2268,
-            "espera": 22.7,
-            "atencion": 6.5
+            "turnos": 2307,
+            "espera": 22.8,
+            "atencion": 6.6
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 264,
+            "turnos": 271,
             "espera": 34.9,
-            "atencion": 17.9
+            "atencion": 18.3
           },
           "sede2": {
-            "turnos": 686,
+            "turnos": 701,
             "espera": 57.5,
             "atencion": 8.6
           }
@@ -440,19 +440,19 @@
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 949,
+            "turnos": 968,
             "espera": 22.1,
             "atencion": 2.4
           }
         }
       },
       "_extraccion": {
-        "cuando": "2026-11-19 14:16",
+        "cuando": "2026-11-19 15:29",
         "desde": "2026-11-01",
         "hasta": "2026-11-19",
-        "registros_leidos": 9774,
-        "turnos_sede1": 2745,
-        "turnos_sede2": 7029
+        "registros_leidos": 9941,
+        "turnos_sede1": 2798,
+        "turnos_sede2": 7143
       }
     }
   ],
@@ -4452,17 +4452,17 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 5039,
-          "contestadas": 799,
-          "perdidas": 4240,
+          "recibidas": 5140,
+          "contestadas": 805,
+          "perdidas": 4335,
           "esperaMin": 12.0,
-          "slaPct": 0.22,
+          "slaPct": 0.21,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 527,
-              "contestadas": 472,
+              "timbradas": 533,
+              "contestadas": 478,
               "perdidas": 55,
               "duracionMin": 5.2
             },
@@ -4496,17 +4496,17 @@
           "id": "506013",
           "name": "Mutual Contributivo",
           "isMutual": true,
-          "recibidas": 1193,
-          "contestadas": 469,
-          "perdidas": 724,
-          "esperaMin": 9.0,
-          "slaPct": 2.93,
+          "recibidas": 1212,
+          "contestadas": 474,
+          "perdidas": 738,
+          "esperaMin": 9.1,
+          "slaPct": 2.89,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 314,
-              "contestadas": 291,
+              "timbradas": 319,
+              "contestadas": 296,
               "perdidas": 23,
               "duracionMin": 5.3
             },
@@ -4548,17 +4548,17 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 708,
-          "contestadas": 642,
+          "recibidas": 710,
+          "contestadas": 644,
           "perdidas": 66,
           "esperaMin": 0.8,
-          "slaPct": 77.82,
+          "slaPct": 77.89,
           "agents": [
             {
               "id": "1005",
               "name": "Yuranis Castañeda",
-              "timbradas": 307,
-              "contestadas": 256,
+              "timbradas": 309,
+              "contestadas": 258,
               "perdidas": 51,
               "duracionMin": 2.6
             },
@@ -4637,8 +4637,8 @@
         {
           "id": "1003",
           "name": "Maria Angelica",
-          "timbradas": 906,
-          "contestadas": 813,
+          "timbradas": 917,
+          "contestadas": 824,
           "perdidas": 93,
           "duracionMin": 5.2
         },
@@ -4653,8 +4653,8 @@
         {
           "id": "1005",
           "name": "Yuranis Castañeda",
-          "timbradas": 340,
-          "contestadas": 273,
+          "timbradas": 342,
+          "contestadas": 275,
           "perdidas": 67,
           "duracionMin": 2.6
         },
