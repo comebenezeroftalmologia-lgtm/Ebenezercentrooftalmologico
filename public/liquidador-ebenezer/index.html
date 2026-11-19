@@ -11027,10 +11027,39 @@ function render(){
   const sf = RESULT._sinFicha||[];
   const sfHTML = sf.length? `<h3 style="margin:0 0 8px">Profesionales del informe sin ficha técnica <span class="tag warn">${sf.length}</span></h3><div class="hint" style="margin:0 0 8px">Su producción aparece en el informe pero <b>no se está liquidando</b> porque no tienen tarifas registradas. Si alguno debe pagarse, hay que cargar su ficha técnica. Si <b>no es un profesional a liquidar</b> (auxiliar, agenda, personal de apoyo), quítelo y no volverá a aparecer.</div><table class="sintab" style="margin-bottom:16px"><tr><th>Nombre en el informe</th><th style="width:230px"></th></tr>${sf.map(n=>`<tr><td>${n}</td><td><button class="btn ghost" style="padding:6px 10px;font-size:12px" onclick="reasigAbrir('${n.replace(/'/g,"\\'")}')">↪ Lo atendió otro médico</button> <button class="btn ghost" style="padding:6px 10px;font-size:12px" onclick="noEsMedico('${n.replace(/'/g,"\\'")}')">✕ No es médico · quitar</button></td></tr>`).join('')}</table>`:'';
   const hallHTML = hall.length? `<h3 style="margin:0 0 8px">Hallazgos del motor de auditoría <span class="tag warn">${hall.length}</span></h3><table class="sintab" style="margin-bottom:16px"><tr><th>Médico</th><th>Hallazgo — requiere criterio del auditor</th></tr>${hall.map(x=>`<tr><td><b>${x.m}</b></td><td>${x.t}</td></tr>`).join('')}</table>` : '';
+  /* Referencia de la ficha para el listado «sin tarifa»: qué tiene la ficha de ese médico
+     para ese servicio (otras empresas/valores), o el aviso de que falta el renglón. */
+  function pendFichaRef(med, serv){
+    try{
+      var nz=function(x){ return String(x||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); };
+      var F=(window.__fichaLive)||(typeof FICHA_FIEL!=='undefined'?FICHA_FIEL:null);
+      if(!F) return '';
+      var key=null, nmed=nz(med);
+      for(var k in F){ if(nz(k)===nmed){ key=k; break; } }
+      if(!key) return '<div class="obs" style="color:#9a3412">⚠ Este médico no está en la ficha técnica.</div>';
+      var STOP={OJO:1,OJOS:1,AMBOS:1,DERECHO:1,IZQUIERDO:1,CUPS:1,CON:1,POR:1,PARA:1,DEL:1,LOS:1,LAS:1,UNA:1,BILATERAL:1,UNILATERAL:1,LASER:1&&0};
+      var toks=nz(serv).split(/[^A-Z]+/).filter(function(w){ return w.length>3 && !STOP[w]; });
+      var GL={M:'Mutual',S:'Sura',PYP:'Prepag/Part',PART:'Prepag/Part',CAMP:'Campaña',ALL:'Todas'};
+      var best=[];
+      (F[key]||[]).forEach(function(r){
+        var t=nz(r[0]); var n=0; toks.forEach(function(w){ if(t.indexOf(w)>=0) n++; });
+        if(n>0) best.push([n,r]);
+      });
+      if(!best.length) return '<div class="obs" style="color:#9a3412">⚠ La ficha de este médico no trae nada parecido: hay que escribir este renglón en la ficha.</div>';
+      best.sort(function(a,b){ return b[0]-a[0]; });
+      var vistos={}, out=[];
+      for(var i=0;i<best.length && out.length<4;i++){
+        var r=best[i][1], sig=r[0]+'|'+(r[1]||'')+'|'+(r[3]||'')+'|'+r[2];
+        if(vistos[sig]) continue; vistos[sig]=1;
+        out.push(String(r[0]).toLowerCase()+(r[1]?' ('+String(r[1]).toLowerCase()+')':'')+' — '+(GL[r[3]]||r[3]||'')+' <b>'+money(r[2])+'</b>');
+      }
+      return '<div class="obs" style="color:#0f766e;margin-top:3px">📒 La ficha de este médico sí tiene: '+out.join(' · ')+'</div>';
+    }catch(e){ return ''; }
+  }
   const pendMan = pend.reduce((s,g)=>s+manVal(g.m,g),0);
   document.getElementById('pendBox').innerHTML = `<h3 id="pendSinTarifa" style="margin:0 0 8px">Servicios sin tarifa en la ficha <span class="tag warn">${pend.length}</span></h3>` + (pend.length? `${pendMan>0?`<div class="filtinfo">Liquidado manualmente hasta ahora: <b>${money(pendMan)}</b> — cada valor queda en el registro de auditoría (pestaña Historial) con fecha, hora y motivo.</div>`:''}<table class="sintab">
     <tr><th>Médico</th><th>Servicio del informe</th><th>Código</th><th>Unidad funcional</th><th class="num">Cant.</th><th class="num">Facturado</th><th class="num">Liquidar manual</th></tr>
-    ${pend.map(g=>`<tr class="clickable" title="Clic: ver detalle por paciente" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(g.recs)},this)"><td><b>${g.m}</b></td><td>${g.servicio}<div class="obs">${g.detalle}</div></td><td>${g.codigo}</td><td>${g.uf}${g.esCir?' · cirugía':''}</td><td class="num">${g.cant.toLocaleString('es-CO')}</td><td class="num">${money(g.fact)}</td><td class="num" onclick="event.stopPropagation()"><input type="number" class="maninp" placeholder="$ 0" value="${manVal(g.m,g)||''}" data-mk="${mkAttr(g.m,g)}" onchange="setManual(this)"><input type="text" class="maninp motinp" style="width:170px;text-align:left;margin-top:4px;display:block" placeholder="Motivo (obligatorio)" value="${manMotivo(g.m,g).replace(/"/g,'&quot;')}" data-mk="${mkAttr(g.m,g)}" onchange="setManual(this.closest('tr').querySelector('input[type=number]'))">
+    ${pend.map(g=>`<tr class="clickable" title="Clic: ver detalle por paciente" data-lbl="${String((g&&g.servicio)||'').replace(/"/g,'&quot;')}" onclick="toggleDrill(${drillReg(g.recs)},this)"><td><b>${g.m}</b></td><td>${g.servicio}<div class="obs">${g.detalle}</div>${pendFichaRef(g.m,g.servicio)}</td><td>${g.codigo}</td><td>${g.uf}${g.esCir?' · cirugía':''}</td><td class="num">${g.cant.toLocaleString('es-CO')}</td><td class="num">${money(g.fact)}</td><td class="num" onclick="event.stopPropagation()"><input type="number" class="maninp" placeholder="$ 0" value="${manVal(g.m,g)||''}" data-mk="${mkAttr(g.m,g)}" onchange="setManual(this)"><input type="text" class="maninp motinp" style="width:170px;text-align:left;margin-top:4px;display:block" placeholder="Motivo (obligatorio)" value="${manMotivo(g.m,g).replace(/"/g,'&quot;')}" data-mk="${mkAttr(g.m,g)}" onchange="setManual(this.closest('tr').querySelector('input[type=number]'))">
         <select class="norsel maninp" style="width:210px;text-align:left;margin-top:4px;display:block;font-size:12px" data-med="${String(g.m).replace(/"/g,'&quot;')}" data-det="${String(g.servicio).replace(/"/g,'&quot;')}" data-emp="${String(g.detalle||'').replace(/"/g,'&quot;')}" data-cant="${g.cant}">
           <option value="">Solo este mes</option>
           <option value="medico">Siempre — para este médico</option>
