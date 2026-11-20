@@ -19,9 +19,17 @@ import {
   X,
 } from "lucide-react";
 import {
+  CAUSAS_NORMATIVAS_OFICIALES,
+  OPCIONES_SEGUIMIENTO_GLOSA,
+  type SeguimientoGlosaCodigo,
+  causaNormativa6De,
   claveFacturaNorm,
+  etiquetaSeguimientoGlosa,
   homologarEmpresaYOrigen,
+  homologarPersonaFacturacion,
   clasificarAtencionYSede,
+  normalizarEmpresaNitUnificada,
+  normalizarSeguimientoGlosa,
 } from "@/lib/carteraCruces";
 import { ModalImportarCarteraExcel } from "@/components/workcenter/ModalImportarCarteraExcel";
 
@@ -30,7 +38,7 @@ import { ModalImportarCarteraExcel } from "@/components/workcenter/ModalImportar
    --------------------------------------------------------------------- */
 
 export type CausaNormativaItem = {
-  codigo: "FA" | "TA" | "SO" | "AU" | "CO";
+  codigo: "TA" | "AU" | "SO" | "DE" | "CO" | "FA";
   nombre: string;
   descripcion: string;
   color: string;
@@ -39,93 +47,23 @@ export type CausaNormativaItem = {
   badgeBorder: string;
 };
 
-export const CAUSAS_NORMATIVAS: CausaNormativaItem[] = [
-  {
-    codigo: "FA",
-    nombre: "Facturación",
-    descripcion: "Diferencias en cantidades de servicios, errores administrativos o copagos mal calculados.",
-    color: "#2563EB",
-    badgeBg: "#EFF6FF",
-    badgeText: "#1D4ED8",
-    badgeBorder: "#BFDBFE",
-  },
-  {
-    codigo: "TA",
-    nombre: "Tarifas",
-    descripcion: "Diferencias entre los valores cobrados y los precios pactados en el contrato o fijados por ley.",
-    color: "#0284C7",
-    badgeBg: "#F0F9FF",
-    badgeText: "#0369A1",
-    badgeBorder: "#BAE6FD",
-  },
-  {
-    codigo: "SO",
-    nombre: "Soportes",
-    descripcion: "Inconsistencia, enmendadura o ausencia parcial/total de los documentos requeridos (ej. historia clínica).",
-    color: "#059669",
-    badgeBg: "#ECFDF5",
-    badgeText: "#047857",
-    badgeBorder: "#A7F3D0",
-  },
-  {
-    codigo: "AU",
-    nombre: "Autorizaciones",
-    descripcion: "Servicios prestados sin el debido aval o número de autorización acordado con la ERP.",
-    color: "#D97706",
-    badgeBg: "#FFFBEB",
-    badgeText: "#B45309",
-    badgeBorder: "#FDE68A",
-  },
-  {
-    codigo: "CO",
-    nombre: "Cobertura",
-    descripcion: "Tecnologías o servicios prestados que no corresponden al Plan de Beneficios (PBS) a cargo de esa entidad.",
-    color: "#7C3AED",
-    badgeBg: "#F5F3FF",
-    badgeText: "#6D28D9",
-    badgeBorder: "#DDD6FE",
-  },
-];
+export const CAUSAS_NORMATIVAS: CausaNormativaItem[] = CAUSAS_NORMATIVAS_OFICIALES;
 
-export function causaNormativaDe(motivoCodigo?: string | null): string {
-  const pref = String(motivoCodigo || "").trim().toUpperCase().slice(0, 2);
-  return pref === "FA" || pref === "TA" || pref === "SO" || pref === "AU" || pref === "CO" ? pref : "";
+export function causaNormativaDe(motivoCodigo?: string | null, tipoGlosa?: string | null): string {
+  return causaNormativa6De(motivoCodigo, tipoGlosa);
 }
 
 /**
- * Unificación de empresas estrictamente por NIT contable real verificado en SISMA.
+ * Unificación de ERP estrictamente por NIT contable real verificado en SISMA.
  * Si una entidad no tiene NIT verificado en SISMA, devuelve nit: "" (jamás se inventa).
  */
-export function normalizarEmpresaYNit(raw?: string | null): { nit: string; nombre: string } {
-  const limpio = String(raw || "").trim().toUpperCase().replace(/\s+/g, " ");
-  if (!limpio) return { nit: "", nombre: "" };
-  const sinTildes = limpio.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  if (sinTildes.includes("MUTUAL")) return { nit: "806008394", nombre: "MUTUAL SER" };
-  if (sinTildes.includes("ECOPETROL")) return { nit: "899999068", nombre: "ECOPETROL" };
-  if (sinTildes.includes("MEDPLUS") || sinTildes.includes("MED PLUS")) {
-    return { nit: "900178724", nombre: "MEDPLUS" };
-  }
-  if (sinTildes.includes("COLSANITAS")) return { nit: "860078828", nombre: "COLSANITAS" };
-  if (sinTildes.includes("SANITAS")) return { nit: "800251440", nombre: "SANITAS EPS" };
-  if (sinTildes.includes("COLMEDICA")) return { nit: "800106339", nombre: "COLMÉDICA" };
-  if (sinTildes.includes("SURA") && (sinTildes.includes("POLIZA") || sinTildes.includes("SEGURO"))) {
-    return { nit: "890903790", nombre: "SURA PÓLIZA" };
-  }
-  if (sinTildes.includes("SURA")) return { nit: "800088702", nombre: "EPS SURA" };
-  if (sinTildes.includes("COOMEVA")) return { nit: "805009741", nombre: "COOMEVA" };
-  if (sinTildes.includes("BOLIVAR")) return { nit: "860002503", nombre: "SEGUROS BOLÍVAR" };
-  if (sinTildes.includes("ALLIANZ")) return { nit: "860027404", nombre: "ALLIANZ" };
-  if (sinTildes.includes("COLPATRIA") || sinTildes.includes("AXA")) {
-    if (sinTildes.includes("SEGURO") || sinTildes.includes("ARL") || sinTildes.includes("SOAT")) {
-      return { nit: "860002183", nombre: "AXA COLPATRIA SEGUROS" };
-    }
-    return { nit: "900640334", nombre: "AXA COLPATRIA PREPAGADA" };
-  }
-  if (sinTildes.includes("HDI")) return { nit: "860039988", nombre: "HDI SEGUROS" };
-  if (sinTildes.includes("COMFENALCO")) return { nit: "890480023", nombre: "COMFENALCO CARTAGENA" };
-
-  return { nit: "", nombre: limpio };
+export function normalizarEmpresaYNit(
+  raw?: string | null,
+  nitRaw?: string | null
+): { nit: string; nombre: string } {
+  const u = normalizarEmpresaNitUnificada(raw, nitRaw);
+  const fallback = String(raw || "").trim().toUpperCase().replace(/\s+/g, " ");
+  return { nit: u.nit, nombre: u.nombre || fallback };
 }
 
 export function esNotaCreditoValida(v: unknown): boolean {
@@ -153,6 +91,7 @@ type Glosa = {
   medicoNombre?: string;
   cups?: string;
   servicioDescripcion?: string;
+  fechaPrestacionServicio?: string;
   fechaFactura: string;
   fechaRadicacion: string;
   fechaNotificacionGlosa: string;
@@ -168,6 +107,8 @@ type Glosa = {
   facturador: string;
   responsableAceptacion: string;
   responsableRespuesta?: string;
+  seguimientoEstado?: SeguimientoGlosaCodigo;
+  valorSeguimiento?: number | null;
   tipoGlosa: string;
   alcance: string;
   estado: string;
@@ -355,6 +296,7 @@ export function CarteraWorkspace({
   const [fAnio, setFAnio] = useState("");
   const [fMes, setFMes] = useState("");
   const [fFacturador, setFFacturador] = useState("");
+  const [fSeguimiento, setFSeguimiento] = useState("");
   const [fFamilia, setFFamilia] = useState("");
   const [soloSinCausal, setSoloSinCausal] = useState(false);
 
@@ -393,6 +335,7 @@ export function CarteraWorkspace({
         medicoNombre: String(g.medicoNombre || ""),
         cups: String(g.cups || ""),
         servicioDescripcion: String(g.servicioDescripcion || ""),
+        fechaPrestacionServicio: String(g.fechaPrestacionServicio || ""),
         fechaFactura: String(g.fechaFactura || ""),
         fechaRadicacion: String(g.fechaRadicacion || ""),
         fechaNotificacionGlosa: String(g.fechaNotificacionGlosa || ""),
@@ -405,9 +348,18 @@ export function CarteraWorkspace({
         motivoGlosa: String(g.motivoGlosa || ""),
         observacionInterna: String(g.observacionInterna || ""),
         notaCredito: String(g.notaCredito || ""),
-        facturador: String(g.facturador || ""),
-        responsableAceptacion: String(g.responsableAceptacion || g.responsableRespuesta || ""),
-        responsableRespuesta: String(g.responsableRespuesta || g.responsableAceptacion || ""),
+        facturador: homologarPersonaFacturacion(String(g.facturador || "")),
+        responsableAceptacion: homologarPersonaFacturacion(
+          String(g.responsableAceptacion || g.responsableRespuesta || "")
+        ),
+        responsableRespuesta: homologarPersonaFacturacion(
+          String(g.responsableRespuesta || g.responsableAceptacion || "")
+        ),
+        seguimientoEstado: normalizarSeguimientoGlosa(String(g.seguimientoEstado || "")),
+        valorSeguimiento:
+          g.valorSeguimiento === null || g.valorSeguimiento === undefined
+            ? null
+            : Number(g.valorSeguimiento),
         tipoGlosa: String(g.tipoGlosa || "GLOSA"),
         alcance: String(g.alcance || ""),
         estado: String(g.estado || "PENDIENTE"),
@@ -511,12 +463,18 @@ export function CarteraWorkspace({
 
   const responsablesEnDatos = useMemo(() => {
     const setR = new Set<string>();
+    for (const r of cat.responsables) {
+      const h = homologarPersonaFacturacion(r);
+      if (h) setR.add(h);
+    }
     for (const g of glosas) {
-      if (g.responsableAceptacion) setR.add(g.responsableAceptacion);
-      if (g.facturador) setR.add(g.facturador);
+      const rf = homologarPersonaFacturacion(g.responsableAceptacion);
+      const ff = homologarPersonaFacturacion(g.facturador);
+      if (rf) setR.add(rf);
+      if (ff) setR.add(ff);
     }
     return Array.from(setR).sort((a, b) => a.localeCompare(b, "es"));
-  }, [glosas]);
+  }, [glosas, cat.responsables]);
 
   const causalPorCodigo = useMemo(() => {
     const mapC: Record<string, Causal> = {};
@@ -602,10 +560,19 @@ export function CarteraWorkspace({
         const info = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
         if (info.nombre !== fEmpresa && g.empresa !== fEmpresa) return false;
       }
-      if (fCausaNorma && causaNormativaDe(g.motivoCodigo) !== fCausaNorma) return false;
+      if (fCausaNorma && causaNormativaDe(g.motivoCodigo, g.tipoGlosa) !== fCausaNorma) return false;
+      if (fSeguimiento) {
+        const seg = g.seguimientoEstado || "";
+        if (fSeguimiento === "SIN_SEGUIMIENTO" && seg !== "") return false;
+        if (fSeguimiento !== "SIN_SEGUIMIENTO" && seg !== fSeguimiento) return false;
+      }
       if (fAnio && g.anio !== fAnio) return false;
       if (fMes && mesDe(g) !== fMes) return false;
-      if (fFacturador && g.responsableAceptacion !== fFacturador && g.facturador !== fFacturador) {
+      if (
+        fFacturador &&
+        homologarPersonaFacturacion(g.responsableAceptacion) !== fFacturador &&
+        homologarPersonaFacturacion(g.facturador) !== fFacturador
+      ) {
         return false;
       }
       if (soloSinCausal && g.motivoCodigo) return false;
@@ -634,7 +601,7 @@ export function CarteraWorkspace({
       );
     });
   }, [
-    glosas, busqueda, fEstado, fEmpresa, fSede, fAtencion, fMutual, fCausaNorma, fAnio, fMes,
+    glosas, busqueda, fEstado, fEmpresa, fSede, fAtencion, fMutual, fCausaNorma, fSeguimiento, fAnio, fMes,
     fFacturador, fFamilia, soloSinCausal, causalPorCodigo, cruzarFila,
   ]);
 
@@ -707,17 +674,20 @@ export function CarteraWorkspace({
     let glosado = 0, facturado = 0, aceptado = 0, sinResolver = 0, valorSinResolver = 0, sinCausal = 0, sinNC = 0;
     const porFamilia: Record<string, number> = {};
     const porNorma: Record<string, { monto: number; cantidad: number }> = {
-      FA: { monto: 0, cantidad: 0 },
       TA: { monto: 0, cantidad: 0 },
-      SO: { monto: 0, cantidad: 0 },
       AU: { monto: 0, cantidad: 0 },
+      SO: { monto: 0, cantidad: 0 },
+      DE: { monto: 0, cantidad: 0 },
       CO: { monto: 0, cantidad: 0 },
+      FA: { monto: 0, cantidad: 0 },
     };
     const porEmpresa: Record<string, number> = {};
     const porCausal: Record<string, number> = {};
     const porAnio: Record<string, number> = {};
     const porResponsable: Record<string, number> = {};
     const porFacturador: Record<string, number> = {};
+    const porPersonaUnificada: Record<string, number> = {};
+    const porSeguimiento: Record<string, number> = {};
     const porEstado: Record<string, number> = {};
     const porClase: Record<string, number> = {};
     for (const g of visibles) {
@@ -728,7 +698,7 @@ export function CarteraWorkspace({
       if (!g.motivoCodigo) sinCausal++;
       if (!esNotaCreditoValida(g.notaCredito)) sinNC++;
       const v = g.valorGlosado || 0;
-      const cn = causaNormativaDe(g.motivoCodigo);
+      const cn = causaNormativaDe(g.motivoCodigo, g.tipoGlosa);
       if (cn && porNorma[cn]) {
         porNorma[cn].monto += v;
         porNorma[cn].cantidad += 1;
@@ -743,6 +713,10 @@ export function CarteraWorkspace({
       const rKey = g.responsableAceptacion || "sin responsable asignado";
       porResponsable[rKey] = (porResponsable[rKey] || 0) + v;
       porFacturador[g.facturador || "sin facturador"] = (porFacturador[g.facturador || "sin facturador"] || 0) + v;
+      const pUnif = g.responsableAceptacion || g.facturador || "sin responsable / facturador";
+      porPersonaUnificada[pUnif] = (porPersonaUnificada[pUnif] || 0) + v;
+      const segLabel = etiquetaSeguimientoGlosa(g.seguimientoEstado);
+      porSeguimiento[segLabel] = (porSeguimiento[segLabel] || 0) + v;
       porEstado[g.estado] = (porEstado[g.estado] || 0) + v;
       const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "— sin definir —";
       porClase[cl] = (porClase[cl] || 0) + v;
@@ -756,6 +730,8 @@ export function CarteraWorkspace({
       anios: Object.entries(porAnio).sort((a, b) => a[0].localeCompare(b[0])),
       responsables: orden(porResponsable),
       facturadores: orden(porFacturador),
+      personasUnificadas: orden(porPersonaUnificada),
+      seguimientos: orden(porSeguimiento),
       estados: orden(porEstado),
       clases: orden(porClase),
     };
@@ -763,17 +739,19 @@ export function CarteraWorkspace({
 
   const exportarExcelCsv = () => {
     const encabezados = [
-      "Factura", "Fecha Factura", "Fecha Radicación", "Fecha Notificación Glosa", "Año",
-      "Sede", "Consulta o Cirugía", "Empresa Homologada", "NIT", "De dónde es (Convenio / Régimen)",
+      "Factura", "Fecha Prestación Servicio", "Fecha Factura", "Fecha Radicación", "Fecha Notificación Glosa", "Año",
+      "Sede", "Consulta o Cirugía", "ERP Unificada", "NIT ERP", "De dónde es (Convenio / Régimen)",
       "Paciente (Cruce)", "Documento Paciente", "Médico / Especialista (Cruce)", "CUPS",
-      "Facturador", "Responsable Respuesta Glosa",
+      "Facturador Unificado", "Responsable Respuesta Glosa",
       "Valor Facturado", "Valor Glosado", "Valor Aceptado", "Valor Defendido",
-      "Causa Normativa (FA-CO)", "Código Causal", "Clase", "Motivo Glosa",
+      "Causal (TA/AU/SO/DE/CO/FA)", "Código Causal", "Clase", "Motivo Glosa",
+      "Seguimiento (Pago / Levantamiento / Ratificación)", "Valor Seguimiento",
       "Nota Crédito", "Estado", "Observación Interna",
     ];
     const filasCsv = visibles.map((g) => {
       const cr = cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
-      const cn = causaNormativaDe(g.motivoCodigo);
+      const cn = causaNormativaDe(g.motivoCodigo, g.tipoGlosa);
+      const empNit = normalizarEmpresaYNit(g.empresa || g.empresaOriginal, cr.nit);
       const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "";
       const vGlosa = Number(g.valorGlosado || 0);
       const vAcep = g.valorAceptado ?? null;
@@ -787,14 +765,15 @@ export function CarteraWorkspace({
           : 0;
       return [
         g.factura,
+        g.fechaPrestacionServicio || "",
         g.fechaFactura || cr.fechaFacturaSisma,
         g.fechaRadicacion || cr.fechaRadicacionSisma,
         g.fechaNotificacionGlosa,
         g.anio,
         cr.sede,
         cr.tipoAtencion,
-        cr.empresaHomologada,
-        cr.nit,
+        empNit.nombre || cr.empresaHomologada,
+        empNit.nit || cr.nit,
         cr.deDondeEs,
         cr.pacienteNombre || "Sin detalle clínico en factura",
         cr.pacienteDoc,
@@ -810,6 +789,8 @@ export function CarteraWorkspace({
         g.motivoCodigo,
         cl,
         g.motivoGlosa,
+        etiquetaSeguimientoGlosa(g.seguimientoEstado),
+        g.valorSeguimiento ?? "",
         g.notaCredito,
         ETIQUETA[g.estado] || g.estado,
         g.observacionInterna,
@@ -851,11 +832,11 @@ export function CarteraWorkspace({
 
   const limpiarFiltros = () => {
     setFEmpresa(""); setFSede(""); setFAtencion(""); setFMutual("CON");
-    setFCausaNorma(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
+    setFCausaNorma(""); setFSeguimiento(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
     setSoloSinCausal(false); setBusqueda("");
   };
   const hayFiltro = !!(
-    fEmpresa || fSede || fAtencion || fMutual !== "CON" || fCausaNorma || fAnio || fMes ||
+    fEmpresa || fSede || fAtencion || fMutual !== "CON" || fCausaNorma || fSeguimiento || fAnio || fMes ||
     fFacturador || fFamilia || soloSinCausal || busqueda
   );
 
@@ -876,7 +857,7 @@ export function CarteraWorkspace({
             Glosas, devoluciones y control de facturas
           </h2>
           <p className="mt-0.5 text-[12px] text-[#64748B]">
-            Empresas unificadas por NIT contable, causales según norma (FA, TA, SO, AU, CO) y Nota Crédito obligatoria (número o N/A).
+            ERP unificadas con NIT, fecha de prestación, Facturador/Responsable unificados, 6 causales (TA, AU, SO, DE, CO, FA), seguimiento de pagos/levantamientos/ratificación y Nota Crédito.
             {usuario.esAdmin ? " Entras como administrador." : ""}
           </p>
         </div>
@@ -981,11 +962,20 @@ export function CarteraWorkspace({
             ))}
           </select>
 
-          <label htmlFor="f-norma" className="sr-only">Filtrar por causa normativa</label>
+          <label htmlFor="f-norma" className="sr-only">Filtrar por causal normativa</label>
           <select id="f-norma" value={fCausaNorma} onChange={(e) => setFCausaNorma(e.target.value)} className={sel}>
-            <option value="">Todas las causas (norma)</option>
+            <option value="">Causales (TA, AU, SO, DE, CO, FA)</option>
             {CAUSAS_NORMATIVAS.map((c) => (
               <option key={c.codigo} value={c.codigo}>{c.codigo} · {c.nombre}</option>
+            ))}
+          </select>
+
+          <label htmlFor="f-seg" className="sr-only">Filtrar por seguimiento</label>
+          <select id="f-seg" value={fSeguimiento} onChange={(e) => setFSeguimiento(e.target.value)} className={sel}>
+            <option value="">Todos los seguimientos</option>
+            <option value="SIN_SEGUIMIENTO">En trámite / Sin seguimiento</option>
+            {OPCIONES_SEGUIMIENTO_GLOSA.filter((o) => o.id !== "").map((o) => (
+              <option key={o.id} value={o.id}>{o.etiqueta}</option>
             ))}
           </select>
 
@@ -1005,7 +995,7 @@ export function CarteraWorkspace({
 
           <label htmlFor="f-fact" className="sr-only">Filtrar por responsable o facturador</label>
           <select id="f-fact" value={fFacturador} onChange={(e) => setFFacturador(e.target.value)} className={sel}>
-            <option value="">Todos los responsables</option>
+            <option value="">Facturador / Resp. glosa (Unificado)</option>
             {responsablesEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
 
@@ -1110,12 +1100,12 @@ export function CarteraWorkspace({
             />
           </div>
 
-          {/* 5 Causas principales según la norma (FA, TA, SO, AU, CO) */}
+          {/* 6 Causales oficiales de glosa y devolución (TA, AU, SO, DE, CO, FA) */}
           <div className="mt-5 border-t border-[#F1F5F9] pt-4">
             <p className="eb-label mb-2.5 text-[10px] text-[#64748B]">
-              Causas principales de glosas según la norma (FA, TA, SO, AU, CO)
+              Causales oficiales de glosa y devolución según norma (TA, AU, SO, DE, CO, FA)
             </p>
-            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-5">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
               {CAUSAS_NORMATIVAS.map((c) => {
                 const d = m.porNorma[c.codigo] || { monto: 0, cantidad: 0 };
                 const pct = m.glosado > 0 ? Math.round((d.monto / m.glosado) * 100) : 0;
@@ -1213,6 +1203,18 @@ export function CarteraWorkspace({
                 total={m.glosado}
                 onClick={(k) => setFAnio(fAnio === k ? "" : k)}
                 activo={fAnio}
+              />
+              <Ranking
+                titulo="Seguimiento (Pagos, Levantamientos y Ratificación)"
+                filas={m.seguimientos}
+                total={m.glosado}
+              />
+              <Ranking
+                titulo="Facturador / Responsable unificado"
+                filas={m.personasUnificadas.slice(0, 8)}
+                total={m.glosado}
+                onClick={(k) => setFFacturador(fFacturador === k ? "" : k)}
+                activo={fFacturador}
               />
               <Ranking
                 titulo="Por desenlace"
@@ -1536,37 +1538,79 @@ export function CarteraWorkspace({
 
       {/* ---------- CUADRÍCULA ---------- */}
       {vista === "cuadricula" && (
-        <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
+        <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)] space-y-3">
+          {/* Franja rápida interactiva de las 6 Causales Normativas (TA, AU, SO, DE, CO, FA) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#EDF2FA] bg-[#F8FAFC] px-3 py-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#64748B] mr-1">
+                Causales:
+              </span>
+              {CAUSAS_NORMATIVAS.map((c) => {
+                const d = m.porNorma[c.codigo] || { monto: 0, cantidad: 0 };
+                const act = fCausaNorma === c.codigo;
+                return (
+                  <button
+                    key={c.codigo}
+                    type="button"
+                    onClick={() => setFCausaNorma(act ? "" : c.codigo)}
+                    title={`${c.codigo} · ${c.nombre}: ${pesos(d.monto)} (${d.cantidad} reg.)`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold transition ${
+                      act ? "ring-2 ring-[#1D58D8]" : "hover:opacity-90"
+                    }`}
+                    style={{
+                      backgroundColor: c.badgeBg,
+                      color: c.badgeText,
+                      borderColor: c.badgeBorder,
+                    }}
+                  >
+                    <span>{c.codigo} · {c.nombre}</span>
+                    <span className="font-cifra opacity-90">({d.cantidad})</span>
+                  </button>
+                );
+              })}
+            </div>
+            {fCausaNorma && (
+              <button
+                type="button"
+                onClick={() => setFCausaNorma("")}
+                className="text-[11px] font-semibold text-[#1D58D8] hover:underline"
+              >
+                Ver todas las causales ×
+              </button>
+            )}
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[12.5px]">
               <thead>
                 <tr className="border-b border-[#E2EBF8] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">
                   <th className="w-6 py-2" />
-                  <th className="py-2 pr-3">Factura · Fechas</th>
+                  <th className="py-2 pr-3">Factura · Prestación / Fechas</th>
                   <th className="py-2 pr-3">Sede · Atención</th>
-                  <th className="py-2 pr-3">Empresa (NIT) · De dónde es</th>
-                  <th className="py-2 pr-3">Nombres / Resp. Glosa</th>
+                  <th className="py-2 pr-3">ERP Unificada · NIT</th>
+                  <th className="py-2 pr-3">Facturador / Resp. Glosa</th>
                   <th className="py-2 pr-3">Clase</th>
-                  <th className="py-2 pr-3">Causal</th>
+                  <th className="py-2 pr-3">Causal (TA–FA)</th>
                   <th className="py-2 pr-3 text-right">Facturado</th>
                   <th className="py-2 pr-3 text-right">Glosado</th>
                   <th className="py-2 pr-3 text-right">Aceptado</th>
+                  <th className="py-2 pr-3">Seguimiento</th>
                   <th className="py-2 pr-3">Desenlace</th>
-                  <th className="py-2 pr-3">Nota crédito *</th>
+                  <th className="py-2 pr-3">Nota crédito</th>
                   <th className="w-6 py-2" />
                 </tr>
               </thead>
               <tbody>
                 {cargando && (
                   <tr>
-                    <td colSpan={13} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={14} className="py-8 text-center text-[#94A3B8]">
                       <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" /> Cargando…
                     </td>
                   </tr>
                 )}
                 {!cargando && visibles.length === 0 && !fallo && (
                   <tr>
-                    <td colSpan={13} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={14} className="py-8 text-center text-[#94A3B8]">
                       {glosas.length === 0 ? "Todavía no hay glosas en la base." : "Nada coincide con el filtro."}
                     </td>
                   </tr>
@@ -2114,7 +2158,7 @@ function PanelClasificar({
           <p className="mt-0.5 max-w-[82ch] text-[12px] text-[#64748B]">
             {totalFilas} glosas sin causal, en {filas.length} redacciones distintas, por{" "}
             <span className="font-cifra font-semibold text-[#0E245E]">{pesos(totalValor)}</span>. Puedes
-            asignar directamente las 5 causas principales (<strong>FA, TA, SO, AU, CO</strong>) o un subcódigo
+            asignar directamente las 6 causales oficiales (<strong>TA, AU, SO, DE, CO, FA</strong>) o un subcódigo
             específico de la Resolución 2284.
           </p>
         </div>
@@ -2241,9 +2285,16 @@ function FilaGlosa({
   const [nota, setNota] = useState(glosa.notaCredito || "");
   const [respGlosa, setRespGlosa] = useState(glosa.responsableAceptacion || "");
   const [facturador, setFacturador] = useState(glosa.facturador || "");
+  const [fechaPrest, setFechaPrest] = useState((glosa.fechaPrestacionServicio || "").slice(0, 10));
   const [fechaFact, setFechaFact] = useState((glosa.fechaFactura || "").slice(0, 10));
   const [fechaRad, setFechaRad] = useState((glosa.fechaRadicacion || "").slice(0, 10));
   const [fechaNotif, setFechaNotif] = useState((glosa.fechaNotificacionGlosa || "").slice(0, 10));
+  const [seguimiento, setSeguimiento] = useState<SeguimientoGlosaCodigo>(
+    normalizarSeguimientoGlosa(glosa.seguimientoEstado),
+  );
+  const [valSeg, setValSeg] = useState(
+    glosa.valorSeguimiento == null ? "" : String(Math.round(glosa.valorSeguimiento)),
+  );
   const [valFact, setValFact] = useState(
     String(Math.round(glosa.valorFacturado || glosa.valorRadicado || 0)),
   );
@@ -2257,9 +2308,11 @@ function FilaGlosa({
     nota: "",
     respGlosa: "",
     facturador: "",
+    fechaPrest: "",
     fechaFact: "",
     fechaRad: "",
     fechaNotif: "",
+    valSeg: "",
     valFact: "",
     obs: "",
     motivo: "",
@@ -2267,7 +2320,9 @@ function FilaGlosa({
 
   useEffect(() => {
     const a = glosa.valorAceptado == null ? "" : String(Math.round(glosa.valorAceptado));
+    const vs = glosa.valorSeguimiento == null ? "" : String(Math.round(glosa.valorSeguimiento));
     const vf = String(Math.round(glosa.valorFacturado || glosa.valorRadicado || 0));
+    const fp = (glosa.fechaPrestacionServicio || "").slice(0, 10);
     const ff = (glosa.fechaFactura || "").slice(0, 10);
     const fr = (glosa.fechaRadicacion || "").slice(0, 10);
     const fn = (glosa.fechaNotificacionGlosa || "").slice(0, 10);
@@ -2276,9 +2331,12 @@ function FilaGlosa({
     setNota(glosa.notaCredito || "");
     setRespGlosa(glosa.responsableAceptacion || "");
     setFacturador(glosa.facturador || "");
+    setFechaPrest(fp);
     setFechaFact(ff);
     setFechaRad(fr);
     setFechaNotif(fn);
+    setSeguimiento(normalizarSeguimientoGlosa(glosa.seguimientoEstado));
+    setValSeg(vs);
     setValFact(vf);
     setObs(glosa.observacionInterna || "");
     setMotivo(glosa.motivoGlosa || "");
@@ -2289,16 +2347,19 @@ function FilaGlosa({
       nota: glosa.notaCredito || "",
       respGlosa: glosa.responsableAceptacion || "",
       facturador: glosa.facturador || "",
+      fechaPrest: fp,
       fechaFact: ff,
       fechaRad: fr,
       fechaNotif: fn,
+      valSeg: vs,
       valFact: vf,
       obs: glosa.observacionInterna || "",
       motivo: glosa.motivoGlosa || "",
     };
   }, [
     glosa.id, glosa.estado, glosa.valorAceptado, glosa.notaCredito, glosa.responsableAceptacion,
-    glosa.facturador, glosa.fechaFactura, glosa.fechaRadicacion, glosa.fechaNotificacionGlosa,
+    glosa.facturador, glosa.fechaPrestacionServicio, glosa.fechaFactura, glosa.fechaRadicacion,
+    glosa.fechaNotificacionGlosa, glosa.seguimientoEstado, glosa.valorSeguimiento,
     glosa.valorFacturado, glosa.valorRadicado, glosa.observacionInterna, glosa.motivoGlosa,
     glosa.motivoCodigo, glosa.tipoGlosa, glosa.alcance,
   ]);
@@ -2309,12 +2370,15 @@ function FilaGlosa({
         ...glosa,
         estado,
         notaCredito: nota,
-        responsableAceptacion: respGlosa,
-        responsableRespuesta: respGlosa,
-        facturador,
+        responsableAceptacion: homologarPersonaFacturacion(respGlosa),
+        responsableRespuesta: homologarPersonaFacturacion(respGlosa),
+        facturador: homologarPersonaFacturacion(facturador),
+        fechaPrestacionServicio: fechaPrest,
         fechaFactura: fechaFact,
         fechaRadicacion: fechaRad,
         fechaNotificacionGlosa: fechaNotif,
+        seguimientoEstado: seguimiento,
+        valorSeguimiento: valSeg.trim() === "" ? null : soloNumero(valSeg),
         valorFacturado: soloNumero(valFact),
         valorRadicado: soloNumero(valFact),
         observacionInterna: obs,
@@ -2333,9 +2397,11 @@ function FilaGlosa({
       nota === u.nota &&
       respGlosa === u.respGlosa &&
       facturador === u.facturador &&
+      fechaPrest === u.fechaPrest &&
       fechaFact === u.fechaFact &&
       fechaRad === u.fechaRad &&
       fechaNotif === u.fechaNotif &&
+      valSeg === u.valSeg &&
       valFact === u.valFact &&
       obs === u.obs &&
       motivo === u.motivo
@@ -2348,20 +2414,27 @@ function FilaGlosa({
       notaFinal = "N/A";
       setNota("N/A");
     }
-    if (notaFinal !== u.nota && !esNotaCreditoValida(notaFinal)) {
-      avisar("Nota Crédito obligatoria: ingresa el número consecutivo o N/A.");
+    if (notaFinal !== u.nota && notaFinal !== "" && !esNotaCreditoValida(notaFinal)) {
+      avisar("Nota Crédito: ingresa el consecutivo (ej. NC2375) o selecciona N/A.");
       setNota(u.nota);
       return;
     }
 
+    const respNorm = homologarPersonaFacturacion(respGlosa);
+    const factNorm = homologarPersonaFacturacion(facturador);
+    if (respNorm !== respGlosa) setRespGlosa(respNorm);
+    if (factNorm !== facturador) setFacturador(factNorm);
+
     ultimo.current = {
       aceptado,
       nota: notaFinal,
-      respGlosa,
-      facturador,
+      respGlosa: respNorm,
+      facturador: factNorm,
+      fechaPrest,
       fechaFact,
       fechaRad,
       fechaNotif,
+      valSeg,
       valFact,
       obs,
       motivo,
@@ -2369,16 +2442,37 @@ function FilaGlosa({
     enviar({
       valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado),
       notaCredito: notaFinal,
-      responsableAceptacion: respGlosa.trim(),
-      responsableRespuesta: respGlosa.trim(),
-      facturador: facturador.trim(),
+      responsableAceptacion: respNorm,
+      responsableRespuesta: respNorm,
+      facturador: factNorm,
+      fechaPrestacionServicio: fechaPrest,
       fechaFactura: fechaFact,
       fechaRadicacion: fechaRad,
       fechaNotificacionGlosa: fechaNotif,
+      seguimientoEstado: seguimiento,
+      valorSeguimiento: valSeg.trim() === "" ? null : soloNumero(valSeg),
       valorFacturado: soloNumero(valFact),
       valorRadicado: soloNumero(valFact),
       observacionInterna: obs,
       motivoGlosa: motivo,
+    });
+  };
+
+  const cambiarSeguimiento = (nuevoSeg: SeguimientoGlosaCodigo) => {
+    setSeguimiento(nuevoSeg);
+    let nuevoValSeg = valSeg;
+    if (nuevoSeg === "PAGO_COMPLETO") {
+      nuevoValSeg = String(Math.round(glosa.valorFacturado || glosa.valorRadicado || glosa.valorGlosado || 0));
+    } else if (nuevoSeg === "LEVANTAMIENTO_COMPLETO") {
+      nuevoValSeg = String(Math.round(glosa.valorGlosado || 0));
+    } else if (nuevoSeg === "") {
+      nuevoValSeg = "";
+    }
+    setValSeg(nuevoValSeg);
+    ultimo.current = { ...ultimo.current, valSeg: nuevoValSeg };
+    enviar({
+      seguimientoEstado: nuevoSeg,
+      valorSeguimiento: nuevoValSeg.trim() === "" ? null : soloNumero(nuevoValSeg),
     });
   };
 
@@ -2430,8 +2524,17 @@ function FilaGlosa({
         </td>
         <td className="py-1.5 pr-3 font-cifra">
           <span className="block text-[12.5px] font-semibold text-[#0E245E]">{glosa.factura}</span>
-          <span className="block text-[10.5px] text-[#64748B]" title="Fecha de factura">
-            F: {fechaFact ? fecha(fechaFact) : cruce.fechaFacturaSisma ? fecha(cruce.fechaFacturaSisma) : glosa.anio || "—"}
+          {fechaPrest ? (
+            <span className="block text-[10.5px] font-semibold text-[#047857]" title="Fecha de prestación del servicio">
+              Prest: {fecha(fechaPrest)}
+            </span>
+          ) : (
+            <span className="block text-[10px] text-[#94A3B8]" title="Sin fecha de prestación en fuente (despliega para diligenciar)">
+              Prest: —
+            </span>
+          )}
+          <span className="block text-[10px] text-[#64748B]" title="Fecha de factura">
+            Fact: {fechaFact ? fecha(fechaFact) : cruce.fechaFacturaSisma ? fecha(cruce.fechaFacturaSisma) : glosa.anio || "—"}
           </span>
           {fechaNotif && (
             <span className="block text-[10px] text-[#1D58D8]" title="Fecha de notificación de glosa">
@@ -2464,13 +2567,17 @@ function FilaGlosa({
           </span>
         </td>
         <td className="py-1.5 pr-3 text-[#47597A]">
-          <span className="block text-[12px] font-semibold text-[#0E245E]">
-            {cruce.empresaHomologada || empInfo.nombre || glosa.empresa || "—"}
+          <span className="block text-[12px] font-bold text-[#0E245E]">
+            {empInfo.nombre || cruce.empresaHomologada || glosa.empresa || "—"}
           </span>
-          {(cruce.nit || empInfo.nit) && (
-            <span className="block font-cifra text-[10px] text-[#64748B]">NIT {cruce.nit || empInfo.nit}</span>
+          {(empInfo.nit || cruce.nit) ? (
+            <span className="mt-0.5 inline-block rounded bg-[#F1F5F9] px-1.5 py-0.5 font-cifra text-[10px] font-semibold text-[#334155]">
+              NIT {empInfo.nit || cruce.nit}
+            </span>
+          ) : (
+            <span className="block text-[10px] text-[#94A3B8]">Sin NIT en fuente</span>
           )}
-          <span className="block text-[10.5px] font-medium text-[#1D58D8]">{cruce.deDondeEs}</span>
+          <span className="mt-0.5 block text-[10px] font-medium text-[#1D58D8]">{cruce.deDondeEs}</span>
         </td>
         <td className="py-1.5 pr-3">
           {cruce.pacienteNombre && (
@@ -2478,23 +2585,36 @@ function FilaGlosa({
               Pac: {cruce.pacienteNombre}
             </span>
           )}
-          {cruce.medicoNombre && (
-            <span className="block text-[10.5px] text-[#47597A]">Dr(a): {cruce.medicoNombre}</span>
-          )}
-          <label htmlFor={`rg-${glosa.id}`} className="sr-only">Responsable de responder la glosa</label>
+          <label htmlFor={`rg-${glosa.id}`} className="sr-only">Responsable unificado de responder la glosa</label>
           <input
             id={`rg-${glosa.id}`}
             list="cat-responsables"
             value={respGlosa}
             onChange={(e) => setRespGlosa(e.target.value.toUpperCase())}
             onBlur={salir}
-            placeholder="Resp. glosa"
-            title="Responsable de responder la glosa"
-            className={`${celda} min-w-[112px] text-[11.5px] font-medium text-[#47597A]`}
+            placeholder="Asignar resp."
+            title="Responsable unificado de responder la glosa"
+            className={`${celda} min-w-[118px] text-[11.5px] font-semibold text-[#0E245E]`}
           />
-          {facturador && (
-            <span className="block px-1.5 text-[10px] text-[#94A3B8]">Fact: {facturador}</span>
-          )}
+          <div className="flex items-center justify-between gap-1 px-1.5">
+            <span className="text-[10px] text-[#64748B]">
+              Fact: {facturador || "—"}
+            </span>
+            {facturador && !respGlosa && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRespGlosa(facturador);
+                  ultimo.current = { ...ultimo.current, respGlosa: facturador };
+                  enviar({ responsableAceptacion: facturador, responsableRespuesta: facturador });
+                }}
+                className="text-[9.5px] font-bold text-[#1D58D8] hover:underline"
+                title="Unificar responsable con el facturador"
+              >
+                Unificar
+              </button>
+            )}
+          </div>
         </td>
         <td className="py-1.5 pr-3">
           <label htmlFor={`cla-${glosa.id}`} className="sr-only">Clase de la glosa {glosa.factura}</label>
@@ -2576,6 +2696,43 @@ function FilaGlosa({
           {excede && <span className="block pr-1.5 text-[10px] font-semibold text-[#B45309]">supera lo glosado</span>}
         </td>
         <td className="py-1.5 pr-3">
+          {(() => {
+            const opSeg =
+              OPCIONES_SEGUIMIENTO_GLOSA.find((o) => o.id === seguimiento) || OPCIONES_SEGUIMIENTO_GLOSA[0];
+            return (
+              <div className="space-y-1">
+                <label htmlFor={`seg-${glosa.id}`} className="sr-only">Seguimiento de pago, levantamiento o ratificación</label>
+                <select
+                  id={`seg-${glosa.id}`}
+                  value={seguimiento}
+                  onChange={(e) => cambiarSeguimiento(e.target.value as SeguimientoGlosaCodigo)}
+                  className="w-[144px] rounded-[6px] border px-1.5 py-1 text-[11px] font-semibold outline-none"
+                  style={{
+                    backgroundColor: opSeg.badgeBg,
+                    color: opSeg.badgeText,
+                    borderColor: opSeg.badgeBorder,
+                  }}
+                >
+                  {OPCIONES_SEGUIMIENTO_GLOSA.map((o) => (
+                    <option key={o.id || "NONE"} value={o.id}>{o.corto}</option>
+                  ))}
+                </select>
+                {seguimiento !== "" && (
+                  <input
+                    value={valSeg}
+                    onChange={(e) => setValSeg(e.target.value)}
+                    onBlur={salir}
+                    inputMode="numeric"
+                    placeholder="$ valor seg."
+                    title="Valor pagado, levantado o ratificado"
+                    className="w-[144px] rounded border border-[#DCE8FA] bg-white px-1.5 py-0.5 text-right font-cifra text-[11px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                  />
+                )}
+              </div>
+            );
+          })()}
+        </td>
+        <td className="py-1.5 pr-3">
           <label htmlFor={`est-${glosa.id}`} className="sr-only">Desenlace de la glosa {glosa.factura}</label>
           <select
             id={`est-${glosa.id}`}
@@ -2589,20 +2746,36 @@ function FilaGlosa({
           </select>
         </td>
         <td className="py-1.5 pr-3">
-          <label htmlFor={`nc-${glosa.id}`} className="sr-only">Nota crédito obligatoria (número o N/A)</label>
-          <input
-            id={`nc-${glosa.id}`}
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            onBlur={salir}
-            placeholder="N° o N/A"
-            title="Obligatorio: número de Nota Crédito o N/A"
-            className={`w-[96px] rounded border px-1.5 py-1 font-cifra text-[12px] outline-none focus:border-[#1D58D8] focus:bg-white ${
-              ncValida
-                ? "border-transparent bg-transparent text-[#0E245E] hover:border-[#DCE8FA]"
-                : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E]"
-            }`}
-          />
+          <div className="flex items-center gap-1">
+            <label htmlFor={`nc-${glosa.id}`} className="sr-only">Nota crédito si aplica (número o N/A)</label>
+            <input
+              id={`nc-${glosa.id}`}
+              value={nota}
+              onChange={(e) => setNota(e.target.value.toUpperCase())}
+              onBlur={salir}
+              placeholder="NC... o N/A"
+              title="Anexar Nota Crédito si aplica (consecutivo NC o N/A)"
+              className={`w-[92px] rounded border px-1.5 py-1 font-cifra text-[12px] outline-none focus:border-[#1D58D8] focus:bg-white ${
+                ncValida
+                  ? "border-transparent bg-transparent text-[#0E245E] hover:border-[#DCE8FA]"
+                  : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E]"
+              }`}
+            />
+            {!ncValida && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNota("N/A");
+                  ultimo.current = { ...ultimo.current, nota: "N/A" };
+                  enviar({ notaCredito: "N/A" });
+                }}
+                title="Marcar No aplica (N/A)"
+                className="rounded border border-[#DCE8FA] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-bold text-[#47597A] hover:bg-[#EEF4FD] hover:text-[#1D58D8]"
+              >
+                N/A
+              </button>
+            )}
+          </div>
         </td>
         <td className="py-1.5 text-right">
           {guardando && <Loader2 className="inline h-3.5 w-3.5 animate-spin text-[#1D58D8]" />}
@@ -2613,10 +2786,23 @@ function FilaGlosa({
       {abierta && (
         <tr className="border-b border-[#E2EBF8] bg-[#FAFCFF]">
           <td />
-          <td colSpan={12} className="px-1 pb-4 pt-2">
+          <td colSpan={13} className="px-1 pb-4 pt-2">
             <div className="grid gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)]">
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                  <div>
+                    <label htmlFor={`fp-${glosa.id}`} className="eb-label mb-1 block text-[10px] font-bold text-[#047857]">
+                      Fecha prestación servicio
+                    </label>
+                    <input
+                      id={`fp-${glosa.id}`}
+                      type="date"
+                      value={fechaPrest}
+                      onChange={(e) => setFechaPrest(e.target.value)}
+                      onBlur={salir}
+                      className="w-full rounded-lg border border-[#A7F3D0] bg-white px-2 py-1.5 font-cifra text-[12px] text-[#0E245E] outline-none focus:border-[#059669]"
+                    />
+                  </div>
                   <div>
                     <label htmlFor={`ff-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
                       Fecha de factura
@@ -2684,9 +2870,24 @@ function FilaGlosa({
                     />
                   </div>
                   <div>
-                    <label htmlFor={`rga-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
-                      Responsable de glosa
-                    </label>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label htmlFor={`rga-${glosa.id}`} className="eb-label text-[10px] text-[#64748B]">
+                        Responsable de glosa
+                      </label>
+                      {facturador && respGlosa !== facturador && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRespGlosa(facturador);
+                            ultimo.current = { ...ultimo.current, respGlosa: facturador };
+                            enviar({ responsableAceptacion: facturador, responsableRespuesta: facturador });
+                          }}
+                          className="text-[10px] font-bold text-[#1D58D8] hover:underline"
+                        >
+                          = Facturador
+                        </button>
+                      )}
+                    </div>
                     <input
                       id={`rga-${glosa.id}`}
                       list="cat-responsables"
@@ -2696,6 +2897,21 @@ function FilaGlosa({
                       placeholder="Quien responde la glosa"
                       className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
                     />
+                  </div>
+                  <div>
+                    <label htmlFor={`sega-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
+                      Ítem de seguimiento
+                    </label>
+                    <select
+                      id={`sega-${glosa.id}`}
+                      value={seguimiento}
+                      onChange={(e) => cambiarSeguimiento(e.target.value as SeguimientoGlosaCodigo)}
+                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                    >
+                      {OPCIONES_SEGUIMIENTO_GLOSA.map((o) => (
+                        <option key={o.id || "NONE"} value={o.id}>{o.etiqueta}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -2739,7 +2955,9 @@ function FilaGlosa({
                 <Detalle etiqueta="De dónde es" valor={cruce.deDondeEs || "—"} />
                 <Detalle etiqueta="Paciente / Médico (cruce)" valor={cruce.pacienteNombre ? `${cruce.pacienteNombre}${cruce.medicoNombre ? ` · Dr(a). ${cruce.medicoNombre}` : ""}` : "Factura contable sin detalle clínico"} />
                 <Detalle etiqueta="Empresa original (fuente)" valor={glosa.empresaOriginal || glosa.empresa || "—"} />
-                <Detalle etiqueta="Nota crédito" valor={nota || "Pendiente (obligatorio N° o N/A)"} />
+                <Detalle etiqueta="Nota crédito" valor={nota || "Sin anexar (N° NC o N/A)"} />
+                <Detalle etiqueta="Fecha prestación" valor={fecha(fechaPrest)} />
+                <Detalle etiqueta="Seguimiento" valor={`${etiquetaSeguimientoGlosa(seguimiento)}${valSeg ? ` · ${pesos(soloNumero(valSeg))}` : ""}`} />
                 <Detalle etiqueta="Fecha factura" valor={fecha(fechaFact)} />
                 <Detalle etiqueta="Fecha radicación" valor={fecha(fechaRad)} />
                 <Detalle etiqueta="Notificación glosa" valor={fecha(fechaNotif)} />
@@ -2823,10 +3041,10 @@ function FichaFactura({
           <Dato etiqueta="Glosado" valor={pesos(totalGlosado)} alerta={excede} />
           <Dato etiqueta="Aceptado" valor={pesos(totalAceptado)} />
           <Dato etiqueta="Glosas" valor={`${glosas.length} · ${sinResolver.length} sin resolver`} />
+          <Dato etiqueta="Fecha prestación" valor={fecha(base.fechaPrestacionServicio || "")} />
           <Dato etiqueta="Fecha factura" valor={fecha(base.fechaFactura)} />
           <Dato etiqueta="Fecha radicación" valor={fecha(base.fechaRadicacion)} />
-          <Dato etiqueta="Notificación glosa" valor={fecha(base.fechaNotificacionGlosa)} />
-          <Dato etiqueta="Facturador" valor={base.facturador || "—"} />
+          <Dato etiqueta="Facturador / Resp." valor={[base.facturador, base.responsableAceptacion].filter(Boolean).join(" / ") || "—"} />
         </div>
 
         {excede && (
@@ -2851,6 +3069,12 @@ function FichaFactura({
                     <span className="font-cifra text-[11px] font-semibold text-[#47597A]">
                       {ca ? `${ca.codigo} · ${ca.familia}` : "sin causal"}
                     </span>
+                    {g.seguimientoEstado && (
+                      <span className="rounded-pill border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[10.5px] font-semibold text-[#0369A1]">
+                        {etiquetaSeguimientoGlosa(g.seguimientoEstado)}
+                        {g.valorSeguimiento != null ? ` (${pesos(g.valorSeguimiento)})` : ""}
+                      </span>
+                    )}
                     {g.notaCredito && (
                       <span className="font-cifra text-[11px] text-[#64748B]">NC: {g.notaCredito}</span>
                     )}
@@ -2900,6 +3124,7 @@ function ModalNueva({
   const [f, setF] = useState({
     factura: "",
     empresa: "",
+    fechaPrestacionServicio: "",
     fechaFactura: "",
     fechaRadicacion: "",
     fechaNotificacionGlosa: "",
@@ -2911,7 +3136,9 @@ function ModalNueva({
     observacionInterna: "",
     facturador: "",
     responsableAceptacion: "",
-    notaCredito: "",
+    seguimientoEstado: "" as SeguimientoGlosaCodigo,
+    valorSeguimiento: "",
+    notaCredito: "N/A",
     estado: "PENDIENTE",
   });
 
@@ -2968,6 +3195,15 @@ function ModalNueva({
             />
           </Campo>
 
+          <Campo id="fprest" etiqueta="Fecha de prestación de servicios">
+            <input
+              id="fprest"
+              type="date"
+              value={f.fechaPrestacionServicio}
+              onChange={(e) => setF({ ...f, fechaPrestacionServicio: e.target.value })}
+              className={`${campo} font-cifra`}
+            />
+          </Campo>
           <Campo id="ffac" etiqueta="Fecha de factura">
             <input
               id="ffac"
@@ -3108,7 +3344,21 @@ function ModalNueva({
               className={campo}
             />
           </Campo>
-          <Campo id="rglosa" etiqueta="Responsable de responder la glosa">
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label htmlFor="rglosa" className="eb-label text-[10px] text-[#94A3B8]">
+                Responsable de responder la glosa
+              </label>
+              {f.facturador.trim() !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setF({ ...f, responsableAceptacion: homologarPersonaFacturacion(f.facturador) })}
+                  className="text-[11px] font-semibold text-[#1D58D8] hover:underline"
+                >
+                  Unificar con facturador
+                </button>
+              )}
+            </div>
             <input
               id="rglosa"
               list="cat-responsables"
@@ -3117,26 +3367,72 @@ function ModalNueva({
               placeholder="Asignado para responder"
               className={campo}
             />
+          </div>
+
+          <Campo id="seg-nueva" etiqueta="Seguimiento (Pago / Levantamiento / Ratificación)">
+            <select
+              id="seg-nueva"
+              value={f.seguimientoEstado}
+              onChange={(e) => setF({ ...f, seguimientoEstado: e.target.value as SeguimientoGlosaCodigo })}
+              className={campo}
+            >
+              {OPCIONES_SEGUIMIENTO_GLOSA.map((o) => (
+                <option key={o.id || "NONE"} value={o.id}>{o.etiqueta}</option>
+              ))}
+            </select>
+          </Campo>
+
+          <Campo id="vseg-nueva" etiqueta="Valor seguimiento (si aplica pago/levant./ratif.)">
+            <input
+              id="vseg-nueva"
+              inputMode="numeric"
+              value={f.valorSeguimiento}
+              onChange={(e) => setF({ ...f, valorSeguimiento: e.target.value })}
+              placeholder="0"
+              className={`${campo} font-cifra`}
+            />
           </Campo>
 
           <div>
-            <div className="mb-1 flex items-center justify-between">
+            <div className="mb-1 flex items-center justify-between gap-2">
               <label htmlFor="nc2" className="eb-label text-[10px] font-bold text-[#0E245E]">
-                Nota crédito * (obligatorio N° o N/A)
+                Nota crédito (si aplica) *
               </label>
-              <button
-                type="button"
-                onClick={() => setF({ ...f, notaCredito: "N/A" })}
-                className="text-[11px] font-semibold text-[#1D58D8] hover:underline"
-              >
-                Usar N/A
-              </button>
+              <div className="inline-flex rounded-md border border-[#DCE8FA] bg-[#F8FAFC] p-0.5 text-[10.5px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setF({ ...f, notaCredito: "N/A" })}
+                  className={`rounded px-2 py-0.5 transition ${
+                    f.notaCredito.trim().toUpperCase() === "N/A"
+                      ? "bg-[#0E245E] text-white"
+                      : "text-[#47597A]"
+                  }`}
+                >
+                  No aplica (N/A)
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setF({
+                      ...f,
+                      notaCredito: f.notaCredito.trim().toUpperCase() === "N/A" ? "NC" : f.notaCredito,
+                    })
+                  }
+                  className={`rounded px-2 py-0.5 transition ${
+                    f.notaCredito.trim().toUpperCase() !== "N/A"
+                      ? "bg-[#1D58D8] text-white"
+                      : "text-[#47597A]"
+                  }`}
+                >
+                  Sí aplica (NC)
+                </button>
+              </div>
             </div>
             <input
               id="nc2"
               value={f.notaCredito}
-              onChange={(e) => setF({ ...f, notaCredito: e.target.value })}
-              placeholder="Ej: NC-1045 o N/A"
+              onChange={(e) => setF({ ...f, notaCredito: e.target.value.toUpperCase() })}
+              placeholder="Ej: NC2375 o N/A"
               className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
                 f.notaCredito.trim() === "" || ncOk
                   ? "border-[#DCE8FA] focus:border-[#1D58D8]"
@@ -3182,7 +3478,11 @@ function ModalNueva({
                   valorFacturado: soloNumero(f.valorFacturado),
                   valorRadicado: soloNumero(f.valorFacturado),
                   valorGlosado: soloNumero(f.valorGlosado),
-                  responsableRespuesta: f.responsableAceptacion.trim(),
+                  facturador: homologarPersonaFacturacion(f.facturador),
+                  responsableAceptacion: homologarPersonaFacturacion(f.responsableAceptacion),
+                  responsableRespuesta: homologarPersonaFacturacion(f.responsableAceptacion),
+                  seguimientoEstado: f.seguimientoEstado,
+                  valorSeguimiento: f.valorSeguimiento.trim() === "" ? null : soloNumero(f.valorSeguimiento),
                   valorAceptado: null,
                 });
               }}

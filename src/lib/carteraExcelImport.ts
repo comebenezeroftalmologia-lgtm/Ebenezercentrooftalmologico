@@ -15,10 +15,13 @@
 import {
   clasificarAtencionYSede,
   claveFacturaNorm,
+  extraerCodigoCausalExplicito,
   extraerFacturasFcoe,
   homologarEmpresaYOrigen,
+  homologarPersonaFacturacion,
   limpiarNombrePersona,
   limpiarTextoUtf8,
+  normalizarSeguimientoGlosa,
 } from "@/lib/carteraCruces";
 
 export type DestinoHojaCartera = "glosas" | "pendientes" | "anuladas" | "omitir";
@@ -37,6 +40,7 @@ export type FilaGlosaExcel = {
   pacienteDoc: string;
   medicoNombre: string;
   cups: string;
+  fechaPrestacionServicio: string;
   fechaFactura: string;
   fechaRadicacion: string;
   fechaNotificacionGlosa: string;
@@ -52,6 +56,8 @@ export type FilaGlosaExcel = {
   notaCredito: string;
   facturador: string;
   responsableRespuesta: string;
+  seguimientoEstado: string;
+  valorSeguimiento: number | null;
   estado: string;
   datosOriginales: Record<string, string>;
 };
@@ -439,6 +445,7 @@ function puntajeFilaEncabezado(celdas: string[]): number {
     "radicacion", "anulacion", "reemplaz", "rips", "cups", "medico", "nombre_medico",
     "paciente", "primer_nom", "num_id", "contrato", "uf", "nombre_uf", "unidad",
     "descripcion", "observacion", "estado", "sede", "puntoatencion",
+    "prestacion", "seguimiento", "levantamiento", "ratificacion", "nit",
   ];
   let puntos = 0;
   for (const c of noVacias) {
@@ -568,6 +575,11 @@ export function mapearFilasSegunDestino(
       const atencionCol = obtenerCampo(raw, encabezados, [(h) => h.includes("consulta o cirugia") || h.includes("consulta / cirugia") || h.includes("tipo atencion")]);
       const sedeCol = obtenerCampo(raw, encabezados, [(h) => h === "sede"]);
 
+      const fPrest = normalizarFechaExcel(
+        obtenerCampo(raw, encabezados, [
+          (h) => h.includes("prestacion") || h.includes("fecha servicio") || h.includes("fecha atencion"),
+        ])
+      );
       const fFact = normalizarFechaExcel(
         obtenerCampo(raw, encabezados, [(h) => h.includes("fecha factura") || h.includes("elaboracion") || h.includes("emision")])
       );
@@ -615,10 +627,29 @@ export function mapearFilasSegunDestino(
       const notaCredito =
         ncRaw.toUpperCase() === "NA" || ncRaw.toUpperCase() === "NO APLICA" ? "N/A" : ncRaw;
 
-      const facturador = obtenerCampo(raw, encabezados, [(h) => h.includes("facturador")]).toUpperCase();
-      const responsable = obtenerCampo(raw, encabezados, [
-        (h) => h.includes("responsable"),
-      ]).toUpperCase();
+      const facturador = homologarPersonaFacturacion(
+        obtenerCampo(raw, encabezados, [(h) => h.includes("facturador")])
+      );
+      const responsable = homologarPersonaFacturacion(
+        obtenerCampo(raw, encabezados, [(h) => h.includes("responsable")])
+      );
+      const seguimientoEstado = normalizarSeguimientoGlosa(
+        obtenerCampo(raw, encabezados, [
+          (h) => h.includes("seguimiento") || h.includes("levantamiento") || h.includes("ratificacion"),
+        ])
+      );
+      const vSegTxt = obtenerCampo(raw, encabezados, [
+        (h) =>
+          h.includes("valor seguimiento") ||
+          h.includes("valor pagado") ||
+          h.includes("valor levantado") ||
+          h.includes("valor ratificado"),
+      ]);
+      const valorSeguimiento = vSegTxt === "" ? null : normalizarNumeroMoneda(vSegTxt);
+      const codigoDetectado =
+        codRaw ||
+        extraerCodigoCausalExplicito(motivoGlosa) ||
+        (tipoGlosa === "DEVOLUCION" ? "DE" : "");
 
       const estRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("estado") || h.includes("desenlace")]).toUpperCase();
       let estado = "PENDIENTE";
@@ -658,6 +689,7 @@ export function mapearFilasSegunDestino(
         pacienteDoc: docRaw,
         medicoNombre: limpiarNombrePersona(medRaw),
         cups: cupsRaw,
+        fechaPrestacionServicio: fPrest,
         fechaFactura: fFact,
         fechaRadicacion: fRad,
         fechaNotificacionGlosa: fNot,
@@ -667,12 +699,14 @@ export function mapearFilasSegunDestino(
         valorAceptado: vAcep,
         tipoGlosa,
         alcance,
-        motivoCodigo: codRaw,
+        motivoCodigo: codigoDetectado,
         motivoGlosa,
         observacionInterna: obs,
         notaCredito,
         facturador,
-        responsableRespuesta: responsable || facturador,
+        responsableRespuesta: responsable,
+        seguimientoEstado,
+        valorSeguimiento,
         estado,
         datosOriginales: raw,
       });
@@ -724,9 +758,11 @@ export function mapearFilasSegunDestino(
       const facsObs = extraerFacturasFcoe(`${facCol} ${obs}`);
       const facturaAsociada = facsObs[0] || "";
 
-      const responsable = obtenerCampo(raw, encabezados, [
-        (h) => h === "responsable" || h.includes("responsable facturacion"),
-      ]).toUpperCase();
+      const responsable = homologarPersonaFacturacion(
+        obtenerCampo(raw, encabezados, [
+          (h) => h === "responsable" || h.includes("responsable facturacion"),
+        ])
+      );
       const autorizacion = obtenerCampo(raw, encabezados, [(h) => h.includes("autorizacion")]);
       const cantNum = normalizarNumeroMoneda(obtenerCampo(raw, encabezados, [(h) => h.includes("cantidad")]));
       const puntoAt = obtenerCampo(raw, encabezados, [(h) => h.includes("puntoatencion") || h.includes("punto atencion") || h === "sede"]);
@@ -817,7 +853,9 @@ export function mapearFilasSegunDestino(
       const facturaReemplaza = facsReemp[0] || (reempRaw.toUpperCase() !== "N/A" && reempRaw.toUpperCase() !== "NO APLICA" ? reempRaw : "");
       const rips = obtenerCampo(raw, encabezados, [(h) => h === "rips"]);
       const revisionFinanciera = obtenerCampo(raw, encabezados, [(h) => h.includes("revision financiera")]);
-      const responsable = obtenerCampo(raw, encabezados, [(h) => h.includes("responsable")]).toUpperCase();
+      const responsable = homologarPersonaFacturacion(
+        obtenerCampo(raw, encabezados, [(h) => h.includes("responsable")])
+      );
       const estCol = obtenerCampo(raw, encabezados, [(h) => h.includes("estado")]).toUpperCase();
 
       const estadoGestion: "ANULADA" | "REEMPLAZADA" | "LEGALIZADA" =

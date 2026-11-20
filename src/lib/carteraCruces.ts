@@ -168,7 +168,9 @@ const CATALOGO_EMPRESAS_SISMA: {
   },
   {
     match: (t, nit) =>
-      nit.startsWith("800088702") || t.includes("SURAMERICANA") || t.includes("EPS SURA") || t === "SURA",
+      nit.startsWith("800088702") ||
+      t.includes("SURAMERICANA") ||
+      (t.includes("SURA") && !t.includes("POLIZA") && !t.includes("SEGURO")),
     nit: "800088702",
     corta: "EPS SURA",
     homologada: "EPS Suramericana",
@@ -574,4 +576,248 @@ export function clasificarAtencionYSede(input: {
     sedeCorta,
     esQuirurgico,
   };
+}
+
+/* -------------------------------------------------------------------------
+   UNIFICACIÓN OFICIAL DE ERP + NIT, FACTURADOR/RESPONSABLE, 6 CAUSALES Y SEGUIMIENTO
+   ------------------------------------------------------------------------- */
+
+export type CodigoCausalNormativa = "TA" | "AU" | "SO" | "DE" | "CO" | "FA";
+
+export type CausaNormativaOficial = {
+  codigo: CodigoCausalNormativa;
+  nombre: string;
+  descripcion: string;
+  color: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+};
+
+export const CAUSAS_NORMATIVAS_OFICIALES: CausaNormativaOficial[] = [
+  {
+    codigo: "TA",
+    nombre: "Tarifas",
+    descripcion: "Diferencias entre los valores cobrados y los precios pactados en el contrato o fijados por ley.",
+    color: "#0284C7",
+    badgeBg: "#F0F9FF",
+    badgeText: "#0369A1",
+    badgeBorder: "#BAE6FD",
+  },
+  {
+    codigo: "AU",
+    nombre: "Autorizaciones",
+    descripcion: "Servicios prestados sin el debido aval o número de autorización acordado con la ERP.",
+    color: "#D97706",
+    badgeBg: "#FFFBEB",
+    badgeText: "#B45309",
+    badgeBorder: "#FDE68A",
+  },
+  {
+    codigo: "SO",
+    nombre: "Soportes",
+    descripcion: "Inconsistencia, enmendadura o ausencia parcial/total de los documentos requeridos (ej. historia clínica).",
+    color: "#059669",
+    badgeBg: "#ECFDF5",
+    badgeText: "#047857",
+    badgeBorder: "#A7F3D0",
+  },
+  {
+    codigo: "DE",
+    nombre: "Devoluciones",
+    descripcion: "Causales que afectan de forma total la factura por falta de requisitos esenciales para su radicación o trámite.",
+    color: "#E11D48",
+    badgeBg: "#FFF1F2",
+    badgeText: "#BE123C",
+    badgeBorder: "#FECDD3",
+  },
+  {
+    codigo: "CO",
+    nombre: "Cobertura",
+    descripcion: "Tecnologías o servicios prestados que no corresponden al Plan de Beneficios (PBS) a cargo de esa entidad.",
+    color: "#7C3AED",
+    badgeBg: "#F5F3FF",
+    badgeText: "#6D28D9",
+    badgeBorder: "#DDD6FE",
+  },
+  {
+    codigo: "FA",
+    nombre: "Facturación",
+    descripcion: "Diferencias en cantidades de servicios, errores administrativos o copagos mal calculados.",
+    color: "#2563EB",
+    badgeBg: "#EFF6FF",
+    badgeText: "#1D4ED8",
+    badgeBorder: "#BFDBFE",
+  },
+];
+
+export function causaNormativa6De(motivoCodigo?: string | null, tipoGlosa?: string | null): string {
+  const pref = String(motivoCodigo || "").trim().toUpperCase().slice(0, 2);
+  if (
+    pref === "TA" ||
+    pref === "AU" ||
+    pref === "SO" ||
+    pref === "DE" ||
+    pref === "CO" ||
+    pref === "FA"
+  ) {
+    return pref;
+  }
+  if (!pref && String(tipoGlosa || "").trim().toUpperCase().startsWith("DEVOL")) {
+    return "DE";
+  }
+  return "";
+}
+
+/** Extrae el código normativo únicamente cuando viene escrito de forma explícita en el texto fuente. */
+export function extraerCodigoCausalExplicito(texto?: string | null): string {
+  const s = limpiarTextoUtf8(texto).toUpperCase();
+  if (!s) return "";
+  const m = /^\b(TA|AU|SO|DE|CO|FA)(\d{2,4})?\b/.exec(s);
+  if (!m) return "";
+  const sub = m[2] ? m[2].slice(0, 2) : "";
+  return sub ? `${m[1]}${sub}` : m[1];
+}
+
+/** Unifica nombres de ERP y anexa el NIT contable real verificado en SISMA (jamás inventa NITs). */
+export function normalizarEmpresaNitUnificada(
+  raw?: string | null,
+  nitRaw?: string | null
+): { nit: string; nombre: string; homologada: string; esMutual: boolean } {
+  const limpio = limpiarTextoUtf8(raw);
+  const nitLimpio = String(nitRaw || "").replace(/[^0-9]/g, "");
+  if (!limpio && !nitLimpio) {
+    return { nit: "", nombre: "", homologada: "", esMutual: false };
+  }
+  const info = homologarEmpresaYOrigen({ empresa: limpio, nit: nitLimpio });
+  return {
+    nit: info.nit,
+    nombre: info.empresaCorta === "SIN ENTIDAD" ? "" : info.empresaCorta,
+    homologada: info.empresaHomologada === "Sin entidad en fuente" ? "" : info.empresaHomologada,
+    esMutual: info.esMutual,
+  };
+}
+
+/**
+ * Unifica nombres del equipo de Facturación y Respuesta de Glosas eliminando espacios
+ * sobrantes o nombres recortados (p. ej. "ERIKA" -> "ERIKA ALZATE", "YULEIBIS " -> "YULEIBIS").
+ * Si viene vacío o con marcador sin asignar, devuelve "" (Cero datos inventados).
+ */
+export function homologarPersonaFacturacion(raw?: string | null): string {
+  const base = limpiarNombrePersona(raw);
+  if (!base) return "";
+  const up = sinAcentosUpper(base).replace(/\s+/g, " ").trim();
+  if (!up || up === "SIN ASIGNAR EN WORKCENTER") return "";
+  if (up === "ERIKA" || up === "ERIKA ALZATE") return "ERIKA ALZATE";
+  if (up === "YULEIBIS" || up.startsWith("YULEIBIS ")) return "YULEIBIS";
+  if (up === "ELIZABETH DE HOYOS" || up === "ELIZABET DE HOYOS") return "ELIZABET DE HOYOS";
+  if (up === "TILSON" || up === "TILSON GUZMAN") return "TILSON GUZMAN";
+  if (up === "AURA" || up === "AURA BOTERO") return "AURA BOTERO";
+  if (up === "MILENA" || up === "MILENA MEDINA") return "MILENA MEDINA";
+  if (up === "MARIA PAOLA") return "MARIA PAOLA";
+  if (up === "MARIA ALEJANDRA") return "MARIA ALEJANDRA";
+  if (up === "MARIA JOSE") return "MARIA JOSE";
+  return up;
+}
+
+export type SeguimientoGlosaCodigo =
+  | ""
+  | "PAGO_COMPLETO"
+  | "PAGO_PARCIAL"
+  | "LEVANTAMIENTO_COMPLETO"
+  | "LEVANTAMIENTO_PARCIAL"
+  | "RATIFICACION_GLOSA";
+
+export const OPCIONES_SEGUIMIENTO_GLOSA: {
+  id: SeguimientoGlosaCodigo;
+  etiqueta: string;
+  corto: string;
+  requiereValor: boolean;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+}[] = [
+  {
+    id: "",
+    etiqueta: "En trámite / Sin seguimiento",
+    corto: "En trámite",
+    requiereValor: false,
+    badgeBg: "#F8FAFC",
+    badgeText: "#64748B",
+    badgeBorder: "#E2E8F0",
+  },
+  {
+    id: "PAGO_COMPLETO",
+    etiqueta: "Pago completo",
+    corto: "Pago completo",
+    requiereValor: false,
+    badgeBg: "#ECFDF5",
+    badgeText: "#047857",
+    badgeBorder: "#A7F3D0",
+  },
+  {
+    id: "PAGO_PARCIAL",
+    etiqueta: "Pago parcial",
+    corto: "Pago parcial",
+    requiereValor: true,
+    badgeBg: "#F0F9FF",
+    badgeText: "#0369A1",
+    badgeBorder: "#BAE6FD",
+  },
+  {
+    id: "LEVANTAMIENTO_COMPLETO",
+    etiqueta: "Levantamiento de glosa completo",
+    corto: "Levantamiento completo",
+    requiereValor: false,
+    badgeBg: "#DCFCE7",
+    badgeText: "#15803D",
+    badgeBorder: "#86EFAC",
+  },
+  {
+    id: "LEVANTAMIENTO_PARCIAL",
+    etiqueta: "Levantamiento de glosa parcial",
+    corto: "Levantamiento parcial",
+    requiereValor: true,
+    badgeBg: "#FFFBEB",
+    badgeText: "#B45309",
+    badgeBorder: "#FDE68A",
+  },
+  {
+    id: "RATIFICACION_GLOSA",
+    etiqueta: "Ratificación de glosa",
+    corto: "Ratificación glosa",
+    requiereValor: true,
+    badgeBg: "#FFF1F2",
+    badgeText: "#BE123C",
+    badgeBorder: "#FECDD3",
+  },
+];
+
+export function normalizarSeguimientoGlosa(raw?: string | null): SeguimientoGlosaCodigo {
+  const s = sinAcentosUpper(raw);
+  if (!s) return "";
+  if (s === "PAGO_COMPLETO" || (s.includes("PAGO") && (s.includes("COMPLETO") || s.includes("TOTAL")))) {
+    return "PAGO_COMPLETO";
+  }
+  if (s === "PAGO_PARCIAL" || (s.includes("PAGO") && s.includes("PARCIAL"))) {
+    return "PAGO_PARCIAL";
+  }
+  if (
+    s === "LEVANTAMIENTO_COMPLETO" ||
+    (s.includes("LEVANT") && (s.includes("COMPLETO") || s.includes("TOTAL")))
+  ) {
+    return "LEVANTAMIENTO_COMPLETO";
+  }
+  if (s === "LEVANTAMIENTO_PARCIAL" || (s.includes("LEVANT") && s.includes("PARCIAL"))) {
+    return "LEVANTAMIENTO_PARCIAL";
+  }
+  if (s === "RATIFICACION_GLOSA" || s.includes("RATIFIC")) {
+    return "RATIFICACION_GLOSA";
+  }
+  return "";
+}
+
+export function etiquetaSeguimientoGlosa(raw?: string | null): string {
+  const cod = normalizarSeguimientoGlosa(raw);
+  return OPCIONES_SEGUIMIENTO_GLOSA.find((o) => o.id === cod)?.etiqueta || "En trámite / Sin seguimiento";
 }

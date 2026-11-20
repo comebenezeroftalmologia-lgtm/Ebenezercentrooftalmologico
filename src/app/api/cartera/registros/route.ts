@@ -3,10 +3,14 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
 import {
   claveFacturaNorm,
+  extraerCodigoCausalExplicito,
   extraerFacturasFcoe,
   homologarEmpresaYOrigen,
+  homologarPersonaFacturacion,
   clasificarAtencionYSede,
   limpiarNombrePersona,
+  normalizarEmpresaNitUnificada,
+  normalizarSeguimientoGlosa,
 } from "@/lib/carteraCruces";
 
 // API de registros de Cartera y Glosas.
@@ -95,6 +99,11 @@ const CAUSALES_NORMATIVAS_BASE: { codigo: string; familia: string; nombre: strin
     familia: "Cobertura",
     nombre: "Tecnologías o servicios prestados que no corresponden al Plan de Beneficios (PBS) a cargo de esa entidad.",
   },
+  {
+    codigo: "DE",
+    familia: "Devoluciones",
+    nombre: "Causales que afectan de forma total la factura por falta de requisitos esenciales para su radicación o trámite.",
+  },
 ];
 
 async function asegurarCausalNormativa(
@@ -124,12 +133,42 @@ async function idCatalogo(
   tabla: "cf_empresas" | "cf_responsables",
   nombre: unknown
 ): Promise<string | null> {
-  const n = txt(nombre)?.trim();
+  const raw = txt(nombre)?.trim();
+  if (!raw) return null;
+  const n =
+    tabla === "cf_empresas"
+      ? normalizarEmpresaNitUnificada(raw).nombre || raw.toUpperCase()
+      : homologarPersonaFacturacion(raw);
   if (!n) return null;
   const { data } = await db.from(tabla).select("id").ilike("nombre", n).maybeSingle();
   if (data?.id) return data.id as string;
   const ins = await db.from(tabla).insert({ nombre: n }).select("id").maybeSingle();
   return (ins.data?.id as string) ?? null;
+}
+
+function construirOrigenGestion(origenPrevio: unknown, filaInput: Fila): Record<string, unknown> {
+  const prev =
+    origenPrevio && typeof origenPrevio === "object" && !Array.isArray(origenPrevio)
+      ? (origenPrevio as Record<string, unknown>)
+      : {};
+  const prevGest =
+    prev.gestion_ebenezer && typeof prev.gestion_ebenezer === "object" && !Array.isArray(prev.gestion_ebenezer)
+      ? (prev.gestion_ebenezer as Record<string, unknown>)
+      : {};
+  const nextGest: Record<string, unknown> = { ...prevGest };
+  if (filaInput.fechaPrestacionServicio !== undefined) {
+    nextGest.fechaPrestacionServicio = fecha(filaInput.fechaPrestacionServicio);
+  }
+  if (filaInput.seguimientoEstado !== undefined) {
+    nextGest.seguimientoEstado = normalizarSeguimientoGlosa(strLimpio(filaInput.seguimientoEstado)) || null;
+  }
+  if (filaInput.valorSeguimiento !== undefined) {
+    nextGest.valorSeguimiento =
+      filaInput.valorSeguimiento === null || filaInput.valorSeguimiento === ""
+        ? null
+        : num(filaInput.valorSeguimiento);
+  }
+  return { ...prev, gestion_ebenezer: nextGest };
 }
 
 /** Registra el cambio en cf_historial. Nunca interrumpe la operacion. */
@@ -196,7 +235,7 @@ export async function GET() {
       "cf_empresas(nombre), cf_responsables(nombre)"
     ),
     db.from("cf_glosas").select(
-      "id, tipo, alcance, motivo_codigo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, " +
+      "id, tipo, alcance, motivo_codigo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, origen, " +
       "cf_facturas(numero, anio, periodo, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
       "empresa_nombre_original, cf_empresas(nombre)), " +
       "facturador:cf_responsables!cf_glosas_facturador_id_fkey(nombre), " +
@@ -236,6 +275,7 @@ export async function GET() {
     descripciones: string[];
     contratos: string[];
     ufs: string[];
+    fechasServicio: string[];
   };
   const crucePorFactura = new Map<string, AcumClinicoFactura>();
   const agregarUnico = (lista: string[], val: string) => {
@@ -284,6 +324,7 @@ export async function GET() {
         descripciones: [],
         contratos: [],
         ufs: [],
+        fechasServicio: [],
       };
       agregarUnico(acum.pacientes, pacNombre);
       agregarUnico(acum.docs, pacDoc);
@@ -292,6 +333,7 @@ export async function GET() {
       agregarUnico(acum.descripciones, descStr);
       agregarUnico(acum.contratos, contratoStr);
       agregarUnico(acum.ufs, ufStr);
+      agregarUnico(acum.fechasServicio, strLimpio(r.fecha_servicio).slice(0, 10));
       crucePorFactura.set(k, acum);
     }
 
@@ -323,7 +365,7 @@ export async function GET() {
       cantidad: Number(r.cantidad) || 1,
       facturaAsociada,
       valorServicio: Number(r.valor_servicio) || 0,
-      responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre),
+      responsable: homologarPersonaFacturacion(strLimpio((r.cf_responsables as Fila | null)?.nombre)),
       observaciones: obsStr,
       estado: strLimpio(r.estado) || "PENDIENTE",
     };
@@ -393,7 +435,7 @@ export async function GET() {
       rips: strLimpio(r.rips),
       revisionFinanciera: strLimpio(r.revision_financiera),
       preagrupado: "",
-      responsable: strLimpio((r.cf_responsables as Fila | null)?.nombre) || "SIN ASIGNAR",
+      responsable: homologarPersonaFacturacion(strLimpio((r.cf_responsables as Fila | null)?.nombre)) || "SIN ASIGNAR",
       estadoGestion: strLimpio(r.estado) || "RADICADA",
     };
   };
@@ -431,11 +473,36 @@ export async function GET() {
       motivoTexto: `${motivoStr} ${obsStr}`,
     });
 
+    const origenObj =
+      r.origen && typeof r.origen === "object" && !Array.isArray(r.origen)
+        ? (r.origen as Record<string, unknown>)
+        : {};
+    const gestObj =
+      origenObj.gestion_ebenezer &&
+      typeof origenObj.gestion_ebenezer === "object" &&
+      !Array.isArray(origenObj.gestion_ebenezer)
+        ? (origenObj.gestion_ebenezer as Record<string, unknown>)
+        : {};
+    const fechaPrestGuardada = strLimpio(gestObj.fechaPrestacionServicio).slice(0, 10);
+    const fechaPrestCruce = clinico?.fechasServicio[0] || "";
+    const segEst = normalizarSeguimientoGlosa(strLimpio(gestObj.seguimientoEstado));
+    const valSeg =
+      gestObj.valorSeguimiento === null ||
+      gestObj.valorSeguimiento === undefined ||
+      gestObj.valorSeguimiento === ""
+        ? null
+        : Number(gestObj.valorSeguimiento);
+    const factUnif = homologarPersonaFacturacion(strLimpio((r.facturador as Fila | null)?.nombre));
+    const respUnif = homologarPersonaFacturacion(strLimpio((r.aceptacion as Fila | null)?.nombre));
+    const empCanonica = empInfo.empresaCorta !== "SIN ENTIDAD" ? empInfo.empresaCorta : empBase;
+    const codBD = strLimpio(r.motivo_codigo);
+    const tipoBD = strLimpio(r.tipo) || "GLOSA";
+
     return {
       id: String(r.id),
       subtabla: String(r.estado),
-      empresa: empBase,
-      empresaOriginal: empOrig,
+      empresa: empCanonica,
+      empresaOriginal: empOrig || empBase,
       empresaHomologada: empInfo.empresaHomologada,
       nit: empInfo.nit,
       esMutual: empInfo.esMutual,
@@ -449,6 +516,7 @@ export async function GET() {
       medicoNombre: clinico ? clinico.medicos.join(" / ") : "",
       cups: clinico ? clinico.cups.join(", ") : "",
       servicioDescripcion: clinico ? clinico.descripciones.join(" · ") : "",
+      fechaPrestacionServicio: fechaPrestGuardada || fechaPrestCruce,
       fechaFactura: (f.fecha_elaboracion as string) || "",
       periodo: strLimpio(f.periodo),
       anio: f.anio ? String(f.anio) : "",
@@ -463,14 +531,16 @@ export async function GET() {
         r.valor_aceptado === null || r.valor_aceptado === undefined
           ? null
           : Number(r.valor_aceptado),
-      motivoCodigo: strLimpio(r.motivo_codigo),
+      motivoCodigo: codBD || extraerCodigoCausalExplicito(motivoStr) || (tipoBD === "DEVOLUCION" ? "DE" : ""),
       motivoGlosa: motivoStr,
-      facturador: strLimpio((r.facturador as Fila | null)?.nombre),
-      responsableAceptacion: strLimpio((r.aceptacion as Fila | null)?.nombre),
-      responsableRespuesta: strLimpio((r.aceptacion as Fila | null)?.nombre),
+      facturador: factUnif,
+      responsableAceptacion: respUnif,
+      responsableRespuesta: respUnif,
+      seguimientoEstado: segEst,
+      valorSeguimiento: valSeg,
       observacionInterna: obsStr,
       notaCredito: strLimpio(r.nota_credito),
-      tipoGlosa: strLimpio(r.tipo) || "GLOSA",
+      tipoGlosa: tipoBD,
       alcance: strLimpio(r.alcance),
       estado: strLimpio(r.estado) || "PENDIENTE",
     };
@@ -492,8 +562,18 @@ export async function GET() {
   ];
 
   const catalogos = {
-    empresas: unicos((empresasCat.data || []).map((x) => x.nombre as string)),
-    responsables: unicos((responsablesCat.data || []).map((x) => x.nombre as string)),
+    empresas: unicos([
+      ...(empresasCat.data || []).map((x) => {
+        const rawE = String(x.nombre || "");
+        return normalizarEmpresaNitUnificada(rawE).nombre || rawE;
+      }),
+      ...filasGlosa.map((g) => g.empresa),
+    ]),
+    responsables: unicos([
+      ...(responsablesCat.data || []).map((x) => homologarPersonaFacturacion(String(x.nombre || ""))),
+      ...filasGlosa.map((g) => g.facturador),
+      ...filasGlosa.map((g) => g.responsableAceptacion),
+    ]),
     motivos: unicos(filasGlosa.map((g) => g.motivoGlosa)),
     causales: causalesCompletas,
     anios: unicos(filasGlosa.map((g) => g.anio)),
@@ -558,13 +638,11 @@ export async function POST(request: Request) {
       if (!numero) {
         return NextResponse.json({ ok: false, error: "Falta el numero de factura" }, { status: 400 });
       }
-      const { data: empresa } = await db
-        .from("cf_empresas").select("id").eq("nombre", txt(fila.empresa) ?? "").maybeSingle();
-      const { data: resp } = await db
-        .from("cf_responsables").select("id").eq("nombre", txt(fila.responsable) ?? "").maybeSingle();
+      const empresaIdAnul = await idCatalogo(db, "cf_empresas", fila.empresa);
+      const respIdAnul = await idCatalogo(db, "cf_responsables", fila.responsable);
 
       const valores = {
-        empresa_id: empresa?.id ?? null,
+        empresa_id: empresaIdAnul,
         empresa_nombre_original: txt(fila.empresaOriginal) ?? txt(fila.empresa),
         anio: fila.anio ? Number(fila.anio) : null,
         periodo: txt(fila.periodo),
@@ -577,7 +655,7 @@ export async function POST(request: Request) {
         motivo_anulacion_texto: txt(fila.motivo),
         rips: txt(fila.rips),
         revision_financiera: txt(fila.revisionFinanciera),
-        responsable_id: resp?.id ?? null,
+        responsable_id: respIdAnul,
         estado:
           entidad === "legalizadas"
             ? "LEGALIZADA"
@@ -692,6 +770,10 @@ export async function POST(request: Request) {
       const codCausal = txt(fila.motivoCodigo)?.trim().toUpperCase() || null;
       await asegurarCausalNormativa(db, codCausal);
 
+      const existente = esNuevo
+        ? null
+        : (await db.from("cf_glosas").select("id, estado, origen").eq("id", String(fila.id)).maybeSingle()).data;
+
       const estado = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
       const ncNormalizada =
         txt(fila.notaCredito)?.trim().toUpperCase() === "NA" ||
@@ -723,11 +805,8 @@ export async function POST(request: Request) {
         nota_credito: ncNormalizada,
         facturador_id: factId,
         responsable_aceptacion_id: acepId,
+        origen: construirOrigenGestion(existente?.origen, fila),
       };
-
-      const existente = esNuevo
-        ? null
-        : (await db.from("cf_glosas").select("id, estado").eq("id", String(fila.id)).maybeSingle()).data;
 
       let id: string | null = existente?.id ?? null;
       if (id) {
@@ -750,14 +829,12 @@ export async function POST(request: Request) {
 
     // ---- pendientes por facturar ----
     if (entidad === "pendientes") {
-      const { data: empresa } = await db
-        .from("cf_empresas").select("id").eq("nombre", txt(fila.empresa) ?? "").maybeSingle();
-      const { data: resp } = await db
-        .from("cf_responsables").select("id").eq("nombre", txt(fila.responsable) ?? "").maybeSingle();
+      const empresaIdPend = await idCatalogo(db, "cf_empresas", fila.empresa);
+      const respIdPend = await idCatalogo(db, "cf_responsables", fila.responsable);
 
       const estado = String(fila.estado || "PENDIENTE").toUpperCase();
       const valores = {
-        empresa_id: empresa?.id ?? null,
+        empresa_id: empresaIdPend,
         empresa_nombre_original: txt(fila.empresaOriginal) ?? txt(fila.empresa),
         contrato: txt(fila.contrato),
         fecha_servicio: fecha(fila.fechaServicio),
@@ -770,7 +847,7 @@ export async function POST(request: Request) {
         estado: ["PENDIENTE", "FACTURADO", "ANULADO", "NO_FACTURABLE"].includes(estado)
           ? estado
           : "PENDIENTE",
-        responsable_id: resp?.id ?? null,
+        responsable_id: respIdPend,
         observaciones: txt(fila.observaciones),
       };
 
@@ -854,16 +931,17 @@ export async function POST(request: Request) {
         ? (body.fila as unknown as Fila[])
         : [fila];
 
-      // Validación estricta previa: Nota Crédito obligatoria (con número o N/A) sin inventar valores
+      // Validación previa de Nota Crédito cuando se informa (conserva vacío como null si el Excel histórico no la trae)
       for (let i = 0; i < listaFilas.length; i++) {
         const item = listaFilas[i];
         const numFact = String(item.factura || "").trim().toUpperCase().replace(/\s+/g, "");
         if (!numFact) continue;
-        if (!esNotaCreditoValida(item.notaCredito)) {
+        const ncVal = String(item.notaCredito ?? "").trim();
+        if (ncVal !== "" && !esNotaCreditoValida(ncVal)) {
           return NextResponse.json(
             {
               ok: false,
-              error: `Fila ${i + 1} (${numFact}): la Nota Crédito es obligatoria. Ingresa el número consecutivo o N/A.`,
+              error: `Fila ${i + 1} (${numFact}): la Nota Crédito debe contener el número consecutivo o N/A.`,
             },
             { status: 400 }
           );
@@ -900,8 +978,11 @@ export async function POST(request: Request) {
         const rId = await idCatalogo(db, "cf_responsables", item.responsableRespuesta || item.responsableAceptacion);
         const notif = fecha(item.fechaNotificacionGlosa);
         const rawNc = txt(item.notaCredito)?.trim() || "";
-        const nc =
-          rawNc.toUpperCase() === "NA" || rawNc.toUpperCase() === "NO APLICA" ? "N/A" : rawNc;
+        const nc = !rawNc
+          ? null
+          : rawNc.toUpperCase() === "NA" || rawNc.toUpperCase() === "NO APLICA"
+          ? "N/A"
+          : rawNc;
         const codCausal = txt(item.motivoCodigo)?.trim().toUpperCase() || null;
         await asegurarCausalNormativa(db, codCausal);
 
@@ -930,6 +1011,7 @@ export async function POST(request: Request) {
             nota_credito: nc,
             facturador_id: fId,
             responsable_aceptacion_id: rId,
+            origen: construirOrigenGestion(null, item),
           })
           .select("id")
           .maybeSingle();
@@ -956,7 +1038,7 @@ export async function POST(request: Request) {
         db.from("cf_responsables").select("id, nombre"),
         db.from("cf_causales").select("codigo"),
         db.from("cf_facturas").select("id, numero"),
-        db.from("cf_glosas").select("id, factura_id, motivo_texto, valor_glosado"),
+        db.from("cf_glosas").select("id, factura_id, motivo_texto, valor_glosado, origen"),
         db.from("cf_pendientes_facturar").select("id, paciente_num_id, fecha_servicio, cups, valor_servicio, descripcion"),
       ]);
 
@@ -965,8 +1047,9 @@ export async function POST(request: Request) {
         if (e.nombre) mapaEmp.set(e.nombre.trim().toUpperCase(), e.id);
       }
       const obtenerEmpresaId = async (nombreRaw: unknown): Promise<string | null> => {
-        const n = txt(nombreRaw)?.trim().toUpperCase();
-        if (!n) return null;
+        const raw = txt(nombreRaw)?.trim();
+        if (!raw) return null;
+        const n = normalizarEmpresaNitUnificada(raw).nombre || raw.toUpperCase();
         const prev = mapaEmp.get(n);
         if (prev) return prev;
         const ins = await db.from("cf_empresas").insert({ nombre: n }).select("id").maybeSingle();
@@ -980,7 +1063,7 @@ export async function POST(request: Request) {
         if (r.nombre) mapaResp.set(r.nombre.trim().toUpperCase(), r.id);
       }
       const obtenerRespId = async (nombreRaw: unknown): Promise<string | null> => {
-        const n = txt(nombreRaw)?.trim().toUpperCase();
+        const n = homologarPersonaFacturacion(strLimpio(nombreRaw));
         if (!n || n === "SIN ASIGNAR" || n === "N/A") return null;
         const prev = mapaResp.get(n);
         if (prev) return prev;
@@ -1022,10 +1105,16 @@ export async function POST(request: Request) {
       const normClaveTxt = (s: unknown) =>
         strLimpio(s).toUpperCase().replace(/\s+/g, " ").trim().slice(0, 140);
 
-      const mapaGlosaNatural = new Map<string, string>();
-      for (const g of (glosaExist.data || []) as { id: string; factura_id: string; motivo_texto: string | null; valor_glosado: number | null }[]) {
+      const mapaGlosaNatural = new Map<string, { id: string; origen: unknown }>();
+      for (const g of (glosaExist.data || []) as {
+        id: string;
+        factura_id: string;
+        motivo_texto: string | null;
+        valor_glosado: number | null;
+        origen?: unknown;
+      }[]) {
         const k = `${g.factura_id}|${Math.round(Number(g.valor_glosado || 0))}|${normClaveTxt(g.motivo_texto)}`;
-        if (!mapaGlosaNatural.has(k)) mapaGlosaNatural.set(k, g.id);
+        if (!mapaGlosaNatural.has(k)) mapaGlosaNatural.set(k, { id: g.id, origen: g.origen });
       }
 
       const mapaPendNatural = new Map<string, string>();
@@ -1191,24 +1280,39 @@ export async function POST(request: Request) {
           nota_credito: nc,
           facturador_id: fId,
           responsable_aceptacion_id: rId,
-          origen: {
-            archivo: archivoNombre,
-            hoja: strLimpio(item.hojaExcel) || "GLOSAS",
-            fila: Number(item.filaExcel) || null,
-            cargado: hoyCarga,
-            datos: (item.datosOriginales as Record<string, unknown>) || {},
-          },
         };
 
         const claveNat = `${factId}|${Math.round(vGlosado)}|${normClaveTxt(motivoTxt)}`;
-        const idGlosaExist = mapaGlosaNatural.get(claveNat);
-        if (idGlosaExist) {
-          await db.from("cf_glosas").update(valoresGlosa).eq("id", idGlosaExist);
+        const prevGlosa = mapaGlosaNatural.get(claveNat);
+        const origenBaseCarga = {
+          ...(prevGlosa?.origen && typeof prevGlosa.origen === "object"
+            ? (prevGlosa.origen as Record<string, unknown>)
+            : {}),
+          archivo: archivoNombre,
+          hoja: strLimpio(item.hojaExcel) || "GLOSAS",
+          fila: Number(item.filaExcel) || null,
+          cargado: hoyCarga,
+          datos: (item.datosOriginales as Record<string, unknown>) || {},
+        };
+        const patchGest: Fila = {};
+        if (strLimpio(item.fechaPrestacionServicio)) {
+          patchGest.fechaPrestacionServicio = item.fechaPrestacionServicio;
+        }
+        if (strLimpio(item.seguimientoEstado)) {
+          patchGest.seguimientoEstado = item.seguimientoEstado;
+        }
+        if (item.valorSeguimiento !== null && item.valorSeguimiento !== undefined && item.valorSeguimiento !== "") {
+          patchGest.valorSeguimiento = item.valorSeguimiento;
+        }
+        valoresGlosa.origen = construirOrigenGestion(origenBaseCarga, patchGest);
+
+        if (prevGlosa?.id) {
+          await db.from("cf_glosas").update(valoresGlosa).eq("id", prevGlosa.id);
           actualizados++;
         } else {
           const insG = await db.from("cf_glosas").insert(valoresGlosa).select("id").maybeSingle();
           if (insG.data?.id) {
-            mapaGlosaNatural.set(claveNat, String(insG.data.id));
+            mapaGlosaNatural.set(claveNat, { id: String(insG.data.id), origen: valoresGlosa.origen });
             creados++;
           }
         }

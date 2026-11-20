@@ -621,8 +621,18 @@ export default function TableroCarteraAnalytics() {
      toma pantallazo a la cifra, la pega en un informe, y el aviso se
      queda atras. Un numero que no se puede calcular no se pinta. */
   const sinGiros = Boolean(datosSismaVivo?.girosIncompletos);
-  const realCOP = (v: number) => (sinGiros ? "No disponible" : formatCOP(v));
-  const realMillones = (v: number) => (sinGiros ? "—" : formatMillones(v));
+  const realCOP = (v: number) =>
+    sinGiros
+      ? "No disponible"
+      : v < 0
+      ? `$0 (Saldo a favor ${formatCOP(Math.abs(v))})`
+      : formatCOP(v);
+  const realMillones = (v: number) =>
+    sinGiros
+      ? "—"
+      : v < 0
+      ? `$0 (Fav. ${formatMillones(Math.abs(v))})`
+      : formatMillones(v);
 
 
   // 6 Top Bar Filters + Sede & Atención (Consulta / Cirugía)
@@ -1801,6 +1811,8 @@ export default function TableroCarteraAnalytics() {
     "#CA8A04", // Oro viejo
   ];
 
+  const [hoverDonutKey, setHoverDonutKey] = useState<string | null>(null);
+
   const donutCarteraTotal = useMemo(
     () => construirItemsDonut("total", PALETA_DONUT_TOTAL),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1843,12 +1855,11 @@ export default function TableroCarteraAnalytics() {
       }[];
     }
   ) => {
-    const cx = 190;
-    const cy = 240;
-    const rOuter = 112;
-    const rInner = 68;
+    const cx = 122;
+    const cy = 122;
+    const rOuter = 100;
+    const rInner = 64;
 
-    // Solo las entidades con valor > 0 dibujan tajada y línea guía en el anillo
     const itemsConSaldo = datosDonut.items.filter((it) => it.valor > 0);
     const restoUniverso = Math.max(0, datosDonut.totalUniverso - datosDonut.sumaTotal);
     const pctSeleccionTotal =
@@ -1858,10 +1869,9 @@ export default function TableroCarteraAnalytics() {
     const mostrarRestoEnAnillo =
       datosDonut.hayFiltroSubconjunto && restoUniverso > 1;
 
-    // Si hay filtro de subconjunto, cada empresa ocupa su proporción frente al Total General (con mínimo visual de 0.055 rad para que sea visible y señalable sin repartir 100% entre las filtradas)
     const barridosRaw = itemsConSaldo.map((it) =>
       Math.max(
-        mostrarRestoEnAnillo ? 0.055 : 0.018,
+        mostrarRestoEnAnillo ? 0.045 : 0.015,
         (it.pct / 100) * Math.PI * 2
       )
     );
@@ -1881,100 +1891,17 @@ export default function TableroCarteraAnalytics() {
       const barrido = barridosRaw[idx] * factorEscala;
       const startAngle = anguloAcum;
       const endAngle = anguloAcum + barrido;
-      const midAngle = startAngle + barrido / 2;
       anguloAcum = endAngle;
-      return { ...it, idx, startAngle, endAngle, midAngle };
+      return { ...it, idx, startAngle, endAngle };
     });
 
-    type CalloutSlot = (typeof segmentos)[number] & {
-      lado: "izq" | "der";
-      anchorX: number;
-      anchorY: number;
-      elbowX: number;
-      labelY: number;
-      lineEndX: number;
-      textX: number;
-      pasoSuperiorY?: number;
-    };
-
-    const izqRaw: CalloutSlot[] = [];
-    const derRaw: CalloutSlot[] = [];
-
-    // Repartir TODAS las entidades con saldo entre izquierda y derecha del anillo sin cruzar el círculo
-    const corteIzqMax = Math.ceil((segmentos.length - 1) / 2);
-    segmentos.forEach((seg, idx) => {
-      const cos = Math.cos(seg.midAngle);
-      const sin = Math.sin(seg.midAngle);
-      const anchorX = cx + (rOuter + 1) * cos;
-      const anchorY = cy + (rOuter + 1) * sin;
-
-      const vaDerecha = mostrarRestoEnAnillo
-        ? idx % 2 === 0
-        : idx === 0 || (cos >= 0 && idx <= 2) || idx > corteIzqMax;
-      const lado: "izq" | "der" = vaDerecha ? "der" : "izq";
-
-      const requierePasoSuperior = lado === "der" && anchorX < cx - 2;
-      const ordenSuperior = Math.max(0, idx - (corteIzqMax + 1));
-      const pasoSuperiorY = requierePasoSuperior
-        ? Math.max(12, cy - rOuter - 10 - ordenSuperior * 6.5)
-        : undefined;
-
-      const labelYInicial =
-        !mostrarRestoEnAnillo && idx === 0
-          ? cy + 85
-          : requierePasoSuperior && pasoSuperiorY !== undefined
-          ? pasoSuperiorY
-          : cy + (rOuter + 6) * sin;
-
-      const slot: CalloutSlot = {
-        ...seg,
-        lado,
-        anchorX,
-        anchorY,
-        elbowX: lado === "der" ? cx + rOuter + 10 : cx - rOuter - 10,
-        labelY: labelYInicial,
-        lineEndX: lado === "der" ? 390 : -10,
-        textX: lado === "der" ? 390 : -10,
-        pasoSuperiorY,
-      };
-      if (lado === "der") derRaw.push(slot);
-      else izqRaw.push(slot);
-    });
-
-    const prepararLadoSinMontar = (lista: CalloutSlot[]) => {
-      const ordenados = [...lista].sort((a, b) => a.labelY - b.labelY);
-      const minGap = 20.5;
-      const minY = 56;
-      const maxY = 368;
-      for (let i = 0; i < ordenados.length; i++) {
-        ordenados[i].labelY = Math.max(minY, Math.min(maxY, ordenados[i].labelY));
-        if (i > 0 && ordenados[i].labelY - ordenados[i - 1].labelY < minGap) {
-          ordenados[i].labelY = ordenados[i - 1].labelY + minGap;
-        }
-      }
-      for (let i = ordenados.length - 1; i >= 0; i--) {
-        if (ordenados[i].labelY > maxY) {
-          ordenados[i].labelY = maxY;
-        }
-        if (i > 0 && ordenados[i].labelY - ordenados[i - 1].labelY < minGap) {
-          ordenados[i - 1].labelY = Math.max(minY, ordenados[i].labelY - minGap);
-        }
-      }
-      return ordenados;
-    };
-
-    const callouts = [
-      ...prepararLadoSinMontar(izqRaw),
-      ...prepararLadoSinMontar(derRaw),
-    ];
-
-    const crearArcoDonutPath = (start: number, end: number) => {
+    const crearArcoDonutPath = (start: number, end: number, outerR = rOuter) => {
       const delta = Math.min(Math.PI * 2 - 0.001, Math.max(0.01, end - start));
       const e = start + delta;
-      const x1 = cx + rOuter * Math.cos(start);
-      const y1 = cy + rOuter * Math.sin(start);
-      const x2 = cx + rOuter * Math.cos(e);
-      const y2 = cy + rOuter * Math.sin(e);
+      const x1 = cx + outerR * Math.cos(start);
+      const y1 = cy + outerR * Math.sin(start);
+      const x2 = cx + outerR * Math.cos(e);
+      const y2 = cy + outerR * Math.sin(e);
       const x3 = cx + rInner * Math.cos(e);
       const y3 = cy + rInner * Math.sin(e);
       const x4 = cx + rInner * Math.cos(start);
@@ -1982,39 +1909,49 @@ export default function TableroCarteraAnalytics() {
       const largeArc = delta > Math.PI ? 1 : 0;
       return [
         `M ${x1.toFixed(2)} ${y1.toFixed(2)}`,
-        `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
+        `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
         `L ${x3.toFixed(2)} ${y3.toFixed(2)}`,
         `A ${rInner} ${rInner} 0 ${largeArc} 0 ${x4.toFixed(2)} ${y4.toFixed(2)}`,
         "Z",
       ].join(" ");
     };
 
+    const itemHover = datosDonut.items.find(
+      (it) => hoverDonutKey === `${etiquetaCentro}:${it.empCorta}`
+    );
+    const maxPctItem = Math.max(1, ...datosDonut.items.map((x) => x.pct));
+
     return (
       <div
-        className="rounded-xl p-4 sm:p-5 border shadow-2xs flex flex-col"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E2ECF8" }}
+        className="rounded-2xl p-5 border shadow-[0_2px_10px_rgba(14,36,94,0.035)] flex flex-col justify-between"
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#DCE6F5" }}
+        onMouseLeave={() => setHoverDonutKey(null)}
       >
-        <h4
-          className="text-[13.5px] sm:text-[14.5px] font-bold tracking-tight mb-2"
-          style={{ color: "#0F172A" }}
-        >
-          {titulo}
-        </h4>
+        <div className="flex items-center justify-between gap-2 pb-3 mb-2 border-b border-[#F1F5F9]">
+          <h4
+            className="text-[14px] sm:text-[14.5px] font-extrabold tracking-tight"
+            style={{ color: "#0E245E" }}
+          >
+            {titulo}
+          </h4>
+          <span className="shrink-0 rounded-full border border-[#E2ECF8] bg-[#F8FAFC] px-2.5 py-0.5 text-[10.5px] font-bold text-[#475569]">
+            {itemsConSaldo.length} {itemsConSaldo.length === 1 ? "entidad" : "entidades"}
+          </span>
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
-          {/* ANILLO GRANDE CON PROPORCIÓN REAL SOBRE EL TOTAL GENERAL DE LA CARTERA */}
-          <div className="sm:col-span-7 flex items-center justify-center">
+        <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-4">
+          {/* ANILLO EJECUTIVO LIMPIO CON LECTURA DINÁMICA CENTRAL */}
+          <div className="sm:col-span-5 flex items-center justify-center">
             <svg
-              viewBox="-14 45 408 335"
-              className="w-full max-w-[455px] h-[310px] select-none overflow-visible"
+              viewBox="0 0 244 244"
+              className="w-full max-w-[232px] h-[232px] select-none overflow-visible"
             >
-              {/* Aro base del Total General de la Cartera (visible cuando hay filtro o saldo $0) */}
               <circle
                 cx={cx}
                 cy={cy}
                 r={(rOuter + rInner) / 2}
                 fill="none"
-                stroke="#E2E8F0"
+                stroke="#F1F5F9"
                 strokeWidth={rOuter - rInner}
               >
                 {mostrarRestoEnAnillo && (
@@ -2024,113 +1961,123 @@ export default function TableroCarteraAnalytics() {
 
               {segmentos.map((seg) => {
                 const activa = empresasFrecSel.includes(seg.empCorta);
+                const esHover = hoverDonutKey === `${etiquetaCentro}:${seg.empCorta}`;
                 return (
                   <path
                     key={seg.empCorta}
-                    d={crearArcoDonutPath(seg.startAngle, seg.endAngle)}
+                    d={crearArcoDonutPath(seg.startAngle, seg.endAngle, esHover ? rOuter + 4 : rOuter)}
                     fill={seg.color}
                     stroke="#FFFFFF"
-                    strokeWidth="1.1"
-                    className="cursor-pointer transition-opacity hover:opacity-90"
+                    strokeWidth={esHover ? "2" : "1.4"}
+                    className="cursor-pointer transition-all duration-150"
                     style={{
                       opacity:
-                        empresasFrecSel.length > 0 && !activa ? 0.55 : 1,
+                        itemHover && !esHover
+                          ? 0.48
+                          : empresasFrecSel.length > 0 && !activa
+                          ? 0.55
+                          : 1,
                     }}
+                    onMouseEnter={() => setHoverDonutKey(`${etiquetaCentro}:${seg.empCorta}`)}
                     onClick={() => toggleFiltroEmpresaDesdeTorta(seg.empCorta)}
                   >
-                    <title>{`${seg.nombreLista}: ${formatCOP(seg.valor)} (${formatearPctDonut(seg.pct)} del total general ${formatCOP(datosDonut.totalUniverso)})`}</title>
+                    <title>{`${seg.nombreLista}: ${formatCOP(seg.valor)} (${formatearPctDonut(seg.pct)})`}</title>
                   </path>
                 );
               })}
 
-              {/* Agujero blanco central grande y cifra ejecutiva */}
               <circle cx={cx} cy={cy} r={rInner - 1} fill="#FFFFFF" />
-              <text
-                x={cx}
-                y={mostrarRestoEnAnillo ? cy - 8 : cy - 2}
-                textAnchor="middle"
-                fontSize="19.5"
-                fontWeight="800"
-                fill="#0F172A"
-              >
-                {formatMillones(datosDonut.sumaTotal)}
-              </text>
-              <text
-                x={cx}
-                y={mostrarRestoEnAnillo ? cy + 8 : cy + 16}
-                textAnchor="middle"
-                fontSize="11"
-                fontWeight="600"
-                fill="#475569"
-              >
-                {etiquetaCentro}
-              </text>
-              {mostrarRestoEnAnillo && (
-                <text
-                  x={cx}
-                  y={cy + 23}
-                  textAnchor="middle"
-                  fontSize="9.5"
-                  fontWeight="700"
-                  fill="#1D58D8"
-                >
-                  {`${formatearPctDonut(pctSeleccionTotal)} de ${formatMillones(datosDonut.totalUniverso)}`}
-                </text>
-              )}
-
-              {/* Líneas guía con Entidad + % sobre el Total General en una sola línea clara */}
-              {callouts.map((c) => {
-                const pts =
-                  c.pasoSuperiorY !== undefined
-                    ? `${c.anchorX.toFixed(1)},${c.anchorY.toFixed(1)} ${c.anchorX.toFixed(1)},${c.pasoSuperiorY.toFixed(1)} ${c.elbowX.toFixed(1)},${c.labelY.toFixed(1)} ${c.lineEndX},${c.labelY.toFixed(1)}`
-                    : `${c.anchorX.toFixed(1)},${c.anchorY.toFixed(1)} ${c.elbowX.toFixed(1)},${c.labelY.toFixed(1)} ${c.lineEndX},${c.labelY.toFixed(1)}`;
-                return (
-                  <g
-                    key={`callout-${c.empCorta}`}
-                    className="cursor-pointer"
-                    onClick={() => toggleFiltroEmpresaDesdeTorta(c.empCorta)}
+              {itemHover ? (
+                <>
+                  <text
+                    x={cx}
+                    y={cy - 18}
+                    textAnchor="middle"
+                    fontSize="9.5"
+                    fontWeight="800"
+                    fill="#64748B"
                   >
-                    <polyline
-                      points={pts}
-                      fill="none"
-                      stroke="#64748B"
-                      strokeWidth="0.8"
-                    />
-                    <text
-                      x={c.textX}
-                      y={c.labelY - 3.5}
-                      textAnchor={c.lado === "der" ? "end" : "start"}
-                      fontSize="8.8"
-                      fontWeight="600"
-                      fill="#0F172A"
-                    >
-                      {c.nombreAnillo}{" "}
-                      <tspan fontWeight="800" fill="#0E245E">
-                        {formatearPctDonut(c.pct)}
-                      </tspan>
-                    </text>
-                  </g>
-                );
-              })}
+                    {itemHover.nombreAnillo.slice(0, 16)}
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy + 4}
+                    textAnchor="middle"
+                    fontSize="18"
+                    fontWeight="800"
+                    fill="#0E245E"
+                  >
+                    {formatMillones(itemHover.valor)}
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy + 21}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fontWeight="800"
+                    fill={itemHover.color}
+                  >
+                    {formatearPctDonut(itemHover.pct)}
+                  </text>
+                </>
+              ) : (
+                <>
+                  <text
+                    x={cx}
+                    y={cy - 17}
+                    textAnchor="middle"
+                    fontSize="9.5"
+                    fontWeight="800"
+                    fill="#64748B"
+                  >
+                    {`CARTERA ${etiquetaCentro.toUpperCase()}`}
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy + 4}
+                    textAnchor="middle"
+                    fontSize="19"
+                    fontWeight="800"
+                    fill="#0E245E"
+                  >
+                    {formatMillones(datosDonut.sumaTotal)}
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy + 21}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fontWeight="700"
+                    fill={mostrarRestoEnAnillo ? "#1D58D8" : "#64748B"}
+                  >
+                    {mostrarRestoEnAnillo
+                      ? `${formatearPctDonut(pctSeleccionTotal)} de ${formatMillones(datosDonut.totalUniverso)}`
+                      : "Clic para filtrar"}
+                  </text>
+                </>
+              )}
             </svg>
           </div>
 
-          {/* LEYENDA CON BARRA DE SCROLL VERTICAL Y ENCABEZADO FIJO $M | % TOTAL */}
-          <div className="sm:col-span-5 max-h-[310px] overflow-y-auto space-y-0.5 pl-1 pr-1.5">
+          {/* RANKING EJECUTIVO CON MICRO-BARRAS Y SCROLL ULTRAFINO DISCRETO */}
+          <div className="sm:col-span-7 max-h-[248px] overflow-y-auto pr-1 space-y-1 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300">
             <div
-              className="sticky top-0 z-10 flex items-center justify-end gap-2 px-1.5 py-1 text-[10px] font-bold border-b mb-1"
+              className="sticky top-0 z-10 flex items-center justify-between gap-2 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider border-b mb-1"
               style={{
-                color: "#475569",
-                borderColor: "#E2ECF8",
+                color: "#64748B",
+                borderColor: "#EDF2F9",
                 backgroundColor: "#FFFFFF",
               }}
             >
-              <span>$M</span>
-              <span className="w-11 text-right">% Total</span>
+              <span>Entidad (ERP)</span>
+              <div className="flex items-center gap-3">
+                <span>Monto</span>
+                <span className="w-12 text-right">Peso</span>
+              </div>
             </div>
             {datosDonut.items.length === 0 ? (
               <div
-                className="py-8 px-2 text-center text-xs font-medium"
+                className="py-10 px-2 text-center text-xs font-medium"
                 style={{ color: "#64748B" }}
               >
                 Sin saldo en este concepto para la selección actual ($0)
@@ -2139,49 +2086,61 @@ export default function TableroCarteraAnalytics() {
               <>
                 {datosDonut.items.map((it) => {
                   const sel = empresasFrecSel.includes(it.empCorta);
+                  const esHover = hoverDonutKey === `${etiquetaCentro}:${it.empCorta}`;
+                  const barPct = Math.min(100, Math.max(4, (it.pct / maxPctItem) * 100));
                   return (
                     <div
                       key={`leg-${it.empCorta}`}
+                      onMouseEnter={() => setHoverDonutKey(`${etiquetaCentro}:${it.empCorta}`)}
                       onClick={() => toggleFiltroEmpresaDesdeTorta(it.empCorta)}
-                      title={`${it.nombreLista}: ${formatCOP(it.valor)} (${formatearPctDonut(it.pct)} del total general ${formatCOP(datosDonut.totalUniverso)}) — Clic para filtrar`}
-                      className="flex items-center justify-between gap-1.5 px-1.5 py-[2.5px] rounded-md cursor-pointer transition hover:bg-slate-50"
+                      title={`${it.nombreLista}: ${formatCOP(it.valor)} (${formatearPctDonut(it.pct)}) — Clic para filtrar`}
+                      className="group rounded-lg px-2 py-1.5 cursor-pointer transition-colors"
                       style={{
-                        backgroundColor: sel ? "#EFF6FF" : "transparent",
+                        backgroundColor: sel
+                          ? "#EFF6FF"
+                          : esHover
+                          ? "#F8FAFC"
+                          : "transparent",
                       }}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: it.color }}
-                        />
-                        <span
-                          className="text-[10.5px] font-semibold truncate"
-                          style={{ color: "#0F172A" }}
-                        >
-                          {it.nombreLista}
-                        </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: it.color }}
+                          />
+                          <span
+                            className="text-[11.5px] font-semibold truncate"
+                            style={{ color: sel ? "#0E245E" : "#1E293B" }}
+                          >
+                            {it.nombreLista}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5 shrink-0 text-[11px] font-mono tabular-nums">
+                          <span className="font-bold text-[#0F172A]">
+                            {formatMillones(it.valor)}
+                          </span>
+                          <span className="w-12 text-right font-extrabold text-[#0E245E]">
+                            {formatearPctDonut(it.pct)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 text-[10.5px] font-mono">
-                        <span className="font-bold" style={{ color: "#0F172A" }}>
-                          {formatMillones(it.valor)}
-                        </span>
-                        <span
-                          className="w-11 text-right font-bold"
-                          style={{ color: "#0E245E" }}
-                        >
-                          {formatearPctDonut(it.pct)}
-                        </span>
+                      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[#F1F5F9]">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{ width: `${barPct}%`, backgroundColor: it.color }}
+                        />
                       </div>
                     </div>
                   );
                 })}
                 {mostrarRestoEnAnillo && (
                   <div
-                    className="mt-1.5 pt-1.5 px-1.5 border-t flex items-center justify-between text-[10px] font-semibold"
-                    style={{ borderColor: "#E2ECF8", color: "#475569" }}
+                    className="mt-1.5 pt-1.5 px-2 border-t flex items-center justify-between text-[10.5px] font-semibold"
+                    style={{ borderColor: "#EDF2F9", color: "#475569" }}
                   >
-                    <span>Total general período</span>
-                    <span className="font-mono font-bold" style={{ color: "#0F172A" }}>
+                    <span>Total universo período</span>
+                    <span className="font-mono font-bold text-[#0F172A]">
                       {formatMillones(datosDonut.totalUniverso)} (100%)
                     </span>
                   </div>
@@ -2195,33 +2154,23 @@ export default function TableroCarteraAnalytics() {
   };
 
   const renderTarjetaTendenciaTotalCartera = (glosaInfo: ResumenGlosaSobreCartera) => {
-    const uConMismoCorte = datosSismaVivo?.desgloseUniverso?.conMutual;
-    const totalBaseRef =
-      uConMismoCorte?.carteraTotal ||
-      (datosSismaVivo?.catalogoEmpresasPeriodo || []).reduce(
-        (acc, e) => acc + (e.total || 0),
-        0
-      ) ||
-      datosSismaCompletaRef.current?.edades?.saldoTotal ||
-      corteBaseSeleccionado?.carteraTotal ||
-      cortesTodas[cortesTodas.length - 1]?.carteraTotal ||
-      1;
-    const girosBaseRef =
-      uConMismoCorte?.anticiposPorCruzar ||
-      corteBaseSeleccionado?.anticiposPorCruzar ||
-      cortesTodas[cortesTodas.length - 1]?.anticiposPorCruzar ||
-      1;
-    const factorFiltro =
-      tieneFiltroEntidadDirecto || modalidadSisma === "PYP"
-        ? Math.min(1, Math.max(0, corteSeleccionado.carteraTotal / Math.max(1, totalBaseRef)))
-        : 1;
-    const factorGiros =
-      tieneFiltroEntidadDirecto || modalidadSisma === "PYP"
-        ? Math.min(
-            1,
-            Math.max(0, corteSeleccionado.anticiposPorCruzar / Math.max(1, girosBaseRef))
-          )
-        : 1;
+    const sinSubfiltroEmpTend =
+      (empresasFrecSel.length === 0 ||
+        empresasFrecSel.length >= todasLasEmpresasDisponibles.length) &&
+      filtroEmpresa === "TODAS";
+    const sinSubfiltroRespTend =
+      (responsablesFrecSel.length === 0 ||
+        responsablesFrecSel.length >=
+          carteraInitialData.responsablesDisponibles.length) &&
+      filtroResponsable === "TODAS";
+    const usaCierresGlobalesOficiales =
+      incluirMutual &&
+      filtroSedeTop === "TODAS" &&
+      filtroAtencionTop === "TODAS" &&
+      modalidadSisma === "TODAS" &&
+      !tieneFiltroFechaBarra &&
+      sinSubfiltroEmpTend &&
+      sinSubfiltroRespTend;
 
     const ayerIsoRef = datosSismaVivo?.ayerISO || ayerEnColombia();
     const corteIsoActivo = datosSismaVivo?.corteISO || fechaCorteVivo || ayerIsoRef;
@@ -2242,7 +2191,7 @@ export default function TableroCarteraAnalytics() {
       anticiposPorCruzar: number;
     };
 
-    const puntosCortes: PuntoCorteTabla[] = listaCortesActiva.map((c, idx) => {
+    const puntosCortesGlobal: PuntoCorteTabla[] = listaCortesActiva.map((c, idx) => {
       const fClean = String(c.fechaCorte || "").slice(0, 10);
       const esVivo =
         String(c.fechaCorte || "").toUpperCase().includes("VIVO") ||
@@ -2250,26 +2199,15 @@ export default function TableroCarteraAnalytics() {
           idx === listaCortesActiva.length - 1 &&
           fClean === datosSismaVivo?.fechaCorte.slice(0, 10));
       const congAyer = esVivo && esCorteCongeladoAyer;
+      const usarDirecto = esVivo && idx === indiceCorteActivo;
 
-      const usarDirecto =
-        (tieneFiltroEntidadDirecto || modalidadSisma === "PYP" || esVivo) &&
-        idx === indiceCorteActivo;
-
-      const cTotal = usarDirecto
-        ? corteSeleccionado.carteraTotal
-        : Math.round(c.carteraTotal * factorFiltro);
+      const cTotal = usarDirecto ? corteSeleccionado.carteraTotal : Math.round(c.carteraTotal);
       const cCorr = usarDirecto
         ? corteSeleccionado.carteraCorriente
-        : Math.round((c.carteraCorriente ?? c.carteraTotal - c.carteraVencida) * factorFiltro);
-      const cVenc = usarDirecto
-        ? corteSeleccionado.carteraVencida
-        : Math.max(0, cTotal - cCorr);
-      const cGiros = usarDirecto
-        ? corteSeleccionado.anticiposPorCruzar
-        : Math.round((c.anticiposPorCruzar || 0) * factorGiros);
-      const cReal = usarDirecto
-        ? corteSeleccionado.totalCarteraReal
-        : Math.round(cTotal - cGiros);
+        : Math.round(c.carteraCorriente ?? c.carteraTotal - c.carteraVencida);
+      const cVenc = usarDirecto ? corteSeleccionado.carteraVencida : Math.max(0, cTotal - cCorr);
+      const cGiros = usarDirecto ? corteSeleccionado.anticiposPorCruzar : Math.round(c.anticiposPorCruzar || 0);
+      const cReal = usarDirecto ? corteSeleccionado.totalCarteraReal : Math.round(cTotal - cGiros);
 
       return {
         id: `corte-${fClean}-${idx}`,
@@ -2295,51 +2233,44 @@ export default function TableroCarteraAnalytics() {
       };
     });
 
-    const ultimoCorteLista = puntosCortes[puntosCortes.length - 1];
-    const puntosTablaCortes: PuntoCorteTabla[] =
-      datosSismaVivo &&
-      !sinGiros &&
-      ultimoCorteLista &&
-      datosSismaVivo.fechaCorte.slice(0, 10) !== ultimoCorteLista.fechaRaw
-        ? [
-            ...puntosCortes,
-            {
-              id: `corte-vivo-${datosSismaVivo.fechaCorte}`,
-              idxCorte: listaCortesActiva.length - 1,
-              fechaRaw: datosSismaVivo.fechaCorte.slice(0, 10),
-              etiquetaTabla: esCorteCongeladoAyer
-                ? `Ayer ${datosSismaVivo.fechaCorte.slice(0, 10)}`
-                : `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
-              etiquetaEje: esCorteCongeladoAyer
-                ? `Ayer ${datosSismaVivo.fechaCorte.slice(0, 5)}`
-                : `Vivo ${datosSismaVivo.fechaCorte.slice(0, 5)}`,
-              esVivo: true,
-              esCongeladoAyer: esCorteCongeladoAyer,
-              carteraTotal: corteSeleccionado.carteraTotal,
-              totalCarteraReal: corteSeleccionado.totalCarteraReal,
-              carteraCorriente: corteSeleccionado.carteraCorriente,
-              carteraVencida: corteSeleccionado.carteraVencida,
-              anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
-            },
-          ]
-        : puntosCortes.map((pt, i) =>
-            i === puntosCortes.length - 1 && datosSismaVivo
-              ? {
-                  ...pt,
-                  esVivo: true,
-                  esCongeladoAyer: esCorteCongeladoAyer,
-                  etiquetaTabla: esCorteCongeladoAyer
-                    ? `Ayer ${datosSismaVivo.fechaCorte.slice(0, 10)}`
-                    : `Vivo ${datosSismaVivo.fechaCorte.slice(0, 10)}`,
-                }
-              : pt
-          );
+    const ultimoCorteLista = puntosCortesGlobal[puntosCortesGlobal.length - 1];
+    const fechaVivoClean = (datosSismaVivo?.fechaCorte || corteSeleccionado.fechaCorte || "").slice(0, 10);
+    const puntoCorteVivoActual: PuntoCorteTabla = {
+      id: `corte-vivo-${fechaVivoClean}`,
+      idxCorte: listaCortesActiva.length - 1,
+      fechaRaw: fechaVivoClean,
+      etiquetaTabla: esCorteCongeladoAyer ? `Ayer ${fechaVivoClean}` : `Vivo ${fechaVivoClean}`,
+      etiquetaEje: esCorteCongeladoAyer ? `Ayer ${fechaVivoClean.slice(0, 5)}` : `Vivo ${fechaVivoClean.slice(0, 5)}`,
+      esVivo: true,
+      esCongeladoAyer: esCorteCongeladoAyer,
+      carteraTotal: corteSeleccionado.carteraTotal,
+      totalCarteraReal: corteSeleccionado.totalCarteraReal,
+      carteraCorriente: corteSeleccionado.carteraCorriente,
+      carteraVencida: corteSeleccionado.carteraVencida,
+      anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
+    };
 
-    /* -----------------------------------------------------------------
-       LA TENDENCIA MENSUAL SALE DE LOS CIERRES GUARDADOS, Y EL MES EN
-       CURSO SE CONECTA SIEMPRE AL CORTE CONGELADO DEL DÍA ANTERIOR PARA
-       QUE NUNCA QUEDE EN LÍNEA RECTA HORIZONTAL CON EL MES ANTERIOR.
-       ----------------------------------------------------------------- */
+    // Sin estimar cortes históricos cuando hay filtro por entidad o exclusión de Mutual (Regla 6)
+    const puntosTablaCortes: PuntoCorteTabla[] = !usaCierresGlobalesOficiales
+      ? modalidadSisma === "PYP"
+        ? puntosCortesGlobal
+        : [puntoCorteVivoActual]
+      : datosSismaVivo &&
+        !sinGiros &&
+        ultimoCorteLista &&
+        fechaVivoClean !== ultimoCorteLista.fechaRaw
+      ? [...puntosCortesGlobal, puntoCorteVivoActual]
+      : puntosCortesGlobal.map((pt, i) =>
+          i === puntosCortesGlobal.length - 1 && datosSismaVivo
+            ? {
+                ...pt,
+                esVivo: true,
+                esCongeladoAyer: esCorteCongeladoAyer,
+                etiquetaTabla: puntoCorteVivoActual.etiquetaTabla,
+              }
+            : pt
+        );
+
     const anioCorteVivo = Number(corteIsoActivo.slice(0, 4)) || anioTendencia;
     const mesCorteVivo = Number(corteIsoActivo.slice(5, 7)) || 0;
     const mmCorteVivo = String(mesCorteVivo).padStart(2, "0");
@@ -2367,69 +2298,62 @@ export default function TableroCarteraAnalytics() {
       return true;
     });
 
-    const puntosMesesBase = cierresFiltrados.map((c) => {
-      const usarCorteCongeladoVivo =
-        (c.esMesEnCurso || (c.anio === anioCorteVivo && c.mes === mesCorteVivo)) &&
-        Boolean(datosSismaVivo) &&
-        !sinGiros;
+    const puntosMeses = (() => {
+      if (usaCierresGlobalesOficiales) {
+        const base = cierresFiltrados.map((c) => {
+          const usarCorteCongeladoVivo =
+            (c.esMesEnCurso || (c.anio === anioCorteVivo && c.mes === mesCorteVivo)) &&
+            Boolean(datosSismaVivo) &&
+            !sinGiros;
 
-      const cTotal = usarCorteCongeladoVivo
-        ? corteSeleccionado.carteraTotal
-        : Math.round(c.carteraTotal * factorFiltro);
-      const cCorr = usarCorteCongeladoVivo
-        ? corteSeleccionado.carteraCorriente
-        : Math.round(c.carteraCorriente * factorFiltro);
-      const cVenc = usarCorteCongeladoVivo
-        ? corteSeleccionado.carteraVencida
-        : Math.max(0, cTotal - cCorr);
-      const cGiros = usarCorteCongeladoVivo
-        ? corteSeleccionado.anticiposPorCruzar
-        : Math.round((c.girosPorCruzar ?? Math.max(0, c.carteraTotal - c.carteraReal)) * factorGiros);
-      const cReal = usarCorteCongeladoVivo
-        ? corteSeleccionado.totalCarteraReal
-        : Math.round(cTotal - cGiros);
+          const cTotal = usarCorteCongeladoVivo ? corteSeleccionado.carteraTotal : Math.round(c.carteraTotal);
+          const cCorr = usarCorteCongeladoVivo ? corteSeleccionado.carteraCorriente : Math.round(c.carteraCorriente);
+          const cVenc = usarCorteCongeladoVivo ? corteSeleccionado.carteraVencida : Math.max(0, cTotal - cCorr);
+          const cGiros = usarCorteCongeladoVivo
+            ? corteSeleccionado.anticiposPorCruzar
+            : Math.round(c.girosPorCruzar ?? Math.max(0, c.carteraTotal - c.carteraReal));
+          const cReal = usarCorteCongeladoVivo ? corteSeleccionado.totalCarteraReal : Math.round(cTotal - cGiros);
 
-      const fechaCierreLatam = usarCorteCongeladoVivo
-        ? `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)}${esCorteCongeladoAyer ? " (Ayer)" : ""}`
-        : formatearISOaLatam(c.fechaCorte);
+          const fechaCierreLatam = usarCorteCongeladoVivo
+            ? `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)}${esCorteCongeladoAyer ? " (Ayer)" : ""}`
+            : formatearISOaLatam(c.fechaCorte);
 
-      const ymClave = `${c.anio}-${String(c.mes).padStart(2, "0")}`;
-      const glosaMesVal = glosaInfo.porMes[ymClave] || 0;
+          const ymClave = `${c.anio}-${String(c.mes).padStart(2, "0")}`;
+          return {
+            id: `cierre-${c.anio}-${c.mes}`,
+            idxCorte: listaCortesActiva.length - 1,
+            etiquetaEje: usarCorteCongeladoVivo && esCorteCongeladoAyer ? `${c.etiqueta}*` : c.etiqueta,
+            fechaDetalle: fechaCierreLatam,
+            esCongeladoAyer: usarCorteCongeladoVivo && esCorteCongeladoAyer,
+            carteraTotal: cTotal,
+            totalCarteraReal: cReal,
+            carteraCorriente: cCorr,
+            carteraVencida: cVenc,
+            anticiposPorCruzar: cGiros,
+            glosaMonto: glosaInfo.porMes[ymClave] || 0,
+            mostrarLabel: true,
+          };
+        });
 
-      return {
-        id: `cierre-${c.anio}-${c.mes}`,
-        idxCorte: listaCortesActiva.length - 1,
-        etiquetaEje: usarCorteCongeladoVivo && esCorteCongeladoAyer ? `${c.etiqueta}*` : c.etiqueta,
-        fechaDetalle: fechaCierreLatam,
-        esCongeladoAyer: usarCorteCongeladoVivo && esCorteCongeladoAyer,
-        carteraTotal: cTotal,
-        totalCarteraReal: cReal,
-        carteraCorriente: cCorr,
-        carteraVencida: cVenc,
-        anticiposPorCruzar: cGiros,
-        glosaMonto: glosaMesVal,
-        mostrarLabel: true,
-      };
-    });
+        const yaTieneMesVivo = cierresFiltrados.some(
+          (c) => c.anio === anioCorteVivo && c.mes === mesCorteVivo
+        );
+        const permiteMesVivo =
+          mesesFrecSel.length === 0 ||
+          mesesFrecSel.length >= 12 ||
+          mesesFrecSel.includes(mmCorteVivo);
 
-    const yaTieneMesVivo = cierresFiltrados.some(
-      (c) => c.anio === anioCorteVivo && c.mes === mesCorteVivo
-    );
-    const permiteMesVivo =
-      mesesFrecSel.length === 0 ||
-      mesesFrecSel.length >= 12 ||
-      mesesFrecSel.includes(mmCorteVivo);
-
-    const puntosMeses =
-      !yaTieneMesVivo &&
-      puntosMesesBase.length > 0 &&
-      anioTendencia === anioCorteVivo &&
-      mesCorteVivo >= 1 &&
-      permiteMesVivo &&
-      Boolean(datosSismaVivo) &&
-      !sinGiros
-        ? [
-            ...puntosMesesBase,
+        if (
+          !yaTieneMesVivo &&
+          base.length > 0 &&
+          anioTendencia === anioCorteVivo &&
+          mesCorteVivo >= 1 &&
+          permiteMesVivo &&
+          Boolean(datosSismaVivo) &&
+          !sinGiros
+        ) {
+          return [
+            ...base,
             {
               id: `cierre-vivo-${anioCorteVivo}-${mesCorteVivo}`,
               idxCorte: listaCortesActiva.length - 1,
@@ -2444,8 +2368,52 @@ export default function TableroCarteraAnalytics() {
               glosaMonto: glosaInfo.porMes[`${anioCorteVivo}-${mmCorteVivo}`] || 0,
               mostrarLabel: true,
             },
-          ]
-        : puntosMesesBase;
+          ];
+        }
+        return base;
+      }
+
+      // Cuando se filtra por entidad, Sede, Atención, Solo Mutual o Excluir Mutual:
+      // CERO estimaciones (factorFiltro prohibido). Se grafica la serie mensual 100% real de facturas abiertas en SISMA.
+      const serieSisma = (datosSismaVivo?.serieMensual || []) as {
+        mes: string;
+        etiqueta: string;
+        carteraTotal: number;
+        carteraCorriente?: number;
+        carteraVencida: number;
+        anticiposPorCruzar?: number;
+        totalCarteraReal: number;
+      }[];
+      return serieSisma.map((s, idx) => {
+        const esUlt = idx === serieSisma.length - 1 && s.mes === mmCorteVivo;
+        const totM = esUlt ? corteSeleccionado.carteraTotal : Math.round(s.carteraTotal || 0);
+        const vencM = esUlt ? corteSeleccionado.carteraVencida : Math.round(s.carteraVencida || 0);
+        const corrM = esUlt
+          ? corteSeleccionado.carteraCorriente
+          : s.carteraCorriente !== undefined
+          ? Math.round(s.carteraCorriente)
+          : Math.max(0, totM - vencM);
+        const girM = esUlt ? corteSeleccionado.anticiposPorCruzar : Math.round(s.anticiposPorCruzar || 0);
+        const realM = esUlt ? corteSeleccionado.totalCarteraReal : Math.round(totM - girM);
+        const ymClave = `${anioCorteVivo}-${s.mes}`;
+        return {
+          id: `sisma-mes-${anioCorteVivo}-${s.mes}`,
+          idxCorte: listaCortesActiva.length - 1,
+          etiquetaEje: esUlt && esCorteCongeladoAyer ? `${s.etiqueta}*` : s.etiqueta,
+          fechaDetalle: esUlt
+            ? `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)} (Corte SISMA)`
+            : `Facturas abiertas acum. ${s.etiqueta} ${anioCorteVivo} (SISMA)`,
+          esCongeladoAyer: esUlt && esCorteCongeladoAyer,
+          carteraTotal: totM,
+          totalCarteraReal: realM,
+          carteraCorriente: corrM,
+          carteraVencida: vencM,
+          anticiposPorCruzar: girM,
+          glosaMonto: glosaInfo.porMes[ymClave] || 0,
+          mostrarLabel: true,
+        };
+      });
+    })();
 
     const puntosGrafica =
       modoTendenciaCartera === "MES"
@@ -2496,10 +2464,12 @@ export default function TableroCarteraAnalytics() {
 
     const getX = (i: number) =>
       n <= 1 ? padL + plotW / 2 : padL + (i / (n - 1)) * plotW;
-    const getYRaw = (val: number) =>
-      yFloor - ((val - minVal) / rangoVal) * plotH;
+    const getYRaw = (val: number) => {
+      const vClamped = Math.max(minVal, val);
+      return yFloor - ((vClamped - minVal) / rangoVal) * plotH;
+    };
 
-    // Garantizar separación mínima vertical de 15px entre el punto azul (Total) y el verde (Real) incluso en Ene
+    // Garantizar separación mínima vertical sin perforar el piso ($0) ni el techo del SVG
     const coordsReal = puntosGrafica.map((p, i) => ({
       x: getX(i),
       y: getYRaw(p.totalCarteraReal),
@@ -2510,7 +2480,7 @@ export default function TableroCarteraAnalytics() {
       const yT = getYRaw(p.carteraTotal);
       return {
         x: getX(i),
-        y: Math.min(yT, yR - 15),
+        y: Math.max(padT - 6, Math.min(yT, yR - 14)),
         val: p.carteraTotal,
       };
     });
@@ -2620,7 +2590,9 @@ export default function TableroCarteraAnalytics() {
               )}
             </div>
             <p className="text-[11.5px]" style={{ color: "#475569" }}>
-              Evolución por corte: Cartera Total vs. Total Cartera Real Neta (descontando Giros por Cruzar)
+              {usaCierresGlobalesOficiales
+                ? "Evolución oficial de cierres mensuales congelados y corte actual en vivo (descontando Giros por Cruzar)"
+                : "Serie acumulada real en SISMA de facturas abiertas para el filtro activo (los cierres históricos Ene–Oct son globales institucionales)"}
             </p>
           </div>
 
@@ -2710,8 +2682,8 @@ export default function TableroCarteraAnalytics() {
                 {/* El rango sale de los cierres que de verdad hay, no de
                     un texto fijo. Decia "Ene-Oct" aunque la gráfica
                     mostrara otra cosa. */}
-                {cierresFiltrados.length > 0
-                  ? `Por Mes (${cierresFiltrados[0].etiqueta}-${cierresFiltrados[cierresFiltrados.length - 1].etiqueta} ${anioTendencia})`
+                {puntosMeses.length > 0
+                  ? `Por Mes (${puntosMeses[0].etiquetaEje.replace("*", "")}-${puntosMeses[puntosMeses.length - 1].etiquetaEje.replace("*", "")} ${anioTendencia})`
                   : `Por Mes (${anioTendencia})`}
               </button>
               <span className="mx-1.5 font-bold" style={{ color: "#1D58D8" }}>
@@ -3151,7 +3123,7 @@ export default function TableroCarteraAnalytics() {
                   Math.max(minimo, t.length * f + 12);
 
                 const txtTotal = formatMillones(pt.carteraTotal);
-                const txtReal = formatMillones(pt.totalCarteraReal);
+                const txtReal = pt.totalCarteraReal < 0 ? "$0*" : formatMillones(pt.totalCarteraReal);
                 const txtCorr = formatMillones(pt.carteraCorriente);
                 const txtVenc = formatMillones(pt.carteraVencida);
 
@@ -5068,14 +5040,11 @@ export default function TableroCarteraAnalytics() {
       )}
 
       {/* ===================================================================== */}
-      {/* BARRA DE FILTROS SUPERIOR ESTILO TABLERO DE FRECUENCIAS (.period-bar) */}
+      {/* BARRA EJECUTIVA DE FILTROS EN 2 NIVELES (100% ALINEADA SIN OVERFLOW)  */}
       {/* ===================================================================== */}
       <div
-        className="rounded-xl px-3.5 py-2.5 border shadow-2xs flex flex-wrap xl:flex-nowrap items-center gap-1.5 relative"
-        style={{
-          background: "linear-gradient(90deg, #F4F8FE 0%, #E7F0FD 58%, #D4E5FA 100%)",
-          borderColor: "#D5E3F7",
-        }}
+        className="w-full max-w-full rounded-2xl border bg-white shadow-[0_2px_12px_rgba(14,36,94,0.04)] relative"
+        style={{ borderColor: "#DCE6F5" }}
       >
         {ddFrecAbierto && (
           <div
@@ -5084,35 +5053,14 @@ export default function TableroCarteraAnalytics() {
           />
         )}
 
-        {/* BOTONES SUBIR Y EXPORTAR EXCEL EN LA BARRA SUPERIOR */}
-        <button
-          type="button"
-          onClick={() => setMostrarModalSubirExcel(true)}
-          className="inline-flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-extrabold transition cursor-pointer border whitespace-nowrap"
-          style={{
-            backgroundColor: "#ECFDF5",
-            borderColor: "#A7F3D0",
-            color: "#047857",
-          }}
-          title="Subir archivo Excel (.xlsx o .csv) y almacenarlo en la base de datos compartida"
-        >
-          <span>📤 Subir Excel (.xlsx)</span>
-        </button>
-        <button
-          type="button"
-          onClick={exportarVistaExcelCSV}
-          className="inline-flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12px] font-extrabold transition cursor-pointer border whitespace-nowrap"
-          style={{
-            backgroundColor: "#EFF6FF",
-            borderColor: "#BFDBFE",
-            color: "#1D4ED8",
-          }}
-          title="Exportar datos filtrados a Excel UTF-8"
-        >
-          <span>📥 Exportar Excel</span>
-        </button>
+        {/* NIVEL 1: SELECTORES DE PERÍODO / ENTIDAD Y ACCIONES EXCEL */}
+        <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="hidden sm:inline-flex items-center rounded-md bg-[#F1F5F9] px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#475569]">
+              Filtros
+            </span>
 
-        {/* 1. DESPLEGABLE DE AÑO */}
+            {/* 1. DESPLEGABLE DE AÑO */}
         <div className="relative z-40">
           <button
             type="button"
@@ -5793,182 +5741,206 @@ export default function TableroCarteraAnalytics() {
           Limpiar
         </button>
 
-        {/* 6B. FILTROS RÁPIDOS DE SEDE Y ATENCIÓN (CONSULTA / CIRUGÍA) */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span
-            className="text-[10px] font-bold uppercase tracking-wider"
-            style={{ color: "#5B6483" }}
-          >
-            SEDE
-          </span>
-          <div
-            className="inline-flex rounded-[10px] p-0.5 border"
-            style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
-          >
-            {(
-              [
-                { id: "TODAS", label: "Todas" },
-                { id: "SEDE_1", label: "Sede 1" },
-                { id: "SEDE_2", label: "Sede 2" },
-              ] as const
-            ).map((op) => {
-              const act = filtroSedeTop === op.id;
-              return (
-                <button
-                  key={op.id}
-                  type="button"
-                  onClick={() => {
-                    setFiltroSedeTop(op.id);
-                    if (op.id === "SEDE_2" && !incluirMutual) setIncluirMutual(true);
-                    setPaginaActual(1);
-                  }}
-                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
-                  style={{
-                    backgroundColor: act ? "#0E245E" : "transparent",
-                    color: act ? "#FFFFFF" : "#5B6483",
-                  }}
-                >
-                  {op.label}
-                </button>
-              );
-            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={() => setMostrarModalSubirExcel(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[12px] font-bold transition cursor-pointer border hover:brightness-95"
+              style={{
+                backgroundColor: "#ECFDF5",
+                borderColor: "#A7F3D0",
+                color: "#047857",
+              }}
+              title="Subir archivo Excel (.xlsx o .csv) y almacenarlo en la base de datos compartida"
+            >
+              <span>Subir Excel (.xlsx)</span>
+            </button>
+            <button
+              type="button"
+              onClick={exportarVistaExcelCSV}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[12px] font-bold transition cursor-pointer border hover:brightness-95"
+              style={{
+                backgroundColor: "#EFF6FF",
+                borderColor: "#BFDBFE",
+                color: "#1D4ED8",
+              }}
+              title="Exportar datos filtrados a Excel UTF-8"
+            >
+              <span>Exportar Excel</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span
-            className="text-[10px] font-bold uppercase tracking-wider"
-            style={{ color: "#5B6483" }}
-          >
-            ATENCIÓN
-          </span>
-          <div
-            className="inline-flex rounded-[10px] p-0.5 border"
-            style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
-          >
-            {(
-              [
-                { id: "TODAS", label: "Todas" },
-                { id: "CONSULTA", label: "Consulta" },
-                { id: "CIRUGIA", label: "Cirugía" },
-                { id: "AYUDA_DX", label: "Ayuda Dx" },
-              ] as const
-            ).map((op) => {
-              const act = filtroAtencionTop === op.id;
-              return (
-                <button
-                  key={op.id}
-                  type="button"
-                  onClick={() => {
-                    setFiltroAtencionTop(op.id);
-                    setPaginaActual(1);
-                  }}
-                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
-                  style={{
-                    backgroundColor: act ? "#1D58D8" : "transparent",
-                    color: act ? "#FFFFFF" : "#5B6483",
-                  }}
-                >
-                  {op.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 7. INTERRUPTOR MUTUAL DE 3 VÍAS: CON MUTUAL | SOLO MUTUAL | SIN MUTUAL */}
-        {(() => {
-          const modoSoloMutual =
-            incluirMutual &&
-            ((empresasFrecSel.length === 1 && esEmpresaMutual(empresasFrecSel[0])) ||
-              (empresasFrecSel.length === 0 &&
-                filtroEmpresa !== "TODAS" &&
-                esEmpresaMutual(filtroEmpresa)));
-          const modoSinMutual = !incluirMutual && !modoSoloMutual;
-          const modoConMutual = incluirMutual && !modoSoloMutual;
-
-          return (
-            <div className="flex items-center gap-1.5 ml-auto shrink-0">
-              <span
-                className="text-[10px] font-bold uppercase tracking-wider"
-                style={{ color: "#5B6483" }}
-              >
-                MUTUAL SER
+        {/* NIVEL 2: SEGMENTACIÓN EJECUTIVA POR SEDE, ATENCIÓN Y UNIVERSO MUTUAL SER */}
+        <div
+          className="px-4 py-2.5 border-t rounded-b-2xl flex flex-wrap items-center justify-between gap-3"
+          style={{ backgroundColor: "#F8FAFC", borderColor: "#EDF2F9" }}
+        >
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#64748B]">
+                Sede
               </span>
-              <div
-                className="inline-flex rounded-[10px] p-0.5 border"
-                style={{ backgroundColor: "#EFF1F6", borderColor: "#E1E4EC" }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIncluirMutual(true);
-                    if (modoSoloMutual) {
-                      setEmpresasFrecSel([]);
-                      setFiltroEmpresa("TODAS");
-                    }
-                    setPaginaActual(1);
-                  }}
-                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
-                  style={{
-                    backgroundColor: modoConMutual ? "#FFFFFF" : "transparent",
-                    color: modoConMutual ? "#0E245E" : "#5B6483",
-                    boxShadow: modoConMutual
-                      ? "0 1px 3px rgba(15,23,42,0.1)"
-                      : "none",
-                  }}
-                  title="Mostrar todas las entidades incluyendo Mutual Ser"
-                >
-                  Con Mutual
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIncluirMutual(true);
-                    setFiltroEmpresa("TODAS");
-                    setEmpresasFrecSel(["MUTUAL SER"]);
-                    setPaginaActual(1);
-                  }}
-                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
-                  style={{
-                    backgroundColor: modoSoloMutual ? "#1D58D8" : "transparent",
-                    color: modoSoloMutual ? "#FFFFFF" : "#5B6483",
-                    boxShadow: modoSoloMutual
-                      ? "0 1px 3px rgba(29,88,216,0.28)"
-                      : "none",
-                  }}
-                  title="Filtrar únicamente Mutual Ser (NIT 806008394) en todo el tablero"
-                >
-                  Solo Mutual
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIncluirMutual(false);
-                    setEmpresasFrecSel((prev) =>
-                      prev.filter((e) => !esEmpresaMutual(e))
-                    );
-                    if (esEmpresaMutual(filtroEmpresa)) {
-                      setFiltroEmpresa("TODAS");
-                    }
-                    setPaginaActual(1);
-                  }}
-                  className="px-2.5 py-1 rounded-[7px] text-[11px] font-bold transition cursor-pointer"
-                  style={{
-                    backgroundColor: modoSinMutual ? "#FFFFFF" : "transparent",
-                    color: modoSinMutual ? "#B91C1C" : "#5B6483",
-                    boxShadow: modoSinMutual
-                      ? "0 1px 3px rgba(15,23,42,0.1)"
-                      : "none",
-                  }}
-                  title="Excluir Mutual Ser de todos los indicadores, curvas y glosas"
-                >
-                  Excluir
-                </button>
+              <div className="inline-flex rounded-xl p-0.5 border bg-white border-[#E2E8F0]">
+                {(
+                  [
+                    { id: "TODAS", label: "Todas" },
+                    { id: "SEDE_1", label: "Sede 1" },
+                    { id: "SEDE_2", label: "Sede 2" },
+                  ] as const
+                ).map((op) => {
+                  const act = filtroSedeTop === op.id;
+                  return (
+                    <button
+                      key={op.id}
+                      type="button"
+                      onClick={() => {
+                        setFiltroSedeTop(op.id);
+                        if (op.id === "SEDE_2" && !incluirMutual) setIncluirMutual(true);
+                        setPaginaActual(1);
+                      }}
+                      className="px-3 py-1 rounded-lg text-[11.5px] font-bold transition cursor-pointer"
+                      style={{
+                        backgroundColor: act ? "#0E245E" : "transparent",
+                        color: act ? "#FFFFFF" : "#475569",
+                      }}
+                    >
+                      {op.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          );
-        })()}
+
+            <div className="flex items-center gap-2">
+              <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#64748B]">
+                Atención
+              </span>
+              <div className="inline-flex rounded-xl p-0.5 border bg-white border-[#E2E8F0]">
+                {(
+                  [
+                    { id: "TODAS", label: "Todas" },
+                    { id: "CONSULTA", label: "Consulta" },
+                    { id: "CIRUGIA", label: "Cirugía" },
+                    { id: "AYUDA_DX", label: "Ayuda Dx" },
+                  ] as const
+                ).map((op) => {
+                  const act = filtroAtencionTop === op.id;
+                  return (
+                    <button
+                      key={op.id}
+                      type="button"
+                      onClick={() => {
+                        setFiltroAtencionTop(op.id);
+                        setPaginaActual(1);
+                      }}
+                      className="px-3 py-1 rounded-lg text-[11.5px] font-bold transition cursor-pointer"
+                      style={{
+                        backgroundColor: act ? "#1D58D8" : "transparent",
+                        color: act ? "#FFFFFF" : "#475569",
+                      }}
+                    >
+                      {op.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {(() => {
+            const modoSoloMutual =
+              incluirMutual &&
+              ((empresasFrecSel.length === 1 && esEmpresaMutual(empresasFrecSel[0])) ||
+                (empresasFrecSel.length === 0 &&
+                  filtroEmpresa !== "TODAS" &&
+                  esEmpresaMutual(filtroEmpresa)));
+            const modoSinMutual = !incluirMutual && !modoSoloMutual;
+            const modoConMutual = incluirMutual && !modoSoloMutual;
+
+            return (
+              <div className="flex flex-wrap items-center gap-2">
+                {modoSinMutual && (
+                  <span className="rounded-full border border-[#FECDD3] bg-[#FFF1F2] px-2.5 py-0.5 text-[10.5px] font-extrabold text-[#BE123C]">
+                    Mutual Ser excluida
+                  </span>
+                )}
+                {modoSoloMutual && (
+                  <span className="rounded-full border border-[#BFDBFE] bg-[#EFF6FF] px-2.5 py-0.5 text-[10.5px] font-extrabold text-[#1D4ED8]">
+                    Viendo solo Mutual Ser
+                  </span>
+                )}
+                <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#64748B]">
+                  Mutual Ser
+                </span>
+                <div className="inline-flex rounded-xl p-0.5 border bg-white border-[#E2E8F0]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIncluirMutual(true);
+                      if (modoSoloMutual) {
+                        setEmpresasFrecSel([]);
+                        setFiltroEmpresa("TODAS");
+                      }
+                      setPaginaActual(1);
+                    }}
+                    className="px-3 py-1 rounded-lg text-[11.5px] font-bold transition cursor-pointer"
+                    style={{
+                      backgroundColor: modoConMutual ? "#0E245E" : "transparent",
+                      color: modoConMutual ? "#FFFFFF" : "#475569",
+                    }}
+                    title="Mostrar todas las entidades incluyendo Mutual Ser"
+                  >
+                    Con Mutual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIncluirMutual(true);
+                      setFiltroEmpresa("TODAS");
+                      setEmpresasFrecSel(["MUTUAL SER"]);
+                      setPaginaActual(1);
+                    }}
+                    className="px-3 py-1 rounded-lg text-[11.5px] font-bold transition cursor-pointer"
+                    style={{
+                      backgroundColor: modoSoloMutual ? "#1D58D8" : "transparent",
+                      color: modoSoloMutual ? "#FFFFFF" : "#475569",
+                    }}
+                    title="Filtrar únicamente Mutual Ser (NIT 806008394) en todo el tablero"
+                  >
+                    Solo Mutual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIncluirMutual(false);
+                      setEmpresasFrecSel((prev) =>
+                        prev.filter((e) => !esEmpresaMutual(e))
+                      );
+                      if (esEmpresaMutual(filtroEmpresa)) {
+                        setFiltroEmpresa("TODAS");
+                      }
+                      if (filtroSedeTop === "SEDE_2") {
+                        setFiltroSedeTop("TODAS");
+                      }
+                      setPaginaActual(1);
+                    }}
+                    className="px-3 py-1 rounded-lg text-[11.5px] font-bold transition cursor-pointer"
+                    style={{
+                      backgroundColor: modoSinMutual ? "#BE123C" : "transparent",
+                      color: modoSinMutual ? "#FFFFFF" : "#475569",
+                    }}
+                    title="Excluir Mutual Ser de todos los indicadores, curvas y glosas"
+                  >
+                    Excluir Mutual
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {/* ===================================================================== */}
@@ -6424,13 +6396,21 @@ export default function TableroCarteraAnalytics() {
               >
                 <div className="flex items-center justify-between text-xs font-extrabold" style={{ color: "#047857" }}>
                   <span>TOTAL CARTERA REAL</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">NETO</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">
+                    {corteSeleccionado.totalCarteraReal < 0 ? "CUBIERTA" : "NETO"}
+                  </span>
                 </div>
-                <div className="text-lg sm:text-xl font-extrabold font-mono mt-1.5" style={{ color: "#065F46" }}>
-                  {realCOP(corteSeleccionado.totalCarteraReal)}
+                <div className="text-lg sm:text-xl font-extrabold font-mono tabular-nums mt-1.5" style={{ color: "#065F46" }}>
+                  {sinGiros
+                    ? "No disponible"
+                    : corteSeleccionado.totalCarteraReal < 0
+                    ? "$0"
+                    : formatCOP(corteSeleccionado.totalCarteraReal)}
                 </div>
-                <div className="text-[11px] mt-1 font-medium" style={{ color: "#047857" }}>
-                  Saldo real neto por cobrar
+                <div className="text-[11px] mt-1 font-semibold" style={{ color: "#047857" }}>
+                  {corteSeleccionado.totalCarteraReal < 0
+                    ? `Giros a favor por cruzar: ${formatCOP(Math.abs(corteSeleccionado.totalCarteraReal))}`
+                    : "Saldo real neto por cobrar"}
                 </div>
               </div>
 
@@ -7756,18 +7736,22 @@ export default function TableroCarteraAnalytics() {
 
         // Totales por Causa Normativa sobre el universo filtrado (para poder alternar clic entre causas sin apagar las demás tarjetas)
         const porCausaNorma: Record<string, { monto: number; defendido: number; cantidad: number }> = {
-          FA: { monto: 0, defendido: 0, cantidad: 0 },
           TA: { monto: 0, defendido: 0, cantidad: 0 },
-          SO: { monto: 0, defendido: 0, cantidad: 0 },
           AU: { monto: 0, defendido: 0, cantidad: 0 },
+          SO: { monto: 0, defendido: 0, cantidad: 0 },
+          DE: { monto: 0, defendido: 0, cantidad: 0 },
           CO: { monto: 0, defendido: 0, cantidad: 0 },
+          FA: { monto: 0, defendido: 0, cantidad: 0 },
         };
         let montoOtrasCausas = 0;
         let defOtrasCausas = 0;
         let cantOtrasCausas = 0;
 
         for (const g of glosasFiltradas) {
-          const cod = causaNormativaDe(g.motivoCodigo);
+          const cod = causaNormativaDe(
+            g.motivoCodigo,
+            (g as unknown as { tipoGlosa?: string }).tipoGlosa
+          );
           const m = clasificarMontosGlosa(g);
           if (cod && porCausaNorma[cod]) {
             porCausaNorma[cod].monto += m.glosado;
@@ -7784,7 +7768,10 @@ export default function TableroCarteraAnalytics() {
         // Subconjunto activo si el usuario hizo clic en una causa normativa (FA, TA, SO, AU, CO u OTRAS)
         const glosasDash = causaFiltroDash
           ? glosasFiltradas.filter((g) => {
-              const cod = causaNormativaDe(g.motivoCodigo);
+              const cod = causaNormativaDe(
+                g.motivoCodigo,
+                (g as unknown as { tipoGlosa?: string }).tipoGlosa
+              );
               return causaFiltroDash === "OTRAS" ? !cod : cod === causaFiltroDash;
             })
           : glosasFiltradas;
@@ -8584,7 +8571,7 @@ export default function TableroCarteraAnalytics() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
                 <div>
                   <h4 className="text-[13.5px] sm:text-[14.5px] font-bold text-[#0E245E]">
-                    Causas Principales de Glosa según la Norma Técnica (FA, TA, SO, AU, CO) — Clic para filtrar
+                    Causales Oficiales de Glosa y Devolución (TA, AU, SO, DE, CO, FA) — Clic para filtrar
                   </h4>
                   <p className="text-[11.5px] text-[#64748B]">
                     Manual Único de Devoluciones y Glosas (Resolución 2284 de 2023). Haz clic en cualquier causal para inspeccionar su tendencia mensual y entidades.
@@ -8595,7 +8582,7 @@ export default function TableroCarteraAnalytics() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 pt-2">
                 {CAUSAS_NORMATIVAS.map((c) => {
                   const info = porCausaNorma[c.codigo] || { monto: 0, defendido: 0, cantidad: 0 };
                   const pct = totGlosadoBaseCausas > 0 ? Math.round((info.monto / totGlosadoBaseCausas) * 100) : 0;
@@ -8655,7 +8642,7 @@ export default function TableroCarteraAnalytics() {
                   className="pt-2 flex flex-wrap items-center justify-between text-[11.5px] text-[#64748B] border-t border-[#E2ECF8] cursor-pointer hover:text-[#0E245E]"
                 >
                   <span>
-                    Códigos históricos / Devoluciones (`RE97`, `DEV` o pendientes de tipificar FA–CO en WorkCenter):{" "}
+                    Sin código causal asignado aún en WorkCenter:{" "}
                     <strong className="text-[#0E245E]">{cantOtrasCausas} registros</strong>
                     {defOtrasCausas > 0 ? ` · Defendido: ${formatCOP(defOtrasCausas)}` : ""}
                   </span>
@@ -8666,6 +8653,79 @@ export default function TableroCarteraAnalytics() {
                 </div>
               )}
             </div>
+
+            {/* SEGUIMIENTO DE PAGOS, LEVANTAMIENTOS Y RATIFICACIÓN DE GLOSAS */}
+            {(() => {
+              const itemsSeg = [
+                { id: "PAGO_COMPLETO", label: "Pago completo", bg: "#ECFDF5", border: "#A7F3D0", text: "#047857" },
+                { id: "PAGO_PARCIAL", label: "Pago parcial", bg: "#F0F9FF", border: "#BAE6FD", text: "#0369A1" },
+                { id: "LEVANTAMIENTO_COMPLETO", label: "Levantamiento completo", bg: "#DCFCE7", border: "#86EFAC", text: "#15803D" },
+                { id: "LEVANTAMIENTO_PARCIAL", label: "Levantamiento parcial", bg: "#FFFBEB", border: "#FDE68A", text: "#B45309" },
+                { id: "RATIFICACION_GLOSA", label: "Ratificación de glosa", bg: "#FFF1F2", border: "#FECDD3", text: "#BE123C" },
+              ];
+              const conteoSeg: Record<string, { cant: number; glosado: number; valorSeg: number }> = {};
+              for (const it of itemsSeg) conteoSeg[it.id] = { cant: 0, glosado: 0, valorSeg: 0 };
+              let sinSegCant = 0;
+              let sinSegMonto = 0;
+
+              for (const g of glosasDash) {
+                const rawExt = g as unknown as { seguimientoEstado?: string; valorSeguimiento?: number | null };
+                const st = String(rawExt.seguimientoEstado || "").trim().toUpperCase();
+                if (st && conteoSeg[st]) {
+                  conteoSeg[st].cant += 1;
+                  conteoSeg[st].glosado += Number(g.valorGlosado || 0);
+                  conteoSeg[st].valorSeg += Number(rawExt.valorSeguimiento ?? g.valorGlosado ?? 0);
+                } else {
+                  sinSegCant += 1;
+                  sinSegMonto += Number(g.valorGlosado || 0);
+                }
+              }
+
+              return (
+                <div className="rounded-xl border p-4 sm:p-5 space-y-3" style={{ borderColor: "#E2ECF8", backgroundColor: "#FFFFFF" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-[13.5px] sm:text-[14px] font-bold text-[#0E245E]">
+                        Seguimiento Operativo: Pagos, Levantamientos y Ratificación de Glosa
+                      </h4>
+                      <p className="text-[11.5px] text-[#64748B]">
+                        Control en vivo desde WorkCenter de pagos completos/parciales, levantamientos completos/parciales y ratificaciones.
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-[11px] font-semibold text-[#475569]">
+                      En trámite sin marcación: {sinSegCant} ({formatMillones(sinSegMonto)})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    {itemsSeg.map((it) => {
+                      const d = conteoSeg[it.id];
+                      return (
+                        <div
+                          key={it.id}
+                          className="rounded-xl border p-3 space-y-1"
+                          style={{ backgroundColor: it.bg, borderColor: it.border }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-extrabold" style={{ color: it.text }}>
+                              {it.label}
+                            </span>
+                            <span className="font-mono text-[11px] font-bold" style={{ color: it.text }}>
+                              {d.cant} reg.
+                            </span>
+                          </div>
+                          <div className="font-mono text-[15px] font-extrabold text-[#0E245E]">
+                            {formatCOP(d.valorSeg)}
+                          </div>
+                          <div className="text-[10px] font-medium text-[#64748B]">
+                            Sobre glosado: {formatCOP(d.glosado)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* TOP EMPRESAS POR NIT Y GESTIÓN POR RESPONSABLE (APILADAS DEFENDIDO / ACEPTADO / PENDIENTE) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

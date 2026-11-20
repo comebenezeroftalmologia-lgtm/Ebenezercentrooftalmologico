@@ -771,45 +771,38 @@ export async function GET(req: NextRequest) {
       "Dic",
     ];
     const acumuladoPorMesFacturas = new Array<number>(12).fill(0);
+    const corrientePorMesFacturas = new Array<number>(12).fill(0);
     const vencidaPorMesFacturas = new Array<number>(12).fill(0);
 
-    for (const item of edadesData.cartera || []) {
-      const razonSocial =
-        item.razonSocial || item.numeroIdentificacion || "SIN ENTIDAD";
-      if (!cumpleFiltroEntidad(razonSocial, item.numeroIdentificacion || "")) continue;
+    // Serie mensual construida estrictamente con las facturas abiertas reales que cumplen TODOS los filtros activos (entidad, Mutual, sede, atención y fecha)
+    for (const facAb of listaFacturasAbiertas) {
       const fechaItem =
-        item.fechaFactura || item.fechaRadicacion || item.fechaVencimiento;
-      if (!cumpleFiltroFecha(fechaItem)) continue;
-
+        facAb.fechaFactura || facAb.fechaRadicacion || facAb.fechaVencimiento;
       const fIso = normalizarFechaISO(fechaItem);
       const mmItem = Number(fIso.slice(5, 7));
-      const saldoItem = Number(item.saldo || 0);
-      const vencItem =
-        Number(item.d90 || 0) +
-        Number(item.d120 || 0) +
-        Number(item.d180 || 0) +
-        Number(item.d360 || 0) +
-        Number(item.mas360 || 0);
-
       const idxInicio = Math.max(0, Math.min(11, (mmItem || 1) - 1));
       for (let m = idxInicio; m < mesMaxCorte; m++) {
-        acumuladoPorMesFacturas[m] += saldoItem;
-        vencidaPorMesFacturas[m] += vencItem;
+        acumuladoPorMesFacturas[m] += facAb.saldo;
+        corrientePorMesFacturas[m] += facAb.corriente;
+        vencidaPorMesFacturas[m] += facAb.vencida;
       }
     }
 
     const serieMensualCompleta = Array.from({ length: mesMaxCorte }, (_, idx) => {
       const mmStr = String(idx + 1).padStart(2, "0");
       const totMes = Math.round(acumuladoPorMesFacturas[idx]);
-      const propGiros =
-        carteraTotal > 0 ? Math.min(1, totMes / carteraTotal) : 0;
-      const girosMes = Math.round(anticiposPorCruzar * propGiros);
+      const corrMes = Math.round(corrientePorMesFacturas[idx]);
+      const vencMes = Math.round(vencidaPorMesFacturas[idx]);
+      const esUltimoMesCorte = idx === mesMaxCorte - 1;
+      const girosMes = esUltimoMesCorte ? anticiposPorCruzar : 0;
       return {
         mes: mmStr,
         etiqueta: nombresMesesCortos[idx],
         carteraTotal: totMes,
+        carteraCorriente: corrMes,
+        carteraVencida: vencMes,
+        anticiposPorCruzar: girosMes,
         totalCarteraReal: Math.round(totMes - girosMes),
-        carteraVencida: Math.round(vencidaPorMesFacturas[idx]),
       };
     });
 
