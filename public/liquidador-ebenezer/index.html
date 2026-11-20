@@ -15832,7 +15832,19 @@ function excelCompleto(){
           const cam = rr.cambio? ('antes '+Math.round(rr.cambio.antes||0).toLocaleString('es-CO')+' · '+(rr.cambio.quien||'')) : (g.acuerdo? String(g.acuerdo.texto||'').slice(0,60) : '');
           if(an){
             // las jornadas vienen apelotonadas en un solo renglón: se abren a
-            // renglón por jornada, con fecha, am/pm y los cirujanos de ese día
+            // renglón por jornada, con fecha, am/pm y el cirujano real del turno
+            if(Array.isArray(rr.lista) && rr.lista.length && rr.lista[0] && rr.lista[0].f && rr.lista[0].v!==undefined){
+              let sumL=0;
+              for(const j of rr.lista){
+                const fj=String(j.f||'').slice(0,10), jj=String(j.fr||'').toLowerCase();
+                const cjn=j.cir? String(j.cir) : Object.keys(CIRDIA[fj]||{}).slice(0,4).join(' · ');
+                const vj=Math.round(j.v||0); sumL+=vj;
+                fx.push([fj+(jj==='pm'?'~2':'~1'), [S(fj),S(''),S(jj),S(cjn),S(tipo),S(rr.emp||''),S(''),S(j.n? (j.n+' paciente(s)') : 'NO APLICA'),S(''),S(String(j.tipo||'Jornada de anestesia')),N(0),N(vj),S(cam)]]);
+              }
+              const resto=Math.round((rr.total||0)-sumL);
+              if(Math.abs(resto)>=1000) fx.push(['9998',[S(''),S(''),S(''),S(''),S(tipo),S(''),S(''),S(''),S(''),S('Ajuste de las jornadas'),N(0),N(resto),S('')]]);
+              continue;
+            }
             const dd=String(rr.detalle||'');
             if(/jornadas? de anestesia/i.test(dd) && /—/.test(dd)){
               const toks=dd.split('—').slice(1).join('—').split('·').map(z=>z.trim()).filter(Boolean);
