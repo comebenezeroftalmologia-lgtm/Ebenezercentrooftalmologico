@@ -10286,6 +10286,8 @@ function revisarHTML(m, x){
   P.forEach((p,i)=>{ if(p.tema) vistos[p.tema]=i; });
   const L = P.filter((p,i)=> !p.tema || vistos[p.tema]===i);
   if(!L.length) return '';
+  /* corte cerrado: los apuntes de revisar no vuelven a salir */
+  try{ if(typeof __cerradoChk==='function' && __cerradoChk()) return ''; }catch(e){}
   return '<div class="revbox"><div class="revtit">⚠ Qué hay que revisar en este médico</div><ul>'+
     L.map(p=>'<li>'+p.t+'</li>').join('')+'</ul></div>';
 }
@@ -13136,7 +13138,7 @@ function resumenMedico(d, med){
       ? '<div class="small" style="color:#8a5a00;margin-top:4px">Este es un <b>corte parcial</b>: es lo que va hasta hoy y va a seguir subiendo con lo que se facture. La cuenta definitiva es la del corte final.</div>' : '';
     return '<div class="resmed"><b>Su total sale de:</b> '+P.join(' &nbsp;+&nbsp; ')+
       ' &nbsp;=&nbsp; <b style="color:var(--acc)">'+money(vCir+vSed1+vSed2+vMan)+'</b>'+
-      (falta.length? '<div class="small" style="color:#8a5a00;margin-top:4px">Falta decidir: '+falta.join(' · ')+
+      ((falta.length && !(typeof __cerradoChk==='function' && __cerradoChk()))? '<div class="small" style="color:#8a5a00;margin-top:4px">Falta decidir: '+falta.join(' · ')+
         '<br>Si cambia alguno de esos valores, el total de arriba cambia con él.</div>':'')+_parc+'</div>';
   }catch(e){ return ''; }
 }
