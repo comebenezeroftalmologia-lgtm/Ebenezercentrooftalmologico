@@ -894,41 +894,54 @@ document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,
   // ---- Excel por unidad funcional (calca hoja/xlsx/bajar) ----
   window.hoDesgloseExcel=function(){
     try{
-      /* Tabla dinámica como la del sistema antiguo: médicos en filas, unidades
-         funcionales en columnas. Mutual plana; PYP y Cirugía con el desglose
-         por empresa debajo de cada médico. */
-      /* UNIFICADO: una sola tabla con todos los médicos; debajo de cada uno,
-         su desglose por empresa. Columnas = unidades funcionales. */
-      var hojas=[];
-      var ufs={}, meds={};
+      /* Dos tablas, como el sistema antiguo:
+         — «Sede 2 — Mutual Ser»: médicos en filas (plana), unidades funcionales en columnas.
+         — «Sede Principal — PYP y Ecopetrol»: cada médico abierto en ECOPETROL y P&P.
+         Las cirugías caen en la tabla según la empresa (Mutual → Mutual; el resto → Sede Principal). */
+      function armar(datos, titulo, porEmp){
+        var ufs={}, meds={};
+        datos.forEach(function(d){
+          ufs[d.uf]=1;
+          var M=meds[d.mn]||(meds[d.mn]={t:0,uf:{},emp:{}});
+          M.t+=d.v; M.uf[d.uf]=(M.uf[d.uf]||0)+d.v;
+          var E=M.emp[d.ek]||(M.emp[d.ek]={t:0,uf:{}});
+          E.t+=d.v; E.uf[d.uf]=(E.uf[d.uf]||0)+d.v;
+        });
+        var cols=Object.keys(ufs).sort();
+        var f=[[{b:'HONORARIOS MÉDICOS — '+titulo}],[D.periodo||''],[]];
+        f.push([{b:'Médico / Empresa'}].concat(cols.map(function(c){return {b:c};})).concat([{b:'Total general'}]));
+        var totCol={}, gran=0;
+        Object.keys(meds).sort().forEach(function(mn){
+          var M=meds[mn];
+          f.push([{b:tt(mn)}].concat(cols.map(function(c){ var v=M.uf[c]||0; totCol[c]=(totCol[c]||0)+v; return v?{bm:v}:''; })).concat([{bm:M.t}]));
+          gran+=M.t;
+          if(porEmp){
+            Object.keys(M.emp).sort().forEach(function(ek){
+              var E=M.emp[ek];
+              f.push(['    '+ek].concat(cols.map(function(c){ var v=E.uf[c]||0; return v?{m:v}:''; })).concat([{m:E.t}]));
+            });
+          }
+        });
+        f.push([]);
+        f.push([{b:'Total general'}].concat(cols.map(function(c){return {bm:totCol[c]||0};})).concat([{bm:gran}]));
+        return {f:f, anchos:[32].concat(cols.map(function(){return 17;})).concat([16]), gran:gran};
+      }
+      var dM=[], dP=[];
       Object.keys(D.medicos).forEach(function(mn){
         (D.medicos[mn].f||[]).forEach(function(r){
           var v=Math.round(r[6]||0); if(!v) return;
-          var uf=String(r[3]||'OTROS')||'OTROS', emp=String(r[2]||'—');
-          ufs[uf]=1;
-          var M=meds[mn]||(meds[mn]={t:0,uf:{},emp:{}});
-          M.t+=v; M.uf[uf]=(M.uf[uf]||0)+v;
-          var E=M.emp[emp]||(M.emp[emp]={t:0,uf:{}});
-          E.t+=v; E.uf[uf]=(E.uf[uf]||0)+v;
+          var sede=String(r[0]||''), emp=String(r[2]||'—'), uf=String(r[3]||'OTROS')||'OTROS';
+          var esMut=/MUTUAL/i.test(emp);
+          var aMutual = (sede==='Sede 2') || (sede!=='Sede Principal' && esMut);
+          if(aMutual) dM.push({mn:mn, uf:uf, v:v, ek:emp});
+          else dP.push({mn:mn, uf:uf, v:v, ek:(/ECOPETROL/i.test(emp)?'ECOPETROL':'P&P (particulares y prepagadas)')});
         });
       });
-      var cols=Object.keys(ufs).sort();
-      var f=[[{b:'HONORARIOS MÉDICOS — Por unidad funcional'}],[D.periodo||''],[]];
-      f.push([{b:'Médico / Empresa'}].concat(cols.map(function(c){return {b:c};})).concat([{b:'Total general'}]));
-      var totCol={}, gran=0;
-      Object.keys(meds).sort().forEach(function(mn){
-        var M=meds[mn];
-        f.push([{b:tt(mn)}].concat(cols.map(function(c){ var v=M.uf[c]||0; totCol[c]=(totCol[c]||0)+v; return v?{bm:v}:''; })).concat([{bm:M.t}]));
-        gran+=M.t;
-        Object.keys(M.emp).sort().forEach(function(emp){
-          var E=M.emp[emp];
-          f.push(['    '+emp].concat(cols.map(function(c){ var v=E.uf[c]||0; return v?{m:v}:''; })).concat([{m:E.t}]));
-        });
-      });
-      f.push([]);
-      f.push([{b:'Total general'}].concat(cols.map(function(c){return {bm:totCol[c]||0};})).concat([{bm:gran}]));
-      hojas.push({nombre:'Por unidad funcional', xml:hoja(f,[32].concat(cols.map(function(){return 17;})).concat([16]))});
-      /* detalle por servicio (lo que bajaba antes), como hoja final */
+      var hM=armar(dM,'Sede 2 — Mutual Ser', false);
+      var hP=armar(dP,'Sede Principal — PYP y Ecopetrol', true);
+      var hojas=[{nombre:'Sede 2 — Mutual', xml:hoja(hM.f,hM.anchos)},
+                 {nombre:'Sede Ppal — PYP y Ecopetrol', xml:hoja(hP.f,hP.anchos)}];
+      /* detalle por servicio, como hoja final */
       var f2=[[{b:'Detalle por servicio'}],[D.periodo||''],[]];
       f2.push([{b:'Médico'},{b:'Sede'},{b:'Unidad funcional'},{b:'Servicio'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
       var gran2=0;
