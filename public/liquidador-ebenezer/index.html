@@ -9703,6 +9703,28 @@ function nomArchivoBonito(n){
 }
 /* Corte cerrado: 'las alertas de un corte cerrado no vuelven a salir'. Marca qué partes
    (CIR/S2/S1) del período ya se enviaron a contabilidad, con memoria en el navegador. */
+/* Falla 2 (aviso al guardar): si se guarda un renglón en $0 con motivo «se paga en la otra
+   sede», se recuerda AHÍ MISMO crear la contrapartida; sin ella el envío se bloquea. */
+(function(){
+  var t=setInterval(function(){
+    try{
+      if(window.NUBE && NUBE.guardarAjuste && !NUBE.__gaAviso){
+        NUBE.__gaAviso=1;
+        var o=NUBE.guardarAjuste.bind(NUBE);
+        NUBE.guardarAjuste=function(k,v){
+          try{
+            var cero = v && ((v.despues!==undefined && Math.round(v.despues||0)===0) || (v.despues===undefined && v.valor!==undefined && Math.round(v.valor||0)===0));
+            if(/^CMPD\|/.test(String(k)) && cero && /OTRA\s+SEDE|SE\s+PAGA\s+EN|PAGA\s+EN\s+(LA\s+)?(CIRUG|CONSULTA|SEDE)/i.test(String(v.motivo||'')) && !v.borrado){
+              setTimeout(function(){ try{ alert('OJO: dejó un renglón en $0 porque «se paga en la otra sede».\n\nCree AHORA el acuerdo en la otra sede, con su valor y sus pacientes. Sin esa contrapartida, el envío del cierre se va a BLOQUEAR (y el médico se quedaría sin esa plata).'); }catch(e){} }, 80);
+            }
+          }catch(e){}
+          return o(k,v);
+        };
+        clearInterval(t);
+      }
+    }catch(e){}
+  }, 800);
+})();
 function __cerradoChk(){
   try{
     if(!window.__corteCerrado){ try{ window.__corteCerrado=JSON.parse(localStorage.getItem('eb_cortes_cerrados')||'{}'); }catch(e){ window.__corteCerrado={}; } }
