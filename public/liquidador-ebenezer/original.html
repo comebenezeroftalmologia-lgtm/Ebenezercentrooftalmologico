@@ -18287,12 +18287,18 @@ function pdfFilasMedico(h){
   };
   const tipoDe = g => g.uf==='Quirófano' ? 'Quirófano' : g.uf==='Anestesia' ? 'Anestesia' : 'Consulta / apoyo';
   const esCierre = g => g.uf==='Mes completo' || g.uf==='Anestesia' || /jornada|rubro|paquete|coordinaci/i.test(g.servicio||'');
+  const ufCie=(tx,esC)=>{ tx=String(tx||'').toUpperCase();
+    if(/PACIENTE EXTRA/.test(tx)) return 'PACIENTE EXTRA';
+    if(/JORNADA|TURNO|DISPONIBILIDAD|PREANEST|COORDINACI/.test(tx)) return 'JORNADA';
+    if(esC || /LENTE|PAQUETE|QUIROF|CIRUG|BONO|TORIC|PANOPTIX|VIVITY|EDOF/.test(tx)) return 'CIRUGIA';
+    return 'CONSULTA EXTERNA'; };
   for(const bl of [d.cir, d.sede]) for(const g of Object.values(bl)){
+    const esCirB = (bl===d.cir);
     const enBasico = /CUBIERT[AO] POR (EL )?(RUBRO|JORNADA|BASICO)|PAQUETE MENSUAL/i.test(g.servicio||'');
     if(!enBasico && esCierre(g)){
       const lst = (g.recs||[]).flatMap(r=>r.lista||[]);
       if(lst.length){ for(const x of lst) filas.push({f:x.f||'', emp:x.cir||'', tipo:'Anestesia', pac:x.tipo+(x.pac?': '+x.pac:''), det:x.fr? 'Turno '+x.fr : '', v:x.v, txt:null}); continue; }
-      if(g.pago>0) cierres.push({txt:(g.recs&&g.recs[0]&&g.recs[0].detalle)||g.servicio, v:g.pago}); continue; }
+      if(g.pago>0){ const _tx=(g.recs&&g.recs[0]&&g.recs[0].detalle)||g.servicio; cierres.push({txt:_tx, v:g.pago, uf:ufCie(_tx,esCirB)}); } continue; }
     if(!(g.pago>0) && !enBasico) continue;
     const jor = /JORNADA/i.test(g.servicio||'');
     for(const r of (g.recs||[])){
@@ -20076,7 +20082,7 @@ try{
         .map(function(r){ return [sede, String(r.f||""), String(r.emp||""), String(r.tipo||""),
                                   String(r.pac||""), String(r.det||""), Math.round(r.v||0)]; });
       (R.cierres||[]).forEach(function(c){
-        f.push([sede, "", "", "", "", String(c.txt||"Ajuste"), Math.round(c.v||0)]);
+        f.push([sede, "", "", String(c.uf||""), "", String(c.txt||"Ajuste"), Math.round(c.v||0)]);
       });
       if(!t && !f.length) return;
       med[x.m] = {t:t, f:f};
