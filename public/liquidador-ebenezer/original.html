@@ -20021,7 +20021,20 @@ try{
     if(ini < 0){ alert("La página de los médicos cambió de forma: no se halló el bloque de datos. Avíseme."); return; }
     var a = html.indexOf(">", ini); if(a < 0){ alert("No se pudo leer el bloque de datos."); return; }
     var b = html.indexOf("<\/" + "script>", a); if(b < 0){ alert("No se pudo leer el bloque de datos."); return; }
-    var nuevo = html.slice(0, a+1) + JSON.stringify(datos) + html.slice(b);
+    /* La página guarda los cortes publicados (filtro de meses): se AGREGA el corte nuevo
+       sin borrar los anteriores. Se conservan los últimos 6. */
+    var viejo=null; try{ viejo=JSON.parse(html.slice(a+1, b)); }catch(e){}
+    var MNK={ENERO:'01',FEBRERO:'02',MARZO:'03',ABRIL:'04',MAYO:'05',JUNIO:'06',JULIO:'07',AGOSTO:'08',SEPTIEMBRE:'09',OCTUBRE:'10',NOVIEMBRE:'11',DICIEMBRE:'12'};
+    var claveDe=function(per){ try{ var m=String(per||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/AL\s+\d{1,2}\s+DE\s+([A-Z]+)\s+DE\s+(\d{4})/); return (m&&MNK[m[1]])? (m[2]+'-'+MNK[m[1]]) : null; }catch(e){ return null; } };
+    var cortes={};
+    if(viejo && viejo.cortes) cortes=viejo.cortes;
+    else if(viejo && viejo.medicos){ var kv=claveDe(viejo.periodo); if(kv) cortes[kv]=viejo; }
+    var kN=claveDe(datos.periodo);
+    if(!kN){ alert("No pude leer el mes del período — se arma solo con este corte."); cortes={}; kN='actual'; }
+    cortes[kN]=datos;
+    var ks=Object.keys(cortes).sort();
+    while(ks.length>6){ delete cortes[ks[0]]; ks.shift(); }
+    var nuevo = html.slice(0, a+1) + JSON.stringify({cortes:cortes, actual:kN}) + html.slice(b);
 
     var A = document.createElement("a");
     A.href = URL.createObjectURL(new Blob([nuevo], {type:"text/html"}));
