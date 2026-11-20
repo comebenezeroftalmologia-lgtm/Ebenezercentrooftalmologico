@@ -639,11 +639,23 @@ export async function GET(req: NextRequest) {
       },
     };
 
+    const girosPorNitMap = new Map<string, { g1301: number; g2502: number; g2507: number }>();
+    const girosPorEntidadMap = new Map<string, { g1301: number; g2502: number; g2507: number }>();
+
     const procesarAuxiliar = (aux: AuxiliarAbiertoResponse | null) => {
       if (!aux || !Array.isArray(aux.terceros)) return;
       for (const terc of aux.terceros) {
         const esMut = esEntidadMutual(terc.razonSocial || "", terc.nit || "");
         const pasaEntidad = cumpleFiltroEntidad(terc.razonSocial || "", terc.nit || "");
+        const nitKey = String(terc.nit || "").replace(/\D/g, "").slice(0, 9);
+        const empTerc = homologarEmpresaYOrigen({
+          empresa: terc.razonSocial || "",
+          nit: terc.nit || "",
+        });
+        const entKey =
+          empTerc.empresaCorta && empTerc.empresaCorta !== "SIN ENTIDAD"
+            ? empTerc.empresaCorta
+            : normalizarEmpresaSisma(terc.razonSocial || "", terc.nit || "");
         for (const a of terc.auxiliares || []) {
           for (const doc of a.documentos || []) {
             const fDocGiro = normalizarFechaISO(doc.fecha);
@@ -662,6 +674,26 @@ export async function GET(req: NextRequest) {
               acumUniv.conMutual.giros2507 += v;
               if (esMut) acumUniv.soloMutual.giros2507 += v;
               else acumUniv.sinMutual.giros2507 += v;
+            }
+            if (
+              doc.cuenta === "1301250602" ||
+              doc.cuenta === "2501010602" ||
+              doc.cuenta === "2501010607"
+            ) {
+              if (nitKey) {
+                const bn = girosPorNitMap.get(nitKey) || { g1301: 0, g2502: 0, g2507: 0 };
+                if (doc.cuenta === "1301250602") bn.g1301 += v;
+                else if (doc.cuenta === "2501010602") bn.g2502 += v;
+                else bn.g2507 += v;
+                girosPorNitMap.set(nitKey, bn);
+              }
+              if (entKey) {
+                const be = girosPorEntidadMap.get(entKey) || { g1301: 0, g2502: 0, g2507: 0 };
+                if (doc.cuenta === "1301250602") be.g1301 += v;
+                else if (doc.cuenta === "2501010602") be.g2502 += v;
+                else be.g2507 += v;
+                girosPorEntidadMap.set(entKey, be);
+              }
             }
             if (pasaEntidad && cuentasGirosMap[doc.cuenta]) {
               cuentasGirosMap[doc.cuenta].saldo += v;
@@ -924,8 +956,34 @@ export async function GET(req: NextRequest) {
         saldoTotal: carteraTotal,
       },
       cuentasGirosDetalle,
-      topEmpresas,
-      catalogoEmpresasPeriodo,
+      topEmpresas: topEmpresas.map((emp) => {
+        const nk = String(emp.nit || "").replace(/\D/g, "").slice(0, 9);
+        const g = (nk && girosPorNitMap.get(nk)) || girosPorEntidadMap.get(emp.empresaCorta || emp.razonSocial);
+        const girosEnt = emp.esMutual
+          ? desgloseUniverso.soloMutual.anticiposPorCruzar
+          : g
+          ? Math.round(Math.abs(g.g1301) + Math.abs(g.g2502) + Math.abs(g.g2507))
+          : 0;
+        return {
+          ...emp,
+          anticiposPorCruzar: girosEnt,
+          totalCarteraReal: Math.round(emp.total - girosEnt),
+        };
+      }),
+      catalogoEmpresasPeriodo: catalogoEmpresasPeriodo.map((emp) => {
+        const nk = String(emp.nit || "").replace(/\D/g, "").slice(0, 9);
+        const g = (nk && girosPorNitMap.get(nk)) || girosPorEntidadMap.get(emp.empresaCorta || emp.razonSocial);
+        const girosEnt = emp.esMutual
+          ? desgloseUniverso.soloMutual.anticiposPorCruzar
+          : g
+          ? Math.round(Math.abs(g.g1301) + Math.abs(g.g2502) + Math.abs(g.g2507))
+          : 0;
+        return {
+          ...emp,
+          anticiposPorCruzar: girosEnt,
+          totalCarteraReal: Math.round(emp.total - girosEnt),
+        };
+      }),
       resumenSedes: {
         SEDE_1: {
           ...resumenSedes.SEDE_1,

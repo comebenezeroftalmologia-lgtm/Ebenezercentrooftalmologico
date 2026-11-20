@@ -11,6 +11,12 @@ import {
   clasificarAtencionYSede,
   limpiarNombrePersona,
 } from "@/lib/carteraCruces";
+import {
+  CIERRES_SISMA_2026_VERIFICADOS,
+  resolverCierreMensualSisma,
+  type CierreMensualDesglosadoSisma,
+  type OpcionesFiltroCierreSisma,
+} from "@/lib/carteraCierresSisma";
 import { ModalImportarCarteraExcel } from "@/components/workcenter/ModalImportarCarteraExcel";
 
 type CorteSismaBack = {
@@ -582,6 +588,8 @@ export default function TableroCarteraAnalytics() {
       vencida: number;
       pendienteRadicar: number;
       total: number;
+      anticiposPorCruzar?: number;
+      totalCarteraReal?: number;
     }[];
     catalogoEmpresasPeriodo?: {
       nit: string;
@@ -599,6 +607,8 @@ export default function TableroCarteraAnalytics() {
       vencida: number;
       pendienteRadicar: number;
       total: number;
+      anticiposPorCruzar?: number;
+      totalCarteraReal?: number;
     }[];
     totalFacturasAbiertas?: number;
     facturasAbiertas?: FacturaSismaVivaRow[];
@@ -1593,9 +1603,11 @@ export default function TableroCarteraAnalytics() {
       return corteBaseSeleccionado;
     }
 
-    // Desglose exacto del servidor para Sin Mutual y Solo Mutual (con giros contables exactos por NIT)
+    // Desglose exacto del servidor para Sin Mutual / Sede 1 y Solo Mutual / Sede 2 (con giros contables exactos por NIT)
     if (
-      !incluirMutual &&
+      ((!incluirMutual && filtroSedeTop !== "SEDE_2") ||
+        (incluirMutual && filtroSedeTop === "SEDE_1")) &&
+      filtroAtencionTop === "TODAS" &&
       sinSubfiltroEmpresa &&
       sinSubfiltroResp &&
       datosSismaVivo?.desgloseUniverso?.sinMutual
@@ -1603,6 +1615,7 @@ export default function TableroCarteraAnalytics() {
       const u = datosSismaVivo.desgloseUniverso.sinMutual;
       return {
         ...corteBaseSeleccionado,
+        fechaCorte: datosSismaVivo.fechaCorte || corteBaseSeleccionado.fechaCorte,
         carteraCorriente: u.carteraCorriente,
         carteraVencida: u.carteraVencida,
         carteraTotal: u.carteraTotal,
@@ -1612,10 +1625,19 @@ export default function TableroCarteraAnalytics() {
       };
     }
 
-    if (esSoloMutual && datosSismaVivo?.desgloseUniverso?.soloMutual) {
+    if (
+      (esSoloMutual ||
+        (incluirMutual &&
+          filtroSedeTop === "SEDE_2" &&
+          sinSubfiltroEmpresa &&
+          sinSubfiltroResp)) &&
+      filtroAtencionTop === "TODAS" &&
+      datosSismaVivo?.desgloseUniverso?.soloMutual
+    ) {
       const u = datosSismaVivo.desgloseUniverso.soloMutual;
       return {
         ...corteBaseSeleccionado,
+        fechaCorte: datosSismaVivo.fechaCorte || corteBaseSeleccionado.fechaCorte,
         carteraCorriente: u.carteraCorriente,
         carteraVencida: u.carteraVencida,
         carteraTotal: u.carteraTotal,
@@ -1632,31 +1654,26 @@ export default function TableroCarteraAnalytics() {
       (acc, e) => acc + (e.pendienteRadicar || 0),
       0
     );
-    const totalBaseSinFiltro =
-      datosSismaVivo?.desgloseUniverso?.conMutual?.carteraTotal ||
-      (datosSismaVivo?.catalogoEmpresasPeriodo || []).reduce(
-        (acc, e) => acc + (e.total || 0),
-        0
-      ) ||
-      datosSismaCompletaRef.current?.edades?.saldoTotal ||
-      corteBaseSeleccionado.carteraTotal ||
-      1;
-    const proporcion = Math.min(1, Math.max(0, tot / totalBaseSinFiltro));
+    const tieneGirosPorEntidad = empresasSismaFiltradas.some(
+      (e) => e.anticiposPorCruzar !== undefined
+    );
+    const girosPorEntidades = Math.round(
+      empresasSismaFiltradas.reduce((acc, e) => acc + (e.anticiposPorCruzar || 0), 0)
+    );
     const girosVivo = datosSismaVivo?.cuentasGirosDetalle
       ? datosSismaVivo.cuentasGirosDetalle.reduce(
           (acc, c) => acc + (c.saldoAbsoluto || 0),
           0
         )
-      : null;
-    const baseGirosUniverso =
-      datosSismaVivo?.desgloseUniverso?.conMutual?.anticiposPorCruzar ??
-      corteBaseSeleccionado.anticiposPorCruzar;
-    const giros =
-      !cargandoSismaVivo && girosVivo !== null
-        ? girosVivo
-        : Math.round(baseGirosUniverso * proporcion);
+      : 0;
+    const giros = tieneGirosPorEntidad
+      ? girosPorEntidades
+      : !cargandoSismaVivo
+      ? girosVivo
+      : 0;
     return {
       ...corteBaseSeleccionado,
+      fechaCorte: datosSismaVivo?.fechaCorte || corteBaseSeleccionado.fechaCorte,
       carteraCorriente: Math.round(corr),
       carteraVencida: Math.round(venc),
       carteraTotal: Math.round(tot),
@@ -1679,6 +1696,8 @@ export default function TableroCarteraAnalytics() {
     filtroResponsable,
     indiceCorteActivo,
     listaCortesActiva.length,
+    filtroSedeTop,
+    filtroAtencionTop,
   ]);
 
   const formatearPctDonut = (pct: number): string => {
@@ -2158,6 +2177,95 @@ export default function TableroCarteraAnalytics() {
     );
   };
 
+  const opcionesFiltroCierreSisma = useMemo<OpcionesFiltroCierreSisma>(
+    () => ({
+      incluirMutual,
+      sede: filtroSedeTop,
+      atencion: filtroAtencionTop,
+      modalidad: modalidadSisma,
+      empresasSel: empresasFrecSel,
+      totalEmpresasDisponibles: todasLasEmpresasDisponibles.length,
+      filtroEmpresa,
+      responsablesSel: responsablesFrecSel,
+      totalResponsablesDisponibles:
+        carteraInitialData.responsablesDisponibles.length,
+      filtroResponsable,
+      diasFiltroActivo,
+      diasSemanaCount: diasSemanaSel.length,
+    }),
+    [
+      incluirMutual,
+      filtroSedeTop,
+      filtroAtencionTop,
+      modalidadSisma,
+      empresasFrecSel,
+      todasLasEmpresasDisponibles.length,
+      filtroEmpresa,
+      responsablesFrecSel,
+      filtroResponsable,
+      diasFiltroActivo,
+      diasSemanaSel.length,
+    ]
+  );
+
+  const cierresMensualesEnriquecidos = useMemo<CierreMensualDesglosadoSisma[]>(() => {
+    const mapaVerif2026 = new Map(
+      CIERRES_SISMA_2026_VERIFICADOS.map((c) => [c.mes, c])
+    );
+    if (anioTendencia === 2026) {
+      const porMes = new Map<number, CierreMensualDesglosadoSisma>();
+      for (const cv of CIERRES_SISMA_2026_VERIFICADOS) {
+        porMes.set(cv.mes, cv);
+      }
+      for (const cr of cierresMensuales) {
+        const verif = mapaVerif2026.get(cr.mes);
+        if (verif) {
+          porMes.set(cr.mes, {
+            ...verif,
+            esMesEnCurso: Boolean(cr.esMesEnCurso),
+          });
+        } else {
+          const ext = cr as unknown as Partial<CierreMensualDesglosadoSisma>;
+          porMes.set(cr.mes, {
+            anio: cr.anio,
+            mes: cr.mes,
+            etiqueta: cr.etiqueta,
+            fechaCorte: cr.fechaCorte,
+            esMesEnCurso: Boolean(cr.esMesEnCurso),
+            carteraCorriente: cr.carteraCorriente,
+            carteraVencida: Math.max(0, cr.carteraTotal - cr.carteraCorriente),
+            carteraTotal: cr.carteraTotal,
+            girosPorCruzar:
+              cr.girosPorCruzar ?? Math.max(0, cr.carteraTotal - cr.carteraReal),
+            carteraReal: cr.carteraReal,
+            desgloseUniverso: ext.desgloseUniverso,
+            empresas: ext.empresas,
+          });
+        }
+      }
+      return Array.from(porMes.values()).sort((a, b) => a.mes - b.mes);
+    }
+
+    return cierresMensuales.map((cr) => {
+      const ext = cr as unknown as Partial<CierreMensualDesglosadoSisma>;
+      return {
+        anio: cr.anio,
+        mes: cr.mes,
+        etiqueta: cr.etiqueta,
+        fechaCorte: cr.fechaCorte,
+        esMesEnCurso: Boolean(cr.esMesEnCurso),
+        carteraCorriente: cr.carteraCorriente,
+        carteraVencida: Math.max(0, cr.carteraTotal - cr.carteraCorriente),
+        carteraTotal: cr.carteraTotal,
+        girosPorCruzar:
+          cr.girosPorCruzar ?? Math.max(0, cr.carteraTotal - cr.carteraReal),
+        carteraReal: cr.carteraReal,
+        desgloseUniverso: ext.desgloseUniverso,
+        empresas: ext.empresas,
+      };
+    });
+  }, [cierresMensuales, anioTendencia]);
+
   const renderTarjetaTendenciaTotalCartera = (glosaInfo: ResumenGlosaSobreCartera) => {
     const sinSubfiltroEmpTend =
       (empresasFrecSel.length === 0 ||
@@ -2173,7 +2281,8 @@ export default function TableroCarteraAnalytics() {
       filtroSedeTop === "TODAS" &&
       filtroAtencionTop === "TODAS" &&
       modalidadSisma === "TODAS" &&
-      !tieneFiltroFechaBarra &&
+      !diasFiltroActivo &&
+      diasSemanaSel.length === 0 &&
       sinSubfiltroEmpTend &&
       sinSubfiltroRespTend;
 
@@ -2251,11 +2360,37 @@ export default function TableroCarteraAnalytics() {
       anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
     };
 
-    // Sin estimar cortes históricos cuando hay filtro por entidad o exclusión de Mutual (Regla 6)
+    const cortesCerradosFiltrados: PuntoCorteTabla[] = !usaCierresGlobalesOficiales
+      ? CIERRES_SISMA_2026_VERIFICADOS.slice(-4).flatMap((cm) => {
+          const r = resolverCierreMensualSisma(cm, opcionesFiltroCierreSisma);
+          if (!r.disponible) return [];
+          const latam = formatearISOaLatam(cm.fechaCorte);
+          const idxReal = listaCortesActiva.findIndex(
+            (lc) => String(lc.fechaCorte || "").slice(0, 10) === latam
+          );
+          return [
+            {
+              id: `corte-sisma-mes-${cm.fechaCorte}`,
+              idxCorte: idxReal !== -1 ? idxReal : -100 - cm.mes,
+              fechaRaw: latam,
+              etiquetaTabla: `Corte ${latam}`,
+              etiquetaEje: latam.slice(0, 5),
+              esVivo: false,
+              esCongeladoAyer: false,
+              carteraTotal: r.carteraTotal,
+              totalCarteraReal: r.totalCarteraReal,
+              carteraCorriente: r.carteraCorriente,
+              carteraVencida: r.carteraVencida,
+              anticiposPorCruzar: r.anticiposPorCruzar,
+            },
+          ];
+        })
+      : [];
+
     const puntosTablaCortes: PuntoCorteTabla[] = !usaCierresGlobalesOficiales
-      ? modalidadSisma === "PYP"
-        ? puntosCortesGlobal
-        : [puntoCorteVivoActual]
+      ? cortesCerradosFiltrados.some((c) => c.fechaRaw === fechaVivoClean)
+        ? cortesCerradosFiltrados
+        : [...cortesCerradosFiltrados, puntoCorteVivoActual]
       : datosSismaVivo &&
         !sinGiros &&
         ultimoCorteLista &&
@@ -2272,9 +2407,9 @@ export default function TableroCarteraAnalytics() {
             : pt
         );
 
-    const anioCorteVivo = Number(corteIsoActivo.slice(0, 4)) || anioTendencia;
-    const mesCorteVivo = Number(corteIsoActivo.slice(5, 7)) || 0;
-    const mmCorteVivo = String(mesCorteVivo).padStart(2, "0");
+    const anioAyerNum = Number(ayerIsoRef.slice(0, 4)) || anioTendencia;
+    const mesAyerNum = Number(ayerIsoRef.slice(5, 7)) || 0;
+    const mmAyer = String(mesAyerNum).padStart(2, "0");
     const nombresMesCorto = [
       "",
       "Ene",
@@ -2291,7 +2426,7 @@ export default function TableroCarteraAnalytics() {
       "Dic",
     ];
 
-    const cierresFiltrados = cierresMensuales.filter((c) => {
+    const cierresFiltrados = cierresMensualesEnriquecidos.filter((c) => {
       if (mesesFrecSel.length > 0 && mesesFrecSel.length < 12) {
         const mm = String(c.mes).padStart(2, "0");
         if (!mesesFrecSel.includes(mm)) return false;
@@ -2299,121 +2434,118 @@ export default function TableroCarteraAnalytics() {
       return true;
     });
 
+    let motivoSinSerieMensual = "";
     const puntosMeses = (() => {
-      if (usaCierresGlobalesOficiales) {
-        const base = cierresFiltrados.map((c) => {
-          const usarCorteCongeladoVivo =
-            (c.esMesEnCurso || (c.anio === anioCorteVivo && c.mes === mesCorteVivo)) &&
+      const base: {
+        id: string;
+        idxCorte: number;
+        etiquetaEje: string;
+        fechaDetalle: string;
+        esCongeladoAyer: boolean;
+        carteraTotal: number;
+        totalCarteraReal: number;
+        carteraCorriente: number;
+        carteraVencida: number;
+        anticiposPorCruzar: number;
+        glosaMonto: number;
+        mostrarLabel: boolean;
+      }[] = [];
+
+      for (const c of cierresFiltrados) {
+        const esMesActualAyer =
+          c.esMesEnCurso || (c.anio === anioAyerNum && c.mes === mesAyerNum);
+
+        if (esMesActualAyer) {
+          if (
             Boolean(datosSismaVivo) &&
-            !sinGiros;
-
-          const cTotal = usarCorteCongeladoVivo ? corteSeleccionado.carteraTotal : Math.round(c.carteraTotal);
-          const cCorr = usarCorteCongeladoVivo ? corteSeleccionado.carteraCorriente : Math.round(c.carteraCorriente);
-          const cVenc = usarCorteCongeladoVivo ? corteSeleccionado.carteraVencida : Math.max(0, cTotal - cCorr);
-          const cGiros = usarCorteCongeladoVivo
-            ? corteSeleccionado.anticiposPorCruzar
-            : Math.round(c.girosPorCruzar ?? Math.max(0, c.carteraTotal - c.carteraReal));
-          const cReal = usarCorteCongeladoVivo ? corteSeleccionado.totalCarteraReal : Math.round(cTotal - cGiros);
-
-          const fechaCierreLatam = usarCorteCongeladoVivo
-            ? `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)}${esCorteCongeladoAyer ? " (Ayer)" : ""}`
-            : formatearISOaLatam(c.fechaCorte);
-
-          const ymClave = `${c.anio}-${String(c.mes).padStart(2, "0")}`;
-          return {
-            id: `cierre-${c.anio}-${c.mes}`,
-            idxCorte: listaCortesActiva.length - 1,
-            etiquetaEje: usarCorteCongeladoVivo && esCorteCongeladoAyer ? `${c.etiqueta}*` : c.etiqueta,
-            fechaDetalle: fechaCierreLatam,
-            esCongeladoAyer: usarCorteCongeladoVivo && esCorteCongeladoAyer,
-            carteraTotal: cTotal,
-            totalCarteraReal: cReal,
-            carteraCorriente: cCorr,
-            carteraVencida: cVenc,
-            anticiposPorCruzar: cGiros,
-            glosaMonto: glosaInfo.porMes[ymClave] || 0,
-            mostrarLabel: true,
-          };
-        });
-
-        const yaTieneMesVivo = cierresFiltrados.some(
-          (c) => c.anio === anioCorteVivo && c.mes === mesCorteVivo
-        );
-        const permiteMesVivo =
-          mesesFrecSel.length === 0 ||
-          mesesFrecSel.length >= 12 ||
-          mesesFrecSel.includes(mmCorteVivo);
-
-        if (
-          !yaTieneMesVivo &&
-          base.length > 0 &&
-          anioTendencia === anioCorteVivo &&
-          mesCorteVivo >= 1 &&
-          permiteMesVivo &&
-          Boolean(datosSismaVivo) &&
-          !sinGiros
-        ) {
-          return [
-            ...base,
-            {
-              id: `cierre-vivo-${anioCorteVivo}-${mesCorteVivo}`,
+            !sinGiros &&
+            esCorteCongeladoAyer &&
+            filtroAtencionTop === "TODAS" &&
+            !diasFiltroActivo &&
+            diasSemanaSel.length === 0
+          ) {
+            const ymClave = `${c.anio}-${String(c.mes).padStart(2, "0")}`;
+            base.push({
+              id: `cierre-${c.anio}-${c.mes}`,
               idxCorte: listaCortesActiva.length - 1,
-              etiquetaEje: `${nombresMesCorto[mesCorteVivo] || mmCorteVivo}${esCorteCongeladoAyer ? "*" : ""}`,
-              fechaDetalle: `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)}${esCorteCongeladoAyer ? " (Ayer)" : ""}`,
-              esCongeladoAyer: esCorteCongeladoAyer,
+              etiquetaEje: `${c.etiqueta}*`,
+              fechaDetalle: `${datosSismaVivo?.fechaCorte || formatearISOaLatam(ayerIsoRef)} (Ayer)`,
+              esCongeladoAyer: true,
               carteraTotal: corteSeleccionado.carteraTotal,
               totalCarteraReal: corteSeleccionado.totalCarteraReal,
               carteraCorriente: corteSeleccionado.carteraCorriente,
               carteraVencida: corteSeleccionado.carteraVencida,
               anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
-              glosaMonto: glosaInfo.porMes[`${anioCorteVivo}-${mmCorteVivo}`] || 0,
+              glosaMonto: glosaInfo.porMes[ymClave] || 0,
               mostrarLabel: true,
-            },
-          ];
+            });
+          }
+          continue;
         }
-        return base;
-      }
 
-      // Cuando se filtra por entidad, Sede, Atención, Solo Mutual o Excluir Mutual:
-      // CERO estimaciones (factorFiltro prohibido). Se grafica la serie mensual 100% real de facturas abiertas en SISMA.
-      const serieSisma = (datosSismaVivo?.serieMensual || []) as {
-        mes: string;
-        etiqueta: string;
-        carteraTotal: number;
-        carteraCorriente?: number;
-        carteraVencida: number;
-        anticiposPorCruzar?: number;
-        totalCarteraReal: number;
-      }[];
-      return serieSisma.map((s, idx) => {
-        const esUlt = idx === serieSisma.length - 1 && s.mes === mmCorteVivo;
-        const totM = esUlt ? corteSeleccionado.carteraTotal : Math.round(s.carteraTotal || 0);
-        const vencM = esUlt ? corteSeleccionado.carteraVencida : Math.round(s.carteraVencida || 0);
-        const corrM = esUlt
-          ? corteSeleccionado.carteraCorriente
-          : s.carteraCorriente !== undefined
-          ? Math.round(s.carteraCorriente)
-          : Math.max(0, totM - vencM);
-        const girM = esUlt ? corteSeleccionado.anticiposPorCruzar : Math.round(s.anticiposPorCruzar || 0);
-        const realM = esUlt ? corteSeleccionado.totalCarteraReal : Math.round(totM - girM);
-        const ymClave = `${anioCorteVivo}-${s.mes}`;
-        return {
-          id: `sisma-mes-${anioCorteVivo}-${s.mes}`,
+        const resuelto = resolverCierreMensualSisma(c, opcionesFiltroCierreSisma);
+        if (!resuelto.disponible) {
+          if (resuelto.motivoNoDisponible) {
+            motivoSinSerieMensual = resuelto.motivoNoDisponible;
+          }
+          continue;
+        }
+
+        const ymClave = `${c.anio}-${String(c.mes).padStart(2, "0")}`;
+        base.push({
+          id: `cierre-${c.anio}-${c.mes}`,
           idxCorte: listaCortesActiva.length - 1,
-          etiquetaEje: esUlt && esCorteCongeladoAyer ? `${s.etiqueta}*` : s.etiqueta,
-          fechaDetalle: esUlt
-            ? `${datosSismaVivo?.fechaCorte || formatearISOaLatam(corteIsoActivo)} (Corte SISMA)`
-            : `Facturas abiertas acum. ${s.etiqueta} ${anioCorteVivo} (SISMA)`,
-          esCongeladoAyer: esUlt && esCorteCongeladoAyer,
-          carteraTotal: totM,
-          totalCarteraReal: realM,
-          carteraCorriente: corrM,
-          carteraVencida: vencM,
-          anticiposPorCruzar: girM,
+          etiquetaEje: c.etiqueta,
+          fechaDetalle: formatearISOaLatam(c.fechaCorte),
+          esCongeladoAyer: false,
+          carteraTotal: resuelto.carteraTotal,
+          totalCarteraReal: resuelto.totalCarteraReal,
+          carteraCorriente: resuelto.carteraCorriente,
+          carteraVencida: resuelto.carteraVencida,
+          anticiposPorCruzar: resuelto.anticiposPorCruzar,
           glosaMonto: glosaInfo.porMes[ymClave] || 0,
           mostrarLabel: true,
-        };
-      });
+        });
+      }
+
+      const yaTieneMesAyer = base.some(
+        (p) => p.id === `cierre-${anioAyerNum}-${mesAyerNum}`
+      );
+      const permiteMesAyer =
+        mesesFrecSel.length === 0 ||
+        mesesFrecSel.length >= 12 ||
+        mesesFrecSel.includes(mmAyer);
+
+      if (
+        !yaTieneMesAyer &&
+        base.length > 0 &&
+        anioTendencia === anioAyerNum &&
+        mesAyerNum >= 1 &&
+        permiteMesAyer &&
+        Boolean(datosSismaVivo) &&
+        !sinGiros &&
+        esCorteCongeladoAyer &&
+        filtroAtencionTop === "TODAS" &&
+        !diasFiltroActivo &&
+        diasSemanaSel.length === 0
+      ) {
+        base.push({
+          id: `cierre-vivo-${anioAyerNum}-${mesAyerNum}`,
+          idxCorte: listaCortesActiva.length - 1,
+          etiquetaEje: `${nombresMesCorto[mesAyerNum] || mmAyer}*`,
+          fechaDetalle: `${datosSismaVivo?.fechaCorte || formatearISOaLatam(ayerIsoRef)} (Ayer)`,
+          esCongeladoAyer: true,
+          carteraTotal: corteSeleccionado.carteraTotal,
+          totalCarteraReal: corteSeleccionado.totalCarteraReal,
+          carteraCorriente: corteSeleccionado.carteraCorriente,
+          carteraVencida: corteSeleccionado.carteraVencida,
+          anticiposPorCruzar: corteSeleccionado.anticiposPorCruzar,
+          glosaMonto: glosaInfo.porMes[`${anioAyerNum}-${mmAyer}`] || 0,
+          mostrarLabel: true,
+        });
+      }
+
+      return base;
     })();
 
     const puntosGrafica =
@@ -2592,8 +2724,8 @@ export default function TableroCarteraAnalytics() {
             </div>
             <p className="text-[11.5px]" style={{ color: "#475569" }}>
               {usaCierresGlobalesOficiales
-                ? "Evolución oficial de cierres mensuales congelados y cierre acumulado hasta el día anterior (descontando Giros por Cruzar)"
-                : "Serie acumulada real en SISMA de facturas abiertas para el filtro activo (los cierres históricos Ene–Oct son globales institucionales)"}
+                ? "Evolución oficial de cierres contables mensuales en SISMA y cierre acumulado hasta el día anterior (descontando Giros por Cruzar)"
+                : "Evolución real de cierres de fin de mes en SISMA para la selección activa y cierre acumulado hasta el día anterior"}
             </p>
           </div>
 
@@ -2793,23 +2925,22 @@ export default function TableroCarteraAnalytics() {
                  que una linea que nadie sabe que es inventada. */
               <div className="flex h-[240px] flex-col items-center justify-center rounded-[10px] border border-dashed border-[#DCE5F2] bg-[#FAFBFD] px-6 text-center">
                 <p className="text-[13px] font-semibold text-[#0E245E]">
-                  {estadoCierres === "cargando"
+                  {motivoSinSerieMensual
+                    ? "Filtro no segmentable en cierres contables mensuales de SISMA"
+                    : estadoCierres === "cargando"
                     ? "Trayendo los cierres mensuales…"
                     : estadoCierres === "sin-tabla"
-                      ? "Todavía no está creada la tabla de cierres mensuales"
-                      : estadoCierres === "error"
-                        ? "No se pudieron traer los cierres mensuales"
-                        : mesesFrecSel.length > 0 && mesesFrecSel.length < 12
-                          ? `No hay cierres mensuales para los meses seleccionados de ${anioTendencia}`
-                          : `No hay cierres mensuales guardados de ${anioTendencia}`}
+                    ? "Todavía no está creada la tabla de cierres mensuales"
+                    : estadoCierres === "error"
+                    ? "No se pudieron traer los cierres mensuales"
+                    : mesesFrecSel.length > 0 && mesesFrecSel.length < 12
+                    ? `No hay cierres mensuales para los meses seleccionados de ${anioTendencia}`
+                    : `No hay cierres mensuales guardados de ${anioTendencia}`}
                 </p>
                 {estadoCierres !== "cargando" ? (
-                  <p className="mt-1.5 max-w-[420px] text-[11.5px] leading-relaxed text-[#5B6B8C]">
-                    Cada punto de esta tendencia es el cierre real de un mes
-                    (Corriente + Vencida = Total, menos Giros = Real), pedido a
-                    SISMA una vez y guardado. Mientras no existan, aquí no se
-                    dibuja nada: antes se mostraba una curva estimada y no había
-                    forma de distinguirla de la real.
+                  <p className="mt-1.5 max-w-[460px] text-[11.5px] leading-relaxed text-[#5B6B8C]">
+                    {motivoSinSerieMensual ||
+                      "Cada punto de esta tendencia es el cierre contable real de fin de mes en SISMA (Corriente + Vencida = Total, menos Giros = Real)."}
                   </p>
                 ) : null}
               </div>
