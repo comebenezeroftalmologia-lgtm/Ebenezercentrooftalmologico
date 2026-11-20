@@ -2,12 +2,6 @@
  * Cierres contables históricos reales de fin de mes extraídos de SISMA Contabilidad (2026)
  * con desglose verificable por universo (Con Mutual / Sin Mutual / Solo Mutual), Sede,
  * Responsable y cada ERP individual.
- *
- * REGLA ESTRICTA DE INTEGRIDAD (Regla 6):
- * - Cero estimaciones, cero multiplicadores proporcionales (factorFiltro prohibido) y
- *   cero saldos residuales por fecha de emisión haciéndose pasar por cierres mensuales.
- * - Cuando se aplica un filtro que SISMA Contabilidad no desglosa en saldos contables
- *   históricos (p. ej. CUPS Consulta/Cirugía o días de la semana), se informa disponible=false.
  */
 
 import { homologarEmpresaYOrigen, homologarPersonaFacturacion } from "@/lib/carteraCruces";
@@ -36,7 +30,6 @@ export type EmpresaCierreMensualSisma = {
   pendienteRadicar: number;
   total: number;
   anticiposPorCruzar: number;
-  girosExactos?: boolean;
 };
 
 export type CierreMensualDesglosadoSisma = {
@@ -384,8 +377,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1143690611,
         "pendienteRadicar": 3682554485,
         "total": 2101094462,
-        "anticiposPorCruzar": 1105323949,
-        "girosExactos": true
+        "anticiposPorCruzar": 1105323949
       },
       {
         "nit": "899999068",
@@ -400,8 +392,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 140254150,
         "total": 368589082,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -416,8 +407,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 131060577,
         "pendienteRadicar": 69532125,
         "total": 325985687,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -432,8 +422,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 135427520,
         "pendienteRadicar": 29126418,
         "total": 282664704,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -448,8 +437,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 117213686,
         "pendienteRadicar": 50226146,
         "total": 189605008,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -464,8 +452,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 28381580,
         "pendienteRadicar": 20716382,
         "total": 154019367,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -480,8 +467,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 40088113,
         "pendienteRadicar": 32655147,
         "total": 111864884,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -496,8 +482,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 41194213,
         "pendienteRadicar": 8776211,
         "total": 69668038,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -512,8 +497,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 54726747,
         "pendienteRadicar": 4638480,
         "total": 60921131,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -528,8 +512,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 29526994,
         "pendienteRadicar": 616400,
         "total": 31186573,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -544,8 +527,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 13915912,
         "pendienteRadicar": 4374696,
         "total": 29000979,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -560,8 +542,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 2323564,
         "pendienteRadicar": 4601647,
         "total": 17995273,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -576,8 +557,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 11061815,
         "pendienteRadicar": 2188106,
         "total": 14187931,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901437718",
@@ -592,8 +572,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 12645764,
         "total": 12645764,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -608,8 +587,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 10827222,
         "pendienteRadicar": 40000,
         "total": 11639886,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -624,8 +602,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 10949000,
         "pendienteRadicar": 0,
         "total": 10949000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -640,8 +617,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 5552000,
         "pendienteRadicar": -185000,
         "total": 7587000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -656,8 +632,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 6665500,
         "pendienteRadicar": 230000,
         "total": 7395500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901363607",
@@ -672,8 +647,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 4642664,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -688,8 +662,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 3624320,
         "pendienteRadicar": 95000,
         "total": 3719320,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860034313",
@@ -704,8 +677,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 3580000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901485934",
@@ -720,8 +692,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 3196379,
         "total": 3196379,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901002712",
@@ -736,8 +707,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1400000,
         "pendienteRadicar": 0,
         "total": 1400000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -752,8 +722,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1275441,
         "pendienteRadicar": 0,
         "total": 1298141,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900053050",
@@ -768,8 +737,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 971000,
         "pendienteRadicar": 0,
         "total": 971000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -784,8 +752,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 366030,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900984188",
@@ -800,8 +767,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 181000,
         "pendienteRadicar": 0,
         "total": 181000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "832000957",
@@ -816,8 +782,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 126500,
         "pendienteRadicar": 0,
         "total": 126500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901115948",
@@ -832,8 +797,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 48400,
         "total": 48400,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -891,8 +855,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 418254179,
         "pendienteRadicar": 819547960,
         "total": 2059515047,
-        "anticiposPorCruzar": 1048573506,
-        "girosExactos": true
+        "anticiposPorCruzar": 1048573506
       },
       {
         "nit": "899999068",
@@ -907,8 +870,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 90219582,
         "total": 391426010,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -923,8 +885,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 141195715,
         "pendienteRadicar": 71292464,
         "total": 375043916,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -939,8 +900,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 131702589,
         "pendienteRadicar": 18156321,
         "total": 250122584,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -955,8 +915,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 118146779,
         "pendienteRadicar": 66291886,
         "total": 241658026,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -971,8 +930,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 50884629,
         "pendienteRadicar": 30651801,
         "total": 184381196,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -987,8 +945,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 40135513,
         "pendienteRadicar": 49395850,
         "total": 154411646,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -1003,8 +960,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 36215913,
         "pendienteRadicar": 11306640,
         "total": 92332110,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -1019,8 +975,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 55067319,
         "pendienteRadicar": 15415267,
         "total": 74497947,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -1035,8 +990,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 13915912,
         "pendienteRadicar": 24718509,
         "total": 47950308,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -1051,8 +1005,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 24988849,
         "pendienteRadicar": 4714044,
         "total": 30225393,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -1067,8 +1020,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 11061815,
         "pendienteRadicar": 8004892,
         "total": 19706917,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -1083,8 +1035,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 10949000,
         "pendienteRadicar": 0,
         "total": 12645000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901054533",
@@ -1099,8 +1050,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 12114580,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -1115,8 +1065,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 11233032,
         "pendienteRadicar": 80000,
         "total": 11719886,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -1131,8 +1080,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 2323564,
         "pendienteRadicar": 1680980,
         "total": 11469266,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -1147,8 +1095,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 3887000,
         "pendienteRadicar": 185000,
         "total": 8142000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -1163,8 +1110,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7395500,
         "pendienteRadicar": 230000,
         "total": 7395500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901479987",
@@ -1179,8 +1125,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 4079383,
         "total": 4079383,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -1195,8 +1140,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 3624320,
         "pendienteRadicar": 0,
         "total": 3719320,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806005008",
@@ -1211,8 +1155,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 2874900,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860034313",
@@ -1227,8 +1170,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 2595100,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901437718",
@@ -1243,8 +1185,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 1769023,
         "total": 1769023,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901002712",
@@ -1259,8 +1200,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1400000,
         "pendienteRadicar": 0,
         "total": 1400000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -1275,8 +1215,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1275441,
         "pendienteRadicar": 0,
         "total": 1298141,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800008240",
@@ -1291,8 +1230,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1189000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900053050",
@@ -1307,8 +1245,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 971000,
         "pendienteRadicar": 0,
         "total": 971000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901485934",
@@ -1323,8 +1260,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 550000,
         "total": 550000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -1339,8 +1275,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 366030,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890300279",
@@ -1355,8 +1290,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 335825,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900984188",
@@ -1371,8 +1305,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 181000,
         "pendienteRadicar": 0,
         "total": 181000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "1047497601",
@@ -1387,8 +1320,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 165600,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "832000957",
@@ -1403,8 +1335,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 126500,
         "pendienteRadicar": 0,
         "total": 126500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901115948",
@@ -1419,8 +1350,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 48400,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -1478,8 +1408,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 417293219,
         "pendienteRadicar": 825133363,
         "total": 2376184342,
-        "anticiposPorCruzar": 1447510422,
-        "girosExactos": true
+        "anticiposPorCruzar": 1447510422
       },
       {
         "nit": "899999068",
@@ -1494,8 +1423,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 151503546,
         "total": 399979613,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -1510,8 +1438,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 149077176,
         "pendienteRadicar": 49215879,
         "total": 350013743,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -1526,8 +1453,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 141403741,
         "pendienteRadicar": 32991180,
         "total": 265451572,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -1542,8 +1468,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 110002323,
         "pendienteRadicar": 19830787,
         "total": 231715245,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -1558,8 +1483,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 49886120,
         "pendienteRadicar": 9501142,
         "total": 180484250,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -1574,8 +1498,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 16425532,
         "pendienteRadicar": 46327008,
         "total": 105543474,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -1590,8 +1513,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 36215913,
         "pendienteRadicar": 13309967,
         "total": 84483262,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -1606,8 +1528,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 54621819,
         "pendienteRadicar": 736307,
         "total": 79989310,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -1622,8 +1543,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 4075105,
         "pendienteRadicar": 13126599,
         "total": 40712484,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -1638,8 +1558,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 22822185,
         "pendienteRadicar": 1141308,
         "total": 31962359,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -1654,8 +1573,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7691196,
         "pendienteRadicar": 1650606,
         "total": 24330165,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -1670,8 +1588,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 11396825,
         "pendienteRadicar": 2780370,
         "total": 16279171,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -1686,8 +1603,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 10949000,
         "pendienteRadicar": 0,
         "total": 14973000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -1702,8 +1618,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 11233032,
         "pendienteRadicar": 0,
         "total": 11719886,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -1718,8 +1633,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 3887000,
         "pendienteRadicar": 437956,
         "total": 8394956,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -1734,8 +1648,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7395500,
         "pendienteRadicar": 230000,
         "total": 7395500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806005008",
@@ -1750,8 +1663,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 2874900,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890480023",
@@ -1766,8 +1678,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 2650000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901002712",
@@ -1782,8 +1693,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1400000,
         "pendienteRadicar": 0,
         "total": 1400000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -1798,8 +1708,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1298141,
         "pendienteRadicar": 0,
         "total": 1298141,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800008240",
@@ -1814,8 +1723,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1189000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900053050",
@@ -1830,8 +1738,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 971000,
         "pendienteRadicar": 0,
         "total": 971000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -1846,8 +1753,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 362663,
         "total": 728693,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900984188",
@@ -1862,8 +1768,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 181000,
         "pendienteRadicar": 0,
         "total": 181000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "832000957",
@@ -1878,8 +1783,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 126500,
         "pendienteRadicar": 0,
         "total": 126500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -1894,8 +1798,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901115948",
@@ -1910,8 +1813,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 48400,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -1969,8 +1871,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 436853895,
         "pendienteRadicar": 970541692,
         "total": 2569757164,
-        "anticiposPorCruzar": 1610713368,
-        "girosExactos": true
+        "anticiposPorCruzar": 1610713368
       },
       {
         "nit": "899999068",
@@ -1985,8 +1886,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 64053970,
         "pendienteRadicar": 95072144,
         "total": 494040889,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -2001,8 +1901,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 141165863,
         "pendienteRadicar": 99948941,
         "total": 354995169,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -2017,8 +1916,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 157950535,
         "pendienteRadicar": 15038032,
         "total": 267536224,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -2033,8 +1931,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 89289832,
         "pendienteRadicar": 38919247,
         "total": 220983752,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -2049,8 +1946,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 35044913,
         "pendienteRadicar": 50316396,
         "total": 147362015,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -2065,8 +1961,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 466754,
         "pendienteRadicar": 20061692,
         "total": 94262176,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -2081,8 +1976,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 54321173,
         "pendienteRadicar": 28087089,
         "total": 82892579,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -2097,8 +1991,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 31831753,
         "pendienteRadicar": 12544912,
         "total": 64206437,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -2113,8 +2006,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 2338689,
         "pendienteRadicar": 13613847,
         "total": 33408426,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -2129,8 +2021,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 22822185,
         "pendienteRadicar": 5732161,
         "total": 31610482,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -2145,8 +2036,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7556282,
         "pendienteRadicar": 7333988,
         "total": 19879081,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -2161,8 +2051,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7921796,
         "pendienteRadicar": 1049544,
         "total": 16219922,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -2177,8 +2066,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 10827222,
         "pendienteRadicar": 0,
         "total": 11782486,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -2193,8 +2081,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7395500,
         "pendienteRadicar": 3580000,
         "total": 11195500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -2209,8 +2096,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 4620014,
         "pendienteRadicar": 437956,
         "total": 8893882,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890480023",
@@ -2225,8 +2111,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 6434905,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901479987",
@@ -2241,8 +2126,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 4701985,
         "total": 4701985,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -2257,8 +2141,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 2110000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806005008",
@@ -2273,8 +2156,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 2033200,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -2289,8 +2171,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 366030,
         "pendienteRadicar": 1198723,
         "total": 1927416,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901002712",
@@ -2305,8 +2186,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1400000,
         "pendienteRadicar": 0,
         "total": 1400000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -2321,8 +2201,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1298141,
         "pendienteRadicar": 0,
         "total": 1298141,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890400080",
@@ -2337,8 +2216,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1268500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800008240",
@@ -2353,8 +2231,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1189000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900053050",
@@ -2369,8 +2246,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 971000,
         "pendienteRadicar": 0,
         "total": 971000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900984188",
@@ -2385,8 +2261,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 181000,
         "pendienteRadicar": 0,
         "total": 181000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "832000957",
@@ -2401,8 +2276,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 126500,
         "pendienteRadicar": 0,
         "total": 126500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -2417,8 +2291,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901115948",
@@ -2433,8 +2306,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 48400,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -2492,8 +2364,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 564513887,
         "pendienteRadicar": 824201054,
         "total": 1602442191,
-        "anticiposPorCruzar": 636975097,
-        "girosExactos": true
+        "anticiposPorCruzar": 636975097
       },
       {
         "nit": "899999068",
@@ -2508,8 +2379,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 93568485,
         "pendienteRadicar": 123145238,
         "total": 555912467,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -2524,8 +2394,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 140797033,
         "pendienteRadicar": 63767396,
         "total": 363495858,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -2540,8 +2409,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 169358386,
         "pendienteRadicar": 41544867,
         "total": 278252243,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -2556,8 +2424,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 77635774,
         "pendienteRadicar": 28697618,
         "total": 233993088,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -2572,8 +2439,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 20700012,
         "pendienteRadicar": 25226041,
         "total": 108877121,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -2588,8 +2454,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 466754,
         "pendienteRadicar": 9816455,
         "total": 103267964,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -2604,8 +2469,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 31399796,
         "pendienteRadicar": 11467888,
         "total": 62107901,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -2620,8 +2484,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 26827347,
         "pendienteRadicar": 144672,
         "total": 37107841,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -2636,8 +2499,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 2338689,
         "pendienteRadicar": 8478919,
         "total": 33447083,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -2652,8 +2514,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 21064818,
         "pendienteRadicar": 6754545,
         "total": 30168049,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -2668,8 +2529,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7556282,
         "pendienteRadicar": 14699485,
         "total": 26636354,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901437718",
@@ -2684,8 +2544,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 19213000,
         "total": 19213000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -2700,8 +2559,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 8195780,
         "pendienteRadicar": 5024113,
         "total": 17812384,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -2716,8 +2574,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 5915014,
         "pendienteRadicar": 875912,
         "total": 9769794,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890480023",
@@ -2732,8 +2589,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 6646000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901479987",
@@ -2748,8 +2604,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 4701985,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -2764,8 +2619,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 4175000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890480079",
@@ -2780,8 +2634,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 4095000,
         "total": 4095000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -2796,8 +2649,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 230000,
         "pendienteRadicar": 230000,
         "total": 4030000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800130907",
@@ -2812,8 +2664,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 300000,
         "total": 3846460,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806005008",
@@ -2828,8 +2679,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1858300,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -2844,8 +2694,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 366030,
         "pendienteRadicar": 127858,
         "total": 1692611,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901002712",
@@ -2860,8 +2709,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1400000,
         "pendienteRadicar": 0,
         "total": 1400000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -2876,8 +2724,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1298141,
         "pendienteRadicar": 0,
         "total": 1298141,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900053050",
@@ -2892,8 +2739,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 971000,
         "pendienteRadicar": 0,
         "total": 971000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800008240",
@@ -2908,8 +2754,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 666666,
         "total": 666666,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -2924,8 +2769,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 40000,
         "total": 478710,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901363607",
@@ -2940,8 +2784,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 280000,
         "total": 280000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900984188",
@@ -2956,8 +2799,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 181000,
         "pendienteRadicar": 0,
         "total": 181000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "832000957",
@@ -2972,8 +2814,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 126500,
         "pendienteRadicar": 0,
         "total": 126500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -2988,8 +2829,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 95000,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901115948",
@@ -3004,8 +2844,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 48400,
         "pendienteRadicar": 0,
         "total": 48400,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -3063,8 +2902,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 581752737,
         "pendienteRadicar": 823462269,
         "total": 1584461329,
-        "anticiposPorCruzar": 631924347,
-        "girosExactos": true
+        "anticiposPorCruzar": 631924347
       },
       {
         "nit": "899999068",
@@ -3079,8 +2917,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 65823920,
         "pendienteRadicar": 66710729,
         "total": 543670384,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -3095,8 +2932,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 51073917,
         "pendienteRadicar": 48704290,
         "total": 304810233,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -3111,8 +2947,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 76691176,
         "pendienteRadicar": 18032469,
         "total": 255240749,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -3127,8 +2962,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 121134599,
         "pendienteRadicar": 50258180,
         "total": 220501187,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -3143,8 +2977,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 21960530,
         "pendienteRadicar": 40071286,
         "total": 138146286,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -3159,8 +2992,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1399454,
         "pendienteRadicar": 16316377,
         "total": 102683988,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -3175,8 +3007,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 26748016,
         "pendienteRadicar": 11386048,
         "total": 52830592,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -3191,8 +3022,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 26646831,
         "pendienteRadicar": 22374459,
         "total": 50700673,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -3207,8 +3037,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 22926264,
         "pendienteRadicar": 3114022,
         "total": 39812110,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -3223,8 +3052,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7556282,
         "pendienteRadicar": 798996,
         "total": 24544116,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -3239,8 +3067,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 2208382,
         "pendienteRadicar": 2406145,
         "total": 21398220,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -3255,8 +3082,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 8195780,
         "pendienteRadicar": 7486442,
         "total": 20744335,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -3271,8 +3097,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7580014,
         "pendienteRadicar": 218978,
         "total": 9988772,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901437718",
@@ -3287,8 +3112,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 5637590,
         "total": 5637590,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -3303,8 +3127,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 230000,
         "pendienteRadicar": 230000,
         "total": 4530000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -3319,8 +3142,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 4188000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806000899",
@@ -3335,8 +3157,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 1130000,
         "total": 1130000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -3351,8 +3172,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 983061,
         "pendienteRadicar": 0,
         "total": 983061,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806005008",
@@ -3367,8 +3187,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 900000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -3383,8 +3202,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 366030,
         "pendienteRadicar": 270375,
         "total": 764263,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -3399,8 +3217,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 50000,
         "total": 428710,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900984188",
@@ -3415,8 +3232,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 181000,
         "pendienteRadicar": 0,
         "total": 181000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "832000957",
@@ -3431,8 +3247,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 126500,
         "pendienteRadicar": 0,
         "total": 126500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -3447,8 +3262,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 95000,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901115948",
@@ -3463,8 +3277,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 48400,
         "pendienteRadicar": 0,
         "total": 48400,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -3522,8 +3335,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 616486377,
         "pendienteRadicar": 802094244,
         "total": 1966470401,
-        "anticiposPorCruzar": 926959154,
-        "girosExactos": true
+        "anticiposPorCruzar": 926959154
       },
       {
         "nit": "900178724",
@@ -3538,8 +3350,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 49068409,
         "pendienteRadicar": 10735291,
         "total": 301309896,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -3554,8 +3365,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 10465886,
         "pendienteRadicar": 37632361,
         "total": 229639810,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -3570,8 +3380,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 129129857,
         "pendienteRadicar": 58333444,
         "total": 213961361,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999068",
@@ -3586,8 +3395,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 43170137,
         "total": 204453840,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -3602,8 +3410,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 15707493,
         "pendienteRadicar": 11057797,
         "total": 154978078,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -3618,8 +3425,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1399454,
         "pendienteRadicar": 21151214,
         "total": 78015238,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -3634,8 +3440,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 26748016,
         "pendienteRadicar": 12404233,
         "total": 55081343,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -3650,8 +3455,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 26841648,
         "pendienteRadicar": 3934265,
         "total": 30988331,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -3666,8 +3470,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1729125,
         "pendienteRadicar": 1789902,
         "total": 30641124,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -3682,8 +3485,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 22699964,
         "pendienteRadicar": 581428,
         "total": 26309402,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -3698,8 +3500,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7511182,
         "pendienteRadicar": 4030140,
         "total": 15122713,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -3714,8 +3515,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 2908148,
         "pendienteRadicar": 4439892,
         "total": 13219489,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -3730,8 +3530,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 6864731,
         "pendienteRadicar": 0,
         "total": 9711445,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901437718",
@@ -3746,8 +3545,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 4642500,
         "total": 4642500,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -3762,8 +3560,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 3679000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901061386",
@@ -3778,8 +3575,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1326202,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -3794,8 +3590,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 983061,
         "pendienteRadicar": 0,
         "total": 1282829,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -3810,8 +3605,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 366030,
         "pendienteRadicar": 54371,
         "total": 1010050,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -3826,8 +3620,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 950000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901479987",
@@ -3842,8 +3635,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 660000,
         "total": 660000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -3858,8 +3650,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 100000,
         "total": 100000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -3874,8 +3665,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 95000,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800008240",
@@ -3890,8 +3680,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 444444,
         "total": 0,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800130907",
@@ -3906,8 +3695,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": -6112475,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -3965,8 +3753,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 987524067,
         "pendienteRadicar": 814950672,
         "total": 1984229649,
-        "anticiposPorCruzar": 926959151,
-        "girosExactos": true
+        "anticiposPorCruzar": 926959151
       },
       {
         "nit": "890300279",
@@ -3981,8 +3768,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1284690000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -3997,8 +3783,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 55354232,
         "pendienteRadicar": 24534551,
         "total": 333849637,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -4013,8 +3798,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 68001703,
         "pendienteRadicar": 53758458,
         "total": 255225969,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999068",
@@ -4029,8 +3813,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 50562897,
         "total": 217181104,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -4045,8 +3828,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 44529815,
         "total": 207476399,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -4061,8 +3843,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 4607300,
         "pendienteRadicar": 17499318,
         "total": 95373916,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -4077,8 +3858,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 369254,
         "pendienteRadicar": 32041935,
         "total": 93797194,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -4093,8 +3873,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 26748016,
         "pendienteRadicar": 11006165,
         "total": 51079702,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -4109,8 +3888,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 23081646,
         "pendienteRadicar": 382192,
         "total": 29127671,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -4125,8 +3903,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 22672364,
         "pendienteRadicar": 739959,
         "total": 23530023,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -4141,8 +3918,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 16353160,
         "total": 23337712,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -4157,8 +3933,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 7511182,
         "pendienteRadicar": 696943,
         "total": 16572928,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -4173,8 +3948,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 20166,
         "pendienteRadicar": 8570007,
         "total": 13593214,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901437718",
@@ -4189,8 +3963,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 13085000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -4205,8 +3978,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 11167878,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890480023",
@@ -4221,8 +3993,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 6804071,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -4237,8 +4008,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 5550000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -4253,8 +4023,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 4652000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901061386",
@@ -4269,8 +4038,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1400269,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -4285,8 +4053,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 330413,
         "total": 1070088,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806005008",
@@ -4301,8 +4068,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 958300,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901479987",
@@ -4317,8 +4083,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 660000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -4333,8 +4098,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 267868,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860038299",
@@ -4349,8 +4113,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 195580,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800130907",
@@ -4365,8 +4128,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 12203512,
         "total": 96928,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -4381,8 +4143,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 95000,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -4440,8 +4201,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 987128693,
         "pendienteRadicar": 788574937,
         "total": 1987194688,
-        "anticiposPorCruzar": 925490651,
-        "girosExactos": true
+        "anticiposPorCruzar": 925490651
       },
       {
         "nit": "890300279",
@@ -4456,8 +4216,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1284690000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999068",
@@ -4472,8 +4231,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 110175658,
         "total": 312780954,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -4488,8 +4246,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 77030772,
         "pendienteRadicar": 49174678,
         "total": 300411458,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -4504,8 +4261,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 92380641,
         "pendienteRadicar": 23623254,
         "total": 239429114,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -4520,8 +4276,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 53053744,
         "total": 219425137,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -4536,8 +4291,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 6115789,
         "pendienteRadicar": 23918428,
         "total": 104415895,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -4552,8 +4306,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 23967819,
         "pendienteRadicar": 15436956,
         "total": 62192560,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -4568,8 +4321,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 25977477,
         "total": 54814512,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -4584,8 +4336,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 23081646,
         "pendienteRadicar": 26660157,
         "total": 49741803,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -4600,8 +4351,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 11091737,
         "total": 23947430,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -4616,8 +4366,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 19829172,
         "pendienteRadicar": 2080675,
         "total": 23772935,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -4632,8 +4381,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 333817,
         "pendienteRadicar": 3112705,
         "total": 15174889,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -4648,8 +4396,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 218978,
         "total": 11542054,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -4664,8 +4411,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 5362755,
         "pendienteRadicar": 1911758,
         "total": 7473299,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890401483",
@@ -4680,8 +4426,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 6460000,
         "total": 6460000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860001942",
@@ -4696,8 +4441,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 6400000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -4712,8 +4456,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 4600000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -4728,8 +4471,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 3456000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901437718",
@@ -4744,8 +4486,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1300000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806005008",
@@ -4760,8 +4501,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1016600,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901479987",
@@ -4776,8 +4516,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 660000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -4792,8 +4531,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 56546,
         "total": 441330,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "830054904",
@@ -4808,8 +4546,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 267868,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -4824,8 +4561,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 95000,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   },
@@ -4883,8 +4619,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 1025751701,
         "pendienteRadicar": 787978346,
         "total": 2646649052,
-        "anticiposPorCruzar": 1663911298,
-        "girosExactos": true
+        "anticiposPorCruzar": 1663911298
       },
       {
         "nit": "899999068",
@@ -4899,8 +4634,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 92086235,
         "total": 431414576,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800088702",
@@ -4915,8 +4649,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 68278429,
         "pendienteRadicar": 32473984,
         "total": 285593789,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900178724",
@@ -4931,8 +4664,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 62285784,
         "pendienteRadicar": 15567837,
         "total": 169044385,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860078828",
@@ -4947,8 +4679,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 41568162,
         "total": 164878582,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "890903790",
@@ -4963,8 +4694,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 6987374,
         "pendienteRadicar": 15470061,
         "total": 86833166,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800106339",
@@ -4979,8 +4709,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 2193780,
         "pendienteRadicar": 24953072,
         "total": 79223580,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "805009741",
@@ -4995,8 +4724,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 16202236,
         "pendienteRadicar": 17682311,
         "total": 66385336,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002503",
@@ -5011,8 +4739,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 21662546,
         "pendienteRadicar": 12037757,
         "total": 43328851,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860027404",
@@ -5027,8 +4754,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 3532115,
         "total": 20472714,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860039988",
@@ -5043,8 +4769,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 333817,
         "pendienteRadicar": 8509905,
         "total": 19447669,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "900640334",
@@ -5059,8 +4784,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 14834497,
         "pendienteRadicar": 954642,
         "total": 17652227,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "123123123",
@@ -5075,8 +4799,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 9600000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860002184",
@@ -5091,8 +4814,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 5362755,
         "pendienteRadicar": 3891523,
         "total": 9366552,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800251440",
@@ -5107,8 +4829,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 656934,
         "total": 7625962,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "806007073",
@@ -5123,8 +4844,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 4804000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901479987",
@@ -5139,8 +4859,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 4375735,
         "total": 4375735,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "800153424",
@@ -5155,8 +4874,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 1368973,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "901061386",
@@ -5171,8 +4889,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 0,
         "total": 166202,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "899999034",
@@ -5187,8 +4904,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 95000,
         "pendienteRadicar": 0,
         "total": 95000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       },
       {
         "nit": "860037013",
@@ -5203,8 +4919,7 @@ export const CIERRES_SISMA_2026_VERIFICADOS: CierreMensualDesglosadoSisma[] = [
         "vencida": 0,
         "pendienteRadicar": 85000,
         "total": 85000,
-        "anticiposPorCruzar": 0,
-        "girosExactos": false
+        "anticiposPorCruzar": 0
       }
     ]
   }

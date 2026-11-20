@@ -1,80 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentAppUser, getMisModulos } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
-
 import { CIERRES_SISMA_2026_VERIFICADOS } from "@/lib/carteraCierresSisma";
-
-function enriquecerTodosLosCierresConSisma2026(
-  filasDb: Record<string, unknown>[]
-): Record<string, unknown>[] {
-  const mapaVerif2026 = new Map(
-    CIERRES_SISMA_2026_VERIFICADOS.map((c) => [c.mes, c])
-  );
-  const porClave = new Map<string, Record<string, unknown>>();
-  for (const cv of CIERRES_SISMA_2026_VERIFICADOS) {
-    const k = `2026-${String(cv.mes).padStart(2, "0")}`;
-    porClave.set(k, { ...cv });
-  }
-  for (const row of filasDb) {
-    const anio = Number(row.anio || 0);
-    const mes = Number(row.mes || 0);
-    if (!anio || !mes) continue;
-    const k = `${anio}-${String(mes).padStart(2, "0")}`;
-    if (anio === 2026 && mapaVerif2026.has(mes)) {
-      const verif = mapaVerif2026.get(mes)!;
-      porClave.set(k, {
-        ...row,
-        ...verif,
-        esMesEnCurso: Boolean(row.esMesEnCurso),
-      });
-    } else {
-      porClave.set(k, row);
-    }
-  }
-  return Array.from(porClave.values()).sort(
-    (a, b) => Number(a.anio) - Number(b.anio) || Number(a.mes) - Number(b.mes)
-  );
-}
-
-export async function GET(req: Request) {
-  const res = await _obtenerCierresBaseGET(req);
-  if (!res || res.status === 401 || res.status === 403) {
-    return res;
-  }
-  try {
-    const payload = (await res.clone().json()) as Record<string, unknown>;
-    if (payload && (payload.ok === true || payload.sinTabla === true)) {
-      const filasBase = Array.isArray(payload.cierres)
-        ? (payload.cierres as Record<string, unknown>[])
-        : [];
-      const cierresEnriq = enriquecerTodosLosCierresConSisma2026(filasBase);
-      const aniosSet = new Set<number>(
-        Array.isArray(payload.anios)
-          ? payload.anios
-              .map((n) => Number(n))
-              .filter((n) => Number.isFinite(n) && n > 2000)
-          : []
-      );
-      for (const c of cierresEnriq) {
-        const a = Number(c.anio);
-        if (Number.isFinite(a) && a > 2000) aniosSet.add(a);
-      }
-      aniosSet.add(2026);
-      const aniosOrdenados = Array.from(aniosSet).sort((a, b) => b - a);
-      return Response.json({
-        ...payload,
-        ok: true,
-        sinTabla: false,
-        cierres: cierresEnriq,
-        anios: aniosOrdenados,
-      });
-    }
-  } catch {
-    // Mantener respuesta original si no es JSON estándar
-  }
-  return res;
-}
-
 
 /* ---------------------------------------------------------------------
    CIERRES MENSUALES DE CARTERA
@@ -245,4 +172,75 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: fallos.length === 0, calculados: hechos.length, hechos, fallos });
+}
+
+function enriquecerTodosLosCierresConSisma2026(
+  filasDb: Record<string, unknown>[]
+): Record<string, unknown>[] {
+  const mapaVerif2026 = new Map(
+    CIERRES_SISMA_2026_VERIFICADOS.map((c) => [c.mes, c])
+  );
+  const porClave = new Map<string, Record<string, unknown>>();
+  for (const cv of CIERRES_SISMA_2026_VERIFICADOS) {
+    const k = `2026-${String(cv.mes).padStart(2, "0")}`;
+    porClave.set(k, { ...cv });
+  }
+  for (const row of filasDb) {
+    const anio = Number(row.anio || 0);
+    const mes = Number(row.mes || 0);
+    if (!anio || !mes) continue;
+    const k = `${anio}-${String(mes).padStart(2, "0")}`;
+    const verif2026 = anio === 2026 ? mapaVerif2026.get(mes) : undefined;
+    if (verif2026) {
+      porClave.set(k, {
+        ...row,
+        ...verif2026,
+        esMesEnCurso: Boolean(row.esMesEnCurso),
+      });
+    } else {
+      porClave.set(k, row);
+    }
+  }
+  return Array.from(porClave.values()).sort(
+    (a, b) => Number(a.anio) - Number(b.anio) || Number(a.mes) - Number(b.mes)
+  );
+}
+
+export async function GET(req: Request) {
+  const res = await _obtenerCierresBaseGET(req);
+  if (!res || res.status === 401 || res.status === 403) {
+    return res;
+  }
+  try {
+    const payload = (await res.clone().json()) as Record<string, unknown>;
+    if (payload && (payload.ok === true || payload.sinTabla === true)) {
+      const filasBase = Array.isArray(payload.cierres)
+        ? (payload.cierres as Record<string, unknown>[])
+        : [];
+      const cierresEnriq = enriquecerTodosLosCierresConSisma2026(filasBase);
+      const aniosSet = new Set<number>(
+        Array.isArray(payload.anios)
+          ? payload.anios
+              .map((n) => Number(n))
+              .filter((n) => Number.isFinite(n) && n > 2000)
+          : []
+      );
+      for (const c of cierresEnriq) {
+        const a = Number(c.anio);
+        if (Number.isFinite(a) && a > 2000) aniosSet.add(a);
+      }
+      aniosSet.add(2026);
+      const aniosOrdenados = Array.from(aniosSet).sort((a, b) => b - a);
+      return NextResponse.json({
+        ...payload,
+        ok: true,
+        sinTabla: false,
+        cierres: cierresEnriq,
+        anios: aniosOrdenados,
+      });
+    }
+  } catch {
+    // Mantener respuesta original si no es JSON estándar
+  }
+  return res;
 }

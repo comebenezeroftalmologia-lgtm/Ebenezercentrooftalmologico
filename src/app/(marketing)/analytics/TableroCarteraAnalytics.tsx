@@ -2177,8 +2177,8 @@ export default function TableroCarteraAnalytics() {
     );
   };
 
-  const opcionesFiltroCierreSisma = useMemo<OpcionesFiltroCierreSisma>(
-    () => ({
+  const renderTarjetaTendenciaTotalCartera = (glosaInfo: ResumenGlosaSobreCartera) => {
+    const opcionesFiltroCierreSisma: OpcionesFiltroCierreSisma = {
       incluirMutual,
       sede: filtroSedeTop,
       atencion: filtroAtencionTop,
@@ -2192,81 +2192,66 @@ export default function TableroCarteraAnalytics() {
       filtroResponsable,
       diasFiltroActivo,
       diasSemanaCount: diasSemanaSel.length,
-    }),
-    [
-      incluirMutual,
-      filtroSedeTop,
-      filtroAtencionTop,
-      modalidadSisma,
-      empresasFrecSel,
-      todasLasEmpresasDisponibles.length,
-      filtroEmpresa,
-      responsablesFrecSel,
-      filtroResponsable,
-      diasFiltroActivo,
-      diasSemanaSel.length,
-    ]
-  );
+    };
 
-  const cierresMensualesEnriquecidos = useMemo<CierreMensualDesglosadoSisma[]>(() => {
-    const mapaVerif2026 = new Map(
-      CIERRES_SISMA_2026_VERIFICADOS.map((c) => [c.mes, c])
-    );
-    if (anioTendencia === 2026) {
-      const porMes = new Map<number, CierreMensualDesglosadoSisma>();
-      for (const cv of CIERRES_SISMA_2026_VERIFICADOS) {
-        porMes.set(cv.mes, cv);
-      }
-      for (const cr of cierresMensuales) {
-        const verif = mapaVerif2026.get(cr.mes);
-        if (verif) {
-          porMes.set(cr.mes, {
-            ...verif,
-            esMesEnCurso: Boolean(cr.esMesEnCurso),
-          });
-        } else {
-          const ext = cr as unknown as Partial<CierreMensualDesglosadoSisma>;
-          porMes.set(cr.mes, {
-            anio: cr.anio,
-            mes: cr.mes,
-            etiqueta: cr.etiqueta,
-            fechaCorte: cr.fechaCorte,
-            esMesEnCurso: Boolean(cr.esMesEnCurso),
-            carteraCorriente: cr.carteraCorriente,
-            carteraVencida: Math.max(0, cr.carteraTotal - cr.carteraCorriente),
-            carteraTotal: cr.carteraTotal,
-            girosPorCruzar:
-              cr.girosPorCruzar ?? Math.max(0, cr.carteraTotal - cr.carteraReal),
-            carteraReal: cr.carteraReal,
-            desgloseUniverso: ext.desgloseUniverso,
-            empresas: ext.empresas,
-          });
+    const cierresMensualesEnriquecidos: CierreMensualDesglosadoSisma[] = (() => {
+      const mapaVerif2026 = new Map(
+        CIERRES_SISMA_2026_VERIFICADOS.map((c) => [c.mes, c])
+      );
+      if (anioTendencia === 2026) {
+        const porMes = new Map<number, CierreMensualDesglosadoSisma>();
+        for (const cv of CIERRES_SISMA_2026_VERIFICADOS) {
+          porMes.set(cv.mes, cv);
         }
+        for (const cr of cierresMensuales) {
+          const verif = mapaVerif2026.get(cr.mes);
+          if (verif) {
+            porMes.set(cr.mes, {
+              ...verif,
+              esMesEnCurso: Boolean(cr.esMesEnCurso),
+            });
+          } else {
+            const ext = cr as unknown as Partial<CierreMensualDesglosadoSisma>;
+            porMes.set(cr.mes, {
+              anio: cr.anio,
+              mes: cr.mes,
+              etiqueta: cr.etiqueta,
+              fechaCorte: cr.fechaCorte,
+              esMesEnCurso: Boolean(cr.esMesEnCurso),
+              carteraCorriente: cr.carteraCorriente,
+              carteraVencida: Math.max(0, cr.carteraTotal - cr.carteraCorriente),
+              carteraTotal: cr.carteraTotal,
+              girosPorCruzar:
+                cr.girosPorCruzar ?? Math.max(0, cr.carteraTotal - cr.carteraReal),
+              carteraReal: cr.carteraReal,
+              desgloseUniverso: ext.desgloseUniverso,
+              empresas: ext.empresas,
+            });
+          }
+        }
+        return Array.from(porMes.values()).sort((a, b) => a.mes - b.mes);
       }
-      return Array.from(porMes.values()).sort((a, b) => a.mes - b.mes);
-    }
 
-    return cierresMensuales.map((cr) => {
-      const ext = cr as unknown as Partial<CierreMensualDesglosadoSisma>;
-      return {
-        anio: cr.anio,
-        mes: cr.mes,
-        etiqueta: cr.etiqueta,
-        fechaCorte: cr.fechaCorte,
-        esMesEnCurso: Boolean(cr.esMesEnCurso),
-        carteraCorriente: cr.carteraCorriente,
-        carteraVencida: Math.max(0, cr.carteraTotal - cr.carteraCorriente),
-        carteraTotal: cr.carteraTotal,
-        girosPorCruzar:
-          cr.girosPorCruzar ?? Math.max(0, cr.carteraTotal - cr.carteraReal),
-        carteraReal: cr.carteraReal,
-        desgloseUniverso: ext.desgloseUniverso,
-        empresas: ext.empresas,
-      };
-    });
-  }, [cierresMensuales, anioTendencia]);
+      return cierresMensuales.map((cr) => {
+        const ext = cr as unknown as Partial<CierreMensualDesglosadoSisma>;
+        return {
+          anio: cr.anio,
+          mes: cr.mes,
+          etiqueta: cr.etiqueta,
+          fechaCorte: cr.fechaCorte,
+          esMesEnCurso: Boolean(cr.esMesEnCurso),
+          carteraCorriente: cr.carteraCorriente,
+          carteraVencida: Math.max(0, cr.carteraTotal - cr.carteraCorriente),
+          carteraTotal: cr.carteraTotal,
+          girosPorCruzar:
+            cr.girosPorCruzar ?? Math.max(0, cr.carteraTotal - cr.carteraReal),
+          carteraReal: cr.carteraReal,
+          desgloseUniverso: ext.desgloseUniverso,
+          empresas: ext.empresas,
+        };
+      });
+    })();
 
-  const renderTarjetaTendenciaTotalCartera = (glosaInfo: ResumenGlosaSobreCartera) => {
     const sinSubfiltroEmpTend =
       (empresasFrecSel.length === 0 ||
         empresasFrecSel.length >= todasLasEmpresasDisponibles.length) &&
