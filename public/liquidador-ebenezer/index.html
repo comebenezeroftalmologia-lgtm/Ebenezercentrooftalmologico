@@ -3510,9 +3510,9 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
       <div class="carga" data-tipo="base">
         <div class="cg-ic">🗂</div>
         <div class="cg-tit">Base de frecuencias</div>
-        <div class="cg-sub">.parquet · opcional</div>
-        <div class="cg-est" id="cgBase">Sin cargar</div>
-        <div class="cg-pie">Para validar contra lo facturado</div>
+        <div class="cg-sub">automática · parquet opcional</div>
+        <div class="cg-est" id="cgBase">✓ Automática</div>
+        <div class="cg-pie">Se arma sola del informe — no hay que subir nada</div>
       </div>
       <div class="carga" data-tipo="novedades">
         <div class="cg-ic">📝</div>
@@ -9548,8 +9548,8 @@ function simpleChips(){
   set('cgInforme','informe', !!inf, inf||'Sin cargar', inf? ((FILENAME||'')+(esAdm? (infG?' · ✔ guardado en la nube':' · ⏳ falta guardar en nube') : '')) : 'Toda la producción del corte');
   const est = (typeof ACTOS!=='undefined' && ACTOS && ACTOS.length)? ACTOS.length+' cirugías' : '';
   set('cgEstad','estad', !!est, est||'Sin cargar', est? ((ESTADNAME||'')+(estG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Da precisión a cirugía y anestesia');
-  const bas = (typeof VBASE!=='undefined' && VBASE)? (VBASE.filas? VBASE.filas.length.toLocaleString('es-CO')+' filas':'cargada') : '';
-  set('cgBase','base', !!bas, bas||'Sin cargar', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(basG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Para validar contra lo facturado');
+  const bas = (typeof VBASE!=='undefined' && VBASE && !VBASE.auto)? (VBASE.filas? VBASE.filas.length.toLocaleString('es-CO')+' filas':'cargada') : '';
+  set('cgBase','base', true, bas||'✓ Automática', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(basG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Se arma sola del informe — no hay que subir nada; el parquet clasificado es opcional (si está, se usa)');
   const nCmp=(typeof CMP!=='undefined' && CMP.archivos? CMP.archivos.length:0)+SIMPLE.recibidos.length;
   const novOk = !!(typeof NOV!=='undefined' && NOV && NOV.n);
   set('cgNov','novedades', novOk,
@@ -10286,6 +10286,8 @@ function revisarHTML(m, x){
   P.forEach((p,i)=>{ if(p.tema) vistos[p.tema]=i; });
   const L = P.filter((p,i)=> !p.tema || vistos[p.tema]===i);
   if(!L.length) return '';
+  /* corte cerrado: los apuntes de revisar no vuelven a salir */
+  try{ if(typeof __cerradoChk==='function' && __cerradoChk()) return ''; }catch(e){}
   return '<div class="revbox"><div class="revtit">⚠ Qué hay que revisar en este médico</div><ul>'+
     L.map(p=>'<li>'+p.t+'</li>').join('')+'</ul></div>';
 }
@@ -13136,7 +13138,7 @@ function resumenMedico(d, med){
       ? '<div class="small" style="color:#8a5a00;margin-top:4px">Este es un <b>corte parcial</b>: es lo que va hasta hoy y va a seguir subiendo con lo que se facture. La cuenta definitiva es la del corte final.</div>' : '';
     return '<div class="resmed"><b>Su total sale de:</b> '+P.join(' &nbsp;+&nbsp; ')+
       ' &nbsp;=&nbsp; <b style="color:var(--acc)">'+money(vCir+vSed1+vSed2+vMan)+'</b>'+
-      (falta.length? '<div class="small" style="color:#8a5a00;margin-top:4px">Falta decidir: '+falta.join(' · ')+
+      ((falta.length && !(typeof __cerradoChk==='function' && __cerradoChk()))? '<div class="small" style="color:#8a5a00;margin-top:4px">Falta decidir: '+falta.join(' · ')+
         '<br>Si cambia alguno de esos valores, el total de arriba cambia con él.</div>':'')+_parc+'</div>';
   }catch(e){ return ''; }
 }
