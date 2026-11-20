@@ -655,7 +655,7 @@ export async function GET(req: NextRequest) {
         const entKey =
           empTerc.empresaCorta && empTerc.empresaCorta !== "SIN ENTIDAD"
             ? empTerc.empresaCorta
-            : normalizarEmpresaSisma(terc.razonSocial || "", terc.nit || "");
+            : String(terc.razonSocial || "").trim().toUpperCase();
         for (const a of terc.auxiliares || []) {
           for (const doc of a.documentos || []) {
             const fDocGiro = normalizarFechaISO(doc.fecha);
