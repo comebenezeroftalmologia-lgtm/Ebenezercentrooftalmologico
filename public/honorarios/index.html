@@ -875,10 +875,11 @@ document.addEventListener('click', function(e){
 }, true);
 })();
 </script><script>
-/* Sello del corte: la página dice de qué corte son las cifras y avisa cuando el corte
-   más reciente aún no se ha publicado aquí. */
+/* Sello del corte v2: dice de qué corte son las cifras, avisa si el corte vigente no se ha
+   publicado, marca las páginas de archivo y ofrece el filtro de cortes anteriores. */
 (function(){
  try{
+  var MESES=[{t:'Octubre 2026 (26 sep – 25 oct)', u:'/honorarios/2026-10/'}];
   var D=JSON.parse(document.getElementById('datos').textContent);
   var per=String(D.periodo||'');
   var MN={ENERO:0,FEBRERO:1,MARZO:2,ABRIL:3,MAYO:4,JUNIO:5,JULIO:6,AGOSTO:7,SEPTIEMBRE:8,OCTUBRE:9,NOVIEMBRE:10,DICIEMBRE:11};
@@ -889,12 +890,24 @@ document.addEventListener('click', function(e){
   var corteIni=new Date(hoy.getFullYear(), hoy.getMonth()-(hoy.getDate()>=26?0:1), 26);
   var rango=per.replace(/^.*?mes completo /i,'');
   var env=(D.meta||[]).map(function(x){ var f=''; try{ f=x.el? new Date(x.el).toLocaleDateString('es-CO'):''; }catch(e){} return x.sede+(f?' ('+f+')':''); }).join(' · ');
-  var desact = fin && fin < corteIni;
+  var esArchivo=!!window.__esArchivo;
+  var aquiU=location.pathname.replace(/index\.html$/,'');
+  var otros=MESES.filter(function(x){ return x.u!==aquiU; });
+  var filtro=otros.length? ' &nbsp;·&nbsp; <b>Ver otros cortes:</b> '+otros.map(function(x){ return '<a href="'+x.u+'" style="color:inherit;font-weight:700">'+x.t+'</a>'; }).join(' · ') : '';
   var div=document.createElement('div');
-  div.style.cssText='max-width:1120px;margin:0 auto;padding:10px 16px;font-size:13px;font-family:Inter,system-ui,sans-serif;'+(desact?'background:#fdf4de;color:#8a6d1f;border-bottom:2px solid #eadfb8;':'background:#eef7f0;color:#1f6f52;border-bottom:2px solid #cfe8d8;');
-  div.innerHTML = desact
-    ? '⚠ <b>Estas cifras son del corte '+rango+'.</b> El corte más reciente <b>aún no se ha enviado/publicado</b> en esta página; cuando contabilidad reciba el cierre nuevo, aquí se actualiza.'
-    : '✓ Cifras de los cierres enviados a contabilidad — '+rango+(env?' · '+env:'')+'.';
+  var estilo, texto;
+  if(esArchivo){
+    estilo='background:#eef1f6;color:#44546b;border-bottom:2px solid #d5dce8;';
+    texto='📁 <b>Corte histórico: '+rango+'.</b> <a href="/honorarios/" style="color:inherit;font-weight:700">Ir al corte vigente →</a>';
+  } else if(fin && fin < corteIni){
+    estilo='background:#fdf4de;color:#8a6d1f;border-bottom:2px solid #eadfb8;';
+    texto='⚠ <b>Estas cifras son del corte '+rango+'.</b> El corte más reciente <b>aún no se ha enviado/publicado</b> en esta página; cuando contabilidad reciba el cierre nuevo, aquí se actualiza.'+filtro;
+  } else {
+    estilo='background:#eef7f0;color:#1f6f52;border-bottom:2px solid #cfe8d8;';
+    texto='✓ Cifras de los cierres enviados a contabilidad — '+rango+(env?' · '+env:'')+'.'+filtro;
+  }
+  div.style.cssText='max-width:1120px;margin:0 auto;padding:10px 16px;font-size:13px;font-family:Inter,system-ui,sans-serif;'+estilo;
+  div.innerHTML=texto;
   var hoja=document.querySelector('.hoja')||document.body;
   hoja.insertBefore(div, hoja.firstChild);
  }catch(e){}
