@@ -926,21 +926,27 @@ document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,
         f.push([{b:'Total general'}].concat(cols.map(function(c){return {bm:totCol[c]||0};})).concat([{bm:gran}]));
         return {f:f, anchos:[32].concat(cols.map(function(){return 17;})).concat([16]), gran:gran};
       }
-      var dM=[], dP=[];
+      var dM=[], dP=[], dE=[];
       Object.keys(D.medicos).forEach(function(mn){
         (D.medicos[mn].f||[]).forEach(function(r){
           var v=Math.round(r[6]||0); if(!v) return;
           var sede=String(r[0]||''), emp=String(r[2]||'—'), uf=String(r[3]||'OTROS')||'OTROS';
-          var esMut=/MUTUAL/i.test(emp);
+          var esMut=/MUTUAL/i.test(emp), esEco=/ECOPETROL/i.test(emp);
           var aMutual = (sede==='Sede 2') || (sede!=='Sede Principal' && esMut);
           if(aMutual) dM.push({mn:mn, uf:uf, v:v, ek:emp});
-          else dP.push({mn:mn, uf:uf, v:v, ek:(/ECOPETROL/i.test(emp)?'ECOPETROL':'P&P (particulares y prepagadas)')});
+          else if(esEco) dE.push({mn:mn, uf:uf, v:v, ek:emp});
+          else dP.push({mn:mn, uf:uf, v:v, ek:emp});
         });
       });
       var hM=armar(dM,'Sede 2 — Mutual Ser', false);
-      var hP=armar(dP,'Sede Principal — PYP y Ecopetrol', true);
-      var hojas=[{nombre:'Sede 2 — Mutual', xml:hoja(hM.f,hM.anchos)},
-                 {nombre:'Sede Ppal — PYP y Ecopetrol', xml:hoja(hP.f,hP.anchos)}];
+      var hP=armar(dP,'Sede Principal — PYP (particulares y prepagadas)', false);
+      var hE=armar(dE,'Ecopetrol', false);
+      /* UNA SOLA HOJA: las tres tablas una debajo de otra, y al final el total de todo */
+      var fTodo=hM.f.concat([[],[]], hP.f, [[],[]], hE.f);
+      fTodo.push([]);
+      fTodo.push([{b:'TOTAL GENERAL DE LAS TRES TABLAS'},{bm:(hM.gran+hP.gran+hE.gran)}]);
+      var anchosTodo=[34,18,18,18,18,18,18,18,18];
+      var hojas=[{nombre:'Por unidad funcional', xml:hoja(fTodo,anchosTodo)}];
       /* detalle por servicio, como hoja final */
       var f2=[[{b:'Detalle por servicio'}],[D.periodo||''],[]];
       f2.push([{b:'Médico'},{b:'Sede'},{b:'Unidad funcional'},{b:'Servicio'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
