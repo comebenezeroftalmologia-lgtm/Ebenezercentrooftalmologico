@@ -15879,6 +15879,21 @@ function excelCompleto(){
         }
       }
     }
+    // acuerdos, rubros y reglas cuyo valor no está en los renglones de pacientes:
+    // salen como renglón propio para que la hoja sume exacto el total del médico
+    for(const bl of ['cir','sede']){
+      for(const g of Object.values((x.d&&x.d[bl])||{})){
+        const tipo = bl==='cir' ? 'Cirugía y anestesia' : ((g.uf==='Sede 2'||(g.pagoM||0)>0)?'Sede 2 (Mutual Ser)':'Sede Principal');
+        let sR=0; for(const rr of (g.recs||[])) sR+=rr.total||0;
+        const dG=Math.round((g.pago||0))-Math.round(sR);
+        if(Math.abs(dG)>=1){
+          const obs=(g.recs&&g.recs.length)? 'resto del renglón (regla/acuerdo)' : (g.acuerdo? String(g.acuerdo.texto||'').slice(0,60) : 'acuerdo/rubro sin pacientes');
+          const base=[S(''),S(''),S(tipo),S(''),S(''),S(''),S(''),S(String(g.servicio||'').slice(0,90)),N(g.fact||0),N(dG),S(obs)];
+          if(an) base.splice(2,0,S(''),S(''));
+          fx.push(['9997',base]);
+        }
+      }
+    }
     for(const g of Object.values((x.d&&x.d.sinTarifa)||{})){
       for(const rr of (g.recs||[])){
         const P=_dp(rr.paciente), f=String(rr.fecha||''), h=(f.slice(11,16)==='00:00'?'':f.slice(11,16));
@@ -15890,6 +15905,13 @@ function excelCompleto(){
       if(mv){ const base=[S(''),S(''),S('Decidido manualmente'),S(''),S(''),S(''),S(''),S(String(g.servicio||'').slice(0,70)),N(0),N(mv),S('decidido manualmente')];
         if(an) base.splice(2,0,S(''),S('')); fx.push(['9999',base]); }
     }
+    { let sAll=0; for(const ff of fx){ const row=ff[1]; const c=row[row.length-2]; if(c&&typeof c.v==='number') sAll+=c.v; }
+      const d2=Math.round(tot-sAll);
+      if(Math.abs(d2)>=1){
+        const base=[S(''),S(''),S(''),S(''),S(''),S(''),S(''),S('Otros ajustes de la liquidación'),N(0),N(d2),S('diferencia frente al total del tablero')];
+        if(an) base.splice(2,0,S(''),S(''));
+        fx.push(['9999~z',base]);
+      } }
     fx.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
     let ni=0; for(const ff of fx) fil.push([I(++ni)].concat(ff[1]));
     fil.push([]);
