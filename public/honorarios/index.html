@@ -874,4 +874,30 @@ document.addEventListener('click', function(e){
   if(b){ window.__medActual=b.getAttribute('data-m'); setTimeout(ponerBotonesMedico,60); }
 }, true);
 })();
-</script></body></html>
+</script><script>
+/* Sello del corte: la página dice de qué corte son las cifras y avisa cuando el corte
+   más reciente aún no se ha publicado aquí. */
+(function(){
+ try{
+  var D=JSON.parse(document.getElementById('datos').textContent);
+  var per=String(D.periodo||'');
+  var MN={ENERO:0,FEBRERO:1,MARZO:2,ABRIL:3,MAYO:4,JUNIO:5,JULIO:6,AGOSTO:7,SEPTIEMBRE:8,OCTUBRE:9,NOVIEMBRE:10,DICIEMBRE:11};
+  var nz=function(x){return String(x||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');};
+  var m=nz(per).match(/AL\s+(\d{1,2})\s+DE\s+([A-Z]+)\s+DE\s+(\d{4})/);
+  var fin=null; if(m && MN[m[2]]!==undefined) fin=new Date(+m[3], MN[m[2]], +m[1]);
+  var hoy=new Date();
+  var corteIni=new Date(hoy.getFullYear(), hoy.getMonth()-(hoy.getDate()>=26?0:1), 26);
+  var rango=per.replace(/^.*?mes completo /i,'');
+  var env=(D.meta||[]).map(function(x){ var f=''; try{ f=x.el? new Date(x.el).toLocaleDateString('es-CO'):''; }catch(e){} return x.sede+(f?' ('+f+')':''); }).join(' · ');
+  var desact = fin && fin < corteIni;
+  var div=document.createElement('div');
+  div.style.cssText='max-width:1120px;margin:0 auto;padding:10px 16px;font-size:13px;font-family:Inter,system-ui,sans-serif;'+(desact?'background:#fdf4de;color:#8a6d1f;border-bottom:2px solid #eadfb8;':'background:#eef7f0;color:#1f6f52;border-bottom:2px solid #cfe8d8;');
+  div.innerHTML = desact
+    ? '⚠ <b>Estas cifras son del corte '+rango+'.</b> El corte más reciente <b>aún no se ha enviado/publicado</b> en esta página; cuando contabilidad reciba el cierre nuevo, aquí se actualiza.'
+    : '✓ Cifras de los cierres enviados a contabilidad — '+rango+(env?' · '+env:'')+'.';
+  var hoja=document.querySelector('.hoja')||document.body;
+  hoja.insertBefore(div, hoja.firstChild);
+ }catch(e){}
+})();
+</script>
+</body></html>
