@@ -3510,9 +3510,9 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
       <div class="carga" data-tipo="base">
         <div class="cg-ic">🗂</div>
         <div class="cg-tit">Base de frecuencias</div>
-        <div class="cg-sub">.parquet · opcional</div>
-        <div class="cg-est" id="cgBase">Sin cargar</div>
-        <div class="cg-pie">Para validar contra lo facturado</div>
+        <div class="cg-sub">automática · parquet opcional</div>
+        <div class="cg-est" id="cgBase">✓ Automática</div>
+        <div class="cg-pie">Se arma sola del informe — no hay que subir nada</div>
       </div>
       <div class="carga" data-tipo="novedades">
         <div class="cg-ic">📝</div>
@@ -9548,8 +9548,8 @@ function simpleChips(){
   set('cgInforme','informe', !!inf, inf||'Sin cargar', inf? ((FILENAME||'')+(esAdm? (infG?' · ✔ guardado en la nube':' · ⏳ falta guardar en nube') : '')) : 'Toda la producción del corte');
   const est = (typeof ACTOS!=='undefined' && ACTOS && ACTOS.length)? ACTOS.length+' cirugías' : '';
   set('cgEstad','estad', !!est, est||'Sin cargar', est? ((ESTADNAME||'')+(estG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Da precisión a cirugía y anestesia');
-  const bas = (typeof VBASE!=='undefined' && VBASE)? (VBASE.filas? VBASE.filas.length.toLocaleString('es-CO')+' filas':'cargada') : '';
-  set('cgBase','base', !!bas, bas||'Sin cargar', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(basG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Para validar contra lo facturado');
+  const bas = (typeof VBASE!=='undefined' && VBASE && !VBASE.auto)? (VBASE.filas? VBASE.filas.length.toLocaleString('es-CO')+' filas':'cargada') : '';
+  set('cgBase','base', true, bas||'✓ Automática', bas? ('hasta '+((VBASE.corte&&VBASE.corte.max)||'')+(basG?' · ✔ guardado en la nube':(esAdm?' · ⏳ falta guardar en nube':''))) : 'Se arma sola del informe — no hay que subir nada; el parquet clasificado es opcional (si está, se usa)');
   const nCmp=(typeof CMP!=='undefined' && CMP.archivos? CMP.archivos.length:0)+SIMPLE.recibidos.length;
   const novOk = !!(typeof NOV!=='undefined' && NOV && NOV.n);
   set('cgNov','novedades', novOk,
