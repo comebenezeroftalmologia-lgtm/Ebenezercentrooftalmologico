@@ -15830,6 +15830,35 @@ function excelCompleto(){
         for(const rr of (g.recs||[])){
           const P=_dp(rr.paciente), f=String(rr.fecha||''), h=(f.slice(11,16)==='00:00'?'':f.slice(11,16));
           const cam = rr.cambio? ('antes '+Math.round(rr.cambio.antes||0).toLocaleString('es-CO')+' · '+(rr.cambio.quien||'')) : (g.acuerdo? String(g.acuerdo.texto||'').slice(0,60) : '');
+          if(an){
+            // las jornadas vienen apelotonadas en un solo renglón: se abren a
+            // renglón por jornada, con fecha, am/pm y los cirujanos de ese día
+            const dd=String(rr.detalle||'');
+            if(/jornadas? de anestesia/i.test(dd) && /—/.test(dd)){
+              const toks=dd.split('—').slice(1).join('—').split('·').map(z=>z.trim()).filter(Boolean);
+              const mV=dd.match(/\$\s*([\d.,]+)/);
+              const unit=mV? Math.round(parseFloat(mV[1].replace(/\./g,'').replace(',','.'))) : Math.round((rr.total||0)/(toks.length||1));
+              let usados=0;
+              for(const tk of toks){
+                const mm=tk.match(/(\d{4}-\d{2}-\d{2})\s*(am|pm)?/i); if(!mm) continue; usados++;
+                const fj=mm[1], jj=(mm[2]||'').toLowerCase();
+                const cjj=Object.keys(CIRDIA[fj]||{}).slice(0,4).join(' · ');
+                fx.push([fj+(jj==='pm'?'~2':'~1'), [S(fj),S(''),S(jj),S(cjj),S(tipo),S(rr.emp||''),S(''),S('NO APLICA'),S(''),S('Jornada de anestesia'),N(0),N(unit),S(cam)]]);
+              }
+              if(usados){
+                const resto=Math.round((rr.total||0)-usados*unit);
+                if(Math.abs(resto)>=1000) fx.push(['9998',[S(''),S(''),S(''),S(''),S(tipo),S(''),S(''),S(''),S(''),S('Ajuste de las jornadas'),N(0),N(resto),S('')]]);
+                continue;
+              }
+            }
+            const m2=dd.match(/paciente\(?s\)?\s+extra a la jornada[^—]*—\s*(\d{4}-\d{2}-\d{2})\s*(am|pm)?/i);
+            if(m2){
+              const fj=m2[1], jj=(m2[2]||'').toLowerCase();
+              const cjj=Object.keys(CIRDIA[fj]||{}).slice(0,4).join(' · ');
+              fx.push([fj+'~3', [S(fj),S(''),S(jj),S(cjj),S(tipo),S(rr.emp||''),S(P.doc),S(P.nom||'NO APLICA'),S(rr.factura||''),S(dd.slice(0,90)),N(rr.facturado||0),N(rr.total||0),S(cam)]]);
+              continue;
+            }
+          }
           const base=[S(f.slice(0,10)), S(h), S(tipo), S(rr.emp||''), S(P.doc), S(P.nom), S(rr.factura||''), S(String(rr.detalle||'').slice(0,90)), N(rr.facturado||0), N(rr.total||0), S(cam)];
           if(an){ const jor = h? (h<'13:00'?'am':'pm') : (/\bPM\b|TARDE/i.test(rr.detalle||'')?'pm':(/\bAM\b|MA\u00d1ANA|MANANA/i.test(rr.detalle||'')?'am':''));
             const cj = Object.keys(CIRDIA[f.slice(0,10)]||{}).slice(0,4).join(' · ');
