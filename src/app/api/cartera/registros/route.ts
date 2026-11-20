@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
 import {
+  causaNormativa6De,
   claveFacturaNorm,
   extraerCodigoCausalExplicito,
   extraerFacturasFcoe,
@@ -119,6 +120,32 @@ async function asegurarCausalNormativa(
     .upsert({ codigo: base.codigo, familia: base.familia, nombre: base.nombre, activo: true }, { onConflict: "codigo" });
 }
 
+async function resolverCodigoParaBD(
+  db: ReturnType<typeof createServiceClient>,
+  causalRaw: unknown,
+  subcodigoRaw: unknown,
+  tipoRaw?: unknown
+): Promise<string | null> {
+  const sub = strLimpio(subcodigoRaw).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const c6 =
+    causaNormativa6De(strLimpio(causalRaw) || sub, strLimpio(tipoRaw)) || null;
+  if (sub.length >= 4 && (!c6 || sub.startsWith(c6))) {
+    const sub4 = sub.slice(0, 4);
+    const { data } = await db
+      .from("cf_causales")
+      .select("codigo")
+      .in("codigo", [sub, sub4])
+      .limit(1)
+      .maybeSingle();
+    if (data?.codigo) return String(data.codigo).toUpperCase();
+  }
+  if (c6) {
+    await asegurarCausalNormativa(db, c6);
+    return c6;
+  }
+  return null;
+}
+
 /**
  * Busca un nombre en un catalogo (cf_empresas, cf_responsables) y, si no
  * existe, lo crea.
@@ -158,6 +185,9 @@ function construirOrigenGestion(origenPrevio: unknown, filaInput: Fila): Record<
   const nextGest: Record<string, unknown> = { ...prevGest };
   if (filaInput.fechaPrestacionServicio !== undefined) {
     nextGest.fechaPrestacionServicio = fecha(filaInput.fechaPrestacionServicio);
+  }
+  if (filaInput.subcodigoCausal !== undefined) {
+    nextGest.subcodigoCausal = txt(filaInput.subcodigoCausal)?.trim().toUpperCase() || "";
   }
   if (filaInput.seguimientoEstado !== undefined) {
     nextGest.seguimientoEstado = normalizarSeguimientoGlosa(strLimpio(filaInput.seguimientoEstado)) || null;
@@ -495,8 +525,19 @@ export async function GET() {
     const factUnif = homologarPersonaFacturacion(strLimpio((r.facturador as Fila | null)?.nombre));
     const respUnif = homologarPersonaFacturacion(strLimpio((r.aceptacion as Fila | null)?.nombre));
     const empCanonica = empInfo.empresaCorta !== "SIN ENTIDAD" ? empInfo.empresaCorta : empBase;
-    const codBD = strLimpio(r.motivo_codigo);
+    const codBD = strLimpio(r.motivo_codigo).trim().toUpperCase();
     const tipoBD = strLimpio(r.tipo) || "GLOSA";
+    const tieneSubGuardado = Object.prototype.hasOwnProperty.call(gestObj, "subcodigoCausal");
+    const subGuardado = strLimpio(gestObj.subcodigoCausal).trim().toUpperCase();
+    const codExplicito = extraerCodigoCausalExplicito(motivoStr);
+    const causal6 = causaNormativa6De(codBD || subGuardado || codExplicito, tipoBD);
+    const subcodigoExpuesto = tieneSubGuardado
+      ? subGuardado
+      : codBD.length > 2
+      ? codBD
+      : codExplicito.length > 2
+      ? codExplicito
+      : "";
 
     return {
       id: String(r.id),
@@ -531,7 +572,8 @@ export async function GET() {
         r.valor_aceptado === null || r.valor_aceptado === undefined
           ? null
           : Number(r.valor_aceptado),
-      motivoCodigo: codBD || extraerCodigoCausalExplicito(motivoStr) || (tipoBD === "DEVOLUCION" ? "DE" : ""),
+      motivoCodigo: causal6,
+      subcodigoCausal: subcodigoExpuesto,
       motivoGlosa: motivoStr,
       facturador: factUnif,
       responsableAceptacion: respUnif,
@@ -696,20 +738,21 @@ export async function POST(request: Request) {
     if (entidad === "glosas-lote") {
       const texto = txt(fila.motivoGlosa);
       const codigoRaw = txt(fila.motivoCodigo);
-      const codigo = codigoRaw ? codigoRaw.trim().toUpperCase() : null;
-      if (!texto || !codigo) {
+      const subRaw = txt(fila.subcodigoCausal);
+      const codigoBD = await resolverCodigoParaBD(db, codigoRaw, subRaw);
+      if (!texto || !codigoBD) {
         return NextResponse.json(
-          { ok: false, error: "Falta el texto del motivo o el código" },
+          { ok: false, error: "Falta el texto del motivo o la causal (TA, AU, SO, DE, CO, FA)" },
           { status: 400 }
         );
       }
-      await asegurarCausalNormativa(db, codigo);
       const { data: afectadas, error } = await db
         .from("cf_glosas")
-        .update({ motivo_codigo: codigo })
+        .update({ motivo_codigo: codigoBD })
         .eq("motivo_texto", texto)
         .is("motivo_codigo", null)
         .select("id");
+      const codigo = codigoBD;
       if (error) throw new Error(error.message);
       const ids = (afectadas || []).map((x) => x.id as string);
       for (const id of ids) {
@@ -767,8 +810,12 @@ export async function POST(request: Request) {
       const factId = await idCatalogo(db, "cf_responsables", fila.facturador);
       const acepId = await idCatalogo(db, "cf_responsables", fila.responsableRespuesta || fila.responsableAceptacion);
       const fechaNotif = fecha(fila.fechaNotificacionGlosa);
-      const codCausal = txt(fila.motivoCodigo)?.trim().toUpperCase() || null;
-      await asegurarCausalNormativa(db, codCausal);
+      const codCausal = await resolverCodigoParaBD(
+        db,
+        fila.motivoCodigo,
+        fila.subcodigoCausal,
+        fila.tipoGlosa
+      );
 
       const existente = esNuevo
         ? null
@@ -983,8 +1030,12 @@ export async function POST(request: Request) {
           : rawNc.toUpperCase() === "NA" || rawNc.toUpperCase() === "NO APLICA"
           ? "N/A"
           : rawNc;
-        const codCausal = txt(item.motivoCodigo)?.trim().toUpperCase() || null;
-        await asegurarCausalNormativa(db, codCausal);
+        const codCausal = await resolverCodigoParaBD(
+          db,
+          item.motivoCodigo,
+          item.subcodigoCausal,
+          item.tipoGlosa
+        );
 
         const insGlosa = await db
           .from("cf_glosas")
@@ -1245,7 +1296,9 @@ export async function POST(request: Request) {
 
         const fId = await obtenerRespId(item.facturador);
         const rId = await obtenerRespId(item.responsableRespuesta || item.responsableAceptacion);
-        const codCausal = await resolverCodigoCausalSeguro(item.motivoCodigo);
+        const codCausal = await resolverCodigoCausalSeguro(
+          strLimpio(item.subcodigoCausal) || strLimpio(item.motivoCodigo)
+        );
         const rawNc = txt(item.notaCredito)?.trim() || "";
         const nc =
           !rawNc
@@ -1297,6 +1350,9 @@ export async function POST(request: Request) {
         const patchGest: Fila = {};
         if (strLimpio(item.fechaPrestacionServicio)) {
           patchGest.fechaPrestacionServicio = item.fechaPrestacionServicio;
+        }
+        if (strLimpio(item.subcodigoCausal)) {
+          patchGest.subcodigoCausal = item.subcodigoCausal;
         }
         if (strLimpio(item.seguimientoEstado)) {
           patchGest.seguimientoEstado = item.seguimientoEstado;

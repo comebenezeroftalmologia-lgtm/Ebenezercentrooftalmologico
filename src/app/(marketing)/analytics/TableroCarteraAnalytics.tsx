@@ -928,8 +928,13 @@ export default function TableroCarteraAnalytics() {
     const pideMutualExplicita = empAct.some((e) => esEmpresaMutual(e));
     const mutAct = pideMutualExplicita ? true : (filtrosCustom?.mutual ?? incluirMutual);
 
+    const topeAyer = ayerEnColombia();
+    const corteHastaAyer =
+      /^\d{4}-\d{2}-\d{2}$/.test(corteConsulta) && corteConsulta > topeAyer
+        ? topeAyer
+        : corteConsulta;
     const params = new URLSearchParams();
-    params.set("corte", corteConsulta);
+    params.set("corte", corteHastaAyer);
     if (aniosAct.length > 0 && aniosAct.length < ANIOS_SISMA_DISPONIBLES.length) {
       params.set("anios", aniosAct.join(","));
     }
@@ -1016,7 +1021,7 @@ export default function TableroCarteraAnalytics() {
       }
       if (!silencioso) {
         mostrarMensaje(
-          `✓ Sincronizado en vivo con SISMA (Corte ${json.fechaCorte} · ${json.filasFacturas.toLocaleString("es-CO")} facturas)`
+          `✓ Sincronizado al cierre del día anterior en SISMA (Corte ${json.fechaCorte} · ${json.filasFacturas.toLocaleString("es-CO")} facturas)`
         );
       }
     } catch {
@@ -2214,14 +2219,10 @@ export default function TableroCarteraAnalytics() {
         idxCorte: idx,
         fechaRaw: fClean,
         etiquetaTabla: congAyer
-          ? `Ayer ${fClean}`
-          : esVivo
-          ? `Vivo ${fClean}`
+          ? `Cierre ${fClean}`
           : `Corte ${fClean}`,
         etiquetaEje: congAyer
-          ? `Ayer ${fClean.slice(0, 5)}`
-          : esVivo
-          ? `Vivo ${fClean.slice(0, 5)}`
+          ? `Cierre ${fClean.slice(0, 5)}`
           : fClean,
         esVivo,
         esCongeladoAyer: congAyer,
@@ -2239,8 +2240,8 @@ export default function TableroCarteraAnalytics() {
       id: `corte-vivo-${fechaVivoClean}`,
       idxCorte: listaCortesActiva.length - 1,
       fechaRaw: fechaVivoClean,
-      etiquetaTabla: esCorteCongeladoAyer ? `Ayer ${fechaVivoClean}` : `Vivo ${fechaVivoClean}`,
-      etiquetaEje: esCorteCongeladoAyer ? `Ayer ${fechaVivoClean.slice(0, 5)}` : `Vivo ${fechaVivoClean.slice(0, 5)}`,
+      etiquetaTabla: `Cierre ${fechaVivoClean}`,
+      etiquetaEje: `Cierre ${fechaVivoClean.slice(0, 5)}`,
       esVivo: true,
       esCongeladoAyer: esCorteCongeladoAyer,
       carteraTotal: corteSeleccionado.carteraTotal,
@@ -2591,7 +2592,7 @@ export default function TableroCarteraAnalytics() {
             </div>
             <p className="text-[11.5px]" style={{ color: "#475569" }}>
               {usaCierresGlobalesOficiales
-                ? "Evolución oficial de cierres mensuales congelados y corte actual en vivo (descontando Giros por Cruzar)"
+                ? "Evolución oficial de cierres mensuales congelados y cierre acumulado hasta el día anterior (descontando Giros por Cruzar)"
                 : "Serie acumulada real en SISMA de facturas abiertas para el filtro activo (los cierres históricos Ene–Oct son globales institucionales)"}
             </p>
           </div>
@@ -5977,8 +5978,8 @@ export default function TableroCarteraAnalytics() {
                   <>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-[11.5px] font-semibold text-[#047857]">
                       {(datosSismaVivo.corteISO || fechaCorteVivo) === ayerEnColombia()
-                        ? `Corte congelado al día anterior cerrado: ${datosSismaVivo.fechaCorte} (hoy: ${formatearISOaLatam(hoyEnColombia())})`
-                        : `En vivo desde SISMA · corte ${datosSismaVivo.fechaCorte}`}
+                        ? `Cierre acumulado hasta el día anterior: ${datosSismaVivo.fechaCorte}`
+                        : `Corte histórico cerrado en SISMA: ${datosSismaVivo.fechaCorte}`}
                     </span>
                     {(datosSismaVivo.corteISO || fechaCorteVivo) !== ayerEnColombia() && (
                       <span
@@ -6129,10 +6130,13 @@ export default function TableroCarteraAnalytics() {
                           celdas.push(<div key={`empty-${i}`} className="h-8" />);
                         }
 
+                        const topeCalAyer = ayerEnColombia();
                         for (let d = 1; d <= totalDiasMes; d++) {
                           const dd = String(d).padStart(2, "0");
                           const mm = String(mesCalendario + 1).padStart(2, "0");
                           const label = `${dd}/${mm}/${anioCalendario}`;
+                          const isoDiaCal = `${anioCalendario}-${mm}-${dd}`;
+                          const posteriorAAyer = isoDiaCal > topeCalAyer;
                           const idxCorte = listaCortesActiva.findIndex(
                             (c) => c.fechaCorte.slice(0, 10) === label
                           );
@@ -6143,19 +6147,26 @@ export default function TableroCarteraAnalytics() {
                             <button
                               type="button"
                               key={label}
-                              onClick={() => toggleFechaEnCalendario(d)}
-                              className="h-8 w-8 mx-auto rounded-full flex items-center justify-center font-bold transition cursor-pointer"
+                              disabled={posteriorAAyer}
+                              onClick={() => {
+                                if (!posteriorAAyer) toggleFechaEnCalendario(d);
+                              }}
+                              className={`h-8 w-8 mx-auto rounded-full flex items-center justify-center font-bold transition ${
+                                posteriorAAyer ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
+                              }`}
                               style={{
-                                backgroundColor: marcado ? "#1D58D8" : "transparent",
-                                color: marcado ? "#FFFFFF" : "#0E245E",
-                                boxShadow: esCorteActivo
+                                backgroundColor: marcado && !posteriorAAyer ? "#1D58D8" : "transparent",
+                                color: marcado && !posteriorAAyer ? "#FFFFFF" : "#0E245E",
+                                boxShadow: esCorteActivo && !posteriorAAyer
                                   ? "0 0 0 2px #93C5FD"
                                   : "none",
                               }}
                               title={
-                                marcado
+                                posteriorAAyer
+                                  ? "No disponible: el tablero muestra únicamente hasta el cierre del día anterior"
+                                  : marcado
                                   ? `Corte ${label} seleccionado (clic para ver o quitar)`
-                                  : `Marcar corte ${label} en SISMA`
+                                  : `Marcar corte cerrado ${label} en SISMA`
                               }
                             >
                               {d}
@@ -6522,8 +6533,8 @@ export default function TableroCarteraAnalytics() {
                     </span>
                     <h4 className="text-sm font-extrabold" style={{ color: "#065F46" }}>
                       {persianaEdadesVivaAbierta
-                        ? "▴ Replegar Cortina: Cartera por Edades y Auxiliar Abierto en Vivo (API SISMA)"
-                        : `▾ Desplegar Cortina: Cartera por Edades (${datosSismaVivo.filasFacturas.toLocaleString("es-CO")} facturas) y Giros en Vivo — Corte ${datosSismaVivo.fechaCorte}`}
+                        ? `▴ Replegar Cortina: Cartera por Edades y Auxiliar Abierto al Cierre (${datosSismaVivo.fechaCorte})`
+                        : `▾ Desplegar Cortina: Cartera por Edades (${datosSismaVivo.filasFacturas.toLocaleString("es-CO")} facturas) y Giros al Cierre ${datosSismaVivo.fechaCorte}`}
                     </h4>
                   </div>
                   <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "#DCFCE7", color: "#065F46" }}>
@@ -7747,7 +7758,16 @@ export default function TableroCarteraAnalytics() {
         let defOtrasCausas = 0;
         let cantOtrasCausas = 0;
 
-        for (const g of glosasFiltradas) {
+        const topeGlosasAyer = ayerEnColombia();
+        const glosasCerradasHastaAyer = glosasFiltradas.filter((g) => {
+          const fn = String(g.fechaNotificacionGlosa || "").slice(0, 10);
+          const ff = String(g.fechaFactura || "").slice(0, 10);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(fn) && fn > topeGlosasAyer) return false;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(ff) && ff > topeGlosasAyer) return false;
+          return true;
+        });
+
+        for (const g of glosasCerradasHastaAyer) {
           const cod = causaNormativaDe(
             g.motivoCodigo,
             (g as unknown as { tipoGlosa?: string }).tipoGlosa
@@ -7763,18 +7783,18 @@ export default function TableroCarteraAnalytics() {
             cantOtrasCausas += 1;
           }
         }
-        const totGlosadoBaseCausas = glosasFiltradas.reduce((a, g) => a + (g.valorGlosado || 0), 0);
+        const totGlosadoBaseCausas = glosasCerradasHastaAyer.reduce((a, g) => a + (g.valorGlosado || 0), 0);
 
-        // Subconjunto activo si el usuario hizo clic en una causa normativa (FA, TA, SO, AU, CO u OTRAS)
+        // Subconjunto activo al cierre del día anterior
         const glosasDash = causaFiltroDash
-          ? glosasFiltradas.filter((g) => {
+          ? glosasCerradasHastaAyer.filter((g) => {
               const cod = causaNormativaDe(
                 g.motivoCodigo,
                 (g as unknown as { tipoGlosa?: string }).tipoGlosa
               );
               return causaFiltroDash === "OTRAS" ? !cod : cod === causaFiltroDash;
             })
-          : glosasFiltradas;
+          : glosasCerradasHastaAyer;
 
         // Facturado único sin duplicar facturas con múltiples glosas
         const factUnicasGlosa = new Map<string, number>();
@@ -8689,7 +8709,7 @@ export default function TableroCarteraAnalytics() {
                         Seguimiento Operativo: Pagos, Levantamientos y Ratificación de Glosa
                       </h4>
                       <p className="text-[11.5px] text-[#64748B]">
-                        Control en vivo desde WorkCenter de pagos completos/parciales, levantamientos completos/parciales y ratificaciones.
+                        Consolidado al cierre del día anterior de pagos completos/parciales, levantamientos completos/parciales y ratificaciones.
                       </p>
                     </div>
                     <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-[11px] font-semibold text-[#475569]">

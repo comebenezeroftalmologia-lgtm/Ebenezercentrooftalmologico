@@ -101,6 +101,7 @@ type Glosa = {
   valorGlosado: number;
   valorAceptado: number | null;
   motivoCodigo: string;
+  subcodigoCausal?: string;
   motivoGlosa: string;
   observacionInterna: string;
   notaCredito: string;
@@ -293,6 +294,7 @@ export function CarteraWorkspace({
   const [fAtencion, setFAtencion] = useState("");
   const [fMutual, setFMutual] = useState<"CON" | "SOLO" | "SIN">("CON");
   const [fCausaNorma, setFCausaNorma] = useState("");
+  const [fSubcodigo, setFSubcodigo] = useState("");
   const [fAnio, setFAnio] = useState("");
   const [fMes, setFMes] = useState("");
   const [fFacturador, setFFacturador] = useState("");
@@ -345,6 +347,7 @@ export function CarteraWorkspace({
         valorGlosado: Number(g.valorGlosado || 0),
         valorAceptado: g.valorAceptado === null || g.valorAceptado === undefined ? null : Number(g.valorAceptado),
         motivoCodigo: String(g.motivoCodigo || ""),
+        subcodigoCausal: String(g.subcodigoCausal || ""),
         motivoGlosa: String(g.motivoGlosa || ""),
         observacionInterna: String(g.observacionInterna || ""),
         notaCredito: String(g.notaCredito || ""),
@@ -476,6 +479,11 @@ export function CarteraWorkspace({
     return Array.from(setR).sort((a, b) => a.localeCompare(b, "es"));
   }, [glosas, cat.responsables]);
 
+  const subcodigosCatalogo = useMemo(
+    () => cat.causales.filter((c) => c.codigo.trim().length > 2),
+    [cat.causales]
+  );
+
   const causalPorCodigo = useMemo(() => {
     const mapC: Record<string, Causal> = {};
     for (const c of CAUSAS_NORMATIVAS) {
@@ -561,6 +569,7 @@ export function CarteraWorkspace({
         if (info.nombre !== fEmpresa && g.empresa !== fEmpresa) return false;
       }
       if (fCausaNorma && causaNormativaDe(g.motivoCodigo, g.tipoGlosa) !== fCausaNorma) return false;
+      if (fSubcodigo && (g.subcodigoCausal || "").toUpperCase() !== fSubcodigo) return false;
       if (fSeguimiento) {
         const seg = g.seguimientoEstado || "";
         if (fSeguimiento === "SIN_SEGUIMIENTO" && seg !== "") return false;
@@ -595,13 +604,14 @@ export function CarteraWorkspace({
         infoNit.nit.includes(q) ||
         (g.motivoGlosa || "").toUpperCase().includes(q) ||
         (g.motivoCodigo || "").toUpperCase().includes(q) ||
+        (g.subcodigoCausal || "").toUpperCase().includes(q) ||
         (g.notaCredito || "").toUpperCase().includes(q) ||
         (g.responsableAceptacion || "").toUpperCase().includes(q) ||
         (g.observacionInterna || "").toUpperCase().includes(q)
       );
     });
   }, [
-    glosas, busqueda, fEstado, fEmpresa, fSede, fAtencion, fMutual, fCausaNorma, fSeguimiento, fAnio, fMes,
+    glosas, busqueda, fEstado, fEmpresa, fSede, fAtencion, fMutual, fCausaNorma, fSubcodigo, fSeguimiento, fAnio, fMes,
     fFacturador, fFamilia, soloSinCausal, causalPorCodigo, cruzarFila,
   ]);
 
@@ -708,7 +718,8 @@ export function CarteraWorkspace({
       const empInfo = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
       const empKey = empInfo.nombre ? (empInfo.nit ? `${empInfo.nombre} · NIT ${empInfo.nit}` : empInfo.nombre) : "";
       if (empKey) porEmpresa[empKey] = (porEmpresa[empKey] || 0) + v;
-      if (g.motivoCodigo) porCausal[g.motivoCodigo] = (porCausal[g.motivoCodigo] || 0) + v;
+      const claveRankCausal = g.subcodigoCausal || g.motivoCodigo;
+      if (claveRankCausal) porCausal[claveRankCausal] = (porCausal[claveRankCausal] || 0) + v;
       porAnio[g.anio || "sin año"] = (porAnio[g.anio || "sin año"] || 0) + v;
       const rKey = g.responsableAceptacion || "sin responsable asignado";
       porResponsable[rKey] = (porResponsable[rKey] || 0) + v;
@@ -744,7 +755,7 @@ export function CarteraWorkspace({
       "Paciente (Cruce)", "Documento Paciente", "Médico / Especialista (Cruce)", "CUPS",
       "Facturador Unificado", "Responsable Respuesta Glosa",
       "Valor Facturado", "Valor Glosado", "Valor Aceptado", "Valor Defendido",
-      "Causal (TA/AU/SO/DE/CO/FA)", "Código Causal", "Clase", "Motivo Glosa",
+      "Causal (TA/AU/SO/DE/CO/FA)", "Subcódigo Específico", "Clase", "Motivo Glosa",
       "Seguimiento (Pago / Levantamiento / Ratificación)", "Valor Seguimiento",
       "Nota Crédito", "Estado", "Observación Interna",
     ];
@@ -785,8 +796,8 @@ export function CarteraWorkspace({
         vGlosa,
         vAcep ?? "",
         vDef,
-        cn,
-        g.motivoCodigo,
+        cn || g.motivoCodigo,
+        g.subcodigoCausal || "",
         cl,
         g.motivoGlosa,
         etiquetaSeguimientoGlosa(g.seguimientoEstado),
@@ -832,11 +843,11 @@ export function CarteraWorkspace({
 
   const limpiarFiltros = () => {
     setFEmpresa(""); setFSede(""); setFAtencion(""); setFMutual("CON");
-    setFCausaNorma(""); setFSeguimiento(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
+    setFCausaNorma(""); setFSubcodigo(""); setFSeguimiento(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
     setSoloSinCausal(false); setBusqueda("");
   };
   const hayFiltro = !!(
-    fEmpresa || fSede || fAtencion || fMutual !== "CON" || fCausaNorma || fSeguimiento || fAnio || fMes ||
+    fEmpresa || fSede || fAtencion || fMutual !== "CON" || fCausaNorma || fSubcodigo || fSeguimiento || fAnio || fMes ||
     fFacturador || fFamilia || soloSinCausal || busqueda
   );
 
@@ -963,11 +974,37 @@ export function CarteraWorkspace({
           </select>
 
           <label htmlFor="f-norma" className="sr-only">Filtrar por causal normativa</label>
-          <select id="f-norma" value={fCausaNorma} onChange={(e) => setFCausaNorma(e.target.value)} className={sel}>
+          <select
+            id="f-norma"
+            value={fCausaNorma}
+            onChange={(e) => {
+              const nv = e.target.value;
+              setFCausaNorma(nv);
+              if (nv && fSubcodigo && !fSubcodigo.startsWith(nv)) setFSubcodigo("");
+            }}
+            className={sel}
+          >
             <option value="">Causales (TA, AU, SO, DE, CO, FA)</option>
             {CAUSAS_NORMATIVAS.map((c) => (
               <option key={c.codigo} value={c.codigo}>{c.codigo} · {c.nombre}</option>
             ))}
+          </select>
+
+          <label htmlFor="f-subcod" className="sr-only">Filtrar por subcódigo específico</label>
+          <select
+            id="f-subcod"
+            value={fSubcodigo}
+            onChange={(e) => setFSubcodigo(e.target.value)}
+            className={sel}
+          >
+            <option value="">Todos los subcódigos</option>
+            {subcodigosCatalogo
+              .filter((s) => !fCausaNorma || s.codigo.startsWith(fCausaNorma))
+              .map((s) => (
+                <option key={s.codigo} value={s.codigo}>
+                  {s.codigo} · {s.nombre}
+                </option>
+              ))}
           </select>
 
           <label htmlFor="f-seg" className="sr-only">Filtrar por seguimiento</label>
@@ -1058,7 +1095,7 @@ export function CarteraWorkspace({
               : 0;
             const pctC = totCart > 0 ? ((m.glosado / totCart) * 100).toFixed(2) : null;
             return totCart > 0
-              ? `Cartera SISMA: ${pesos(totCart)} · De lo que hay, es Glosa: ${pesos(m.glosado)} (${pctC}%)`
+              ? `Cartera SISMA (cierre día anterior): ${pesos(totCart)} · De lo que hay, es Glosa: ${pesos(m.glosado)} (${pctC}%)`
               : `Facturado: ${pesos(m.facturado)} · Glosado: ${pesos(m.glosado)}`;
           })()}
         </span>
@@ -1252,11 +1289,15 @@ export function CarteraWorkspace({
       {clasificarAbierto && (
         <PanelClasificar
           filas={porClasificar}
-          causales={cat.causales}
+          subcodigos={subcodigosCatalogo}
           guardando={guardando}
           onCerrar={() => setClasificarAbierto(false)}
-          onAplicar={(texto, codigo) =>
-            guardar({ motivoGlosa: texto, motivoCodigo: codigo }, "EDITAR", "glosas-lote")
+          onAplicar={(texto, codigo, subcodigo) =>
+            guardar(
+              { motivoGlosa: texto, motivoCodigo: codigo, subcodigoCausal: subcodigo },
+              "EDITAR",
+              "glosas-lote"
+            )
           }
         />
       )}
@@ -1591,6 +1632,7 @@ export function CarteraWorkspace({
                   <th className="py-2 pr-3">Facturador / Resp. Glosa</th>
                   <th className="py-2 pr-3">Clase</th>
                   <th className="py-2 pr-3">Causal (TA–FA)</th>
+                  <th className="py-2 pr-3">Subcódigo</th>
                   <th className="py-2 pr-3 text-right">Facturado</th>
                   <th className="py-2 pr-3 text-right">Glosado</th>
                   <th className="py-2 pr-3 text-right">Aceptado</th>
@@ -1603,14 +1645,14 @@ export function CarteraWorkspace({
               <tbody>
                 {cargando && (
                   <tr>
-                    <td colSpan={14} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={15} className="py-8 text-center text-[#94A3B8]">
                       <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" /> Cargando…
                     </td>
                   </tr>
                 )}
                 {!cargando && visibles.length === 0 && !fallo && (
                   <tr>
-                    <td colSpan={14} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={15} className="py-8 text-center text-[#94A3B8]">
                       {glosas.length === 0 ? "Todavía no hay glosas en la base." : "Nada coincide con el filtro."}
                     </td>
                   </tr>
@@ -1620,8 +1662,9 @@ export function CarteraWorkspace({
                     key={g.id}
                     glosa={g}
                     cruce={cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` })}
-                    causales={cat.causales}
+                    subcodigos={subcodigosCatalogo}
                     causal={causalPorCodigo[g.motivoCodigo]}
+                    subcodigoInfo={g.subcodigoCausal ? causalPorCodigo[g.subcodigoCausal] : undefined}
                     guardando={guardando === g.id}
                     guardado={guardado === g.id}
                     avisar={avisar}
@@ -1661,7 +1704,7 @@ export function CarteraWorkspace({
 
       {nuevaAbierta && (
         <ModalNueva
-          causales={cat.causales}
+          subcodigos={subcodigosCatalogo}
           guardando={guardando === "nueva"}
           onCerrar={() => setNuevaAbierta(false)}
           onGuardar={async (fila) => {
@@ -2137,29 +2180,29 @@ function FilaCat({
    PANEL PARA CLASIFICAR EN LOTE (FA, TA, SO, AU, CO + subcódigos Res. 2284)
    --------------------------------------------------------------------- */
 function PanelClasificar({
-  filas, causales, guardando, onCerrar, onAplicar,
+  filas, subcodigos, guardando, onCerrar, onAplicar,
 }: {
   filas: [string, { n: number; valor: number }][];
-  causales: Causal[];
+  subcodigos: Causal[];
   guardando: string | null;
   onCerrar: () => void;
-  onAplicar: (texto: string, codigo: string) => Promise<boolean>;
+  onAplicar: (texto: string, codigo: string, subcodigo: string) => Promise<boolean>;
 }) {
   const [elegido, setElegido] = useState<Record<string, string>>({});
+  const [elegidoSub, setElegidoSub] = useState<Record<string, string>>({});
   const totalFilas = filas.reduce((a, [, v]) => a + v.n, 0);
   const totalValor = filas.reduce((a, [, v]) => a + v.valor, 0);
-  const codigosNorma = new Set<string>(CAUSAS_NORMATIVAS.map((c) => c.codigo));
 
   return (
     <div className="rounded-[14px] border border-[#E2EBF8] bg-white p-4 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-[15px] font-bold text-[#0E245E]">Clasificar motivos según la norma</h3>
-          <p className="mt-0.5 max-w-[82ch] text-[12px] text-[#64748B]">
+          <p className="mt-0.5 max-w-[84ch] text-[12px] text-[#64748B]">
             {totalFilas} glosas sin causal, en {filas.length} redacciones distintas, por{" "}
-            <span className="font-cifra font-semibold text-[#0E245E]">{pesos(totalValor)}</span>. Puedes
-            asignar directamente las 6 causales oficiales (<strong>TA, AU, SO, DE, CO, FA</strong>) o un subcódigo
-            específico de la Resolución 2284.
+            <span className="font-cifra font-semibold text-[#0E245E]">{pesos(totalValor)}</span>. Elige la{" "}
+            <strong>Causal principal (TA, AU, SO, DE, CO, FA)</strong> y, en el ítem separado de al lado, el{" "}
+            <strong>Subcódigo específico</strong> si aplica.
           </p>
         </div>
         <button
@@ -2179,66 +2222,96 @@ function PanelClasificar({
               <th className="py-2 pr-3">Texto escrito por Facturación</th>
               <th className="py-2 pr-3 text-right">Filas</th>
               <th className="py-2 pr-3 text-right">Valor</th>
-              <th className="py-2 pr-3">Causal según la norma</th>
+              <th className="py-2 pr-3">Causal (TA, AU, SO, DE, CO, FA)</th>
+              <th className="py-2 pr-3">Subcódigo específico (opcional)</th>
               <th className="w-20 py-2" />
             </tr>
           </thead>
           <tbody>
-            {filas.map(([texto, v]) => (
-              <tr key={texto} className="border-b border-[#F1F5F9] align-top">
-                <td className="py-2 pr-3 text-[#2A335A]">{texto}</td>
-                <td className="py-2 pr-3 text-right font-cifra text-[#47597A]">{v.n}</td>
-                <td className="py-2 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
-                  {pesos(v.valor)}
-                </td>
-                <td className="py-2 pr-3">
-                  <label htmlFor={`cl-${texto.slice(0, 20)}`} className="sr-only">Causal para este texto</label>
-                  <select
-                    id={`cl-${texto.slice(0, 20)}`}
-                    value={elegido[texto] || ""}
-                    onChange={(e) => setElegido({ ...elegido, [texto]: e.target.value })}
-                    className="w-full max-w-[320px] rounded-lg border border-[#DCE8FA] px-2 py-1.5 text-[12px] outline-none focus:border-[#1D58D8]"
-                  >
-                    <option value="">— elegir —</option>
-                    <optgroup label="Causas principales según la norma">
+            {filas.map(([texto, v]) => {
+              const cSel = elegido[texto] || "";
+              const sSel = elegidoSub[texto] || "";
+              return (
+                <tr key={texto} className="border-b border-[#F1F5F9] align-top">
+                  <td className="py-2 pr-3 text-[#2A335A]">{texto}</td>
+                  <td className="py-2 pr-3 text-right font-cifra text-[#47597A]">{v.n}</td>
+                  <td className="py-2 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
+                    {pesos(v.valor)}
+                  </td>
+                  <td className="py-2 pr-3">
+                    <label htmlFor={`cl-${texto.slice(0, 20)}`} className="sr-only">Causal principal</label>
+                    <select
+                      id={`cl-${texto.slice(0, 20)}`}
+                      value={cSel}
+                      onChange={(e) => {
+                        const nv = e.target.value;
+                        setElegido({ ...elegido, [texto]: nv });
+                        if (sSel && (!nv || !sSel.startsWith(nv))) {
+                          setElegidoSub({ ...elegidoSub, [texto]: "" });
+                        }
+                      }}
+                      className="w-full max-w-[215px] rounded-lg border border-[#DCE8FA] px-2 py-1.5 text-[12px] outline-none focus:border-[#1D58D8]"
+                    >
+                      <option value="">— elegir causal —</option>
                       {CAUSAS_NORMATIVAS.map((c) => (
                         <option key={c.codigo} value={c.codigo}>
-                          {c.codigo} · {c.nombre} — {c.descripcion}
+                          {c.codigo} · {c.nombre}
                         </option>
                       ))}
-                    </optgroup>
-                    <optgroup label="Subcódigos Resolución 2284">
-                      {causales
-                        .filter((c) => !codigosNorma.has(c.codigo))
-                        .map((c) => (
-                          <option key={c.codigo} value={c.codigo}>
-                            {c.codigo} · {c.familia} · {c.nombre}
+                    </select>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <label htmlFor={`subcl-${texto.slice(0, 20)}`} className="sr-only">Subcódigo específico</label>
+                    <select
+                      id={`subcl-${texto.slice(0, 20)}`}
+                      value={sSel}
+                      onChange={(e) => {
+                        const sv = e.target.value;
+                        setElegidoSub({ ...elegidoSub, [texto]: sv });
+                        if (sv && !cSel) {
+                          const pref = causaNormativaDe(sv);
+                          if (pref) setElegido({ ...elegido, [texto]: pref });
+                        }
+                      }}
+                      className="w-full max-w-[240px] rounded-lg border border-[#DCE8FA] px-2 py-1.5 text-[12px] outline-none focus:border-[#1D58D8]"
+                    >
+                      <option value="">— sin subcódigo —</option>
+                      {subcodigos
+                        .filter((s) => !cSel || s.codigo.startsWith(cSel))
+                        .map((s) => (
+                          <option key={s.codigo} value={s.codigo}>
+                            {s.codigo} · {s.nombre}
                           </option>
                         ))}
-                    </optgroup>
-                  </select>
-                </td>
-                <td className="py-2 text-right">
-                  <button
-                    type="button"
-                    disabled={!elegido[texto] || guardando !== null}
-                    onClick={async () => {
-                      const ok = await onAplicar(texto, elegido[texto]);
-                      if (ok) {
-                        setElegido((p) => {
-                          const q = { ...p };
-                          delete q[texto];
-                          return q;
-                        });
-                      }
-                    }}
-                    className="rounded-lg bg-[#1D58D8] px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#C7CDE0]"
-                  >
-                    Aplicar
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    </select>
+                  </td>
+                  <td className="py-2 text-right">
+                    <button
+                      type="button"
+                      disabled={!cSel || guardando !== null}
+                      onClick={async () => {
+                        const ok = await onAplicar(texto, cSel, sSel);
+                        if (ok) {
+                          setElegido((p) => {
+                            const q = { ...p };
+                            delete q[texto];
+                            return q;
+                          });
+                          setElegidoSub((p) => {
+                            const q = { ...p };
+                            delete q[texto];
+                            return q;
+                          });
+                        }
+                      }}
+                      className="rounded-lg bg-[#1D58D8] px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#C7CDE0]"
+                    >
+                      Aplicar
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -2249,7 +2322,7 @@ function PanelClasificar({
 /* ====================================================================== */
 
 function FilaGlosa({
-  glosa, cruce, causales, causal, guardando, guardado, avisar, onGuardar, onFicha,
+  glosa, cruce, subcodigos, causal, subcodigoInfo, guardando, guardado, avisar, onGuardar, onFicha,
 }: {
   glosa: Glosa;
   cruce: {
@@ -2268,8 +2341,9 @@ function FilaGlosa({
     fechaRadicacionSisma: string;
     saldoSisma?: number;
   };
-  causales: Causal[];
+  subcodigos: Causal[];
   causal?: Causal;
+  subcodigoInfo?: Causal;
   guardando: boolean;
   guardado: boolean;
   avisar: (msg: string) => void;
@@ -2277,7 +2351,7 @@ function FilaGlosa({
   onFicha: () => void;
 }) {
   const [abierta, setAbierta] = useState(false);
-  const [listaCausales, setListaCausales] = useState(false);
+  const [listaSubcodigos, setListaSubcodigos] = useState(false);
   const [estado, setEstado] = useState(glosa.estado);
   const [aceptado, setAceptado] = useState(
     glosa.valorAceptado == null ? "" : String(Math.round(glosa.valorAceptado)),
@@ -2300,7 +2374,8 @@ function FilaGlosa({
   );
   const [obs, setObs] = useState(glosa.observacionInterna || "");
   const [motivo, setMotivo] = useState(glosa.motivoGlosa || "");
-  const [codigo, setCodigo] = useState(glosa.motivoCodigo || "");
+  const [codigo, setCodigo] = useState(causaNormativaDe(glosa.motivoCodigo, glosa.tipoGlosa));
+  const [subcodigo, setSubcodigo] = useState(glosa.subcodigoCausal || "");
   const [clase, setClase] = useState(claseDe(glosa));
 
   const ultimo = useRef({
@@ -2316,6 +2391,7 @@ function FilaGlosa({
     valFact: "",
     obs: "",
     motivo: "",
+    subcodigo: "",
   });
 
   useEffect(() => {
@@ -2338,9 +2414,12 @@ function FilaGlosa({
     setSeguimiento(normalizarSeguimientoGlosa(glosa.seguimientoEstado));
     setValSeg(vs);
     setValFact(vf);
+    const cNorm = causaNormativaDe(glosa.motivoCodigo, glosa.tipoGlosa);
+    const subInit = glosa.subcodigoCausal || "";
     setObs(glosa.observacionInterna || "");
     setMotivo(glosa.motivoGlosa || "");
-    setCodigo(glosa.motivoCodigo || "");
+    setCodigo(cNorm);
+    setSubcodigo(subInit);
     setClase(claseDe(glosa));
     ultimo.current = {
       aceptado: a,
@@ -2355,13 +2434,14 @@ function FilaGlosa({
       valFact: vf,
       obs: glosa.observacionInterna || "",
       motivo: glosa.motivoGlosa || "",
+      subcodigo: subInit,
     };
   }, [
     glosa.id, glosa.estado, glosa.valorAceptado, glosa.notaCredito, glosa.responsableAceptacion,
     glosa.facturador, glosa.fechaPrestacionServicio, glosa.fechaFactura, glosa.fechaRadicacion,
     glosa.fechaNotificacionGlosa, glosa.seguimientoEstado, glosa.valorSeguimiento,
     glosa.valorFacturado, glosa.valorRadicado, glosa.observacionInterna, glosa.motivoGlosa,
-    glosa.motivoCodigo, glosa.tipoGlosa, glosa.alcance,
+    glosa.motivoCodigo, glosa.subcodigoCausal, glosa.tipoGlosa, glosa.alcance,
   ]);
 
   const enviar = (parcial: Record<string, unknown>) => {
@@ -2384,6 +2464,7 @@ function FilaGlosa({
         observacionInterna: obs,
         motivoGlosa: motivo,
         motivoCodigo: codigo,
+        subcodigoCausal: subcodigo,
         ...parcial,
       },
       "EDITAR",
@@ -2404,7 +2485,8 @@ function FilaGlosa({
       valSeg === u.valSeg &&
       valFact === u.valFact &&
       obs === u.obs &&
-      motivo === u.motivo
+      motivo === u.motivo &&
+      subcodigo === u.subcodigo
     ) {
       return;
     }
@@ -2438,9 +2520,11 @@ function FilaGlosa({
       valFact,
       obs,
       motivo,
+      subcodigo: subcodigo.trim().toUpperCase(),
     };
     enviar({
       valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado),
+      subcodigoCausal: subcodigo.trim().toUpperCase(),
       notaCredito: notaFinal,
       responsableAceptacion: respNorm,
       responsableRespuesta: respNorm,
@@ -2499,7 +2583,6 @@ function FilaGlosa({
     vistaFila.valorAceptado !== null && glosa.valorGlosado > 0 && vistaFila.valorAceptado > glosa.valorGlosado;
   const empInfo = normalizarEmpresaYNit(glosa.empresa || glosa.empresaOriginal);
   const ncValida = esNotaCreditoValida(nota);
-  const codigosNorma = new Set<string>(CAUSAS_NORMATIVAS.map((c) => c.codigo));
 
   const celda =
     "w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-[12.5px] outline-none hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white";
@@ -2632,46 +2715,80 @@ function FilaGlosa({
           </select>
         </td>
         <td className="py-1.5 pr-3">
-          <label htmlFor={`cau-${glosa.id}`} className="sr-only">Causal de la glosa {glosa.factura}</label>
+          <label htmlFor={`cau-${glosa.id}`} className="sr-only">Causal principal (TA, AU, SO, DE, CO, FA)</label>
           <select
             id={`cau-${glosa.id}`}
             value={codigo}
-            onFocus={() => setListaCausales(true)}
-            onMouseDown={() => setListaCausales(true)}
             onChange={(e) => {
-              setCodigo(e.target.value);
-              setListaCausales(false);
-              enviar({ motivoCodigo: e.target.value });
+              const nuevoCod = e.target.value;
+              setCodigo(nuevoCod);
+              const subLimpio =
+                nuevoCod && subcodigo && !subcodigo.startsWith(nuevoCod) ? "" : subcodigo;
+              if (subLimpio !== subcodigo) {
+                setSubcodigo(subLimpio);
+                ultimo.current = { ...ultimo.current, subcodigo: subLimpio };
+              }
+              enviar({ motivoCodigo: nuevoCod, subcodigoCausal: subLimpio });
             }}
-            title={causal ? `${causal.codigo} · ${causal.familia} · ${causal.nombre}` : "Sin clasificar"}
-            className={`w-[106px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11.5px] font-semibold outline-none ${
+            title={causal ? `${causal.codigo} · ${causal.familia} · ${causal.nombre}` : "Sin causal"}
+            className={`w-[116px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11.5px] font-semibold outline-none ${
               codigo
                 ? "border-[#DCE8FA] bg-[#F8FAFC] text-[#1A3174]"
                 : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E]"
             }`}
           >
             <option value="">sin causal</option>
-            {listaCausales ? (
+            {CAUSAS_NORMATIVAS.map((c) => (
+              <option key={c.codigo} value={c.codigo}>
+                {c.codigo} · {c.nombre}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="py-1.5 pr-3">
+          <label htmlFor={`subcau-${glosa.id}`} className="sr-only">Subcódigo específico Res. 2284</label>
+          <select
+            id={`subcau-${glosa.id}`}
+            value={subcodigo}
+            onFocus={() => setListaSubcodigos(true)}
+            onMouseDown={() => setListaSubcodigos(true)}
+            onChange={(e) => {
+              const nuevoSub = e.target.value;
+              setSubcodigo(nuevoSub);
+              setListaSubcodigos(false);
+              ultimo.current = { ...ultimo.current, subcodigo: nuevoSub };
+              const pref = nuevoSub ? causaNormativaDe(nuevoSub) : "";
+              const codFinal = codigo || pref;
+              if (codFinal !== codigo) setCodigo(codFinal);
+              enviar({ motivoCodigo: codFinal, subcodigoCausal: nuevoSub });
+            }}
+            title={
+              subcodigoInfo
+                ? `${subcodigoInfo.codigo} · ${subcodigoInfo.nombre}`
+                : subcodigo || "Ítem opcional para subcódigo específico (ej. AU08, TA23)"
+            }
+            className={`w-[96px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11px] font-semibold outline-none ${
+              subcodigo
+                ? "border-[#DCE8FA] bg-[#F8FAFC] text-[#334155]"
+                : "border-[#E2EBF8] bg-white text-[#94A3B8]"
+            }`}
+          >
+            <option value="">—</option>
+            {listaSubcodigos ? (
               <>
-                <optgroup label="Causas según la norma">
-                  {CAUSAS_NORMATIVAS.map((c) => (
-                    <option key={c.codigo} value={c.codigo}>
-                      {c.codigo} · {c.nombre}
+                {subcodigo && !subcodigos.some((s) => s.codigo === subcodigo) && (
+                  <option value={subcodigo}>{subcodigo}</option>
+                )}
+                {subcodigos
+                  .filter((s) => !codigo || s.codigo.startsWith(codigo))
+                  .map((s) => (
+                    <option key={s.codigo} value={s.codigo}>
+                      {s.codigo} · {s.nombre}
                     </option>
                   ))}
-                </optgroup>
-                <optgroup label="Subcódigos Res. 2284">
-                  {causales
-                    .filter((c) => !codigosNorma.has(c.codigo))
-                    .map((c) => (
-                      <option key={c.codigo} value={c.codigo}>
-                        {c.codigo} · {c.nombre}
-                      </option>
-                    ))}
-                </optgroup>
               </>
-            ) : codigo ? (
-              <option value={codigo}>{codigo}</option>
+            ) : subcodigo ? (
+              <option value={subcodigo}>{subcodigo}</option>
             ) : null}
           </select>
         </td>
@@ -2786,7 +2903,7 @@ function FilaGlosa({
       {abierta && (
         <tr className="border-b border-[#E2EBF8] bg-[#FAFCFF]">
           <td />
-          <td colSpan={13} className="px-1 pb-4 pt-2">
+          <td colSpan={14} className="px-1 pb-4 pt-2">
             <div className="grid gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)]">
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -2913,6 +3030,19 @@ function FilaGlosa({
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label htmlFor={`subtxt-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
+                      Subcódigo específico (opcional)
+                    </label>
+                    <input
+                      id={`subtxt-${glosa.id}`}
+                      value={subcodigo}
+                      onChange={(e) => setSubcodigo(e.target.value.toUpperCase())}
+                      onBlur={salir}
+                      placeholder="Ej: AU08 o TA2301"
+                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 font-cifra text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -2946,7 +3076,15 @@ function FilaGlosa({
               </div>
 
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 self-start rounded-lg border border-[#E2EBF8] bg-white p-3">
-                <Detalle etiqueta="Causal" valor={causal ? `${causal.codigo} · ${causal.familia}` : "Sin clasificar"} />
+                <Detalle etiqueta="Causal principal" valor={causal ? `${causal.codigo} · ${causal.familia}` : "Sin clasificar"} />
+                <Detalle
+                  etiqueta="Subcódigo específico"
+                  valor={
+                    subcodigoInfo
+                      ? `${subcodigoInfo.codigo} · ${subcodigoInfo.nombre}`
+                      : subcodigo || "—"
+                  }
+                />
                 <Detalle
                   etiqueta="Empresa unificada / NIT"
                   valor={empInfo.nit ? `${empInfo.nombre} · NIT ${empInfo.nit}` : empInfo.nombre || glosa.empresa || "—"}
@@ -3060,6 +3198,7 @@ function FichaFactura({
             {glosas.map((g) => {
               const c = clasePago(g);
               const ca = causalPorCodigo[g.motivoCodigo];
+              const subCa = g.subcodigoCausal ? causalPorCodigo[g.subcodigoCausal] : undefined;
               return (
                 <div key={g.id} className="py-3">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -3069,6 +3208,11 @@ function FichaFactura({
                     <span className="font-cifra text-[11px] font-semibold text-[#47597A]">
                       {ca ? `${ca.codigo} · ${ca.familia}` : "sin causal"}
                     </span>
+                    {g.subcodigoCausal && (
+                      <span className="rounded bg-[#F1F5F9] px-1.5 py-0.5 font-cifra text-[10.5px] font-semibold text-[#334155]">
+                        Subcódigo: {subCa ? `${subCa.codigo} · ${subCa.nombre}` : g.subcodigoCausal}
+                      </span>
+                    )}
                     {g.seguimientoEstado && (
                       <span className="rounded-pill border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[10.5px] font-semibold text-[#0369A1]">
                         {etiquetaSeguimientoGlosa(g.seguimientoEstado)}
@@ -3114,9 +3258,9 @@ function Dato({ etiqueta, valor, alerta }: { etiqueta: string; valor: string; al
 /* ====================================================================== */
 
 function ModalNueva({
-  causales, guardando, onCerrar, onGuardar,
+  subcodigos, guardando, onCerrar, onGuardar,
 }: {
-  causales: Causal[];
+  subcodigos: Causal[];
   guardando: boolean;
   onCerrar: () => void;
   onGuardar: (fila: Record<string, unknown>) => void;
@@ -3132,6 +3276,7 @@ function ModalNueva({
     valorGlosado: "",
     clase: "",
     motivoCodigo: "",
+    subcodigoCausal: "",
     motivoGlosa: "",
     observacionInterna: "",
     facturador: "",
@@ -3148,7 +3293,6 @@ function ModalNueva({
     (f.motivoGlosa.trim() !== "" || f.motivoCodigo !== "") &&
     ncOk;
   const infoNit = normalizarEmpresaYNit(f.empresa);
-  const codigosNorma = new Set<string>(CAUSAS_NORMATIVAS.map((c) => c.codigo));
   const campo = "w-full rounded-lg border border-[#DCE8FA] px-2.5 py-2 text-[12.5px] outline-none focus:border-[#1D58D8]";
 
   return (
@@ -3266,59 +3410,99 @@ function ModalNueva({
             />
           </Campo>
 
-          <div className="sm:col-span-2">
-            <p className="eb-label mb-1.5 text-[10px] text-[#94A3B8]">
-              Causas principales según la norma (selección rápida)
-            </p>
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {CAUSAS_NORMATIVAS.map((c) => {
-                const activo = f.motivoCodigo === c.codigo;
-                return (
-                  <button
-                    key={c.codigo}
-                    type="button"
-                    onClick={() => setF({ ...f, motivoCodigo: activo ? "" : c.codigo })}
-                    title={c.descripcion}
-                    className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-semibold transition ${
-                      activo ? "ring-2 ring-[#1D58D8]" : "hover:opacity-90"
-                    }`}
-                    style={{
-                      backgroundColor: c.badgeBg,
-                      color: c.badgeText,
-                      borderColor: c.badgeBorder,
-                    }}
-                  >
-                    {c.codigo} · {c.nombre}
-                  </button>
-                );
-              })}
+          <div className="sm:col-span-2 space-y-2.5">
+            <div>
+              <p className="eb-label mb-1.5 text-[10px] text-[#94A3B8]">
+                Causales oficiales de glosa y devolución (TA, AU, SO, DE, CO, FA)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {CAUSAS_NORMATIVAS.map((c) => {
+                  const activo = f.motivoCodigo === c.codigo;
+                  return (
+                    <button
+                      key={c.codigo}
+                      type="button"
+                      onClick={() => {
+                        const nuevo = activo ? "" : c.codigo;
+                        setF({
+                          ...f,
+                          motivoCodigo: nuevo,
+                          subcodigoCausal:
+                            nuevo && f.subcodigoCausal && !f.subcodigoCausal.startsWith(nuevo)
+                              ? ""
+                              : f.subcodigoCausal,
+                        });
+                      }}
+                      title={c.descripcion}
+                      className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-semibold transition ${
+                        activo ? "ring-2 ring-[#1D58D8]" : "hover:opacity-90"
+                      }`}
+                      style={{
+                        backgroundColor: c.badgeBg,
+                        color: c.badgeText,
+                        borderColor: c.badgeBorder,
+                      }}
+                    >
+                      {c.codigo} · {c.nombre}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <Campo id="cau" etiqueta="Causal o subcódigo (Resolución 2284)">
-              <select
-                id="cau"
-                value={f.motivoCodigo}
-                onChange={(e) => setF({ ...f, motivoCodigo: e.target.value })}
-                className={campo}
-              >
-                <option value="">— sin clasificar —</option>
-                <optgroup label="Causas principales según la norma">
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Campo id="cau" etiqueta="Causal principal (TA, AU, SO, DE, CO, FA)">
+                <select
+                  id="cau"
+                  value={f.motivoCodigo}
+                  onChange={(e) => {
+                    const nuevo = e.target.value;
+                    setF({
+                      ...f,
+                      motivoCodigo: nuevo,
+                      subcodigoCausal:
+                        nuevo && f.subcodigoCausal && !f.subcodigoCausal.startsWith(nuevo)
+                          ? ""
+                          : f.subcodigoCausal,
+                    });
+                  }}
+                  className={campo}
+                >
+                  <option value="">— elegir causal —</option>
                   {CAUSAS_NORMATIVAS.map((c) => (
                     <option key={c.codigo} value={c.codigo}>
-                      {c.codigo} · {c.nombre} — {c.descripcion}
+                      {c.codigo} · {c.nombre}
                     </option>
                   ))}
-                </optgroup>
-                <optgroup label="Subcódigos Resolución 2284">
-                  {causales
-                    .filter((c) => !codigosNorma.has(c.codigo))
-                    .map((c) => (
-                      <option key={c.codigo} value={c.codigo}>
-                        {c.codigo} · {c.familia} · {c.nombre}
+                </select>
+              </Campo>
+
+              <Campo id="subcau-nueva" etiqueta="Subcódigo específico Res. 2284 (ítem opcional)">
+                <select
+                  id="subcau-nueva"
+                  value={f.subcodigoCausal}
+                  onChange={(e) => {
+                    const sv = e.target.value;
+                    const pref = sv ? causaNormativaDe(sv) : "";
+                    setF({
+                      ...f,
+                      subcodigoCausal: sv,
+                      motivoCodigo: f.motivoCodigo || pref,
+                    });
+                  }}
+                  className={campo}
+                >
+                  <option value="">— sin subcódigo —</option>
+                  {subcodigos
+                    .filter((s) => !f.motivoCodigo || s.codigo.startsWith(f.motivoCodigo))
+                    .map((s) => (
+                      <option key={s.codigo} value={s.codigo}>
+                        {s.codigo} · {s.nombre}
                       </option>
                     ))}
-                </optgroup>
-              </select>
-            </Campo>
+                </select>
+              </Campo>
+            </div>
           </div>
 
           <div className="sm:col-span-2">

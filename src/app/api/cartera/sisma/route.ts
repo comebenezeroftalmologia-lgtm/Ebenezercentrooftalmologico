@@ -178,9 +178,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const ayerISO = ayerColombia();
     const corteParam = searchParams.get("corte") || ayerISO;
-    const corte = /^\d{4}-\d{2}-\d{2}$/.test(corteParam)
+    const corteSolicitado = /^\d{4}-\d{2}-\d{2}$/.test(corteParam)
       ? corteParam
       : ayerISO;
+    const corte = corteSolicitado > ayerISO ? ayerISO : corteSolicitado;
     const anio = corte.slice(0, 4);
     const desde = `${anio}-01-01`;
 
@@ -645,6 +646,8 @@ export async function GET(req: NextRequest) {
         const pasaEntidad = cumpleFiltroEntidad(terc.razonSocial || "", terc.nit || "");
         for (const a of terc.auxiliares || []) {
           for (const doc of a.documentos || []) {
+            const fDocGiro = normalizarFechaISO(doc.fecha);
+            if (fDocGiro && fDocGiro > corte) continue;
             if (!cumpleFiltroFecha(doc.fecha)) continue;
             const v = Number(doc.valor || 0);
             if (doc.cuenta === "1301250602") {
@@ -717,6 +720,8 @@ export async function GET(req: NextRequest) {
         if (!cumpleFiltroEntidad(terc.razonSocial || "", terc.nit || "")) continue;
         for (const a of terc.auxiliares || []) {
           for (const doc of a.documentos || []) {
+            const fDocIng = normalizarFechaISO(doc.fecha);
+            if (fDocIng && fDocIng > corte) continue;
             if (!cumpleFiltroFecha(doc.fecha)) continue;
             const cta = String(doc.cuenta || "").trim();
             if (!cta.startsWith("41") && !cta.startsWith("42") && !cta.startsWith("43")) continue;
@@ -883,7 +888,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      fuente: "API SISMA Contabilidad en Vivo",
+      fuente: "API SISMA Contabilidad · Cierre día anterior",
       corteISO: corte,
       ayerISO,
       corteCongeladoAyer: corte === ayerISO,

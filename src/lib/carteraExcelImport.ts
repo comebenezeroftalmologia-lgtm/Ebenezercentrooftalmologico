@@ -13,6 +13,7 @@
  */
 
 import {
+  causaNormativa6De,
   clasificarAtencionYSede,
   claveFacturaNorm,
   extraerCodigoCausalExplicito,
@@ -51,6 +52,7 @@ export type FilaGlosaExcel = {
   tipoGlosa: "GLOSA" | "DEVOLUCION";
   alcance: string;
   motivoCodigo: string;
+  subcodigoCausal: string;
   motivoGlosa: string;
   observacionInterna: string;
   notaCredito: string;
@@ -646,10 +648,20 @@ export function mapearFilasSegunDestino(
           h.includes("valor ratificado"),
       ]);
       const valorSeguimiento = vSegTxt === "" ? null : normalizarNumeroMoneda(vSegTxt);
-      const codigoDetectado =
-        codRaw ||
-        extraerCodigoCausalExplicito(motivoGlosa) ||
-        (tipoGlosa === "DEVOLUCION" ? "DE" : "");
+      const subCodCol = obtenerCampo(raw, encabezados, [
+        (h) => h.includes("subcodigo") || h.includes("sub codigo") || h.includes("codigo especifico"),
+      ])
+        .toUpperCase()
+        .trim();
+      const codExplicitoTxt = extraerCodigoCausalExplicito(motivoGlosa);
+      const causalPrincipal = causaNormativa6De(
+        codRaw || subCodCol || codExplicitoTxt,
+        tipoGlosa
+      );
+      const subcodigoDetectado =
+        subCodCol ||
+        (codRaw.length > 2 ? codRaw : "") ||
+        (codExplicitoTxt.length > 2 ? codExplicitoTxt : "");
 
       const estRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("estado") || h.includes("desenlace")]).toUpperCase();
       let estado = "PENDIENTE";
@@ -699,7 +711,8 @@ export function mapearFilasSegunDestino(
         valorAceptado: vAcep,
         tipoGlosa,
         alcance,
-        motivoCodigo: codigoDetectado,
+        motivoCodigo: causalPrincipal,
+        subcodigoCausal: subcodigoDetectado,
         motivoGlosa,
         observacionInterna: obs,
         notaCredito,
