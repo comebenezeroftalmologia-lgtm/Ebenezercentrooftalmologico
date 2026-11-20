@@ -894,23 +894,49 @@ document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,
   // ---- Excel por unidad funcional (calca hoja/xlsx/bajar) ----
   window.hoDesgloseExcel=function(){
     try{
-      var f=[[{b:'HONORARIOS MÉDICOS'}],[{b:'Desglose por sede y unidad funcional'}],[D.periodo||''],[]];
-      f.push([{b:'Médico'},{b:'Sede'},{b:'Unidad funcional'},{b:'Servicio'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
-      var gran=0;
-      MED.forEach(function(m){
-        m.sedes.forEach(function(s){
-          s.cats.forEach(function(c){
-            c.svs.forEach(function(v){
-              f.push([m.name, s.sede, c.cat, cap(v.sv), String(v.a), v.p?String(v.p):'', v.d?String(v.d):'', {m:v.v}]);
-              gran+=v.v;
-            });
-          });
+      /* Tabla dinámica como la del sistema antiguo: médicos en filas, unidades
+         funcionales en columnas. Mutual plana; PYP y Cirugía con el desglose
+         por empresa debajo de cada médico. */
+      /* UNIFICADO: una sola tabla con todos los médicos; debajo de cada uno,
+         su desglose por empresa. Columnas = unidades funcionales. */
+      var hojas=[];
+      var ufs={}, meds={};
+      Object.keys(D.medicos).forEach(function(mn){
+        (D.medicos[mn].f||[]).forEach(function(r){
+          var v=Math.round(r[6]||0); if(!v) return;
+          var uf=String(r[3]||'OTROS')||'OTROS', emp=String(r[2]||'—');
+          ufs[uf]=1;
+          var M=meds[mn]||(meds[mn]={t:0,uf:{},emp:{}});
+          M.t+=v; M.uf[uf]=(M.uf[uf]||0)+v;
+          var E=M.emp[emp]||(M.emp[emp]={t:0,uf:{}});
+          E.t+=v; E.uf[uf]=(E.uf[uf]||0)+v;
+        });
+      });
+      var cols=Object.keys(ufs).sort();
+      var f=[[{b:'HONORARIOS MÉDICOS — Por unidad funcional'}],[D.periodo||''],[]];
+      f.push([{b:'Médico / Empresa'}].concat(cols.map(function(c){return {b:c};})).concat([{b:'Total general'}]));
+      var totCol={}, gran=0;
+      Object.keys(meds).sort().forEach(function(mn){
+        var M=meds[mn];
+        f.push([{b:tt(mn)}].concat(cols.map(function(c){ var v=M.uf[c]||0; totCol[c]=(totCol[c]||0)+v; return v?{bm:v}:''; })).concat([{bm:M.t}]));
+        gran+=M.t;
+        Object.keys(M.emp).sort().forEach(function(emp){
+          var E=M.emp[emp];
+          f.push(['    '+emp].concat(cols.map(function(c){ var v=E.uf[c]||0; return v?{m:v}:''; })).concat([{m:E.t}]));
         });
       });
       f.push([]);
-      f.push([{b:'TOTAL'}, '', '', '', '', '', '', {bm:gran}]);
-      var anchos=[26,15,24,46,8,11,7,16];
-      bajar(xlsx([{nombre:'Por unidad funcional', xml:hoja(f,anchos)}]), 'Honorarios por unidad funcional.xlsx');
+      f.push([{b:'Total general'}].concat(cols.map(function(c){return {bm:totCol[c]||0};})).concat([{bm:gran}]));
+      hojas.push({nombre:'Por unidad funcional', xml:hoja(f,[32].concat(cols.map(function(){return 17;})).concat([16]))});
+      /* detalle por servicio (lo que bajaba antes), como hoja final */
+      var f2=[[{b:'Detalle por servicio'}],[D.periodo||''],[]];
+      f2.push([{b:'Médico'},{b:'Sede'},{b:'Unidad funcional'},{b:'Servicio'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
+      var gran2=0;
+      MED.forEach(function(m){ m.sedes.forEach(function(s){ s.cats.forEach(function(c){ c.svs.forEach(function(v){
+        f2.push([m.name, s.sede, c.cat, cap(v.sv), String(v.a), v.p?String(v.p):'', v.d?String(v.d):'', {m:v.v}]); gran2+=v.v; }); }); }); });
+      f2.push([]); f2.push([{b:'TOTAL'},'','','','','','',{bm:gran2}]);
+      hojas.push({nombre:'Detalle por servicio', xml:hoja(f2,[26,15,24,46,8,11,7,16])});
+      bajar(xlsx(hojas), 'Honorarios por unidad funcional.xlsx');
     }catch(e){ alert('No se pudo generar el Excel por unidad funcional: '+(e.message||e)); }
   };
 
