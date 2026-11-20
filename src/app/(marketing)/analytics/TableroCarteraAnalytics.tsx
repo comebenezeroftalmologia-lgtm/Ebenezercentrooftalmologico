@@ -1654,11 +1654,16 @@ export default function TableroCarteraAnalytics() {
       (acc, e) => acc + (e.pendienteRadicar || 0),
       0
     );
+    const leerGirosEntidad = (ent: unknown): number | undefined =>
+      (ent as { anticiposPorCruzar?: number })?.anticiposPorCruzar;
     const tieneGirosPorEntidad = empresasSismaFiltradas.some(
-      (e) => e.anticiposPorCruzar !== undefined
+      (e) => leerGirosEntidad(e) !== undefined
     );
     const girosPorEntidades = Math.round(
-      empresasSismaFiltradas.reduce((acc, e) => acc + (e.anticiposPorCruzar || 0), 0)
+      empresasSismaFiltradas.reduce(
+        (acc, e) => acc + (leerGirosEntidad(e) || 0),
+        0
+      )
     );
     const girosVivo = datosSismaVivo?.cuentasGirosDetalle
       ? datosSismaVivo.cuentasGirosDetalle.reduce(

@@ -3,6 +3,41 @@ import { getCurrentAppUser, getMisModulos } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { CIERRES_SISMA_2026_VERIFICADOS } from "@/lib/carteraCierresSisma";
 
+function enriquecerCierresConSisma2026(
+  filasDb: Record<string, unknown>[],
+  anioFiltro: number | null
+): Record<string, unknown>[] {
+  const mapaVerif2026 = new Map(
+    CIERRES_SISMA_2026_VERIFICADOS.map((c) => [c.mes, c])
+  );
+  const porClave = new Map<string, Record<string, unknown>>();
+  if (anioFiltro === null || anioFiltro === 2026) {
+    for (const cv of CIERRES_SISMA_2026_VERIFICADOS) {
+      const k = `2026-${String(cv.mes).padStart(2, "0")}`;
+      porClave.set(k, { ...cv });
+    }
+  }
+  for (const row of filasDb) {
+    const a = Number(row.anio || 0);
+    const m = Number(row.mes || 0);
+    if (!a || !m) continue;
+    const k = `${a}-${String(m).padStart(2, "0")}`;
+    const verif = a === 2026 ? mapaVerif2026.get(m) : undefined;
+    if (verif) {
+      porClave.set(k, {
+        ...row,
+        ...verif,
+        esMesEnCurso: Boolean(row.esMesEnCurso),
+      });
+    } else {
+      porClave.set(k, row);
+    }
+  }
+  return Array.from(porClave.values()).sort(
+    (x, y) => Number(x.anio) - Number(y.anio) || Number(x.mes) - Number(y.mes)
+  );
+}
+
 /* ---------------------------------------------------------------------
    CIERRES MENSUALES DE CARTERA
 
@@ -44,7 +79,7 @@ function fechaCorteDe(anio: number, mes: number): string {
   return `${anio}-${String(mes).padStart(2, "0")}-${String(ultimo).padStart(2, "0")}`;
 }
 
-async function _obtenerCierresBaseGET(req: Request) {
+export async function GET(req: Request) {
   const me = await conPermiso();
   if (!me) return NextResponse.json({ ok: false, error: "sin-permiso" }, { status: 401 });
 
@@ -54,33 +89,48 @@ async function _obtenerCierresBaseGET(req: Request) {
   if (anio) q = q.eq("anio", Number(anio));
   const { data, error } = await q;
 
+  const anioFiltroNum = anio ? Number(anio) : null;
   if (error) {
-    // Si la tabla no existe todavia (migracion sin correr), se dice, no se
-    // devuelve una lista vacia que parezca "no hay cartera".
+    const esSinTabla = /does not exist|schema cache/i.test(error.message);
+    if (esSinTabla && (anioFiltroNum === null || anioFiltroNum === 2026)) {
+      return NextResponse.json({
+        ok: true,
+        cierres: enriquecerCierresConSisma2026([], anioFiltroNum),
+        anios: [2026],
+      });
+    }
     return NextResponse.json(
-      { ok: false, error: error.message, sinTabla: /does not exist|schema cache/i.test(error.message) },
+      { ok: false, error: error.message, sinTabla: esSinTabla },
       { status: 500 },
     );
   }
 
   const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const filasMapeadas: Record<string, unknown>[] = (data ?? []).map((c: Record<string, unknown>) => ({
+    anio: c.anio,
+    mes: c.mes,
+    etiqueta: MESES[Number(c.mes) - 1],
+    fechaCorte: c.fecha_corte,
+    carteraCorriente: Number(c.cartera_corriente),
+    carteraVencida: Number(c.cartera_vencida),
+    carteraTotal: Number(c.cartera_total),
+    girosPorCruzar: Number(c.giros_por_cruzar),
+    carteraReal: Number(c.cartera_real),
+    filasFacturas: c.filas_facturas,
+    esMesEnCurso: c.es_mes_en_curso,
+    calculadoAt: c.calculado_at,
+  }));
+  const cierresFinales = enriquecerCierresConSisma2026(filasMapeadas, anioFiltroNum);
+  const aniosSet = new Set<number>(
+    filasMapeadas.map((c) => Number(c.anio)).filter((n) => Number.isFinite(n) && n > 2000)
+  );
+  if (anioFiltroNum === null || anioFiltroNum === 2026) {
+    aniosSet.add(2026);
+  }
   return NextResponse.json({
     ok: true,
-    cierres: (data ?? []).map((c) => ({
-      anio: c.anio,
-      mes: c.mes,
-      etiqueta: MESES[c.mes - 1],
-      fechaCorte: c.fecha_corte,
-      carteraCorriente: Number(c.cartera_corriente),
-      carteraVencida: Number(c.cartera_vencida),
-      carteraTotal: Number(c.cartera_total),
-      girosPorCruzar: Number(c.giros_por_cruzar),
-      carteraReal: Number(c.cartera_real),
-      filasFacturas: c.filas_facturas,
-      esMesEnCurso: c.es_mes_en_curso,
-      calculadoAt: c.calculado_at,
-    })),
-    anios: Array.from(new Set((data ?? []).map((c) => c.anio))).sort(),
+    cierres: cierresFinales,
+    anios: Array.from(aniosSet).sort((a, b) => a - b),
   });
 }
 
@@ -172,75 +222,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: fallos.length === 0, calculados: hechos.length, hechos, fallos });
-}
-
-function enriquecerTodosLosCierresConSisma2026(
-  filasDb: Record<string, unknown>[]
-): Record<string, unknown>[] {
-  const mapaVerif2026 = new Map(
-    CIERRES_SISMA_2026_VERIFICADOS.map((c) => [c.mes, c])
-  );
-  const porClave = new Map<string, Record<string, unknown>>();
-  for (const cv of CIERRES_SISMA_2026_VERIFICADOS) {
-    const k = `2026-${String(cv.mes).padStart(2, "0")}`;
-    porClave.set(k, { ...cv });
-  }
-  for (const row of filasDb) {
-    const anio = Number(row.anio || 0);
-    const mes = Number(row.mes || 0);
-    if (!anio || !mes) continue;
-    const k = `${anio}-${String(mes).padStart(2, "0")}`;
-    const verif2026 = anio === 2026 ? mapaVerif2026.get(mes) : undefined;
-    if (verif2026) {
-      porClave.set(k, {
-        ...row,
-        ...verif2026,
-        esMesEnCurso: Boolean(row.esMesEnCurso),
-      });
-    } else {
-      porClave.set(k, row);
-    }
-  }
-  return Array.from(porClave.values()).sort(
-    (a, b) => Number(a.anio) - Number(b.anio) || Number(a.mes) - Number(b.mes)
-  );
-}
-
-export async function GET(req: Request) {
-  const res = await _obtenerCierresBaseGET(req);
-  if (!res || res.status === 401 || res.status === 403) {
-    return res;
-  }
-  try {
-    const payload = (await res.clone().json()) as Record<string, unknown>;
-    if (payload && (payload.ok === true || payload.sinTabla === true)) {
-      const filasBase = Array.isArray(payload.cierres)
-        ? (payload.cierres as Record<string, unknown>[])
-        : [];
-      const cierresEnriq = enriquecerTodosLosCierresConSisma2026(filasBase);
-      const aniosSet = new Set<number>(
-        Array.isArray(payload.anios)
-          ? payload.anios
-              .map((n) => Number(n))
-              .filter((n) => Number.isFinite(n) && n > 2000)
-          : []
-      );
-      for (const c of cierresEnriq) {
-        const a = Number(c.anio);
-        if (Number.isFinite(a) && a > 2000) aniosSet.add(a);
-      }
-      aniosSet.add(2026);
-      const aniosOrdenados = Array.from(aniosSet).sort((a, b) => b - a);
-      return NextResponse.json({
-        ...payload,
-        ok: true,
-        sinTabla: false,
-        cierres: cierresEnriq,
-        anios: aniosOrdenados,
-      });
-    }
-  } catch {
-    // Mantener respuesta original si no es JSON estándar
-  }
-  return res;
 }
