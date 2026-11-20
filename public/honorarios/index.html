@@ -507,12 +507,18 @@ return new Blob(parts.concat(cbytes,[end]),{type:'application/vnd.openxmlformats
 function xe(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function col(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=(i-m-1)/26;}return s;}
 function hoja(filas,anchos){var x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
+var conGrupos=filas.some(function(f){return f&&f._o;});
+if(conGrupos){x+='<sheetPr><outlinePr summaryBelow="0" summaryRight="0"/></sheetPr><sheetFormatPr defaultRowHeight="15" outlineLevelRow="1"/>';}
 if(anchos&&anchos.length){x+='<cols>';anchos.forEach(function(w,i){x+='<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>';});x+='</cols>';}
 x+='<sheetData>';
-filas.forEach(function(f,r){x+='<row r="'+(r+1)+'">';f.forEach(function(c,i){if(c==null||c==='')return;var ref=col(i)+(r+1);
+filas.forEach(function(f,r){var at='';
+if(f&&f._o){at+=' outlineLevel="'+f._o+'"';}
+x+='<row r="'+(r+1)+'"'+at+'>';f.forEach(function(c,i){if(c==null||c==='')return;var ref=col(i)+(r+1);
 if(typeof c==='number'){x+='<c r="'+ref+'" s="2"><v>'+c+'</v></c>';}
 else if(c&&typeof c.m==='number'){x+='<c r="'+ref+'" s="2"><v>'+c.m+'</v></c>';}
 else if(c&&typeof c.bm==='number'){x+='<c r="'+ref+'" s="3"><v>'+c.bm+'</v></c>';}
+else if(c&&typeof c.gm==='number'){x+='<c r="'+ref+'" s="5"><v>'+c.gm+'</v></c>';}
+else if(c&&c.g){x+='<c r="'+ref+'" s="4" t="inlineStr"><is><t xml:space="preserve">'+xe(c.g)+'</t></is></c>';}
 else if(c&&c.b){x+='<c r="'+ref+'" s="1" t="inlineStr"><is><t xml:space="preserve">'+xe(c.b)+'</t></is></c>';}
 else{x+='<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xe(c)+'</t></is></c>';}});x+='</row>';});
 return x+'</sheetData></worksheet>';}
@@ -521,7 +527,7 @@ F.push({n:'[Content_Types].xml',d:te('<?xml version="1.0" encoding="UTF-8" stand
 F.push({n:'_rels/.rels',d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>')});
 F.push({n:'xl/workbook.xml',d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+hojas.map(function(h,i){return '<sheet name="'+xe(h.nombre)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>';}).join('')+'</sheets></workbook>')});
 F.push({n:'xl/_rels/workbook.xml.rels',d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+hojas.map(function(h,i){return '<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>';}).join('')+'<Relationship Id="rId'+(n+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>')});
-F.push({n:'xl/styles.xml',d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$ &quot;#,##0"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF294E9D"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs></styleSheet>')});
+F.push({n:'xl/styles.xml',d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$ &quot;#,##0"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF294E9D"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDF2FA"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="2" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"/></cellXfs></styleSheet>')});
 hojas.forEach(function(h,i){F.push({n:'xl/worksheets/sheet'+(i+1)+'.xml',d:te(h.xml)});});
 return zipStore(F);}
 
@@ -894,68 +900,119 @@ document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,
   // ---- Excel por unidad funcional (calca hoja/xlsx/bajar) ----
   window.hoDesgloseExcel=function(){
     try{
-      /* Dos tablas, como el sistema antiguo:
-         — «Sede 2 — Mutual Ser»: médicos en filas (plana), unidades funcionales en columnas.
-         — «Sede Principal — PYP y Ecopetrol»: cada médico abierto en ECOPETROL y P&P.
-         Las cirugías caen en la tabla según la empresa (Mutual → Mutual; el resto → Sede Principal). */
-      function armar(datos, titulo, porEmp){
-        var ufs={}, meds={};
-        datos.forEach(function(d){
-          ufs[d.uf]=1;
-          var M=meds[d.mn]||(meds[d.mn]={t:0,uf:{},emp:{}});
-          M.t+=d.v; M.uf[d.uf]=(M.uf[d.uf]||0)+d.v;
-          var E=M.emp[d.ek]||(M.emp[d.ek]={t:0,uf:{}});
-          E.t+=d.v; E.uf[d.uf]=(E.uf[d.uf]||0)+d.v;
-        });
-        var cols=Object.keys(ufs).sort();
-        var f=[[{b:'HONORARIOS MÉDICOS — '+titulo}],[D.periodo||''],[]];
-        f.push([{b:'Médico / Empresa'}].concat(cols.map(function(c){return {b:c};})).concat([{b:'Total general'}]));
-        var totCol={}, gran=0;
-        Object.keys(meds).sort().forEach(function(mn){
-          var M=meds[mn];
-          f.push([{b:tt(mn)}].concat(cols.map(function(c){ var v=M.uf[c]||0; totCol[c]=(totCol[c]||0)+v; return v?{bm:v}:''; })).concat([{bm:M.t}]));
-          gran+=M.t;
-          if(porEmp){
-            Object.keys(M.emp).sort().forEach(function(ek){
-              var E=M.emp[ek];
-              f.push(['    '+ek].concat(cols.map(function(c){ var v=E.uf[c]||0; return v?{m:v}:''; })).concat([{m:E.t}]));
-            });
-          }
-        });
-        f.push([]);
-        f.push([{b:'Total general'}].concat(cols.map(function(c){return {bm:totCol[c]||0};})).concat([{bm:gran}]));
-        return {f:f, anchos:[32].concat(cols.map(function(){return 17;})).concat([16]), gran:gran};
-      }
-      var dM=[], dP=[], dE=[];
+      /* TABLA DINÁMICA REAL DE EXCEL:
+         hoja «Datos» = base (Médico · Sede · Unidad funcional · Valor)
+         hoja «Por unidad funcional» = pivot: filas Médico>Sede, columnas UF, valores $.
+         Se escribe el pivotCache + pivotTable del formato OOXML, con refreshOnLoad
+         para que Excel arme la tabla al abrir. */
+      var GR=['Sede Principal — PYP','Sede Principal — Ecopetrol','Sede 2 — Mutual'];
+      var agg={}, medS={}, ufS={};
       Object.keys(D.medicos).forEach(function(mn){
         (D.medicos[mn].f||[]).forEach(function(r){
           var v=Math.round(r[6]||0); if(!v) return;
           var sede=String(r[0]||''), emp=String(r[2]||'—'), uf=String(r[3]||'OTROS')||'OTROS';
           var esMut=/MUTUAL/i.test(emp), esEco=/ECOPETROL/i.test(emp);
-          var aMutual = (sede==='Sede 2') || (sede!=='Sede Principal' && esMut);
-          if(aMutual) dM.push({mn:mn, uf:uf, v:v, ek:emp});
-          else if(esEco) dE.push({mn:mn, uf:uf, v:v, ek:emp});
-          else dP.push({mn:mn, uf:uf, v:v, ek:emp});
+          var grp=((sede==='Sede 2')||(sede!=='Sede Principal'&&esMut))?GR[2]:(esEco?GR[1]:GR[0]);
+          var nom=tt(mn); medS[nom]=1; ufS[uf]=1;
+          var k=nom+'\u0001'+grp+'\u0001'+uf; agg[k]=(agg[k]||0)+v;
         });
       });
-      var hM=armar(dM,'Sede 2 — Mutual Ser', false);
-      var hP=armar(dP,'Sede Principal — PYP (particulares y prepagadas)', false);
-      var hE=armar(dE,'Ecopetrol', false);
-      /* UNA SOLA HOJA: las tres tablas una debajo de otra, y al final el total de todo */
-      var fTodo=hM.f.concat([[],[]], hP.f, [[],[]], hE.f);
-      fTodo.push([]);
-      fTodo.push([{b:'TOTAL GENERAL DE LAS TRES TABLAS'},{bm:(hM.gran+hP.gran+hE.gran)}]);
-      var anchosTodo=[34,18,18,18,18,18,18,18,18];
-      var hojas=[{nombre:'Por unidad funcional', xml:hoja(fTodo,anchosTodo)}];
-      /* detalle por servicio, como hoja final */
+      var medL=Object.keys(medS).sort(), ufL=Object.keys(ufS).sort();
+      var iMed={},iGrp={},iUf={};
+      medL.forEach(function(m,i){iMed[m]=i;}); GR.forEach(function(g,i){iGrp[g]=i;}); ufL.forEach(function(u,i){iUf[u]=i;});
+      var regs=Object.keys(agg).sort().map(function(k){var p=k.split('\u0001');return [p[0],p[1],p[2],agg[k]];});
+
+      // hoja de datos
+      var fd=[[{b:'Médico'},{b:'Sede'},{b:'Unidad funcional'},{b:'Valor'}]];
+      regs.forEach(function(r){ fd.push([r[0],r[1],r[2],{m:r[3]}]); });
+      var xmlDatos=hoja(fd,[32,28,26,16]);
+
+      // hoja destino del pivote (el pivote se dibuja al abrir)
+      var xmlPiv=hoja([[{b:'HONORARIOS MÉDICOS — Por unidad funcional'}],[D.periodo||''],[],
+                       ['La tabla se arma sola al abrir. Clic en el signo junto a cada médico para abrir o cerrar sus sedes.']],
+                      [34,18,18,18,18,18,18,18,18]);
+
+      // ---- partes del pivote
+      var N=regs.length, minV=regs.length?Math.min.apply(null,regs.map(function(r){return r[3];})):0,
+          maxV=regs.length?Math.max.apply(null,regs.map(function(r){return r[3];})):0;
+      var cacheDef='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+       +'<pivotCacheDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId1" refreshOnLoad="1" refreshedBy="Liquidador" refreshedDate="45000" createdVersion="4" refreshedVersion="4" minRefreshableVersion="3" recordCount="'+N+'">'
+       +'<cacheSource type="worksheet"><worksheetSource ref="A1:D'+(N+1)+'" sheet="Datos"/></cacheSource>'
+       +'<cacheFields count="4">'
+       +'<cacheField name="Médico" numFmtId="0"><sharedItems count="'+medL.length+'">'+medL.map(function(m){return '<s v="'+xe(m)+'"/>';}).join('')+'</sharedItems></cacheField>'
+       +'<cacheField name="Sede" numFmtId="0"><sharedItems count="'+GR.length+'">'+GR.map(function(g){return '<s v="'+xe(g)+'"/>';}).join('')+'</sharedItems></cacheField>'
+       +'<cacheField name="Unidad funcional" numFmtId="0"><sharedItems count="'+ufL.length+'">'+ufL.map(function(u){return '<s v="'+xe(u)+'"/>';}).join('')+'</sharedItems></cacheField>'
+       +'<cacheField name="Valor" numFmtId="0"><sharedItems containsSemiMixedTypes="0" containsString="0" containsNumber="1" containsInteger="1" minValue="'+minV+'" maxValue="'+maxV+'"/></cacheField>'
+       +'</cacheFields></pivotCacheDefinition>';
+      var cacheRec='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+       +'<pivotCacheRecords xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+N+'">'
+       +regs.map(function(r){return '<r><x v="'+iMed[r[0]]+'"/><x v="'+iGrp[r[1]]+'"/><x v="'+iUf[r[2]]+'"/><n v="'+r[3]+'"/></r>';}).join('')
+       +'</pivotCacheRecords>';
+      function itemsDe(n){ var t=''; for(var k=0;k<n;k++) t+='<item x="'+k+'"/>'; return '<items count="'+(n+1)+'">'+t+'<item t="default"/></items>'; }
+      var pivTab='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+       +'<pivotTableDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="PorUnidadFuncional" cacheId="1" applyNumberFormats="0" applyBorderFormats="0" applyFontFormats="0" applyPatternFormats="0" applyAlignmentFormats="0" applyWidthHeightFormats="1" dataCaption="Valores" updatedVersion="4" createdVersion="4" minRefreshableVersion="3" useAutoFormatting="1" itemPrintTitles="1" indent="0" outline="1" outlineData="0" compact="1" compactData="1" multipleFieldFilters="0" gridDropZones="0">'
+       +'<location ref="A6" firstHeaderRow="1" firstDataRow="2" firstDataCol="1"/>'
+       +'<pivotFields count="4">'
+       +'<pivotField axis="axisRow" compact="1" outline="1" showAll="0">'+itemsDe(medL.length)+'</pivotField>'
+       +'<pivotField axis="axisRow" compact="1" outline="1" showAll="0">'+itemsDe(GR.length)+'</pivotField>'
+       +'<pivotField axis="axisCol" showAll="0">'+itemsDe(ufL.length)+'</pivotField>'
+       +'<pivotField dataField="1" showAll="0"/>'
+       +'</pivotFields>'
+       +'<rowFields count="2"><field x="0"/><field x="1"/></rowFields>'
+       +'<rowItems count="1"><i t="grand"><x/></i></rowItems>'
+       +'<colFields count="1"><field x="2"/></colFields>'
+       +'<colItems count="1"><i t="grand"><x/></i></colItems>'
+       +'<dataFields count="1"><dataField name="Honorarios" fld="3" baseField="0" baseItem="0" numFmtId="164"/></dataFields>'
+       +'<pivotTableStyleInfo name="PivotStyleLight16" showRowHeaders="1" showColHeaders="1" showRowStripes="0" showColStripes="0" showLastColumn="1"/>'
+       +'</pivotTableDefinition>';
+
+      // ---- ensamblar el xlsx con las partes del pivote
+      var STY='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$ &quot;#,##0"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF294E9D"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDF2FA"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="2" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"/></cellXfs></styleSheet>';
+      // hoja 3: detalle por servicio (lo de siempre)
       var f2=[[{b:'Detalle por servicio'}],[D.periodo||''],[]];
       f2.push([{b:'Médico'},{b:'Sede'},{b:'Unidad funcional'},{b:'Servicio'},{b:'Actos'},{b:'Pacientes'},{b:'Días'},{b:'Valor'}]);
       var gran2=0;
-      MED.forEach(function(m){ m.sedes.forEach(function(s){ s.cats.forEach(function(c){ c.svs.forEach(function(v){
-        f2.push([m.name, s.sede, c.cat, cap(v.sv), String(v.a), v.p?String(v.p):'', v.d?String(v.d):'', {m:v.v}]); gran2+=v.v; }); }); }); });
+      MED.forEach(function(m){ m.sedes.forEach(function(sx){ sx.cats.forEach(function(c){ c.svs.forEach(function(v){
+        f2.push([m.name, sx.sede, c.cat, cap(v.sv), String(v.a), v.p?String(v.p):'', v.d?String(v.d):'', {m:v.v}]); gran2+=v.v; }); }); }); });
       f2.push([]); f2.push([{b:'TOTAL'},'','','','','','',{bm:gran2}]);
-      hojas.push({nombre:'Detalle por servicio', xml:hoja(f2,[26,15,24,46,8,11,7,16])});
-      bajar(xlsx(hojas), 'Honorarios por unidad funcional.xlsx');
+      var xmlDet=hoja(f2,[26,15,24,46,8,11,7,16]);
+
+      var CT='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+       +'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+       +'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+       +'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+       +'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+       +'<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+       +'<Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+       +'<Override PartName="/xl/pivotCache/pivotCacheDefinition1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml"/>'
+       +'<Override PartName="/xl/pivotCache/pivotCacheRecords1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml"/>'
+       +'<Override PartName="/xl/pivotTables/pivotTable1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml"/>'
+       +'</Types>';
+      var F=[];
+      F.push({n:'[Content_Types].xml', d:te(CT)});
+      F.push({n:'_rels/.rels', d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>')});
+      F.push({n:'xl/workbook.xml', d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Por unidad funcional" sheetId="1" r:id="rId1"/><sheet name="Datos" sheetId="2" r:id="rId2"/><sheet name="Detalle por servicio" sheetId="3" r:id="rId3"/></sheets><pivotCaches><pivotCache cacheId="1" r:id="rId5"/></pivotCaches></workbook>')});
+      F.push({n:'xl/_rels/workbook.xml.rels', d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+       +'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+       +'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
+       +'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>'
+       +'<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+       +'<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition" Target="pivotCache/pivotCacheDefinition1.xml"/>'
+       +'</Relationships>')});
+      F.push({n:'xl/styles.xml', d:te(STY)});
+      F.push({n:'xl/worksheets/sheet1.xml', d:te(xmlPiv)});
+      F.push({n:'xl/worksheets/_rels/sheet1.xml.rels', d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable" Target="../pivotTables/pivotTable1.xml"/></Relationships>')});
+      F.push({n:'xl/worksheets/sheet2.xml', d:te(xmlDatos)});
+      F.push({n:'xl/worksheets/sheet3.xml', d:te(xmlDet)});
+      F.push({n:'xl/pivotCache/pivotCacheDefinition1.xml', d:te(cacheDef)});
+      F.push({n:'xl/_rels/pivotCacheDefinition1.xml.rels', d:te('')});
+      F.push({n:'xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels', d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords" Target="pivotCacheRecords1.xml"/></Relationships>')});
+      F.push({n:'xl/pivotCache/pivotCacheRecords1.xml', d:te(cacheRec)});
+      F.push({n:'xl/pivotTables/pivotTable1.xml', d:te(pivTab)});
+      F.push({n:'xl/pivotTables/_rels/pivotTable1.xml.rels', d:te('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition" Target="../pivotCache/pivotCacheDefinition1.xml"/></Relationships>')});
+      // quitar la rel vacía que dejé por error
+      F=F.filter(function(x){ return !(x.n==='xl/_rels/pivotCacheDefinition1.xml.rels'); });
+      bajar(zipStore(F), 'Honorarios por unidad funcional.xlsx');
     }catch(e){ alert('No se pudo generar el Excel por unidad funcional: '+(e.message||e)); }
   };
 
