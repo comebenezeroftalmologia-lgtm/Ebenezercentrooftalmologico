@@ -3501,7 +3501,7 @@ details.ficha .fcount{margin-left:auto;font-size:11.5px;color:var(--muted);font-
         <div class="cg-pie">Toda la producción del corte</div>
       </div>
       <div class="carga" data-tipo="estad">
-        <div class="cg-ic">🩻</div>
+        <div class="cg-ic">📊</div>
         <div class="cg-tit">Estadísticas de cirugía</div>
         <div class="cg-sub">.xls · recomendado</div>
         <div class="cg-est" id="cgEstad">Sin cargar</div>
@@ -9703,6 +9703,16 @@ function nomArchivoBonito(n){
 }
 /* Corte cerrado: 'las alertas de un corte cerrado no vuelven a salir'. Marca qué partes
    (CIR/S2/S1) del período ya se enviaron a contabilidad, con memoria en el navegador. */
+function __cerradoChk(){
+  try{
+    if(!window.__corteCerrado){ try{ window.__corteCerrado=JSON.parse(localStorage.getItem('eb_cortes_cerrados')||'{}'); }catch(e){ window.__corteCerrado={}; } }
+    var pe=(typeof nubePeriodoActual==='function')?nubePeriodoActual():'';
+    var sv=(document.getElementById('sede')||{}).value||'', pa='';
+    if(/Cirug/i.test(sv)) pa='CIR'; else if(/Sede 2/i.test(sv)) pa='S2'; else if(/Principal/i.test(sv)) pa='S1';
+    var M=window.__corteCerrado||{};
+    return pe ? (pa ? !!M[pe+'|'+pa] : (!!M[pe+'|CIR'] && !!M[pe+'|S2'] && !!M[pe+'|S1'])) : false;
+  }catch(e){ return false; }
+}
 async function __cerrRefrescar(){
   try{
     var pe=(typeof nubePeriodoActual==='function')?nubePeriodoActual():'';
@@ -10771,6 +10781,7 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
         }
         if(/TRABECULOPLASTIA/.test(d)) return 'Trabeculoplastia con láser';
         if(/CICLOFOTOCOAGULA|CICLOCRIO/.test(d)) return 'Ciclofotocoagulación / Ciclocrioterapia';
+        if(/QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|\(PRK\)|LASIK|LASEK/.test(d)) return 'Cirugía refractiva (PRK/LASIK)';
         if(/PANFOTOCOAGULA|FOTOCOAGULA|ABLACION/.test(d)) return 'Fotocoagulación con láser';
         if(/INTRAVITR|AFLIBERCEPT|FARICIMAB|RANIBIZUMAB|BEVACIZUMAB|OZURDEX/.test(d)) return 'Terapia intravítrea';
         if(/PLASTIA.*(CANALICUL|PUNTO)|PUNTOPLASTIA/.test(d)) return 'Plastia de canalículos / punto lagrimal';
@@ -11029,6 +11040,17 @@ function render(){
   const sf = RESULT._sinFicha||[];
   const sfHTML = sf.length? `<h3 style="margin:0 0 8px">Profesionales del informe sin ficha técnica <span class="tag warn">${sf.length}</span></h3><div class="hint" style="margin:0 0 8px">Su producción aparece en el informe pero <b>no se está liquidando</b> porque no tienen tarifas registradas. Si alguno debe pagarse, hay que cargar su ficha técnica. Si <b>no es un profesional a liquidar</b> (auxiliar, agenda, personal de apoyo), quítelo y no volverá a aparecer.</div><table class="sintab" style="margin-bottom:16px"><tr><th>Nombre en el informe</th><th style="width:230px"></th></tr>${sf.map(n=>`<tr><td>${n}</td><td><button class="btn ghost" style="padding:6px 10px;font-size:12px" onclick="reasigAbrir('${n.replace(/'/g,"\\'")}')">↪ Lo atendió otro médico</button> <button class="btn ghost" style="padding:6px 10px;font-size:12px" onclick="noEsMedico('${n.replace(/'/g,"\\'")}')">✕ No es médico · quitar</button></td></tr>`).join('')}</table>`:'';
   const hallHTML = hall.length? `<h3 style="margin:0 0 8px">Hallazgos del motor de auditoría <span class="tag warn">${hall.length}</span></h3><table class="sintab" style="margin-bottom:16px"><tr><th>Médico</th><th>Hallazgo — requiere criterio del auditor</th></tr>${hall.map(x=>`<tr><td><b>${x.m}</b></td><td>${x.t}</td></tr>`).join('')}</table>` : '';
+  window.pendFichaPon=function(el){
+    try{
+      var tr=el.closest('tr'); if(!tr) return false;
+      var inp=tr.querySelector('input[type=number].maninp'); if(!inp) return false;
+      var mot=tr.querySelector('input.motinp');
+      inp.value=el.getAttribute('data-v')||'';
+      if(mot && !mot.value) mot.value=(el.getAttribute('data-m')||'').replace(/&quot;/g,'"');
+      if(typeof setManual==='function') setManual(inp);
+    }catch(e){}
+    return false;
+  };
   /* Referencia de la ficha para el listado «sin tarifa»: qué tiene la ficha de ese médico
      para ese servicio (otras empresas/valores), o el aviso de que falta el renglón. */
   function pendFichaRef(med, serv){
@@ -11053,7 +11075,8 @@ function render(){
       for(var i=0;i<best.length && out.length<4;i++){
         var r=best[i][1], sig=r[0]+'|'+(r[1]||'')+'|'+(r[3]||'')+'|'+r[2];
         if(vistos[sig]) continue; vistos[sig]=1;
-        out.push(String(r[0]).toLowerCase()+(r[1]?' ('+String(r[1]).toLowerCase()+')':'')+' — '+(GL[r[3]]||r[3]||'')+' <b>'+money(r[2])+'</b>');
+        var _mot=('Según ficha: '+String(r[0])+(r[1]?' ('+String(r[1])+')':'')+' — '+(GL[r[3]]||r[3]||'')).replace(/"/g,'&quot;');
+        out.push(String(r[0]).toLowerCase()+(r[1]?' ('+String(r[1]).toLowerCase()+')':'')+' — '+(GL[r[3]]||r[3]||'')+' <a href="#" title="Clic: pone este valor y el motivo en Liquidar manual" style="font-weight:700;color:#0f766e;text-decoration:underline dotted" data-v="'+Math.round(r[2])+'" data-m="'+_mot+'" onclick="return pendFichaPon(this)">'+money(r[2])+'</a>');
       }
       return '<div class="obs" style="color:#0f766e;margin-top:3px">📒 La ficha de este médico sí tiene: '+out.join(' · ')+'</div>';
     }catch(e){ return ''; }
@@ -14833,10 +14856,12 @@ function actaDecCorta(dec){
 }
 function actaCompHTML(m){
   if(typeof CMP==='undefined' || !CMP.filas || !CMP.filas.length) return '';
+  /* corte cerrado: este comparativo no vuelve a salir (las diferencias viven en el candado) */
+  try{ if(typeof __cerradoChk==='function' && __cerradoChk()) return ''; }catch(e){}
   const f=CMP.filas.find(z=>z.med===m); if(!f || f.est==='na') return '';
   const usados=(CMP.archivos||[]).filter((a,i)=>Object.entries(CMP.dueno||{}).some(([k,j])=>j===i && k.endsWith('|'+m)));
   const arch=(usados.length? usados : (CMP.archivos||[])).map(a=>nomArchivoBonito(a.nombre)+(a.por? ' · '+a.por : '')).join(' · ');
-  const cab=`<summary class="cmp4-h">Frente a la liquidación manual <span>archivo: ${esc(arch)}</span></summary>`;
+  const cab=`<summary class="cmp4-h">${(typeof cmpFuente==="function"? "Frente a "+cmpFuente(true) : "Frente a la liquidación manual")} <span>archivo: ${esc(arch)}</span></summary>`;
   if(f.rec==null) return `<details class="cmp4" open>${cab}<div class="cmp4-uno">No está en la liquidación manual. El tablero le paga ${money(f.sis||0)}.</div></details>`;
   const a=MANO.cache[m] || manoAnalizar(m);
   const FIJ='Jornadas, agendas y valores fijos';
@@ -17418,10 +17443,41 @@ function valEjecutar(){
   setTimeout(()=>{ try{ valCruzar(); }catch(e){ res.innerHTML='<div class="hint" style="margin:0;border-left:3px solid var(--bad)">Falló el cruce: '+(e.message||e)+'</div>'; } }, 30);
 }
 
+/* Base automática (pedido de Pedro Luis): el cruce de frecuencias no depende de que alguien
+   suba un parquet. Si no hay base cargada, o la cargada no cubre el corte, la base se arma
+   SOLA desde el informe del sistema (que trae fecha, paciente, código, detalle y valor de
+   cada acto del corte). El parquet clasificado, si está y cubre, se sigue usando. */
+function valBaseAuto(){
+  try{
+    if(typeof RECORDS==='undefined' || !RECORDS || !RECORDS.length) return false;
+    const filas=[]; let min='', max='';
+    for(const r of RECORDS){
+      if(/ANULADO/i.test(r.tipoPago||'')) continue;
+      const f=String(r.fecha||'').slice(0,10); if(!f || f.length<10) continue;
+      if(!min||f<min)min=f; if(!max||f>max)max=f;
+      const w={uf:r.uf, sv:r.servicio||'', d:r.detalle||'', cg:r.codigo||''};
+      let acto=true;
+      try{ if(typeof esCirUf==='function' && esCirUf(w)){
+        acto = (typeof esProced==='function' ? !!esProced(w) : true) && !(typeof esLente==='function' && esLente(w));
+      } }catch(e){}
+      const v={f:f, pac:String(r.paciente||''), cod:(typeof valCod==='function'?valCod(r.codigo):String(r.codigo||'')),
+               det:String(r.detalle||''), med:String(r.medico||''), sede:String(r.uf||''),
+               t:Math.round(Number(r.total)||0), esActo:acto};
+      try{ v.noMed = (typeof mHojaDe==='function') ? !mHojaDe(v.med) : false; }catch(e){ v.noMed=false; }
+      filas.push(v);
+    }
+    if(!filas.length) return false;
+    VBASE={archivo:'(automática — armada del informe del sistema)', filas:filas,
+           corte:{min:min,max:max}, total:filas.length, cargadoPor:'automática', auto:true};
+    try{ if(typeof valPanel==='function') valPanel(); }catch(e){}
+    return true;
+  }catch(e){ console.warn('base auto', e); return false; }
+}
 function valCruzar(){
   // la base puede traer varios años: se cruza SOLO el corte que se está liquidando
   const _iso = t => { const p=String(t||'').split('/'); return p.length===3 ? p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0') : ''; };
   const _pi=_iso(RESULT&&RESULT.periodoInicio), _pf=_iso(RESULT&&RESULT.periodoFin);
+  try{ if(VBASE && !VBASE.auto && _pf && VBASE.corte && String(VBASE.corte.max||'')<_pf) valBaseAuto(); }catch(e){}
   const BF = (_pi&&_pf) ? VBASE.filas.filter(b=>b.f>=_pi && b.f<=_pf) : VBASE.filas;
   // 1) índice (fecha|paciente|detalle) → código, tomado del informe que ya está cargado
   const cod = {};
@@ -17491,6 +17547,27 @@ function valCruzar(){
   valPintar();
 }
 
+(function(){
+  function eng(){
+    try{
+      var b=document.getElementById('btnCalc'); if(!b || b.__valAuto) return; b.__valAuto=1;
+      b.addEventListener('click', function(){
+        var r0=(typeof RESULT!=='undefined')?RESULT:null, n=0;
+        var it=setInterval(function(){
+          try{
+            if(typeof RESULT!=='undefined' && RESULT && RESULT!==r0 && RESULT.porMedico){
+              clearInterval(it);
+              if(!VBASE) valBaseAuto();
+              if(VBASE){ try{ valCruzar(); }catch(e){ console.warn('cruce auto', e); } }
+              if(typeof semaforoPintar==='function') setTimeout(function(){ try{ semaforoPintar(); }catch(e){} }, 0);
+            } else if(++n>900){ clearInterval(it); }
+          }catch(e){ clearInterval(it); }
+        }, 500);
+      });
+    }catch(e){}
+  }
+  if(document.readyState!=='loading') eng(); else document.addEventListener('DOMContentLoaded', eng);
+})();
 function valPintar(){
   const M = VRES;
   const APOYO = M._apoyo || {tot:0,cruz:0,libres:[]};
@@ -20629,7 +20706,8 @@ try{
           var actos = Number(g.cant);
           if(!isFinite(actos) || actos <= 0) actos = recs.length || 1;
           C.items.push({servicio: nombre.replace(/\s+—\s+.*$/, ""), actos: actos,
-                        pacientes: Object.keys(pacs).length, dias: Object.keys(dias).length, valor: pago});
+                        pacientes: Object.keys(pacs).length, dias: Object.keys(dias).length, valor: pago,
+                        lista: recs.slice(0,300).map(function(r){ return {f:String(r.fecha||"").slice(0,10), p:String(r.paciente||"")}; })});
           C.actos += actos;
           C.valor += pago;
         });
@@ -20692,11 +20770,19 @@ try{
          + '<td class="num">' + (c.dias || "—") + '</td>'
          + '<td class="num">' + mny(c.valor) + "</td></tr>";
       c.items.forEach(function(i){
-        h += '<tr><td class="sv">' + esc(i.servicio) + '</td>'
+        var tiene = i.lista && i.lista.length;
+        var did = tiene ? ('rufp' + (window.__rufSeq = (window.__rufSeq||0)+1)) : '';
+        h += '<tr' + (tiene? ' style="cursor:pointer" title="Clic: ver los pacientes" onclick="var e=document.getElementById(\''+did+'\'); if(e) e.style.display = e.style.display===\'none\' ? \'\' : \'none\';"' : '') + '><td class="sv">' + esc(i.servicio) + (tiene? ' <span style="color:#8a97ab;font-size:11px">▾</span>':'') + '</td>'
            + '<td class="num">' + i.actos + '</td>'
            + '<td class="num">' + (i.pacientes || "—") + '</td>'
            + '<td class="num">' + (i.dias || "—") + '</td>'
            + '<td class="num">' + mny(i.valor) + "</td></tr>";
+        if(tiene){
+          h += '<tr id="'+did+'" style="display:none"><td colspan="5" style="padding:2px 10px 10px 36px;background:#fbfcfe">'
+             + '<table style="width:100%;font-size:12px;border-collapse:collapse">'
+             + i.lista.map(function(x){ return '<tr><td style="padding:2px 8px;white-space:nowrap;color:#6b7a93">'+esc(x.f)+'</td><td style="padding:2px 8px">'+esc(x.p)+'</td></tr>'; }).join('')
+             + '</table></td></tr>';
+        }
       });
     });
     h += '<tr class="tot"><td>TOTAL A FACTURAR</td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num">' + mny(R.total) + "</td></tr>";
