@@ -528,17 +528,35 @@ return zipStore(F);}
 /* ---------- datos por médico ---------- */
 function filasDe(med){ return (D.medicos[med]||{f:[]}).f; }
 
+/* Hoja por médico al estilo del formato antiguo (una hoja = un médico):
+   N · Fecha · Sede · Empresa · Tipo de servicio · Paciente · Servicio · Honorario,
+   con VALOR A FACTURAR arriba, subtotal por sede y total al final. */
+function honHojaMedico(med){
+  var d=D.medicos[med]||{t:0,s:{},f:[]};
+  var filas=[[{b:'CENTRO OFTALMOLOGICO EBENEZER — HONORARIOS MEDICOS'}],
+             [{b:tit(med)}],
+             [D.periodo||''],
+             [{b:'VALOR A FACTURAR'},{bm:Math.round(d.t||0)}],
+             []];
+  filas.push([{b:'N'},{b:'Fecha'},{b:'Sede'},{b:'Empresa'},{b:'Tipo de servicio'},{b:'Paciente'},{b:'Servicio'},{b:'Honorario'}]);
+  var n=0;
+  (d.f||[]).slice().sort(function(x,y){ return String(x[1]).localeCompare(String(y[1])) || String(x[4]).localeCompare(String(y[4])); }).forEach(function(r){ n++;
+    filas.push([String(n), r[1], r[0], r[2], r[3], r[4], r[5], Math.round(r[6]||0)]); });
+  filas.push([]);
+  Object.keys(d.s||{}).forEach(function(sd){
+    filas.push(['','','','','','',{b:'Subtotal '+sd},{bm:Math.round(d.s[sd]||0)}]); });
+  filas.push(['','','','','','',{b:'VALOR A FACTURAR'},{bm:Math.round(d.t||0)}]);
+  return hoja(filas,[5,12,13,24,22,34,48,14]);
+}
+
 function excelDe(med){
   var d=D.medicos[med]||{t:0,s:{},f:[]};
   var res=[[{b:'HONORARIOS MÉDICOS'}],[{b:tit(med)}],[D.periodo||''],[]];
   res.push([{b:'Sede'},{b:'Valor'}]);
   Object.keys(d.s).forEach(function(s){ res.push([s, Math.round(d.s[s])]); });
   res.push([{b:'TOTAL'}, Math.round(d.t)]);
-  var det=[[{b:'Sede'},{b:'Fecha'},{b:'Empresa'},{b:'Uf'},{b:'Paciente'},{b:'Servicio'},{b:'Honorario'}]];
-  d.f.forEach(function(r){ det.push([r[0],r[1],r[2],r[3],r[4],r[5], Math.round(r[6]||0)]); });
-  det.push(['','','','','',{b:'TOTAL'}, Math.round(d.t)]);
   return xlsx([{nombre:'Resumen', xml:hoja(res,[26,18])},
-               {nombre:'Detalle', xml:hoja(det,[14,13,26,24,34,52,14])}]);
+               {nombre:'Detalle', xml:honHojaMedico(med)}]);
 }
 
 /* ---------- PDF ---------- */
@@ -698,10 +716,13 @@ function honFilasDetalle(){
 window.hoExcelGeneral=function(b){
   var fin=avisar(b,'armando…');
   try{
-    var r=honFilasResumen(), d=honFilasDetalle();
-    bajar(xlsx([{nombre:'Resumen', xml:hoja(r.filas,r.anchos)},
-                {nombre:'Detalle', xml:hoja(d.filas,d.anchos)}]),
-          'Honorarios todos los medicos.xlsx');
+    var r=honFilasResumen();
+    var usadas={};
+    var nh=function(m){ var nm=limpia(tit(m)).slice(0,28)||'Medico'; var base=nm,i=2;
+      while(usadas[nm.toUpperCase()]){ nm=base+' '+(i++); } usadas[nm.toUpperCase()]=1; return nm; };
+    var hojas=[{nombre:'Resumen', xml:hoja(r.filas,r.anchos)}];
+    MEDS.forEach(function(m){ hojas.push({nombre:nh(m), xml:honHojaMedico(m)}); });
+    bajar(xlsx(hojas),'Honorarios todos los medicos.xlsx');
   }catch(e){ alert('No se pudo generar el Excel: '+(e.message||e)); }
   fin();
 };
@@ -730,7 +751,7 @@ function ponerBotonesGenerales(){
   var nota=document.querySelector('#hoTodos .honota');
   if(nota && nota.getAttribute('data-gen')!=='1'){
     nota.setAttribute('data-gen','1');
-    nota.innerHTML+=' <b>Las dos nuevas bajan un solo archivo.</b>';
+    nota.innerHTML+=' <b>El Excel general trae el resumen y una hoja por cada médico, como el formato antiguo.</b>';
   }
 }
 setTimeout(ponerBotonesGenerales,250);
