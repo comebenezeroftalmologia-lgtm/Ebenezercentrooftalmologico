@@ -9857,6 +9857,7 @@ function semaforoPintar(){
       </div>
       <div class="semacts">
         <button class="btn" style="padding:8px 16px;font-size:13px" onclick="excelCompleto()">⬇ Reporte completo (Excel)</button>
+        <a class="btn quiet" style="padding:8px 14px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:4px" href="https://www.ebenezer-app.com/honorarios" target="_blank" rel="noopener">🔗 Ver el link de honorarios</a>
         <details class="dlmenu"><summary class="btn quiet">Más descargas</summary>
           <div class="dlbox">
             <a onclick="pdfResumenSedes()">📄 Resumen del mes (PDF)</a>
@@ -15803,13 +15804,67 @@ function excelCompleto(){
     pac.push([B('Total '+x.m), S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''), NB(tMed), S('')]);
     pac.push([]);
   }
+  // --- una hoja por cada médico, como el reporte del sistema antiguo (mejorado):
+  //     N · Fecha · Hora · Tipo de servicio · Empresa · Documento · Paciente · Factura ·
+  //     Servicio · Facturado · Honorario · Observación. Los anestesiólogos llevan además
+  //     Jornada (am/pm) y los cirujanos que operaron ese día.
+  const esAnx = mm => { try{ return !!(REGLAS_DOC && REGLAS_DOC[mm] && REGLAS_DOC[mm].anest); }catch(e){ return false; } };
+  const CIRDIA={};
+  for(const x of ord){ if(esAnx(x.m)) continue;
+    for(const g of Object.values((x.d&&x.d.cir)||{})) for(const rr of (g.recs||[])){
+      const f=String(rr.fecha||'').slice(0,10); if(!f) continue; (CIRDIA[f]=CIRDIA[f]||{})[x.m]=1; } }
+  const hojasMed=[]; const nomU={RESUMEN:1,CUADRE:1,DETALLE:1,CAMBIOS:1,PACIENTES:1,'POR MÉDICO':1};
+  const nomHoja=nm=>{ let n=String(nm).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\\\/?*\[\]:']/g,' ').replace(/\s+/g,' ').trim().slice(0,28)||'Medico'; const bb=n; let ii=2; while(nomU[n.toUpperCase()]) n=bb.slice(0,25)+' '+(ii++); nomU[n.toUpperCase()]=1; return n; };
+  for(const x of ord){
+    const an=esAnx(x.m), tot=x.cir+x.sed+(x.man||0);
+    if(!tot && !(x.st||0)) continue;
+    const fil=[[TIT('HONORARIOS MÉDICOS — '+x.m)],
+      [S(corteMarcaTexto()+' · '+RESULT.periodoInicio+' al '+RESULT.periodoFin+' · '+ambito)],
+      [B('VALOR A FACTURAR'), NB(tot)],[]];
+    fil.push(an? [TH('N'),TH('Fecha'),TH('Hora'),TH('Jornada'),TH('Cirujanos del día'),TH('Tipo de servicio'),TH('Empresa'),TH('Documento'),TH('Paciente'),TH('Factura'),TH('Servicio'),TH('Facturado'),TH('Honorario'),TH('Observación')]
+             : [TH('N'),TH('Fecha'),TH('Hora'),TH('Tipo de servicio'),TH('Empresa'),TH('Documento'),TH('Paciente'),TH('Factura'),TH('Servicio'),TH('Facturado'),TH('Honorario'),TH('Observación')]);
+    const fx=[];
+    for(const bl of ['cir','sede']){
+      for(const g of Object.values((x.d&&x.d[bl])||{})){
+        const tipo = bl==='cir' ? 'Cirugía y anestesia' : ((g.uf==='Sede 2'||(g.pagoM||0)>0)?'Sede 2 (Mutual Ser)':'Sede Principal');
+        for(const rr of (g.recs||[])){
+          const P=_dp(rr.paciente), f=String(rr.fecha||''), h=(f.slice(11,16)==='00:00'?'':f.slice(11,16));
+          const cam = rr.cambio? ('antes '+Math.round(rr.cambio.antes||0).toLocaleString('es-CO')+' · '+(rr.cambio.quien||'')) : (g.acuerdo? String(g.acuerdo.texto||'').slice(0,60) : '');
+          const base=[S(f.slice(0,10)), S(h), S(tipo), S(rr.emp||''), S(P.doc), S(P.nom), S(rr.factura||''), S(String(rr.detalle||'').slice(0,90)), N(rr.facturado||0), N(rr.total||0), S(cam)];
+          if(an){ const jor = h? (h<'13:00'?'am':'pm') : (/\bPM\b|TARDE/i.test(rr.detalle||'')?'pm':(/\bAM\b|MA\u00d1ANA|MANANA/i.test(rr.detalle||'')?'am':''));
+            const cj = Object.keys(CIRDIA[f.slice(0,10)]||{}).slice(0,4).join(' · ');
+            base.splice(2,0,S(jor),S(cj)); }
+          fx.push([f,base]);
+        }
+      }
+    }
+    for(const g of Object.values((x.d&&x.d.sinTarifa)||{})){
+      for(const rr of (g.recs||[])){
+        const P=_dp(rr.paciente), f=String(rr.fecha||''), h=(f.slice(11,16)==='00:00'?'':f.slice(11,16));
+        const base=[S(f.slice(0,10)), S(h), S('Sin tarifa en la ficha'), S(g.detalle||''), S(P.doc), S(P.nom), S(rr.factura||''), S(String(rr.detalle||'').slice(0,90)), N(rr.total||0), N(0), S('')];
+        if(an) base.splice(2,0,S(''),S(''));
+        fx.push([f,base]);
+      }
+      const mv=manVal(x.m,g)||0;
+      if(mv){ const base=[S(''),S(''),S('Decidido manualmente'),S(''),S(''),S(''),S(''),S(String(g.servicio||'').slice(0,70)),N(0),N(mv),S('decidido manualmente')];
+        if(an) base.splice(2,0,S(''),S('')); fx.push(['9999',base]); }
+    }
+    fx.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+    let ni=0; for(const ff of fx) fil.push([I(++ni)].concat(ff[1]));
+    fil.push([]);
+    fil.push(an? [B('VALOR A FACTURAR'),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),NB(tot),S('')]
+               : [B('VALOR A FACTURAR'),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),S(''),NB(tot),S('')]);
+    hojasMed.push({nombre:nomHoja(x.m), xml:xHoja(fil, an? [4,11,6,7,26,20,16,14,30,11,40,13,13,26] : [4,11,6,20,16,14,30,11,40,13,13,26])});
+  }
   const libro = xLibro([
     {nombre:'Resumen',     xml:xHoja(r,[34,20])},
+    {nombre:'Por médico',  xml:xHoja(m,[34,18,16,17,17,12])}]
+    .concat(hojasMed)
+    .concat([
     {nombre:'Cuadre',      xml:xHoja(cuad,[40,16])},
-    {nombre:'Por médico',  xml:xHoja(m,[34,18,16,17,17,12])},
     {nombre:'Detalle',     xml:xHoja(d4,[30,20,60,10,16,16])},
     {nombre:'Cambios',     xml:xHoja(g5,[26,42,16,14,46,20,28])},
-    {nombre:'Pacientes',   xml:xHoja(pac,[26,18,40,11,7,15,32,12,44,11,18,24,14,40])}]);
+    {nombre:'Pacientes',   xml:xHoja(pac,[26,18,40,11,7,15,32,12,44,11,18,24,14,40])}]));
   const a=document.createElement('a');
   a.href=URL.createObjectURL(libro);
   a.download='Liquidacion_'+String(ambito).replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ0-9]/g,'_')+'_'+String(RESULT.periodoFin||'').replace(/\//g,'-')+'.xlsx';
