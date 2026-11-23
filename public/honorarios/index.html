@@ -914,6 +914,8 @@ document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,
           var esMut=/MUTUAL/i.test(emp), esEco=/ECOPETROL/i.test(emp);
           var grp=((sede==='Sede 2')||(sede!=='Sede Principal'&&esMut))?GR[2]:(esEco?GR[1]:GR[0]);
           var nom=tt(mn), fec=String(r[1]||''), pac=String(r[4]||''), ser=String(r[5]||'').slice(0,80);
+          /* la columna la manda la FICHA, no el rótulo del informe: lo quirúrgico va a CIRUGIA */
+          if(/APOYO/i.test(uf) && (RE_CIR.test(ser)||/QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|PRK|LASIK|LASEK/i.test(ser))) uf='CIRUGIA';
           medS[nom]=1; ufS[uf]=1; fecS[fec]=1; pacS[pac]=1; serS[ser]=1;
           regs.push([nom,grp,uf,fec,pac,ser,v]);
         });
