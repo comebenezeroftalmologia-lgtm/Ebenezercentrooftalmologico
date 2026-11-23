@@ -18292,12 +18292,13 @@ function pdfFilasMedico(h){
     if(/JORNADA|TURNO|DISPONIBILIDAD|PREANEST|COORDINACI/.test(tx)) return 'JORNADA';
     if(esC || /LENTE|PAQUETE|QUIROF|CIRUG|BONO|TORIC|PANOPTIX|VIVITY|EDOF/.test(tx)) return 'CIRUGIA';
     return 'CONSULTA EXTERNA'; };
+  const RE_QUIR=/CIRUG|FACO|LIO\b|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|TERAPIA|INYECCION|BIOPSIA|SUTURA|RETIRO|APLICACION|PROCEDIMIENTO|LENTE|CRISTALINO|CLAREON|EYECRYL|QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|PRK|LASIK|LASEK/i;
   for(const bl of [d.cir, d.sede]) for(const g of Object.values(bl)){
     const esCirB = (bl===d.cir);
     const enBasico = /CUBIERT[AO] POR (EL )?(RUBRO|JORNADA|BASICO)|PAQUETE MENSUAL/i.test(g.servicio||'');
     if(!enBasico && esCierre(g)){
       const lst = (g.recs||[]).flatMap(r=>r.lista||[]);
-      if(lst.length){ for(const x of lst) filas.push({f:x.f||'', emp:x.cir||'', tipo:'Anestesia', pac:x.tipo+(x.pac?': '+x.pac:''), det:x.fr? 'Turno '+x.fr : '', v:x.v, txt:null}); continue; }
+      if(lst.length){ for(const x of lst) filas.push({f:x.f||'', emp:x.cir||'', tipo:'Anestesia', ufx:(/paciente extra/i.test(x.tipo||'')?'PACIENTE EXTRA':'JORNADA'), pac:x.tipo+(x.pac?': '+x.pac:''), det:x.fr? 'Turno '+x.fr : '', v:x.v, txt:null}); continue; }
       if(g.pago>0){ const _tx=(g.recs&&g.recs[0]&&g.recs[0].detalle)||g.servicio; cierres.push({txt:_tx, v:g.pago, uf:ufCie(_tx,esCirB), mut:((g.pagoM||0)>0)||!!(g.acuerdo&&g.acuerdo.mutual)}); } continue; }
     if(!(g.pago>0) && !enBasico) continue;
     const jor = /JORNADA/i.test(g.servicio||'');
@@ -18309,7 +18310,9 @@ function pdfFilasMedico(h){
       if(r.cambio && !(r.total>0)) continue;
       if(!enBasico && !(r.total>0)) continue;
       const esCons = /CONSULTA/i.test(r.detalle||'');
-      filas.push({f:f10, emp:r.emp||'', tipo: g.uf==='Quirófano' ? 'Quirófano' : (esCons ? 'Consulta' : 'Apoyo'), pac:r.paciente||'', det:r.detalle||'',
+      filas.push({f:f10, emp:r.emp||'', tipo: g.uf==='Quirófano' ? 'Quirófano' : (esCons ? 'Consulta' : 'Apoyo'),
+        ufx: g.uf==='Quirófano' ? 'CIRUGIA' : (esCons ? 'CONSULTA EXTERNA' : (RE_QUIR.test(r.detalle||'') ? 'CIRUGIA' : 'APOYO DIAGNOSTICO')),
+        pac:r.paciente||'', det:r.detalle||'',
         v:r.total, txt: enBasico ? (jor ? 'JORNADA' : 'BÁSICO') : null});
     }
   }
@@ -20079,7 +20082,7 @@ try{
       if(!R) return;
       var t = Math.round(R.total||0);
       var f = (R.filas||[]).filter(function(r){ return Math.round(r.v||0) !== 0; })
-        .map(function(r){ return [sede, String(r.f||""), String(r.emp||""), String(r.tipo||""),
+        .map(function(r){ return [sede, String(r.f||""), String(r.emp||""), String(r.ufx||r.tipo||""),
                                   String(r.pac||""), String(r.det||""), Math.round(r.v||0)]; });
       (R.cierres||[]).forEach(function(c){
         f.push([sede, "", (c.mut?"MUTUAL SER":""), String(c.uf||""), "", String(c.txt||"Ajuste"), Math.round(c.v||0)]);
