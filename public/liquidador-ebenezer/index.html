@@ -10978,6 +10978,8 @@ function render(){
     const man = Object.values(d.sinTarifa).reduce((a,g)=>a+manVal(m,g),0);
     return {m, cir:sum(d.cir,'pago'), cirM:sum(d.cir,'pagoM'), sed:sum(d.sede,'pago'), sedM:sum(d.sede,'pagoM'), man, nor:(d.porNorma||0), st:Object.values(d.sinTarifa).filter(g=>!manDecidido(m,g)).length, d};
   });
+  /* mes cerrado: manda el cierre enviado (no el recalculo) */
+  try{ if(window.CIE && CIE.activo && CIE.activo()) CIE.aplicar(datos, sede); }catch(e){}
   const totCir = datos.reduce((a,x)=>a+x.cir,0), totSede = datos.reduce((a,x)=>a+x.sed,0), totMan = datos.reduce((a,x)=>a+x.man,0);
   const totSede2 = datos.reduce((a,x)=>a+(x.sedM||0),0), totSede1 = totSede - totSede2;
   const nSin = datos.reduce((a,x)=>a+x.st,0);
@@ -21836,6 +21838,178 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
     try{ if(typeof NUBE!=='undefined' && NUBE_ON) NUBE.guardarAjuste(kk, x); }catch(e){} }
   acGuardarLocal(todos);
   document.getElementById('btnCalc').click(); }
+</script>
+<script>
+/* ===== Mes cerrado: manda el cierre enviado, no el recalculo =====
+   REGLA DEL ADMINISTRADOR (23/11/2026): "octubre esta cerrado y los cierres
+   enviados son la ley; no se persigue nada ni se recalcula: el tablero y el
+   Reporte completo tienen que mostrar esa cifra y punto".
+   Un mes queda CERRADO cuando las tres partes (Sede Principal, Sede 2 y
+   Cirugia) tienen su cierre ENVIADO y ninguna fue devuelta por contabilidad.
+   Mientras falte una, el mes sigue abierto y el tablero recalcula como siempre. */
+(function(){
+  if(window.CIE) return;
+  var PARTES = ['S1','S2','CIR'];
+  var NOMP = {S1:'Sede Principal', S2:'Sede 2', CIR:'Cirugía'};
+  var CIE = window.CIE = {
+    per:'', cargando:false, hay:false, verRecalculo:false,
+    med:null, tot:null, quien:null, pedido:{}
+  };
+  CIE.activo = function(){ return !!(CIE.hay && !CIE.verRecalculo); };
+  function perAhora(){
+    try{ return (typeof nubePeriodoActual==='function') ? (nubePeriodoActual()||'') : ''; }catch(e){ return ''; }
+  }
+  function guardarCache(per, paq){
+    try{ localStorage.setItem('liq_mes_cerrado_'+per, JSON.stringify(paq)); }catch(e){}
+  }
+  function leerCache(per){
+    try{ return JSON.parse(localStorage.getItem('liq_mes_cerrado_'+per)||'null'); }catch(e){ return null; }
+  }
+  function armar(arr){
+    var med = {}, tot = {}, quien = {}, vistas = {};
+    (arr||[]).forEach(function(c){
+      var p = String(c.parte||'');
+      if(PARTES.indexOf(p) < 0) return;
+      if(!c.enviado) return;
+      if(c.confirmada === false) return;          // devuelta por contabilidad: el mes no esta cerrado
+      vistas[p] = 1;
+      tot[p] = Math.round(Number(c.total)||0);
+      quien[p] = {por:String(c.enviadoPor||c.porNombre||''), el:String(c.enviadoEl||'')};
+      var det = c.porMedicoDet || null, pm = c.porMedico || {};
+      Object.keys(pm).forEach(function(m){
+        var d = det && det[m] ? det[m] : null;
+        var c1, s1, x1;
+        if(d){ c1 = Math.round(Number(d.c)||0); s1 = Math.round(Number(d.s)||0); x1 = Math.round(Number(d.x)||0); }
+        else {
+          var v = pm[m]; v = Math.round(Number((v && typeof v==='object') ? (v.total||v.tot||0) : v)||0);
+          if(p==='CIR'){ c1=v; s1=0; x1=0; } else { c1=0; s1=v; x1=0; }
+        }
+        if(!(c1||s1||x1)) return;
+        med[m] = med[m] || {};
+        med[m][p] = {c:c1, s:s1, x:x1};
+      });
+    });
+    var completo = PARTES.every(function(p){ return vistas[p]; });
+    return completo ? {med:med, tot:tot, quien:quien} : null;
+  }
+  CIE.cargar = async function(per){
+    if(!per || CIE.cargando) return CIE.hay;
+    CIE.cargando = true;
+    CIE.per = per; CIE.hay = false; CIE.med = null; CIE.tot = null; CIE.quien = null;
+    var paq = null;
+    try{
+      if(window.NUBE && NUBE.leerCierres){
+        var C = await NUBE.leerCierres(per);
+        var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){ return C[k]; }) : []);
+        paq = armar(arr);
+        if(paq) guardarCache(per, paq);
+      }
+    }catch(e){}
+    if(!paq) paq = leerCache(per);
+    if(paq && paq.med){ CIE.hay = true; CIE.med = paq.med; CIE.tot = paq.tot||{}; CIE.quien = paq.quien||{}; }
+    CIE.cargando = false;
+    return CIE.hay;
+  };
+  function partesDe(sede){
+    if(sede === 'Cirugía' || sede === 'Cirugia') return ['CIR'];
+    if(sede === 'Sede 2') return ['S2'];
+    if(sede === 'Sede Principal') return ['S1'];
+    return PARTES.slice();
+  }
+  /* Reemplaza en el tablero los valores de cada medico por los del cierre enviado.
+     Lo que el cierre no guarda es el reparto Mutual/PYP DENTRO de cirugia: ese se
+     deja en la misma proporcion del recalculo (solo afecta el renglon de abajo
+     "Mutual: … · PYP: …" de la tarjeta de cirugia). */
+  CIE.aplicar = function(datos, sede){
+    if(!CIE.activo() || !CIE.med || !Array.isArray(datos)) return;
+    var ps = partesDe(sede);
+    var idx = {};
+    datos.forEach(function(x, i){ idx[x.m] = i; });
+    var nombres = Object.keys(CIE.med).filter(function(m){
+      return ps.some(function(p){ return CIE.med[m][p]; });
+    });
+    // 1) cada medico del cierre toma los valores del cierre
+    nombres.forEach(function(m){
+      var c = 0, s = 0, x = 0, sM = 0;
+      ps.forEach(function(p){
+        var d = CIE.med[m][p]; if(!d) return;
+        c += d.c; s += d.s; x += d.x;
+        if(p === 'S2') sM += d.s;                 // la sede Mutual es la Sede 2
+      });
+      var i = idx[m];
+      if(i == null){
+        datos.push({m:m, cir:c, cirM:0, sed:s, sedM:sM, man:x, nor:0, st:0,
+                    d:{cir:[], sede:[], sinTarifa:{}}, _cie:true});
+        return;
+      }
+      var y = datos[i];
+      var propM = (y.cir > 0) ? ((y.cirM||0) / y.cir) : 0;
+      y.cir = c; y.sed = s; y.man = x;
+      y.cirM = Math.round(c * propM);
+      y.sedM = sM;
+      y._cie = true;
+    });
+    // 2) el medico que no esta en el cierre no existe en el mes cerrado
+    datos.forEach(function(y){
+      if(y._cie) return;
+      y.cir = 0; y.cirM = 0; y.sed = 0; y.sedM = 0; y.man = 0; y.st = 0; y._cie = true;
+    });
+    for(var i = datos.length - 1; i >= 0; i--){
+      if(!(datos[i].cir || datos[i].sed || datos[i].man)) datos.splice(i, 1);
+    }
+    datos.sort(function(a,b){ return String(a.m).localeCompare(String(b.m)); });
+  };
+  /* El sello: que se vea de donde salen las cifras */
+  CIE.sello = function(){
+    var caja = document.querySelector('.kpis');
+    if(!caja) return;
+    var d = document.getElementById('cieSello');
+    if(!CIE.hay){ if(d) d.remove(); return; }
+    if(!d){
+      d = document.createElement('div');
+      d.id = 'cieSello';
+      d.style.cssText = 'margin:0 0 10px;padding:9px 12px;border-radius:10px;font-size:13px;line-height:1.45;' +
+        'border:1px solid #c7d2e5;background:#f3f7fd;color:#24364f';
+      caja.parentNode.insertBefore(d, caja);
+    }
+    var m = function(v){ try{ return money(Math.round(v||0)); }catch(e){ return String(v); } };
+    var t = (CIE.tot||{});
+    var gran = (t.S1||0) + (t.S2||0) + (t.CIR||0);
+    var quienes = PARTES.map(function(p){
+      var q = (CIE.quien||{})[p] || {};
+      return NOMP[p] + ' ' + m(t[p]) + (q.por ? ' · ' + q.por : '');
+    }).join(' &nbsp;|&nbsp; ');
+    var admin = false; try{ admin = (typeof cgEsAdmin === 'function') ? !!cgEsAdmin() : false; }catch(e){}
+    if(CIE.verRecalculo){
+      d.innerHTML = '<b>⚠ Está viendo el recálculo de hoy, no el cierre.</b> El mes está cerrado: lo oficial es ' +
+        m(gran) + '. <a href="#" id="cieVolver" style="color:#1d4ed8">Volver a las cifras del cierre</a>';
+    } else {
+      d.innerHTML = '<b>🔒 Mes cerrado · estas son las cifras de los cierres enviados, no se recalcula.</b><br>' +
+        quienes + ' &nbsp;|&nbsp; <b>Total ' + m(gran) + '</b>' +
+        (admin ? ' &nbsp;·&nbsp; <a href="#" id="cieVer" style="color:#1d4ed8">ver el recálculo</a>' : '');
+    }
+    var a1 = document.getElementById('cieVer');
+    if(a1) a1.onclick = function(e){ e.preventDefault(); CIE.verRecalculo = true; try{ render(); }catch(err){} };
+    var a2 = document.getElementById('cieVolver');
+    if(a2) a2.onclick = function(e){ e.preventDefault(); CIE.verRecalculo = false; try{ render(); }catch(err){} };
+  };
+  /* Engancha render: carga el cierre del periodo y vuelve a pintar una vez */
+  var _ren = window.render;
+  if(typeof _ren === 'function'){
+    window.render = function(){
+      var per = perAhora();
+      var r = _ren.apply(this, arguments);
+      try{ CIE.sello(); }catch(e){}
+      if(per && per !== CIE.per && !CIE.cargando && !CIE.pedido[per]){
+        CIE.pedido[per] = 1;
+        CIE.cargar(per).then(function(hay){
+          if(hay){ try{ window.render(); }catch(e){} }
+        });
+      }
+      return r;
+    };
+  }
+})();
 </script>
 </body>
 </html>
