@@ -18288,17 +18288,18 @@ function pdfFilasMedico(h){
   const tipoDe = g => g.uf==='Quirófano' ? 'Quirófano' : g.uf==='Anestesia' ? 'Anestesia' : 'Consulta / apoyo';
   const esCierre = g => g.uf==='Mes completo' || g.uf==='Anestesia' || /jornada|rubro|paquete|coordinaci/i.test(g.servicio||'');
   const ufCie=(tx,esC)=>{ tx=String(tx||'').toUpperCase();
-    if(/PACIENTE EXTRA/.test(tx)) return 'PACIENTE EXTRA';
-    if(/JORNADA|TURNO|DISPONIBILIDAD|PREANEST|COORDINACI/.test(tx)) return 'JORNADA';
-    if(esC || /LENTE|PAQUETE|QUIROF|CIRUG|BONO|TORIC|PANOPTIX|VIVITY|EDOF/.test(tx)) return 'CIRUGIA';
+    if(/PREANEST/.test(tx)) return 'CONSULTA EXTERNA';
+    if(/PACIENTE\(?S?\)? ?EXTRA|ANESTESIA|DISPONIBILIDAD|FESTIVO/.test(tx)) return 'CIRUGIA';
+    if(/JORNADA|TURNO|COORDINACI/.test(tx)) return /CONSULTA/.test(tx)?'CONSULTA EXTERNA':'CIRUGIA';
+    if(esC || /LENTE|PAQUETE|QUIROF|CIRUG|BONO|TORIC|PANOPTIX|VIVITY|EDOF|INTRAVITRE/.test(tx)) return 'CIRUGIA';
     return 'CONSULTA EXTERNA'; };
-  const RE_QUIR=/QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|PRK|LASIK|LASEK|LENTE |CRISTALINO|CLAREON|EYECRYL|PANOPTIX|VIVITY/i;
+  const RE_QUIR=/QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|PRK|LASIK|LASEK|LENTE |CRISTALINO|CLAREON|EYECRYL|PANOPTIX|VIVITY|INTRAVITRE/i;
   for(const bl of [d.cir, d.sede]) for(const g of Object.values(bl)){
     const esCirB = (bl===d.cir);
     const enBasico = /CUBIERT[AO] POR (EL )?(RUBRO|JORNADA|BASICO)|PAQUETE MENSUAL/i.test(g.servicio||'');
     if(!enBasico && esCierre(g)){
       const lst = (g.recs||[]).flatMap(r=>r.lista||[]);
-      if(lst.length){ for(const x of lst) filas.push({f:x.f||'', emp:x.cir||'', tipo:'Anestesia', ufx:(/paciente extra/i.test(x.tipo||'')?'PACIENTE EXTRA':'JORNADA'), pac:x.tipo+(x.pac?': '+x.pac:''), det:x.fr? 'Turno '+x.fr : '', v:x.v, txt:null}); continue; }
+      if(lst.length){ for(const x of lst) filas.push({f:x.f||'', emp:x.cir||'', tipo:'Anestesia', ufx:'CIRUGIA', pac:x.tipo+(x.pac?': '+x.pac:''), det:x.fr? 'Turno '+x.fr : '', v:x.v, txt:null}); continue; }
       if(g.pago>0){ const _tx=(g.recs&&g.recs[0]&&g.recs[0].detalle)||g.servicio; cierres.push({txt:_tx, v:g.pago, uf:ufCie(_tx,esCirB), mut:((g.pagoM||0)>0)||!!(g.acuerdo&&g.acuerdo.mutual)}); } continue; }
     if(!(g.pago>0) && !enBasico) continue;
     const jor = /JORNADA/i.test(g.servicio||'');
