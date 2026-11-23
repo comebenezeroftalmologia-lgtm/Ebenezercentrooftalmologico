@@ -537,10 +537,15 @@ function filasDe(med){ return (D.medicos[med]||{f:[]}).f; }
 /* LA CLASIFICACIÓN ES UNA SOLA: la cascada del liquidador (ficha), usada por el pivote,
    el Excel por médico y el individual. Lentes → Cirugía por decisión del administrador. */
 window.ufFicha=function(r){
-  /* REGLA DEL ADMINISTRADOR (23 nov): cada servicio queda en la unidad donde se
-     prestó (el rótulo del informe). SOLO refractivas y lentes pasan a CIRUGIA. */
+  /* REGLA DEL ADMINISTRADOR: manda la unidad donde se prestó (informe), con SUS excepciones:
+     refractivas y lentes → CIRUGIA · intravítreos → CIRUGIA ·
+     jornada de anestesia / paciente extra / festivo → CIRUGIA · preanestésicas → CONSULTA EXTERNA. */
   var uf=String(r[3]||'').trim(), sv=String(r[5]||'').toUpperCase();
+  if(/PREANEST/.test(sv)) return 'CONSULTA EXTERNA';
+  if(/INTRAVITRE/.test(sv)) return 'CIRUGIA';
   if(/QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|PRK|LASIK|LASEK|LENTE |LENTE$|CRISTALINO|CLAREON|EYECRYL|PANOPTIX|VIVITY/.test(sv)) return 'CIRUGIA';
+  if(!/CONSULTA/.test(sv) && ((/ANESTESIA/.test(sv) && /JORNADA|TURNO/.test(sv)) || /PACIENTE\(?S?\)? ?EXTRA/.test(sv) || uf==='PACIENTE EXTRA')) return 'CIRUGIA';
+  if(uf==='JORNADA') return /CONSULTA/.test(sv) ? 'CONSULTA EXTERNA' : 'CIRUGIA';
   return uf || (String(r[0])==='Cirugía'?'CIRUGIA':'CONSULTA EXTERNA');
 };
 
@@ -925,7 +930,10 @@ document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,
           var grp=((sede==='Sede 2')||(sede!=='Sede Principal'&&esMut))?GR[2]:(esEco?GR[1]:GR[0]);
           var nom=tt(mn), fec=String(r[1]||''), pac=String(r[4]||''), ser=String(r[5]||'').slice(0,80);
           /* jornadas de anestesia del quirófano: su propio renglón, no PYP */
-          if((uf==='JORNADA'||uf==='PACIENTE EXTRA') && grp===GR[0]) grp=GR[3];
+          var SVt=String(r[5]||'').toUpperCase(), UFR=String(r[3]||'').trim();
+          if(grp===GR[0] && !/PREANEST|CONSULTA/.test(SVt) &&
+             ( (UFR==='JORNADA' && !/CONSULTA/.test(SVt)) || UFR==='PACIENTE EXTRA' ||
+               /ANESTESIA|FESTIVO|PACIENTE\(?S?\)? ?EXTRA/.test(SVt) )) grp=GR[3];
           medS[nom]=1; ufS[uf]=1; fecS[fec]=1; pacS[pac]=1; serS[ser]=1;
           regs.push([nom,grp,uf,fec,pac,ser,v]);
         });
