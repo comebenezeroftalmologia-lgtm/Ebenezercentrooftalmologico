@@ -18298,7 +18298,7 @@ function pdfFilasMedico(h){
     if(!enBasico && esCierre(g)){
       const lst = (g.recs||[]).flatMap(r=>r.lista||[]);
       if(lst.length){ for(const x of lst) filas.push({f:x.f||'', emp:x.cir||'', tipo:'Anestesia', pac:x.tipo+(x.pac?': '+x.pac:''), det:x.fr? 'Turno '+x.fr : '', v:x.v, txt:null}); continue; }
-      if(g.pago>0){ const _tx=(g.recs&&g.recs[0]&&g.recs[0].detalle)||g.servicio; cierres.push({txt:_tx, v:g.pago, uf:ufCie(_tx,esCirB)}); } continue; }
+      if(g.pago>0){ const _tx=(g.recs&&g.recs[0]&&g.recs[0].detalle)||g.servicio; cierres.push({txt:_tx, v:g.pago, uf:ufCie(_tx,esCirB), mut:((g.pagoM||0)>0)||!!(g.acuerdo&&g.acuerdo.mutual)}); } continue; }
     if(!(g.pago>0) && !enBasico) continue;
     const jor = /JORNADA/i.test(g.servicio||'');
     for(const r of (g.recs||[])){
@@ -20082,7 +20082,7 @@ try{
         .map(function(r){ return [sede, String(r.f||""), String(r.emp||""), String(r.tipo||""),
                                   String(r.pac||""), String(r.det||""), Math.round(r.v||0)]; });
       (R.cierres||[]).forEach(function(c){
-        f.push([sede, "", "", String(c.uf||""), "", String(c.txt||"Ajuste"), Math.round(c.v||0)]);
+        f.push([sede, "", (c.mut?"MUTUAL SER":""), String(c.uf||""), "", String(c.txt||"Ajuste"), Math.round(c.v||0)]);
       });
       if(!t && !f.length) return;
       med[x.m] = {t:t, f:f};
