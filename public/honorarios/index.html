@@ -534,6 +534,20 @@ return zipStore(F);}
 /* ---------- datos por médico ---------- */
 function filasDe(med){ return (D.medicos[med]||{f:[]}).f; }
 
+/* LA CLASIFICACIÓN ES UNA SOLA: la cascada del liquidador (ficha), usada por el pivote,
+   el Excel por médico y el individual. Lentes → Cirugía por decisión del administrador. */
+window.ufFicha=function(r){
+  var uf=String(r[3]||'').trim(), sv=String(r[5]||'').toUpperCase();
+  if(uf==='JORNADA'||uf==='PACIENTE EXTRA'||uf==='CONSULTA PREANESTÉSICA'||/^QUIROFANO/.test(uf)) return uf;
+  if(/^ACUERDO\b|\bRUBRO\b|PAQUETE MENSUAL|\bJORNADA|BONIFICACION|^AJUSTE|^MENOS\b|COORDINACION|DISPONIBILIDAD/.test(sv))
+    return uf || (String(r[0])==='Cirugía'?'CIRUGIA':'CONSULTA EXTERNA');
+  if(/LENTE|CRISTALINO|CLAREON|EYECRYL|TORIC|PANOPTIX|VIVITY/.test(sv)) return 'CIRUGIA';
+  if(/CONSULTA|VALORACION/.test(sv)) return 'CONSULTA EXTERNA';
+  if(/TOMOGRAF|OCT|TOPOGRAF|CAMPOS? VISUAL|CAMPIMETR|ECOGRAF|BIOMETR|ANGIOGRAF|FOTOGRAF|PAQUIMETR|MICROSCOP|GONIO|LECTURA|TONOGRAF|TONOMETR|ESTUDIO|PRUEBA|POTENCIAL|ELECTRO|SIRIUS|PENTACAM|RETINOGRAF/.test(sv)) return /APOYO/.test(uf)? uf : 'APOYO DIAGNOSTICO';
+  if(/CIRUG|FACO|LIO|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|INYECCION|IMPLANTE|ABLACION|REPARACION|DRENAJE|BIOPSIA|CRIOTERAPIA|QUERATO|REFRACTIV|PRK|LASIK|LASEK/.test(sv)) return 'CIRUGIA';
+  return uf || (String(r[0])==='Cirugía'?'CIRUGIA':'CONSULTA EXTERNA');
+};
+
 /* Hoja por médico al estilo del formato antiguo (una hoja = un médico):
    N · Fecha · Sede · Empresa · Tipo de servicio · Paciente · Servicio · Honorario,
    con VALOR A FACTURAR arriba, subtotal por sede y total al final. */
@@ -547,7 +561,7 @@ function honHojaMedico(med){
   filas.push([{b:'N'},{b:'Fecha'},{b:'Sede'},{b:'Empresa'},{b:'Tipo de servicio'},{b:'Paciente'},{b:'Servicio'},{b:'Honorario'}]);
   var n=0;
   (d.f||[]).slice().sort(function(x,y){ return String(x[1]).localeCompare(String(y[1])) || String(x[4]).localeCompare(String(y[4])); }).forEach(function(r){ n++;
-    filas.push([String(n), r[1], r[0], r[2], r[3], r[4], r[5], Math.round(r[6]||0)]); });
+    filas.push([String(n), r[1], r[0], r[2], window.ufFicha(r), r[4], r[5], Math.round(r[6]||0)]); });
   filas.push([]);
   Object.keys(d.s||{}).forEach(function(sd){
     filas.push(['','','','','','',{b:'Subtotal '+sd},{bm:Math.round(d.s[sd]||0)}]); });
@@ -910,12 +924,10 @@ document.addEventListener('click', function(){ setTimeout(ponerBotonesGenerales,
       Object.keys(D.medicos).forEach(function(mn){
         (D.medicos[mn].f||[]).forEach(function(r){
           var v=Math.round(r[6]||0); if(!v) return;
-          var sede=String(r[0]||''), emp=String(r[2]||'—'), uf=String(r[3]||'').trim()||(String(r[0])==='Cirugía'?'CIRUGIA':'CONSULTA EXTERNA');
+          var sede=String(r[0]||''), emp=String(r[2]||'—'), uf=window.ufFicha(r);
           var esMut=/MUTUAL/i.test(emp), esEco=/ECOPETROL/i.test(emp);
           var grp=((sede==='Sede 2')||(sede!=='Sede Principal'&&esMut))?GR[2]:(esEco?GR[1]:GR[0]);
           var nom=tt(mn), fec=String(r[1]||''), pac=String(r[4]||''), ser=String(r[5]||'').slice(0,80);
-          /* la columna la manda la FICHA, no el rótulo del informe: lo quirúrgico va a CIRUGIA */
-          if(/APOYO/i.test(uf) && /CIRUG|FACO|LIO\b|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|TERAPIA|INYECCION|BIOPSIA|SUTURA|RETIRO|APLICACION|PROCEDIMIENTO|LENTE|CRISTALINO|CLAREON|EYECRYL|QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|PRK|LASIK|LASEK/i.test(String(r[5]||''))) uf='CIRUGIA';
           /* jornadas de anestesia del quirófano: su propio renglón, no PYP */
           if((uf==='JORNADA'||uf==='PACIENTE EXTRA') && grp===GR[0]) grp=GR[3];
           medS[nom]=1; ufS[uf]=1; fecS[fec]=1; pacS[pac]=1; serS[ser]=1;
