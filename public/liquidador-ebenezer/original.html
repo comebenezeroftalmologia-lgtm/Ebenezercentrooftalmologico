@@ -19909,6 +19909,7 @@ try{
       var per = (typeof nubePeriodoActual==="function") ? nubePeriodoActual() : "";
       var C = (window.NUBE && NUBE.leerCierres) ? await NUBE.leerCierres(per) : null;
       var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){ return C[k]; }) : []);
+      if(window.cieUnoPorParte) arr = cieUnoPorParte(arr);
       arr.forEach(function(c){
         var col = MAPA[String(c.parte||"")]; if(!col) return;
         hay = true;
@@ -21856,6 +21857,25 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
     med:null, tot:null, quien:null, pedido:{}
   };
   CIE.activo = function(){ return !!(CIE.hay && !CIE.verRecalculo); };
+  /* Un solo cierre por parte: si la misma sede se envio dos veces (p.ej. se
+     corrigio y se volvio a enviar, o la envio otra persona), manda el MAS
+     RECIENTE y los enviados por encima de los guardados sin enviar. Sin esto
+     el resumen sumaba la misma sede dos veces. */
+  window.cieUnoPorParte = function(arr){
+    var mejor = {};
+    (arr||[]).forEach(function(c){
+      var p = String((c&&c.parte)||''); if(!p) return;
+      var t = 0;
+      try{
+        var f = c.enviadoEl || (c.actualizado && (c.actualizado.seconds ? c.actualizado.seconds*1000 : c.actualizado)) || 0;
+        t = +new Date(f) || +f || 0;
+      }catch(e){ t = 0; }
+      var sc = (c.enviado ? 1e15 : 0) + t;
+      if(!mejor[p] || sc > mejor[p].sc) mejor[p] = {sc:sc, c:c};
+    });
+    return Object.keys(mejor).map(function(p){ return mejor[p].c; });
+  };
+
   function perAhora(){
     try{ return (typeof nubePeriodoActual==='function') ? (nubePeriodoActual()||'') : ''; }catch(e){ return ''; }
   }
@@ -21901,6 +21921,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
       if(window.NUBE && NUBE.leerCierres){
         var C = await NUBE.leerCierres(per);
         var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){ return C[k]; }) : []);
+        if(window.cieUnoPorParte) arr = cieUnoPorParte(arr);
         paq = armar(arr);
         if(paq) guardarCache(per, paq);
       }
