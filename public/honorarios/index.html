@@ -537,14 +537,10 @@ function filasDe(med){ return (D.medicos[med]||{f:[]}).f; }
 /* LA CLASIFICACIÓN ES UNA SOLA: la cascada del liquidador (ficha), usada por el pivote,
    el Excel por médico y el individual. Lentes → Cirugía por decisión del administrador. */
 window.ufFicha=function(r){
+  /* REGLA DEL ADMINISTRADOR (23 nov): cada servicio queda en la unidad donde se
+     prestó (el rótulo del informe). SOLO refractivas y lentes pasan a CIRUGIA. */
   var uf=String(r[3]||'').trim(), sv=String(r[5]||'').toUpperCase();
-  if(uf==='JORNADA'||uf==='PACIENTE EXTRA'||uf==='CONSULTA PREANESTÉSICA'||/^QUIROFANO/.test(uf)) return uf;
-  if(/^ACUERDO\b|\bRUBRO\b|PAQUETE MENSUAL|\bJORNADA|BONIFICACION|^AJUSTE|^MENOS\b|COORDINACION|DISPONIBILIDAD/.test(sv))
-    return uf || (String(r[0])==='Cirugía'?'CIRUGIA':'CONSULTA EXTERNA');
-  if(/LENTE|CRISTALINO|CLAREON|EYECRYL|TORIC|PANOPTIX|VIVITY/.test(sv)) return 'CIRUGIA';
-  if(/CONSULTA|VALORACION/.test(sv)) return 'CONSULTA EXTERNA';
-  if(/TOMOGRAF|OCT|TOPOGRAF|CAMPOS? VISUAL|CAMPIMETR|ECOGRAF|BIOMETR|ANGIOGRAF|FOTOGRAF|PAQUIMETR|MICROSCOP|GONIO|LECTURA|TONOGRAF|TONOMETR|ESTUDIO|PRUEBA|POTENCIAL|ELECTRO|SIRIUS|PENTACAM|RETINOGRAF/.test(sv)) return /APOYO/.test(uf)? uf : 'APOYO DIAGNOSTICO';
-  if(/CIRUG|FACO|LIO|VITRECT|PTERIG|BLEFARO|CAPSULOTOM|IRIDOTOM|EXTRACCION|RESECCION|SONDEO|PARACENTESIS|ESTRABISMO|TRABECUL|FOTOCOAGULA|LASER|INTRAVITRE|CHALAZION|ENUCLEA|PLASTIA|INYECCION|IMPLANTE|ABLACION|REPARACION|DRENAJE|BIOPSIA|CRIOTERAPIA|QUERATO|REFRACTIV|PRK|LASIK|LASEK/.test(sv)) return 'CIRUGIA';
+  if(/QUERATECTOMIA|QUERATOMILEUSIS|REFRACTIV|PRK|LASIK|LASEK|LENTE |LENTE$|CRISTALINO|CLAREON|EYECRYL|PANOPTIX|VIVITY/.test(sv)) return 'CIRUGIA';
   return uf || (String(r[0])==='Cirugía'?'CIRUGIA':'CONSULTA EXTERNA');
 };
 
