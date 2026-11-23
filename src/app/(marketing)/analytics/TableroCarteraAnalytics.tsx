@@ -8,8 +8,10 @@ import {
   claveFacturaNorm,
   extraerFacturasFcoe,
   homologarEmpresaYOrigen,
+  homologarPersonaFacturacion,
   clasificarAtencionYSede,
   limpiarNombrePersona,
+  resolverNotaCreditoCondicional,
 } from "@/lib/carteraCruces";
 import {
   CIERRES_SISMA_2026_VERIFICADOS,
@@ -362,17 +364,9 @@ const formatearNombreCortoAnillo = (empCorta: string): string => {
   return mapa[empCorta] || empCorta.slice(0, 14);
 };
 
-const normalizarResponsableReal = (respRaw: string | undefined, empresaRaw: string | undefined): string => {
-  const r = String(respRaw || "").toUpperCase().trim();
-  if (r && r !== "SIN ASIGNAR" && r !== "POR ASIGNAR" && r !== "-") {
-    return r;
-  }
-  const emp = String(empresaRaw || "").toUpperCase();
-  if (emp.includes("SURA")) return "MARIA ALEJANDRA";
-  if (emp.includes("MUTUAL")) return "ERIKA ALZATE";
-  if (emp.includes("COLSANITAS") || emp.includes("SANITAS")) return "MARIA PAOLA";
-  if (emp.includes("MEDPLUS") || emp.includes("ALLIANZ")) return "MARIA JOSE";
-  return "YULEIBIS";
+const normalizarResponsableReal = (respRaw: string | undefined, _empresaRaw?: string | undefined): string => {
+  void _empresaRaw;
+  return homologarPersonaFacturacion(respRaw);
 };
 
 const STORAGE_KEY = "ebenezer_sisma_back_mesa_v5";
@@ -414,10 +408,22 @@ export default function TableroCarteraAnalytics() {
     }))
   );
   const [glosas, setGlosas] = useState<GlosaRow[]>(() =>
-    (carteraInitialData.glosas as GlosaRow[]).map((r) => ({
-      ...r,
-      facturador: normalizarResponsableReal(r.facturador, r.empresa),
-    }))
+    (carteraInitialData.glosas as GlosaRow[]).map((r) => {
+      const pUnif = homologarPersonaFacturacion(
+        r.responsableRespuesta || r.responsableAceptacion || r.facturador
+      );
+      return {
+        ...r,
+        facturador: pUnif,
+        responsableAceptacion: pUnif,
+        responsableRespuesta: pUnif,
+        notaCredito: resolverNotaCreditoCondicional(
+          r.notaCredito,
+          r.valorAceptado,
+          r.estado || r.subtabla
+        ),
+      };
+    })
   );
   const [pendientes, setPendientes] = useState<PendienteRow[]>(() =>
     (carteraInitialData.pendientes as PendienteRow[]).map((r) => ({
@@ -797,10 +803,22 @@ export default function TableroCarteraAnalytics() {
       }
       if (Array.isArray(json.glosas) && json.glosas.length > 0) {
         setGlosas(
-          json.glosas.map((r: GlosaRow) => ({
-            ...r,
-            facturador: normalizarResponsableReal(r.facturador, r.empresa),
-          }))
+          json.glosas.map((r: GlosaRow) => {
+            const pUnif = homologarPersonaFacturacion(
+              r.responsableRespuesta || r.responsableAceptacion || r.facturador
+            );
+            return {
+              ...r,
+              facturador: pUnif,
+              responsableAceptacion: pUnif,
+              responsableRespuesta: pUnif,
+              notaCredito: resolverNotaCreditoCondicional(
+                r.notaCredito,
+                r.valorAceptado,
+                r.estado || r.subtabla
+              ),
+            };
+          })
         );
       }
       if (Array.isArray(json.pendientes) && json.pendientes.length > 0) {
@@ -4860,22 +4878,14 @@ export default function TableroCarteraAnalytics() {
         "Fecha Radicación",
         "Fecha Notificación Glosa",
         "Año",
-        "Sede",
-        "Consulta o Cirugía",
-        "Empresa Homologada",
+        "ERP Unificada",
         "NIT",
         "De dónde es (Convenio / Régimen)",
-        "Paciente (Cruce)",
-        "Documento Paciente",
-        "Médico / Especialista (Cruce)",
-        "CUPS",
-        "Facturador",
-        "Responsable Respuesta Glosa",
+        "Responsable / Facturador",
         "Valor Facturado",
         "Valor Glosado",
         "Valor Aceptado",
-        "Causa Normativa (FA-CO)",
-        "Código Causal",
+        "Causal (TA/AU/SO/DE/CO/FA)",
         "Motivo de Glosa",
         "Nota Crédito",
         "Estado",
@@ -4883,31 +4893,30 @@ export default function TableroCarteraAnalytics() {
       ];
       rows = glosasFiltradas.map((r) => {
         const cr = cruzarFilaMaestra({ ...r, motivoTexto: `${r.motivoGlosa} ${r.observacionInterna}` });
-        const facReal = normalizarResponsableReal(r.facturador, r.empresa);
+        const persUnif = homologarPersonaFacturacion(
+          r.responsableRespuesta || r.responsableAceptacion || r.facturador
+        );
+        const ncFinal = resolverNotaCreditoCondicional(
+          r.notaCredito,
+          r.valorAceptado,
+          r.estado || r.subtabla
+        );
         return [
           r.factura,
           r.fechaFactura || cr.fechaFacturaSisma,
           r.fechaRadicacion || cr.fechaRadicacionSisma,
           r.fechaNotificacionGlosa || "",
           r.anio,
-          cr.sede,
-          cr.tipoAtencion,
           cr.empresaHomologada,
           cr.nit,
           cr.deDondeEs,
-          cr.pacienteNombre || "Sin detalle clínico en factura",
-          cr.pacienteDoc,
-          cr.medicoNombre,
-          cr.cups,
-          facReal,
-          r.responsableAceptacion || r.responsableRespuesta || facReal,
+          persUnif,
           r.valorFacturado || r.valorFactura || r.valorRadicado,
           r.valorGlosado,
           r.valorAceptado ?? "",
-          causaNormativaDe(r.motivoCodigo),
-          r.motivoCodigo || "",
+          causaNormativaDe(r.motivoCodigo, r.tipoGlosa),
           r.motivoGlosa,
-          r.notaCredito,
+          ncFinal,
           r.estado || r.subtabla,
           r.observacionInterna,
         ];
@@ -7972,12 +7981,12 @@ export default function TableroCarteraAnalytics() {
         const cantSinReemplazo = Math.max(0, anuladasFiltradas.length - cantReemplazadas);
 
         const conNC = glosasDash.filter((g) => {
-          const nc = (g.notaCredito || "").trim().toUpperCase();
-          return Boolean(nc && nc !== "N/A" && nc !== "NA" && nc !== "NO APLICA");
+          const nc = resolverNotaCreditoCondicional(g.notaCredito, g.valorAceptado, g.estado || g.subtabla);
+          return Boolean(nc && nc !== "N/A");
         });
         const conNA = glosasDash.filter((g) => {
-          const nc = (g.notaCredito || "").trim().toUpperCase();
-          return nc === "N/A" || nc === "NA" || nc === "NO APLICA";
+          const nc = resolverNotaCreditoCondicional(g.notaCredito, g.valorAceptado, g.estado || g.subtabla);
+          return nc === "N/A";
         });
         const sinDiligenciarNC = Math.max(0, glosasDash.length - conNC.length - conNA.length);
 
@@ -8159,8 +8168,9 @@ export default function TableroCarteraAnalytics() {
         > = {};
         for (const g of glosasDash) {
           const r =
-            (g.responsableRespuesta || g.responsableAceptacion || "").trim().toUpperCase() ||
-            "SIN ASIGNAR EN WORKCENTER";
+            homologarPersonaFacturacion(
+              g.responsableRespuesta || g.responsableAceptacion || g.facturador
+            ) || "SIN RESPONSABLE EN FUENTE";
           const m = clasificarMontosGlosa(g);
           if (!porResp[r]) {
             porResp[r] = { monto: 0, defendido: 0, aceptado: 0, pendiente: 0, glosas: 0 };
@@ -8987,140 +8997,7 @@ export default function TableroCarteraAnalytics() {
               </div>
             </div>
 
-            {/* CRUCE DE GLOSAS Y DEFENSA POR SEDE Y POR TIPO DE ATENCIÓN (CONSULTA VS CIRUGÍA) */}
-            {(() => {
-              const acumSede: Record<string, { label: string; glosado: number; defendido: number; cantidad: number }> = {
-                SEDE_1: { label: "Sede 1 · Principal (PyP, Prepagadas, EPS, Particular)", glosado: 0, defendido: 0, cantidad: 0 },
-                SEDE_2: { label: "Sede 2 · Consultorios y Convenio Mutual Ser", glosado: 0, defendido: 0, cantidad: 0 },
-              };
-              const acumAtencion: Record<string, { label: string; glosado: number; defendido: number; cantidad: number; color: string }> = {
-                CONSULTA: { label: "Consulta", glosado: 0, defendido: 0, cantidad: 0, color: "#0284C7" },
-                CIRUGIA: { label: "Cirugía (Quirófano)", glosado: 0, defendido: 0, cantidad: 0, color: "#7C3AED" },
-                AYUDA_DX: { label: "Ayuda Dx / Procedimiento", glosado: 0, defendido: 0, cantidad: 0, color: "#D97706" },
-                SIN_DETALLE: { label: "Factura global / Sin CUPS en fuente", glosado: 0, defendido: 0, cantidad: 0, color: "#64748B" },
-              };
-              for (const g of glosasDash) {
-                const m = clasificarMontosGlosa(g);
-                const cr = cruzarFilaMaestra({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
-                const sg = cr.sedeGrupo === "SEDE_2" ? "SEDE_2" : "SEDE_1";
-                acumSede[sg].glosado += m.glosado;
-                acumSede[sg].defendido += m.defendido;
-                acumSede[sg].cantidad += 1;
-
-                const tg = acumAtencion[cr.tipoGrupo] ? cr.tipoGrupo : "SIN_DETALLE";
-                acumAtencion[tg].glosado += m.glosado;
-                acumAtencion[tg].defendido += m.defendido;
-                acumAtencion[tg].cantidad += 1;
-              }
-
-              return (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
-                  <div className="p-4 rounded-xl border bg-white space-y-2.5" style={{ borderColor: "#E2ECF8" }}>
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-[13px] font-bold text-[#0E245E]">
-                        Glosa y Defensa por Sede (Clic para filtrar)
-                      </h4>
-                      {filtroSedeTop !== "TODAS" && (
-                        <button
-                          type="button"
-                          onClick={() => setFiltroSedeTop("TODAS")}
-                          className="text-[11px] font-bold text-[#1D58D8] cursor-pointer"
-                        >
-                          Ver ambas sedes
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {(["SEDE_1", "SEDE_2"] as const).map((sk) => {
-                        const d = acumSede[sk];
-                        const pct = totGlosado > 0 ? Math.round((d.glosado / totGlosado) * 100) : 0;
-                        const act = filtroSedeTop === sk;
-                        return (
-                          <button
-                            key={sk}
-                            type="button"
-                            onClick={() => setFiltroSedeTop(act ? "TODAS" : sk)}
-                            className="p-3 rounded-xl border text-left transition cursor-pointer"
-                            style={{
-                              borderColor: act ? "#1D58D8" : "#E2ECF8",
-                              backgroundColor: act ? "#EFF6FF" : "#F8FAFC",
-                            }}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] font-extrabold text-[#0E245E]">
-                                {sk === "SEDE_1" ? "Sede 1 · Principal" : "Sede 2 · Consultorios"}
-                              </span>
-                              <span className="text-[11px] font-mono font-bold text-[#1D58D8]">{pct}%</span>
-                            </div>
-                            <div className="mt-1 text-sm font-mono font-extrabold text-[#0E245E]">
-                              {formatCOP(d.glosado)}
-                            </div>
-                            <div className="mt-0.5 text-[10.5px] font-mono text-[#047857] font-semibold">
-                              Defendido: {formatCOP(d.defendido)} · {d.cantidad} glosas
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-xl border bg-white space-y-2.5" style={{ borderColor: "#E2ECF8" }}>
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-[13px] font-bold text-[#0E245E]">
-                        Glosa por Atención: Consulta vs. Cirugía
-                      </h4>
-                      {filtroAtencionTop !== "TODAS" && (
-                        <button
-                          type="button"
-                          onClick={() => setFiltroAtencionTop("TODAS")}
-                          className="text-[11px] font-bold text-[#1D58D8] cursor-pointer"
-                        >
-                          Ver todas
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {(["CONSULTA", "CIRUGIA", "AYUDA_DX", "SIN_DETALLE"] as const).map((tk) => {
-                        const d = acumAtencion[tk];
-                        const pct = totGlosado > 0 ? Math.round((d.glosado / totGlosado) * 100) : 0;
-                        const filtrable = tk !== "SIN_DETALLE";
-                        const act = tk !== "SIN_DETALLE" && filtroAtencionTop === tk;
-                        return (
-                          <button
-                            key={tk}
-                            type="button"
-                            disabled={!filtrable}
-                            onClick={() => {
-                              if (tk !== "SIN_DETALLE") {
-                                setFiltroAtencionTop(act ? "TODAS" : tk);
-                              }
-                            }}
-                            className={`p-2.5 rounded-xl border text-left transition ${filtrable ? "cursor-pointer hover:bg-slate-50" : "opacity-90"}`}
-                            style={{
-                              borderColor: act ? d.color : "#E2ECF8",
-                              backgroundColor: act ? "#EFF6FF" : "#F8FAFC",
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10.5px] font-extrabold" style={{ color: d.color }}>
-                                {tk === "CONSULTA" ? "Consulta" : tk === "CIRUGIA" ? "Cirugía" : tk === "AYUDA_DX" ? "Ayuda Dx" : "Sin CUPS"}
-                              </span>
-                              <span className="text-[10px] font-mono font-bold text-[#64748B]">{pct}%</span>
-                            </div>
-                            <div className="mt-1 text-xs font-mono font-extrabold text-[#0E245E]">
-                              {formatEscalaEjeY(d.glosado)}
-                            </div>
-                            <div className="mt-0.5 text-[10px] text-[#047857] font-mono">
-                              Def: {formatEscalaEjeY(d.defendido)} ({d.cantidad})
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Sede y Consulta/Cirugía retirados de Glosas por solicitud expresa */}
           </div>
         );
       })()}

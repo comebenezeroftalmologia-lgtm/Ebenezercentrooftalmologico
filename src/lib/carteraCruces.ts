@@ -673,10 +673,9 @@ export function causaNormativa6De(motivoCodigo?: string | null, tipoGlosa?: stri
 export function extraerCodigoCausalExplicito(texto?: string | null): string {
   const s = limpiarTextoUtf8(texto).toUpperCase();
   if (!s) return "";
-  const m = /^\b(TA|AU|SO|DE|CO|FA)(\d{2,4})?\b/.exec(s);
+  const m = /^(?:CAUSAL\s*[:.\-]?\s*|[\[(])?(TA|AU|SO|DE|CO|FA)(\d{2,4})?\b/.exec(s);
   if (!m) return "";
-  const sub = m[2] ? m[2].slice(0, 2) : "";
-  return sub ? `${m[1]}${sub}` : m[1];
+  return m[1];
 }
 
 /** Unifica nombres de ERP y anexa el NIT contable real verificado en SISMA (jamás inventa NITs). */
@@ -707,17 +706,70 @@ export function homologarPersonaFacturacion(raw?: string | null): string {
   const base = limpiarNombrePersona(raw);
   if (!base) return "";
   const up = sinAcentosUpper(base).replace(/\s+/g, " ").trim();
-  if (!up || up === "SIN ASIGNAR EN WORKCENTER") return "";
-  if (up === "ERIKA" || up === "ERIKA ALZATE") return "ERIKA ALZATE";
+  if (
+    !up ||
+    up === "ADMINISTRADOR" ||
+    up === "ADMIN" ||
+    up === "SIN ASIGNAR" ||
+    up === "SIN ASIGNAR EN WORKCENTER" ||
+    up === "SIN FACTURADOR" ||
+    up === "SIN RESPONSABLE" ||
+    up === "SIN RESPONSABLE EN FUENTE" ||
+    up === "POR ASIGNAR" ||
+    /^\d+$/.test(up)
+  ) {
+    return "";
+  }
+  if (up === "ERIKA" || up.startsWith("ERIKA ")) return "ERIKA ALZATE";
+  if (up.startsWith("MARIA ALEJANDR") || up.startsWith("MARIA ALEJADRA")) return "MARIA ALEJANDRA";
+  if (up.startsWith("MARIA JOSE")) return "MARIA JOSE";
+  if (up.startsWith("MARIA PAOLA")) return "MARIA PAOLA";
   if (up === "YULEIBIS" || up.startsWith("YULEIBIS ")) return "YULEIBIS";
-  if (up === "ELIZABETH DE HOYOS" || up === "ELIZABET DE HOYOS") return "ELIZABET DE HOYOS";
-  if (up === "TILSON" || up === "TILSON GUZMAN") return "TILSON GUZMAN";
-  if (up === "AURA" || up === "AURA BOTERO") return "AURA BOTERO";
-  if (up === "MILENA" || up === "MILENA MEDINA") return "MILENA MEDINA";
-  if (up === "MARIA PAOLA") return "MARIA PAOLA";
-  if (up === "MARIA ALEJANDRA") return "MARIA ALEJANDRA";
-  if (up === "MARIA JOSE") return "MARIA JOSE";
+  if (up === "ELIZABETH" || up === "ELIZABET" || (up.startsWith("ELIZABET") && up.includes("HOYOS"))) {
+    return "ELIZABET DE HOYOS";
+  }
+  if (up === "TILSON" || up.startsWith("TILSON ")) return "TILSON GUZMAN";
+  if (up === "AURA" || up.startsWith("AURA ")) return "AURA BOTERO";
+  if (up === "MILENA" || up.startsWith("MILENA MEDINA")) return "MILENA MEDINA";
   return up;
+}
+
+/**
+ * Condicional oficial de Nota Crédito:
+ * - Si el valor aceptado es explícitamente 0 (o estado NO_ACEPTADA sin valor aceptado > 0), corresponde a "N/A".
+ * - Normaliza variantes "NA", "N.A.", "NO APLICA" -> "N/A".
+ */
+export function resolverNotaCreditoCondicional(
+  notaRaw?: unknown,
+  valorAceptado?: unknown,
+  estadoRaw?: unknown
+): string {
+  const txtAcep = valorAceptado === null || valorAceptado === undefined ? "" : String(valorAceptado).trim();
+  if (txtAcep !== "") {
+    const n = Number(txtAcep.replace(/[^0-9.-]/g, ""));
+    if (Number.isFinite(n) && n === 0) {
+      return "N/A";
+    }
+  }
+  const est = String(estadoRaw ?? "").trim().toUpperCase();
+  if (est === "NO_ACEPTADA" && txtAcep === "") {
+    return "N/A";
+  }
+  const s = limpiarTextoUtf8(notaRaw == null ? "" : String(notaRaw)).trim();
+  if (!s) return "";
+  const up = sinAcentosUpper(s).replace(/\s+/g, " ").trim();
+  if (
+    up === "N/A" ||
+    up === "NA" ||
+    up === "N.A." ||
+    up === "N.A" ||
+    up === "NO APLICA" ||
+    up === "SIN NC" ||
+    up === "NO"
+  ) {
+    return "N/A";
+  }
+  return s.toUpperCase();
 }
 
 export type SeguimientoGlosaCodigo =

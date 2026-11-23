@@ -136,18 +136,20 @@ export function ModalImportarCarteraExcel({
   const descargarPlantillaCsv = () => {
     const cab = [
       "Factura",
-      "Empresa",
+      "ERP",
+      "NIT",
+      "Fecha Prestación Servicio",
       "Fecha Factura",
       "Fecha Radicación",
       "Fecha Notificación Glosa",
       "Valor Facturado",
       "Valor Glosado",
       "Valor Aceptado",
-      "Código Causal",
-      "Motivo Glosa",
+      "Causal (TA/AU/SO/DE/CO/FA)",
+      "Motivo de Glosa",
+      "Seguimiento",
       "Nota Crédito",
-      "Facturador",
-      "Responsable Respuesta Glosa",
+      "Responsable / Facturador",
       "Estado",
       "Observación Interna",
     ].join(";");
@@ -418,12 +420,10 @@ export function ModalImportarCarteraExcel({
                     <table className="w-full border-collapse text-[11.5px]">
                       <thead>
                         <tr className="bg-[#0E245E] text-left text-white">
-                          <th className="p-2 font-bold">Factura · Fecha</th>
-                          <th className="p-2 font-bold">Sede</th>
-                          <th className="p-2 font-bold">Consulta / Cirugía</th>
-                          <th className="p-2 font-bold">Empresa Homologada (NIT)</th>
-                          <th className="p-2 font-bold">De dónde es</th>
-                          <th className="p-2 font-bold">Responsables</th>
+                          <th className="p-2 font-bold">Factura · Fechas</th>
+                          <th className="p-2 font-bold">ERP Unificada (NIT)</th>
+                          <th className="p-2 font-bold">Causal · Motivo de Glosa</th>
+                          <th className="p-2 font-bold">Responsable / Facturador</th>
                           <th className="p-2 text-right font-bold">Facturado</th>
                           <th className="p-2 text-right font-bold">Glosado</th>
                           <th className="p-2 font-bold">NC · Estado</th>
@@ -434,16 +434,26 @@ export function ModalImportarCarteraExcel({
                           <tr key={`${g.factura}-${i}`} className="hover:bg-[#F8FAFC]">
                             <td className="p-2 font-mono">
                               <div className="font-bold text-[#0E245E]">{g.factura}</div>
-                              <div className="text-[10px] text-[#64748B]">{g.fechaFactura || "—"}</div>
+                              {g.fechaPrestacionServicio && (
+                                <div className="text-[10px] font-semibold text-[#047857]">
+                                  Prest: {g.fechaPrestacionServicio}
+                                </div>
+                              )}
+                              <div className="text-[10px] text-[#64748B]">Fact: {g.fechaFactura || "—"}</div>
                             </td>
-                            <td className="p-2 font-semibold text-[#047857]">{g.sede}</td>
-                            <td className="p-2 text-[#334155]">{g.tipoAtencion}</td>
                             <td className="p-2">
-                              <div className="font-bold text-[#0E245E]">{g.empresaHomologada}</div>
+                              <div className="font-bold text-[#0E245E]">{g.empresaHomologada || g.empresa}</div>
                               {g.nit && <div className="font-mono text-[10px] text-[#64748B]">NIT {g.nit}</div>}
                             </td>
-                            <td className="p-2 text-[#334155]">{g.deDondeEs}</td>
-                            <td className="p-2 text-[10.5px] text-[#47597A]">
+                            <td className="p-2 max-w-[260px]">
+                              <span className="inline-block rounded bg-[#EFF6FF] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#1D4ED8] mr-1.5">
+                                {g.motivoCodigo || "SIN CAUSAL"}
+                              </span>
+                              <span className="text-[11px] text-[#334155] line-clamp-2" title={g.motivoGlosa}>
+                                {g.motivoGlosa || "—"}
+                              </span>
+                            </td>
+                            <td className="p-2 text-[10.5px] font-semibold text-[#0E245E]">
                               {g.responsableRespuesta || g.facturador || "—"}
                             </td>
                             <td className="p-2 text-right font-mono">{formatPesos(g.valorFacturado)}</td>

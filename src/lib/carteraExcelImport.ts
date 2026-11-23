@@ -23,6 +23,7 @@ import {
   limpiarNombrePersona,
   limpiarTextoUtf8,
   normalizarSeguimientoGlosa,
+  resolverNotaCreditoCondicional,
 } from "@/lib/carteraCruces";
 
 export type DestinoHojaCartera = "glosas" | "pendientes" | "anuladas" | "omitir";
@@ -186,9 +187,10 @@ export function normalizarFechaExcel(raw?: string | null): string {
     }
     return "";
   }
-  const dmy = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/.exec(s);
+  const dmy = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/.exec(s);
   if (dmy) {
-    const y = Number(dmy[3]);
+    const rawY = Number(dmy[3]);
+    const y = dmy[3].length === 2 ? (rawY <= 49 ? 2000 + rawY : 1900 + rawY) : rawY;
     const p1 = Number(dmy[1]);
     const p2 = Number(dmy[2]);
     if (y >= 1995 && y <= 2100) {
@@ -197,6 +199,21 @@ export function normalizarFechaExcel(raw?: string | null): string {
       if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
         return `${y}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
       }
+    }
+  }
+  const mesesTxt: Record<string, string> = {
+    ENE: "01", JAN: "01", FEB: "02", MAR: "03", ABR: "04", APR: "04",
+    MAY: "05", JUN: "06", JUL: "07", AGO: "08", AUG: "08", SEP: "09",
+    SET: "09", OCT: "10", NOV: "11", DIC: "12", DEC: "12",
+  };
+  const dMes = /^(\d{1,2})[-/\s.]([A-Za-z]{3,})[-/\s.](\d{2,4})/.exec(s);
+  if (dMes) {
+    const mm = mesesTxt[dMes[2].slice(0, 3).toUpperCase()];
+    const rawY = Number(dMes[3]);
+    const y = dMes[3].length === 2 ? (rawY <= 49 ? 2000 + rawY : 1900 + rawY) : rawY;
+    const dd = Number(dMes[1]);
+    if (mm && y >= 1995 && y <= 2100 && dd >= 1 && dd <= 31) {
+      return `${y}-${mm}-${String(dd).padStart(2, "0")}`;
     }
   }
   return "";
@@ -531,12 +548,389 @@ function obtenerCampo(
   predicados: ((hNorm: string) => boolean)[]
 ): string {
   for (const pred of predicados) {
-    const col = encabezados.find((h) => pred(normHeader(h)));
-    if (col !== undefined && fila[col] !== undefined && fila[col] !== "") {
-      return fila[col];
+    for (const col of encabezados) {
+      if (pred(normHeader(col)) && fila[col] !== undefined && fila[col] !== "") {
+        return fila[col];
+      }
     }
   }
   return "";
+}
+
+export function extraerCamposGlosaDesdeObjeto(rawObj: Record<string, unknown>): {
+  factura: string;
+  empRaw: string;
+  nitRaw: string;
+  contratoRaw: string;
+  pacRaw: string;
+  docRaw: string;
+  medRaw: string;
+  cupsRaw: string;
+  fechaPrestacionServicio: string;
+  fechaFactura: string;
+  fechaRadicacion: string;
+  fechaNotificacionGlosa: string;
+  anio: string;
+  valorFacturado: number;
+  valorGlosado: number;
+  valorAceptado: number | null;
+  tipoGlosa: "GLOSA" | "DEVOLUCION";
+  alcance: string;
+  motivoCodigo: string;
+  motivoGlosa: string;
+  observacionInterna: string;
+  notaCredito: string;
+  personaUnificada: string;
+  seguimientoEstado: string;
+  valorSeguimiento: number | null;
+  estado: string;
+} {
+  const encabezados = Object.keys(rawObj || {});
+  const raw: Record<string, string> = {};
+  for (const k of encabezados) {
+    raw[k] = rawObj[k] === null || rawObj[k] === undefined ? "" : limpiarTextoUtf8(String(rawObj[k]));
+  }
+
+  const facRaw = obtenerCampo(raw, encabezados, [
+    (h) =>
+      (h.includes("factura") || h.includes("no factura") || h.includes("nro factura") || h.includes("num factura")) &&
+      !h.includes("fecha") &&
+      !h.includes("valor") &&
+      !h.includes("vlr") &&
+      !h.includes("facturador") &&
+      !h.includes("reemplaz"),
+  ]);
+  const factura = claveFacturaNorm(facRaw);
+
+  const empRaw = obtenerCampo(raw, encabezados, [
+    (h) =>
+      h === "empresa" ||
+      h === "erp" ||
+      h.includes("empresa homologada") ||
+      h.includes("empresa unificada") ||
+      h.includes("erp unificada") ||
+      h.includes("entidad") ||
+      h.includes("pagador") ||
+      h.includes("aseguradora") ||
+      h === "eps",
+    (h) => h.includes("empresa") || h.includes("erp"),
+  ]);
+  const nitRaw = obtenerCampo(raw, encabezados, [(h) => h === "nit" || h.startsWith("nit ") || h.endsWith(" nit")]);
+  const contratoRaw = obtenerCampo(raw, encabezados, [
+    (h) => h.includes("convenio") || h.includes("de donde es") || h.includes("contrato") || h.includes("regimen"),
+  ]);
+  const pacRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("paciente") && !h.includes("documento")]);
+  const docRaw = obtenerCampo(raw, encabezados, [
+    (h) => h.includes("documento") || h === "num id" || h === "identificacion",
+  ]);
+  const medRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("medico") || h.includes("especialista")]);
+  const cupsRaw = obtenerCampo(raw, encabezados, [(h) => h === "cups" || h.includes("codigo cups")]);
+
+  const fPrest = normalizarFechaExcel(
+    obtenerCampo(raw, encabezados, [
+      (h) =>
+        h.includes("prestacion") ||
+        h.includes("f prest") ||
+        h.includes("fec prest") ||
+        (h.includes("fecha") &&
+          (h.includes("serv") ||
+            h.includes("aten") ||
+            h.includes("ingr") ||
+            h.includes("proc") ||
+            h.includes("cita") ||
+            h.includes("qx") ||
+            h.includes("cirug"))),
+    ])
+  );
+  const fFact = normalizarFechaExcel(
+    obtenerCampo(raw, encabezados, [
+      (h) =>
+        h.includes("fecha factura") ||
+        h.includes("fecha de factura") ||
+        h.includes("f factura") ||
+        h.includes("fec fac") ||
+        h.includes("elaboracion") ||
+        h.includes("emision") ||
+        h.includes("expedicion"),
+    ])
+  );
+  const fRad = normalizarFechaExcel(
+    obtenerCampo(raw, encabezados, [
+      (h) => h.includes("radicacion") || h.includes("f rad") || h.includes("fec rad"),
+    ])
+  );
+  const fNot = normalizarFechaExcel(
+    obtenerCampo(raw, encabezados, [
+      (h) =>
+        h.includes("notificacion") ||
+        h.includes("fecha glosa") ||
+        h.includes("fecha de glosa") ||
+        h.includes("f glosa") ||
+        h.includes("fec glosa") ||
+        h.includes("fecha objecion") ||
+        h.includes("fecha devolucion"),
+    ])
+  );
+  const anioRaw = obtenerCampo(raw, encabezados, [(h) => h === "ano" || h === "anio"]);
+  const anio =
+    /^\d{4}$/.test(anioRaw) && Number(anioRaw) >= 2000
+      ? anioRaw
+      : (fFact || fRad || fNot || fPrest).slice(0, 4);
+
+  const vFact = normalizarNumeroMoneda(
+    obtenerCampo(raw, encabezados, [
+      (h) =>
+        h.includes("valor radicado") ||
+        h.includes("valor facturado") ||
+        h.includes("valor factura") ||
+        h.includes("valor de la factura") ||
+        h.includes("vlr factura") ||
+        h.includes("vlr facturado") ||
+        h.includes("total factura") ||
+        h === "facturado",
+    ])
+  );
+  const vGlosa = normalizarNumeroMoneda(
+    obtenerCampo(raw, encabezados, [
+      (h) =>
+        h.includes("glosado") ||
+        h === "valor glosa" ||
+        h.includes("vlr glosa") ||
+        h.includes("valor devolucion") ||
+        h.includes("valor objetado"),
+    ])
+  );
+  const vAcepTxt = obtenerCampo(raw, encabezados, [
+    (h) =>
+      h.includes("valor aceptado") ||
+      h.includes("vlr aceptado") ||
+      h === "aceptado" ||
+      h.includes("valor nota credito"),
+  ]);
+  const vAcep = vAcepTxt === "" ? null : normalizarNumeroMoneda(vAcepTxt);
+
+  const claseRaw = obtenerCampo(raw, encabezados, [
+    (h) =>
+      h === "motivo 1" ||
+      h === "clase" ||
+      h.includes("tipo glosa") ||
+      h.includes("tipo de glosa") ||
+      h === "tipo" ||
+      h.includes("glosa o devolucion") ||
+      h.includes("glosa devolucion"),
+  ]).toUpperCase();
+
+  let codDetectado = "";
+  for (const col of encabezados) {
+    const h = normHeader(col);
+    if (
+      h.includes("causal") ||
+      h.includes("causa") ||
+      h.includes("codigo") ||
+      h === "cod" ||
+      h === "motivo 1"
+    ) {
+      const val = (raw[col] || "").trim().toUpperCase();
+      const m = /^(TA|AU|SO|DE|CO|FA)(\d{2,4})?(?:\s*[-·:/]\s*.*)?$/.exec(val);
+      if (m) {
+        codDetectado = m[1];
+        break;
+      }
+    }
+  }
+  if (!codDetectado) {
+    for (const col of encabezados) {
+      const h = normHeader(col);
+      if (h.includes("factura") || h.includes("empresa") || h.includes("entidad") || h.includes("nit")) {
+        continue;
+      }
+      const val = (raw[col] || "").trim().toUpperCase();
+      const m = /^(TA|AU|SO|DE|CO|FA)(\d{2,4})?$/.exec(val);
+      if (m) {
+        codDetectado = m[1];
+        break;
+      }
+    }
+  }
+
+  const esSoloCodigoOClase = (txtVal: string): boolean => {
+    const u = txtVal.trim().toUpperCase();
+    if (!u) return true;
+    if (/^(TA|AU|SO|DE|CO|FA)(\d{2,4})?$/.test(u)) return true;
+    if (/^(GLOSA|DEVOLUCION|DEVOLUCIÓN|GLOSA PARCIAL|GLOSA TOTAL|PARCIAL|TOTAL|N\/?A|-|SI|NO)$/.test(u)) {
+      return true;
+    }
+    return false;
+  };
+
+  let motivoGlosa = "";
+  for (const col of encabezados) {
+    const h = normHeader(col);
+    const val = (raw[col] || "").trim();
+    if (!val || esSoloCodigoOClase(val)) continue;
+    if (
+      (h.includes("motivo") && !h.includes("codigo") && h !== "motivo 1") ||
+      h.includes("descripcion") ||
+      h.includes("detalle") ||
+      h.includes("concepto") ||
+      h.includes("justificacion") ||
+      (h.includes("causal") && !h.includes("codigo"))
+    ) {
+      motivoGlosa = val;
+      break;
+    }
+  }
+  if (!motivoGlosa) {
+    for (const col of encabezados) {
+      const h = normHeader(col);
+      const val = (raw[col] || "").trim();
+      if (!val || val.length < 5 || esSoloCodigoOClase(val)) continue;
+      if (h.startsWith("columna ") || h === "") {
+        if (
+          !/^FCOE\d+/i.test(val) &&
+          !/^NC\s*[-#:]?\s*\d+/i.test(val) &&
+          !normalizarFechaExcel(val) &&
+          !/^[\d$.,\s-]+$/.test(val)
+        ) {
+          motivoGlosa = val;
+          break;
+        }
+      }
+    }
+  }
+
+  const obs = obtenerCampo(raw, encabezados, [
+    (h) =>
+      h.includes("observacion") ||
+      (h.includes("respuesta") && !h.includes("responsable")) ||
+      h.includes("comentario"),
+  ]);
+
+  let ncRaw = obtenerCampo(raw, encabezados, [
+    (h) =>
+      (h.includes("nota") && h.includes("cred")) ||
+      h === "nc" ||
+      h.startsWith("nc ") ||
+      h.endsWith(" nc") ||
+      h.includes("consecutivo nc") ||
+      h.includes("nro nc") ||
+      h.includes("numero nc") ||
+      h.includes("n credito"),
+  ]).trim();
+  if (!ncRaw) {
+    for (const col of encabezados) {
+      const val = (raw[col] || "").trim();
+      if (/^NC\s*[-#:]?\s*\d{2,}$/i.test(val)) {
+        ncRaw = val.replace(/\s+/g, "").toUpperCase();
+        break;
+      }
+    }
+  }
+
+  const facturador = homologarPersonaFacturacion(
+    obtenerCampo(raw, encabezados, [
+      (h) => h.includes("facturador") || h.includes("quien facturo") || h.includes("elaboro"),
+    ])
+  );
+  const responsable = homologarPersonaFacturacion(
+    obtenerCampo(raw, encabezados, [
+      (h) =>
+        h.includes("responsable") ||
+        h.includes("quien responde") ||
+        h.includes("auditor") ||
+        h.includes("asignado"),
+    ])
+  );
+  const personaUnificada = responsable || facturador;
+
+  const codExplicitoTxt = extraerCodigoCausalExplicito(motivoGlosa);
+  const tipoGlosa: "GLOSA" | "DEVOLUCION" =
+    claseRaw.includes("DEVOL") || (codDetectado === "DE" && !claseRaw.includes("GLOSA"))
+      ? "DEVOLUCION"
+      : "GLOSA";
+  const alcance =
+    claseRaw.includes("TOTAL") || tipoGlosa === "DEVOLUCION"
+      ? "TOTAL"
+      : claseRaw.includes("PARCIAL")
+      ? "PARCIAL"
+      : "";
+  const causalPrincipal = causaNormativa6De(codDetectado || codExplicitoTxt, tipoGlosa);
+
+  const segTexto = obtenerCampo(raw, encabezados, [
+    (h) =>
+      h.includes("seguimiento") ||
+      h.includes("levantamiento") ||
+      h.includes("ratificacion") ||
+      h.includes("estado pago"),
+  ]);
+  const estRaw = obtenerCampo(raw, encabezados, [
+    (h) => h.includes("estado") || h.includes("desenlace"),
+  ]).toUpperCase();
+  const seguimientoEstado = normalizarSeguimientoGlosa(segTexto || estRaw);
+
+  const vSegTxt = obtenerCampo(raw, encabezados, [
+    (h) =>
+      h.includes("valor seguimiento") ||
+      h.includes("valor pagado") ||
+      h.includes("valor levantado") ||
+      h.includes("valor ratificado"),
+  ]);
+  const valorSeguimiento = vSegTxt === "" ? null : normalizarNumeroMoneda(vSegTxt);
+
+  const ncPrelim = resolverNotaCreditoCondicional(ncRaw, vAcep, "");
+  let estado = "PENDIENTE";
+  if (
+    estRaw.includes("NO ACEPT") ||
+    estRaw.includes("NO_ACEPT") ||
+    estRaw.includes("DEFEND") ||
+    estRaw.includes("LEVANTAMIENTO COMPLETO") ||
+    (vAcep !== null && vAcep === 0 && (estRaw.includes("LEVANT") || estRaw.includes("CERRAD") || ncPrelim === "N/A"))
+  ) {
+    estado = "NO_ACEPTADA";
+  } else if (estRaw.includes("LEGALIZ")) {
+    estado = "LEGALIZADA";
+  } else if (
+    estRaw.includes("ACEPT") ||
+    estRaw.includes("CONCILI") ||
+    estRaw.includes("RATIFIC") ||
+    (vAcep !== null && vAcep > 0) ||
+    (ncPrelim !== "" && ncPrelim !== "N/A" && !estRaw)
+  ) {
+    estado = "ACEPTADA";
+  } else if (estRaw.includes("RESPOND") || estRaw.includes("CONTEST")) {
+    estado = "RESPONDIDA";
+  }
+
+  const notaCredito = resolverNotaCreditoCondicional(ncRaw, vAcep, estado);
+
+  return {
+    factura,
+    empRaw,
+    nitRaw,
+    contratoRaw,
+    pacRaw,
+    docRaw,
+    medRaw,
+    cupsRaw,
+    fechaPrestacionServicio: fPrest,
+    fechaFactura: fFact,
+    fechaRadicacion: fRad,
+    fechaNotificacionGlosa: fNot,
+    anio,
+    valorFacturado: vFact,
+    valorGlosado: vGlosa,
+    valorAceptado: vAcep,
+    tipoGlosa,
+    alcance,
+    motivoCodigo: causalPrincipal,
+    motivoGlosa,
+    observacionInterna: obs,
+    notaCredito,
+    personaUnificada,
+    seguimientoEstado,
+    valorSeguimiento,
+    estado,
+  };
 }
 
 export function mapearFilasSegunDestino(
@@ -558,169 +952,49 @@ export function mapearFilasSegunDestino(
     const filaExcel = filaBase1Based + idx + 1;
 
     if (destino === "glosas") {
-      const facRaw = obtenerCampo(raw, encabezados, [
-        (h) => (h.includes("factura") || h.includes("no factura")) && !h.includes("fecha") && !h.includes("valor") && !h.includes("facturador") && !h.includes("reemplaz"),
-      ]);
-      const factura = claveFacturaNorm(facRaw);
-      if (!factura) return;
-
-      const empRaw = obtenerCampo(raw, encabezados, [
-        (h) => h === "empresa" || h.includes("empresa homologada") || h.includes("empresa unificada") || h.includes("entidad") || h.includes("pagador"),
-        (h) => h.includes("empresa"),
-      ]);
-      const nitRaw = obtenerCampo(raw, encabezados, [(h) => h === "nit" || h.startsWith("nit ")]);
-      const contratoRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("convenio") || h.includes("de donde es") || h.includes("contrato")]);
-      const pacRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("paciente") && !h.includes("documento")]);
-      const docRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("documento") || h === "num id" || h === "identificacion"]);
-      const medRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("medico") || h.includes("especialista")]);
-      const cupsRaw = obtenerCampo(raw, encabezados, [(h) => h === "cups" || h.includes("codigo cups")]);
-      const atencionCol = obtenerCampo(raw, encabezados, [(h) => h.includes("consulta o cirugia") || h.includes("consulta / cirugia") || h.includes("tipo atencion")]);
-      const sedeCol = obtenerCampo(raw, encabezados, [(h) => h === "sede"]);
-
-      const fPrest = normalizarFechaExcel(
-        obtenerCampo(raw, encabezados, [
-          (h) => h.includes("prestacion") || h.includes("fecha servicio") || h.includes("fecha atencion"),
-        ])
-      );
-      const fFact = normalizarFechaExcel(
-        obtenerCampo(raw, encabezados, [(h) => h.includes("fecha factura") || h.includes("elaboracion") || h.includes("emision")])
-      );
-      const fRad = normalizarFechaExcel(
-        obtenerCampo(raw, encabezados, [(h) => h.includes("radicacion")])
-      );
-      const fNot = normalizarFechaExcel(
-        obtenerCampo(raw, encabezados, [(h) => h.includes("notificacion") || h.includes("fecha glosa")])
-      );
-      const anioRaw = obtenerCampo(raw, encabezados, [(h) => h === "ano" || h === "anio"]);
-      const anio =
-        /^\d{4}$/.test(anioRaw) && Number(anioRaw) >= 2000
-          ? anioRaw
-          : (fFact || fRad || fNot).slice(0, 4);
-
-      const vFact = normalizarNumeroMoneda(
-        obtenerCampo(raw, encabezados, [
-          (h) => h.includes("valor radicado") || h.includes("valor facturado") || h.includes("valor factura") || h === "facturado",
-        ])
-      );
-      const vGlosa = normalizarNumeroMoneda(
-        obtenerCampo(raw, encabezados, [(h) => h.includes("glosado") || h === "valor glosa"])
-      );
-      const vAcepTxt = obtenerCampo(raw, encabezados, [(h) => h.includes("valor aceptado") || h === "aceptado"]);
-      const vAcep = vAcepTxt === "" ? null : normalizarNumeroMoneda(vAcepTxt);
-
-      const claseRaw = obtenerCampo(raw, encabezados, [
-        (h) => h === "motivo 1" || h === "clase" || h === "tipo glosa" || h === "tipo",
-      ]).toUpperCase();
-      const tipoGlosa: "GLOSA" | "DEVOLUCION" = claseRaw.includes("DEVOL") ? "DEVOLUCION" : "GLOSA";
-      const alcance = claseRaw.includes("TOTAL") ? "TOTAL" : claseRaw.includes("PARCIAL") ? "PARCIAL" : "";
-
-      const codRaw = obtenerCampo(raw, encabezados, [
-        (h) => h.includes("codigo causal") || h.includes("causal codigo") || h === "causal",
-        (h) => h.includes("causa normativa"),
-      ])
-        .toUpperCase()
-        .trim();
-
-      const motivoGlosa = obtenerCampo(raw, encabezados, [
-        (h) => (h.includes("motivo") && !h.includes("codigo") && h !== "motivo 1") || h.includes("descripcion glosa"),
-      ]);
-      const obs = obtenerCampo(raw, encabezados, [(h) => h.includes("observacion") || h.includes("respuesta") && !h.includes("responsable")]);
-      const ncRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("nota credito") || h === "nc"]).trim();
-      const notaCredito =
-        ncRaw.toUpperCase() === "NA" || ncRaw.toUpperCase() === "NO APLICA" ? "N/A" : ncRaw;
-
-      const facturador = homologarPersonaFacturacion(
-        obtenerCampo(raw, encabezados, [(h) => h.includes("facturador")])
-      );
-      const responsable = homologarPersonaFacturacion(
-        obtenerCampo(raw, encabezados, [(h) => h.includes("responsable")])
-      );
-      const seguimientoEstado = normalizarSeguimientoGlosa(
-        obtenerCampo(raw, encabezados, [
-          (h) => h.includes("seguimiento") || h.includes("levantamiento") || h.includes("ratificacion"),
-        ])
-      );
-      const vSegTxt = obtenerCampo(raw, encabezados, [
-        (h) =>
-          h.includes("valor seguimiento") ||
-          h.includes("valor pagado") ||
-          h.includes("valor levantado") ||
-          h.includes("valor ratificado"),
-      ]);
-      const valorSeguimiento = vSegTxt === "" ? null : normalizarNumeroMoneda(vSegTxt);
-      const subCodCol = obtenerCampo(raw, encabezados, [
-        (h) => h.includes("subcodigo") || h.includes("sub codigo") || h.includes("codigo especifico"),
-      ])
-        .toUpperCase()
-        .trim();
-      const codExplicitoTxt = extraerCodigoCausalExplicito(motivoGlosa);
-      const causalPrincipal = causaNormativa6De(
-        codRaw || subCodCol || codExplicitoTxt,
-        tipoGlosa
-      );
-      const subcodigoDetectado =
-        subCodCol ||
-        (codRaw.length > 2 ? codRaw : "") ||
-        (codExplicitoTxt.length > 2 ? codExplicitoTxt : "");
-
-      const estRaw = obtenerCampo(raw, encabezados, [(h) => h.includes("estado") || h.includes("desenlace")]).toUpperCase();
-      let estado = "PENDIENTE";
-      if (estRaw.includes("NO ACEPT") || estRaw.includes("NO_ACEPT") || estRaw.includes("DEFEND") || estRaw.includes("OBJET")) {
-        estado = "NO_ACEPTADA";
-      } else if (estRaw.includes("LEGALIZ")) {
-        estado = "LEGALIZADA";
-      } else if (estRaw.includes("ACEPT") || estRaw.includes("CONCILI") || (notaCredito && notaCredito !== "N/A" && !estRaw)) {
-        estado = "ACEPTADA";
-      } else if (estRaw.includes("RESPOND")) {
-        estado = "RESPONDIDA";
-      }
+      const ext = extraerCamposGlosaDesdeObjeto(raw);
+      if (!ext.factura) return;
 
       const empInfo = homologarEmpresaYOrigen({
-        empresa: empRaw,
-        contrato: contratoRaw,
-        nit: nitRaw,
-      });
-      const atInfo = clasificarAtencionYSede({
-        esMutual: empInfo.esMutual,
-        cups: cupsRaw,
-        descripcion: atencionCol,
-        motivoTexto: `${motivoGlosa} ${obs}`,
+        empresa: ext.empRaw,
+        contrato: ext.contratoRaw,
+        nit: ext.nitRaw,
       });
 
       glosas.push({
         filaExcel,
-        factura,
-        empresa: empInfo.empresaCorta !== "SIN ENTIDAD" ? empInfo.empresaCorta : empRaw.toUpperCase(),
-        empresaOriginal: empRaw,
+        factura: ext.factura,
+        empresa: empInfo.empresaCorta !== "SIN ENTIDAD" ? empInfo.empresaCorta : ext.empRaw.toUpperCase(),
+        empresaOriginal: ext.empRaw,
         empresaHomologada: empInfo.empresaHomologada,
         nit: empInfo.nit,
-        deDondeEs: contratoRaw || empInfo.deDondeEs,
-        sede: sedeCol || atInfo.sede,
-        tipoAtencion: atencionCol || atInfo.tipoAtencion,
-        pacienteNombre: limpiarNombrePersona(pacRaw),
-        pacienteDoc: docRaw,
-        medicoNombre: limpiarNombrePersona(medRaw),
-        cups: cupsRaw,
-        fechaPrestacionServicio: fPrest,
-        fechaFactura: fFact,
-        fechaRadicacion: fRad,
-        fechaNotificacionGlosa: fNot,
-        anio,
-        valorFacturado: vFact,
-        valorGlosado: vGlosa,
-        valorAceptado: vAcep,
-        tipoGlosa,
-        alcance,
-        motivoCodigo: causalPrincipal,
-        subcodigoCausal: subcodigoDetectado,
-        motivoGlosa,
-        observacionInterna: obs,
-        notaCredito,
-        facturador,
-        responsableRespuesta: responsable,
-        seguimientoEstado,
-        valorSeguimiento,
-        estado,
+        deDondeEs: ext.contratoRaw || empInfo.deDondeEs,
+        sede: "",
+        tipoAtencion: "",
+        pacienteNombre: limpiarNombrePersona(ext.pacRaw),
+        pacienteDoc: ext.docRaw,
+        medicoNombre: limpiarNombrePersona(ext.medRaw),
+        cups: ext.cupsRaw,
+        fechaPrestacionServicio: ext.fechaPrestacionServicio,
+        fechaFactura: ext.fechaFactura,
+        fechaRadicacion: ext.fechaRadicacion,
+        fechaNotificacionGlosa: ext.fechaNotificacionGlosa,
+        anio: ext.anio,
+        valorFacturado: ext.valorFacturado,
+        valorGlosado: ext.valorGlosado,
+        valorAceptado: ext.valorAceptado,
+        tipoGlosa: ext.tipoGlosa,
+        alcance: ext.alcance,
+        motivoCodigo: ext.motivoCodigo,
+        subcodigoCausal: "",
+        motivoGlosa: ext.motivoGlosa,
+        observacionInterna: ext.observacionInterna,
+        notaCredito: ext.notaCredito,
+        facturador: ext.personaUnificada,
+        responsableRespuesta: ext.personaUnificada,
+        seguimientoEstado: ext.seguimientoEstado,
+        valorSeguimiento: ext.valorSeguimiento,
+        estado: ext.estado,
         datosOriginales: raw,
       });
       return;

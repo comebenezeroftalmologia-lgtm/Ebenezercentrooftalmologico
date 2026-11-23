@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
+import { homologarPersonaFacturacion } from "@/lib/carteraCruces";
 
 /* ---------------------------------------------------------------------
    CATALOGOS DE CARTERA — facturadores y empresas
@@ -110,11 +111,16 @@ export async function GET() {
     }
     const filas = [];
     for (const f of data || []) {
+      const nombreLimpio = limpiarUtf8(String(f.nombre ?? ""));
+      const usos = await contarUso(db, tabla, f.id as string);
+      if (tabla === "cf_responsables" && !homologarPersonaFacturacion(nombreLimpio) && usos === 0) {
+        continue;
+      }
       filas.push({
         id: f.id as string,
-        nombre: limpiarUtf8(String(f.nombre ?? "")),
+        nombre: nombreLimpio,
         activo: f.activo as boolean,
-        usos: await contarUso(db, tabla, f.id as string),
+        usos,
       });
     }
     salida[tabla === "cf_empresas" ? "empresas" : "responsables"] = filas;
@@ -159,11 +165,12 @@ export async function POST(request: Request) {
 
   try {
     if (accion === "CREAR") {
-      const n = (nombre || "").trim();
-      if (!n) return NextResponse.json({ ok: false, error: "Falta el nombre" }, { status: 400 });
+      const nRaw = (nombre || "").trim();
+      const n = tabla === "cf_responsables" ? homologarPersonaFacturacion(nRaw) : nRaw;
+      if (!n) return NextResponse.json({ ok: false, error: "Nombre inválido o vacío" }, { status: 400 });
       const { data: ya } = await db.from(tabla).select("id").ilike("nombre", n).maybeSingle();
       if (ya) {
-        return NextResponse.json({ ok: false, error: `Ya existe un ${etiqueta} con ese nombre` }, { status: 409 });
+        return NextResponse.json({ ok: false, error: `Ya existe un ${etiqueta} con ese nombre (${n})` }, { status: 409 });
       }
       const { error } = await db.from(tabla).insert({ nombre: n });
       if (error) throw new Error(error.message);
@@ -173,8 +180,9 @@ export async function POST(request: Request) {
     if (!id) return NextResponse.json({ ok: false, error: "Falta el id" }, { status: 400 });
 
     if (accion === "RENOMBRAR") {
-      const n = (nombre || "").trim();
-      if (!n) return NextResponse.json({ ok: false, error: "Falta el nombre" }, { status: 400 });
+      const nRaw = (nombre || "").trim();
+      const n = tabla === "cf_responsables" ? homologarPersonaFacturacion(nRaw) : nRaw;
+      if (!n) return NextResponse.json({ ok: false, error: "Nombre inválido o vacío" }, { status: 400 });
       const { data: ya } = await db.from(tabla).select("id").ilike("nombre", n).maybeSingle();
       if (ya && ya.id !== id) {
         return NextResponse.json(

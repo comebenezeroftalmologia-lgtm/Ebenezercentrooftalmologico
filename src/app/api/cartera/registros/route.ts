@@ -12,7 +12,9 @@ import {
   limpiarNombrePersona,
   normalizarEmpresaNitUnificada,
   normalizarSeguimientoGlosa,
+  resolverNotaCreditoCondicional,
 } from "@/lib/carteraCruces";
+import { extraerCamposGlosaDesdeObjeto } from "@/lib/carteraExcelImport";
 
 // API de registros de Cartera y Glosas.
 //
@@ -129,21 +131,71 @@ async function resolverCodigoParaBD(
   const sub = strLimpio(subcodigoRaw).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
   const c6 =
     causaNormativa6De(strLimpio(causalRaw) || sub, strLimpio(tipoRaw)) || null;
-  if (sub.length >= 4 && (!c6 || sub.startsWith(c6))) {
-    const sub4 = sub.slice(0, 4);
-    const { data } = await db
-      .from("cf_causales")
-      .select("codigo")
-      .in("codigo", [sub, sub4])
-      .limit(1)
-      .maybeSingle();
-    if (data?.codigo) return String(data.codigo).toUpperCase();
-  }
   if (c6) {
     await asegurarCausalNormativa(db, c6);
     return c6;
   }
   return null;
+}
+
+async function sanearCatalogosEnBD(db: ReturnType<typeof createServiceClient>) {
+  try {
+    const [causRes, respRes] = await Promise.all([
+      db.from("cf_causales").select("codigo"),
+      db.from("cf_responsables").select("id, nombre, activo"),
+    ]);
+    const cods = new Set(
+      ((causRes.data || []) as { codigo: string }[]).map((c) => String(c.codigo || "").toUpperCase())
+    );
+    const faltantes = CAUSALES_NORMATIVAS_BASE.filter((b) => !cods.has(b.codigo));
+    if (faltantes.length > 0) {
+      await db
+        .from("cf_causales")
+        .upsert(
+          faltantes.map((b) => ({ codigo: b.codigo, familia: b.familia, nombre: b.nombre, activo: true })),
+          { onConflict: "codigo" }
+        );
+    }
+
+    const listaResp = (respRes.data || []) as { id: string; nombre: string; activo: boolean }[];
+    const porCanon = new Map<string, { id: string; nombre: string; activo: boolean }[]>();
+    for (const r of listaResp) {
+      const limpio = limpiarUtf8(String(r.nombre || "")).trim();
+      const canon = homologarPersonaFacturacion(limpio);
+      if (!canon) {
+        if (r.activo) {
+          await db.from("cf_responsables").update({ activo: false }).eq("id", r.id);
+        }
+        continue;
+      }
+      const arr = porCanon.get(canon) || [];
+      arr.push({ ...r, nombre: limpio });
+      porCanon.set(canon, arr);
+    }
+
+    const refs = [
+      { tabla: "cf_glosas", col: "facturador_id" },
+      { tabla: "cf_glosas", col: "responsable_aceptacion_id" },
+      { tabla: "cf_facturas", col: "responsable_id" },
+      { tabla: "cf_pendientes_facturar", col: "responsable_id" },
+    ];
+
+    for (const [canon, grupo] of Array.from(porCanon.entries())) {
+      const exacto = grupo.find((x) => x.nombre.toUpperCase() === canon) || grupo[0];
+      const duplicados = grupo.filter((x) => x.id !== exacto.id);
+      for (const dup of duplicados) {
+        for (const rf of refs) {
+          await db.from(rf.tabla).update({ [rf.col]: exacto.id }).eq(rf.col, dup.id);
+        }
+        await db.from("cf_responsables").delete().eq("id", dup.id);
+      }
+      if (exacto.nombre !== canon || !exacto.activo) {
+        await db.from("cf_responsables").update({ nombre: canon, activo: true }).eq("id", exacto.id);
+      }
+    }
+  } catch {
+    // Nunca interrumpir la lectura principal si alguna operación de saneamiento falla.
+  }
 }
 
 /**
@@ -256,6 +308,7 @@ export async function GET() {
   }
 
   const db = createServiceClient();
+  await sanearCatalogosEnBD(db);
 
   const [facturas, glosas, pendientes, causales, empresasCat, responsablesCat] = await Promise.all([
     db.from("cf_facturas").select(
@@ -265,8 +318,8 @@ export async function GET() {
       "cf_empresas(nombre), cf_responsables(nombre)"
     ),
     db.from("cf_glosas").select(
-      "id, tipo, alcance, motivo_codigo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, origen, " +
-      "cf_facturas(numero, anio, periodo, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
+      "id, factura_id, tipo, alcance, motivo_codigo, motivo_texto, observacion, valor_glosado, valor_aceptado, estado, fecha_glosa, nota_credito, origen, " +
+      "cf_facturas(id, numero, anio, periodo, fecha_elaboracion, fecha_radicacion, valor_radicado, " +
       "empresa_nombre_original, cf_empresas(nombre)), " +
       "facturador:cf_responsables!cf_glosas_facturador_id_fkey(nombre), " +
       "aceptacion:cf_responsables!cf_glosas_responsable_aceptacion_id_fkey(nombre)"
@@ -478,21 +531,42 @@ export async function GET() {
     .filter((r) => String(r.estado) === "LEGALIZADA")
     .map(filaFactura);
 
+  const promesasAutosanado: PromiseLike<unknown>[] = [];
+
   const filasGlosa = ((glosas.data || []) as unknown as Fila[]).map((r) => {
     const f = (r.cf_facturas as Fila | null) || {};
+    const origenObj =
+      r.origen && typeof r.origen === "object" && !Array.isArray(r.origen)
+        ? (r.origen as Record<string, unknown>)
+        : {};
+    const datosOrig =
+      origenObj.datos && typeof origenObj.datos === "object" && !Array.isArray(origenObj.datos)
+        ? (origenObj.datos as Record<string, unknown>)
+        : null;
+    const extraido =
+      datosOrig && Object.keys(datosOrig).length > 0
+        ? extraerCamposGlosaDesdeObjeto(datosOrig)
+        : null;
+
     const empBase =
       strLimpio((f.cf_empresas as Fila | null)?.nombre) ||
       strLimpio(f.empresa_nombre_original) ||
+      extraido?.empRaw ||
       "";
-    const empOrig = strLimpio(f.empresa_nombre_original);
-    const facStr = strLimpio(f.numero);
-    const motivoStr = strLimpio(r.motivo_texto);
-    const obsStr = strLimpio(r.observacion);
+    const empOrig = strLimpio(f.empresa_nombre_original) || extraido?.empRaw || "";
+    const facStr = strLimpio(f.numero) || extraido?.factura || "";
+    const motivoBD = strLimpio(r.motivo_texto);
+    const motivoEsSoloCodigo = /^(TA|AU|SO|DE|CO|FA)(\d{2,4})?$/i.test(motivoBD.trim());
+    const motivoStr = (!motivoBD || motivoEsSoloCodigo) && extraido?.motivoGlosa
+      ? extraido.motivoGlosa
+      : motivoBD;
+    const obsStr = strLimpio(r.observacion) || extraido?.observacionInterna || "";
     const clinico = crucePorFactura.get(claveFacturaNorm(facStr));
     const empInfo = homologarEmpresaYOrigen({
       empresa: empBase,
       empresaOriginal: empOrig,
-      contrato: clinico?.contratos[0],
+      nit: extraido?.nitRaw,
+      contrato: clinico?.contratos[0] || extraido?.contratoRaw,
     });
     const atencionInfo = clasificarAtencionYSede({
       esMutual: empInfo.esMutual,
@@ -503,10 +577,6 @@ export async function GET() {
       motivoTexto: `${motivoStr} ${obsStr}`,
     });
 
-    const origenObj =
-      r.origen && typeof r.origen === "object" && !Array.isArray(r.origen)
-        ? (r.origen as Record<string, unknown>)
-        : {};
     const gestObj =
       origenObj.gestion_ebenezer &&
       typeof origenObj.gestion_ebenezer === "object" &&
@@ -515,33 +585,81 @@ export async function GET() {
         : {};
     const fechaPrestGuardada = strLimpio(gestObj.fechaPrestacionServicio).slice(0, 10);
     const fechaPrestCruce = clinico?.fechasServicio[0] || "";
-    const segEst = normalizarSeguimientoGlosa(strLimpio(gestObj.seguimientoEstado));
+    const fechaPrestFinal =
+      fechaPrestGuardada || extraido?.fechaPrestacionServicio || fechaPrestCruce;
+    const segEst =
+      normalizarSeguimientoGlosa(strLimpio(gestObj.seguimientoEstado)) ||
+      normalizarSeguimientoGlosa(extraido?.seguimientoEstado);
     const valSeg =
-      gestObj.valorSeguimiento === null ||
-      gestObj.valorSeguimiento === undefined ||
-      gestObj.valorSeguimiento === ""
-        ? null
-        : Number(gestObj.valorSeguimiento);
+      gestObj.valorSeguimiento !== null &&
+      gestObj.valorSeguimiento !== undefined &&
+      gestObj.valorSeguimiento !== ""
+        ? Number(gestObj.valorSeguimiento)
+        : extraido?.valorSeguimiento ?? null;
+
     const factUnif = homologarPersonaFacturacion(strLimpio((r.facturador as Fila | null)?.nombre));
     const respUnif = homologarPersonaFacturacion(strLimpio((r.aceptacion as Fila | null)?.nombre));
+    const personaUnif = respUnif || factUnif || extraido?.personaUnificada || "";
+
     const empCanonica = empInfo.empresaCorta !== "SIN ENTIDAD" ? empInfo.empresaCorta : empBase;
     const codBD = strLimpio(r.motivo_codigo).trim().toUpperCase();
-    const tipoBD = strLimpio(r.tipo) || "GLOSA";
-    const tieneSubGuardado = Object.prototype.hasOwnProperty.call(gestObj, "subcodigoCausal");
-    const subGuardado = strLimpio(gestObj.subcodigoCausal).trim().toUpperCase();
+    const tipoBD = strLimpio(r.tipo) || extraido?.tipoGlosa || "GLOSA";
     const codExplicito = extraerCodigoCausalExplicito(motivoStr);
-    const causal6 = causaNormativa6De(codBD || subGuardado || codExplicito, tipoBD);
-    const subcodigoExpuesto = tieneSubGuardado
-      ? subGuardado
-      : codBD.length > 2
-      ? codBD
-      : codExplicito.length > 2
-      ? codExplicito
-      : "";
+    const codDirecto6 = causaNormativa6De(codBD, "");
+    const causal6 =
+      codDirecto6 ||
+      extraido?.motivoCodigo ||
+      causaNormativa6De(codExplicito, tipoBD);
+
+    const estadoFinal = strLimpio(r.estado) || extraido?.estado || "PENDIENTE";
+    const valorAceptadoFinal =
+      r.valor_aceptado !== null && r.valor_aceptado !== undefined
+        ? Number(r.valor_aceptado)
+        : extraido?.valorAceptado ?? null;
+    const notaBase = strLimpio(r.nota_credito) || extraido?.notaCredito || "";
+    const notaFinal = resolverNotaCreditoCondicional(notaBase, valorAceptadoFinal, estadoFinal);
+
+    const fechaFactFinal = (f.fecha_elaboracion as string) || extraido?.fechaFactura || "";
+    const fechaRadFinal = (f.fecha_radicacion as string) || extraido?.fechaRadicacion || "";
+    const fechaNotifFinal = (r.fecha_glosa as string) || extraido?.fechaNotificacionGlosa || "";
+    const valorFactFinal = Number(f.valor_radicado) || extraido?.valorFacturado || 0;
+    const anioFinal = f.anio
+      ? String(f.anio)
+      : extraido?.anio || (fechaFactFinal || fechaRadFinal || fechaNotifFinal).slice(0, 4);
+
+    if (promesasAutosanado.length < 250) {
+      const patchGlosa: Record<string, unknown> = {};
+      if (causal6 && codBD !== causal6) patchGlosa.motivo_codigo = causal6;
+      if (motivoStr && motivoBD !== motivoStr) patchGlosa.motivo_texto = motivoStr;
+      if ((notaFinal || null) !== (strLimpio(r.nota_credito) || null)) {
+        patchGlosa.nota_credito = notaFinal || null;
+      }
+      if (!r.fecha_glosa && fechaNotifFinal) patchGlosa.fecha_glosa = fechaNotifFinal;
+      if (!fechaPrestGuardada && extraido?.fechaPrestacionServicio) {
+        patchGlosa.origen = construirOrigenGestion(origenObj, {
+          fechaPrestacionServicio: extraido.fechaPrestacionServicio,
+          seguimientoEstado: segEst,
+          valorSeguimiento: valSeg,
+        });
+      }
+      if (Object.keys(patchGlosa).length > 0) {
+        promesasAutosanado.push(db.from("cf_glosas").update(patchGlosa).eq("id", String(r.id)));
+      }
+      const fId = strLimpio(f.id || r.factura_id);
+      if (fId) {
+        const patchFact: Record<string, unknown> = {};
+        if (!Number(f.valor_radicado) && valorFactFinal > 0) patchFact.valor_radicado = valorFactFinal;
+        if (!f.fecha_elaboracion && fechaFactFinal) patchFact.fecha_elaboracion = fechaFactFinal;
+        if (!f.fecha_radicacion && fechaRadFinal) patchFact.fecha_radicacion = fechaRadFinal;
+        if (Object.keys(patchFact).length > 0) {
+          promesasAutosanado.push(db.from("cf_facturas").update(patchFact).eq("id", fId));
+        }
+      }
+    }
 
     return {
       id: String(r.id),
-      subtabla: String(r.estado),
+      subtabla: estadoFinal,
       empresa: empCanonica,
       empresaOriginal: empOrig || empBase,
       empresaHomologada: empInfo.empresaHomologada,
@@ -552,56 +670,52 @@ export async function GET() {
       sedeGrupo: atencionInfo.sedeGrupo,
       tipoAtencion: atencionInfo.tipoAtencion,
       tipoGrupo: atencionInfo.tipoGrupo,
-      pacienteNombre: clinico ? clinico.pacientes.join(" / ") : "",
-      pacienteDoc: clinico ? clinico.docs.join(" / ") : "",
-      medicoNombre: clinico ? clinico.medicos.join(" / ") : "",
-      cups: clinico ? clinico.cups.join(", ") : "",
+      pacienteNombre: clinico ? clinico.pacientes.join(" / ") : limpiarNombrePersona(extraido?.pacRaw),
+      pacienteDoc: clinico ? clinico.docs.join(" / ") : extraido?.docRaw || "",
+      medicoNombre: clinico ? clinico.medicos.join(" / ") : limpiarNombrePersona(extraido?.medRaw),
+      cups: clinico ? clinico.cups.join(", ") : extraido?.cupsRaw || "",
       servicioDescripcion: clinico ? clinico.descripciones.join(" · ") : "",
-      fechaPrestacionServicio: fechaPrestGuardada || fechaPrestCruce,
-      fechaFactura: (f.fecha_elaboracion as string) || "",
+      fechaPrestacionServicio: fechaPrestFinal,
+      fechaFactura: fechaFactFinal,
       periodo: strLimpio(f.periodo),
-      anio: f.anio ? String(f.anio) : "",
+      anio: anioFinal,
       factura: facStr,
-      fechaRadicacion: (f.fecha_radicacion as string) || "",
-      fechaNotificacionGlosa: (r.fecha_glosa as string) || "",
-      valorRadicado: Number(f.valor_radicado) || 0,
-      valorFactura: Number(f.valor_radicado) || 0,
-      valorFacturado: Number(f.valor_radicado) || 0,
-      valorGlosado: Number(r.valor_glosado) || 0,
-      valorAceptado:
-        r.valor_aceptado === null || r.valor_aceptado === undefined
-          ? null
-          : Number(r.valor_aceptado),
+      fechaRadicacion: fechaRadFinal,
+      fechaNotificacionGlosa: fechaNotifFinal,
+      valorRadicado: valorFactFinal,
+      valorFactura: valorFactFinal,
+      valorFacturado: valorFactFinal,
+      valorGlosado: Number(r.valor_glosado) || extraido?.valorGlosado || 0,
+      valorAceptado: valorAceptadoFinal,
       motivoCodigo: causal6,
-      subcodigoCausal: subcodigoExpuesto,
+      subcodigoCausal: "",
       motivoGlosa: motivoStr,
-      facturador: factUnif,
-      responsableAceptacion: respUnif,
-      responsableRespuesta: respUnif,
+      facturador: personaUnif,
+      responsableAceptacion: personaUnif,
+      responsableRespuesta: personaUnif,
       seguimientoEstado: segEst,
       valorSeguimiento: valSeg,
       observacionInterna: obsStr,
-      notaCredito: strLimpio(r.nota_credito),
+      notaCredito: notaFinal,
       tipoGlosa: tipoBD,
-      alcance: strLimpio(r.alcance),
-      estado: strLimpio(r.estado) || "PENDIENTE",
+      alcance: strLimpio(r.alcance) || extraido?.alcance || "",
+      estado: estadoFinal,
     };
   });
+
+  if (promesasAutosanado.length > 0) {
+    await Promise.allSettled(promesasAutosanado);
+  }
 
   const unicos = (xs: (string | undefined)[]) =>
     Array.from(new Set(xs.filter((x): x is string => !!x && x.trim() !== "").map((x) => limpiarUtf8(x.trim()))))
       .sort((a, b) => a.localeCompare(b, "es"));
 
-  const causalesDb = ((causales.data || []) as { codigo: string; familia: string; nombre: string }[]).map((c) => ({
-    codigo: limpiarUtf8(c.codigo),
-    familia: limpiarUtf8(c.familia),
-    nombre: limpiarUtf8(c.nombre),
+  const causalesCompletas = CAUSALES_NORMATIVAS_BASE.map((b) => ({
+    codigo: b.codigo,
+    familia: b.familia,
+    nombre: b.nombre,
   }));
-  const codigosExistentes = new Set(causalesDb.map((c) => c.codigo));
-  const causalesCompletas = [
-    ...CAUSALES_NORMATIVAS_BASE.filter((b) => !codigosExistentes.has(b.codigo)),
-    ...causalesDb,
-  ];
 
   const catalogos = {
     empresas: unicos([
@@ -767,18 +881,15 @@ export async function POST(request: Request) {
       if (!numero) {
         return NextResponse.json({ ok: false, error: "Falta el número de factura" }, { status: 400 });
       }
-      if (esNuevo && !esNotaCreditoValida(fila.notaCredito)) {
+      const estadoPre = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
+      const ncPre = resolverNotaCreditoCondicional(fila.notaCredito, fila.valorAceptado, estadoPre);
+      if (esNuevo && !esNotaCreditoValida(ncPre)) {
         return NextResponse.json(
           { ok: false, error: "La Nota Crédito es obligatoria (ingresa el número o N/A)" },
           { status: 400 }
         );
       }
-      if (
-        !esNuevo &&
-        fila.notaCredito !== undefined &&
-        String(fila.notaCredito).trim() !== "" &&
-        !esNotaCreditoValida(fila.notaCredito)
-      ) {
+      if (!esNuevo && ncPre !== "" && !esNotaCreditoValida(ncPre)) {
         return NextResponse.json(
           { ok: false, error: "La Nota Crédito debe contener el número consecutivo o N/A" },
           { status: 400 }
@@ -807,13 +918,17 @@ export async function POST(request: Request) {
         await db.from("cf_facturas").update(upFact).eq("id", facturaId);
       }
 
-      const factId = await idCatalogo(db, "cf_responsables", fila.facturador);
-      const acepId = await idCatalogo(db, "cf_responsables", fila.responsableRespuesta || fila.responsableAceptacion);
+      const personaUnifNombre = homologarPersonaFacturacion(
+        strLimpio(fila.responsableRespuesta || fila.responsableAceptacion || fila.facturador)
+      );
+      const personaId = await idCatalogo(db, "cf_responsables", personaUnifNombre);
+      const factId = personaId;
+      const acepId = personaId;
       const fechaNotif = fecha(fila.fechaNotificacionGlosa);
       const codCausal = await resolverCodigoParaBD(
         db,
         fila.motivoCodigo,
-        fila.subcodigoCausal,
+        "",
         fila.tipoGlosa
       );
 
@@ -822,11 +937,8 @@ export async function POST(request: Request) {
         : (await db.from("cf_glosas").select("id, estado, origen").eq("id", String(fila.id)).maybeSingle()).data;
 
       const estado = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
-      const ncNormalizada =
-        txt(fila.notaCredito)?.trim().toUpperCase() === "NA" ||
-        txt(fila.notaCredito)?.trim().toUpperCase() === "NO APLICA"
-          ? "N/A"
-          : txt(fila.notaCredito)?.trim() || null;
+      const ncResuelta = resolverNotaCreditoCondicional(fila.notaCredito, fila.valorAceptado, estado);
+      const ncNormalizada = ncResuelta || null;
 
       const valores = {
         factura_id: facturaId,
@@ -1021,15 +1133,15 @@ export async function POST(request: Request) {
           await db.from("cf_facturas").update(upFactImp).eq("id", factId);
         }
 
-        const fId = await idCatalogo(db, "cf_responsables", item.facturador);
-        const rId = await idCatalogo(db, "cf_responsables", item.responsableRespuesta || item.responsableAceptacion);
+        const persLote = homologarPersonaFacturacion(
+          strLimpio(item.responsableRespuesta || item.responsableAceptacion || item.facturador)
+        );
+        const pIdLote = await idCatalogo(db, "cf_responsables", persLote);
+        const fId = pIdLote;
+        const rId = pIdLote;
         const notif = fecha(item.fechaNotificacionGlosa);
-        const rawNc = txt(item.notaCredito)?.trim() || "";
-        const nc = !rawNc
-          ? null
-          : rawNc.toUpperCase() === "NA" || rawNc.toUpperCase() === "NO APLICA"
-          ? "N/A"
-          : rawNc;
+        const ncResLote = resolverNotaCreditoCondicional(item.notaCredito, item.valorAceptado, item.estado);
+        const nc = ncResLote || null;
         const codCausal = await resolverCodigoParaBD(
           db,
           item.motivoCodigo,
@@ -1127,24 +1239,14 @@ export async function POST(request: Request) {
       const setCausales = new Set<string>(
         ((causExist.data || []) as { codigo: string }[]).map((c) => String(c.codigo || "").toUpperCase())
       );
-      const resolverCodigoCausalSeguro = async (rawCod: unknown): Promise<string | null> => {
-        const c = txt(rawCod)?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "";
-        if (!c) return null;
-        if (setCausales.has(c)) return c;
-        if (CAUSALES_NORMATIVAS_BASE.some((b) => b.codigo === c)) {
-          await asegurarCausalNormativa(db, c);
-          setCausales.add(c);
-          return c;
-        }
-        const c4 = c.slice(0, 4);
-        if (c4.length === 4 && setCausales.has(c4)) return c4;
-        const c2 = c.slice(0, 2);
-        if (CAUSALES_NORMATIVAS_BASE.some((b) => b.codigo === c2)) {
+      const resolverCodigoCausalSeguro = async (rawCod: unknown, tipoRaw?: unknown): Promise<string | null> => {
+        const c2 = causaNormativa6De(strLimpio(rawCod), strLimpio(tipoRaw));
+        if (!c2) return null;
+        if (!setCausales.has(c2)) {
           await asegurarCausalNormativa(db, c2);
           setCausales.add(c2);
-          return c2;
         }
-        return null;
+        return c2;
       };
 
       const mapaFact = new Map<string, string>();
@@ -1157,6 +1259,8 @@ export async function POST(request: Request) {
         strLimpio(s).toUpperCase().replace(/\s+/g, " ").trim().slice(0, 140);
 
       const mapaGlosaNatural = new Map<string, { id: string; origen: unknown }>();
+      const glosasPorFactura = new Map<string, { id: string; origen: unknown }[]>();
+      const glosasYaEmparejadas = new Set<string>();
       for (const g of (glosaExist.data || []) as {
         id: string;
         factura_id: string;
@@ -1164,8 +1268,12 @@ export async function POST(request: Request) {
         valor_glosado: number | null;
         origen?: unknown;
       }[]) {
+        const ref = { id: g.id, origen: g.origen };
         const k = `${g.factura_id}|${Math.round(Number(g.valor_glosado || 0))}|${normClaveTxt(g.motivo_texto)}`;
-        if (!mapaGlosaNatural.has(k)) mapaGlosaNatural.set(k, { id: g.id, origen: g.origen });
+        if (!mapaGlosaNatural.has(k)) mapaGlosaNatural.set(k, ref);
+        const listaF = glosasPorFactura.get(g.factura_id) || [];
+        listaF.push(ref);
+        glosasPorFactura.set(g.factura_id, listaF);
       }
 
       const mapaPendNatural = new Map<string, string>();
@@ -1294,23 +1402,24 @@ export async function POST(request: Request) {
         }
         if (!factId) continue;
 
-        const fId = await obtenerRespId(item.facturador);
-        const rId = await obtenerRespId(item.responsableRespuesta || item.responsableAceptacion);
-        const codCausal = await resolverCodigoCausalSeguro(
-          strLimpio(item.subcodigoCausal) || strLimpio(item.motivoCodigo)
+        const persImp = homologarPersonaFacturacion(
+          strLimpio(item.responsableRespuesta || item.responsableAceptacion || item.facturador)
         );
-        const rawNc = txt(item.notaCredito)?.trim() || "";
-        const nc =
-          !rawNc
-            ? null
-            : rawNc.toUpperCase() === "NA" || rawNc.toUpperCase() === "NO APLICA"
-            ? "N/A"
-            : rawNc;
+        const pIdImp = await obtenerRespId(persImp);
+        const fId = pIdImp;
+        const rId = pIdImp;
+        const codCausal = await resolverCodigoCausalSeguro(item.motivoCodigo, item.tipoGlosa);
 
         const estUp = String(item.estado || "PENDIENTE").toUpperCase();
         const estadoValido = ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(estUp)
           ? estUp
           : "PENDIENTE";
+        const vAceptadoNum =
+          item.valorAceptado === null || item.valorAceptado === undefined || item.valorAceptado === ""
+            ? null
+            : num(item.valorAceptado);
+        const ncResImp = resolverNotaCreditoCondicional(item.notaCredito, vAceptadoNum, estadoValido);
+        const nc = ncResImp || null;
 
         const vGlosado = num(item.valorGlosado);
         const motivoTxt = txt(item.motivoGlosa);
@@ -1324,10 +1433,7 @@ export async function POST(request: Request) {
           motivo_texto: motivoTxt,
           observacion: txt(item.observacionInterna),
           valor_glosado: vGlosado,
-          valor_aceptado:
-            item.valorAceptado === null || item.valorAceptado === undefined || item.valorAceptado === ""
-              ? null
-              : num(item.valorAceptado),
+          valor_aceptado: vAceptadoNum,
           estado: estadoValido,
           fecha_glosa: fecha(item.fechaNotificacionGlosa),
           nota_credito: nc,
@@ -1336,7 +1442,18 @@ export async function POST(request: Request) {
         };
 
         const claveNat = `${factId}|${Math.round(vGlosado)}|${normClaveTxt(motivoTxt)}`;
-        const prevGlosa = mapaGlosaNatural.get(claveNat);
+        let prevGlosa = mapaGlosaNatural.get(claveNat);
+        if (!prevGlosa) {
+          const candidatas = (glosasPorFactura.get(factId) || []).filter(
+            (c) => !glosasYaEmparejadas.has(c.id)
+          );
+          if (candidatas.length === 1) {
+            prevGlosa = candidatas[0];
+          }
+        }
+        if (prevGlosa?.id) {
+          glosasYaEmparejadas.add(prevGlosa.id);
+        }
         const origenBaseCarga = {
           ...(prevGlosa?.origen && typeof prevGlosa.origen === "object"
             ? (prevGlosa.origen as Record<string, unknown>)
