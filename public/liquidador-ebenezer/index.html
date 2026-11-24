@@ -19915,7 +19915,7 @@ try{
       var per = (typeof nubePeriodoActual==="function") ? nubePeriodoActual() : "";
       var C = (window.NUBE && NUBE.leerCierres) ? await NUBE.leerCierres(per) : null;
       var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){ return C[k]; }) : []);
-      if(window.cieUnoPorParte) arr = cieUnoPorParte(arr);
+      arr = window.cieCierresDe ? cieCierresDe(arr, per) : arr;
       arr.forEach(function(c){
         var col = MAPA[String(c.parte||"")]; if(!col) return;
         hay = true;
@@ -21882,6 +21882,52 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
     return Object.keys(mejor).map(function(p){ return mejor[p].c; });
   };
 
+  /* ===== Correcciones autorizadas sobre un mes YA CERRADO =====
+     Un mes cerrado no se recalcula (esa es la ley). Cuando el administrador
+     autoriza una corrección puntual, se escribe aquí, con fecha y motivo, y se
+     suma ENCIMA del cierre enviado: así el liquidador dice exactamente lo mismo
+     que el link que ven los médicos, sin volver a liquidar el mes.
+     Valores en pesos, por médico y por parte: c = cirugía, s = sede, x = manual. */
+  window.CIE_CORR = {
+    '2026-10': {
+      nota: 'Incluye la corrección autorizada por el administrador el 23/11/2026: tratamientos intravítreos del 9 y 15 de octubre de Jaysi Pastrana (Cirugía +$300.000).',
+      /* si la sede se vuelve a enviar DESPUÉS de esta fecha, se entiende que el
+         reenvío ya trae la corrección y no se vuelve a sumar */
+      desde: '2026-11-23T00:00:00Z',
+      med: { 'JAYSI PASTRANA': { CIR: { c: 300000 } } }
+    }
+  };
+  /* Devuelve los cierres del período listos: uno por parte y con la corrección puesta. */
+  window.cieCierresDe = function(arr, per){
+    var uno = window.cieUnoPorParte(arr);
+    var co = window.CIE_CORR[per]; if(!co || !co.med) return uno;
+    return uno.map(function(c){
+      var p = String(c.parte||''), sumo = 0;
+      if(co.desde){ var fe = 0;
+        try{ fe = +new Date(c.enviadoEl || (c.actualizado && (c.actualizado.seconds ? c.actualizado.seconds*1000 : c.actualizado)) || 0) || 0; }catch(e){ fe = 0; }
+        if(fe && fe >= +new Date(co.desde)) return c; }
+      var pm = {}, det = {};
+      Object.keys(c.porMedico||{}).forEach(function(k){ pm[k]=c.porMedico[k]; });
+      Object.keys(c.porMedicoDet||{}).forEach(function(k){ det[k]=c.porMedicoDet[k]; });
+      Object.keys(co.med).forEach(function(m){
+        var d = co.med[m][p]; if(!d) return;
+        var dc = Math.round(d.c||0), ds = Math.round(d.s||0), dx = Math.round(d.x||0);
+        var tot = dc+ds+dx; if(!tot) return;
+        sumo += tot;
+        var v = pm[m]; v = (v && typeof v==='object') ? (v.total||v.tot||0) : (v||0);
+        pm[m] = Math.round(Number(v)||0) + tot;
+        var dd = det[m] || {c:0,s:0,x:0};
+        det[m] = {c:Math.round(dd.c||0)+dc, s:Math.round(dd.s||0)+ds, x:Math.round(dd.x||0)+dx};
+      });
+      if(!sumo) return c;
+      var copia = {}; Object.keys(c).forEach(function(k){ copia[k]=c[k]; });
+      copia.porMedico = pm; copia.porMedicoDet = det;
+      copia.total = Math.round(Number(c.total)||0) + sumo;
+      copia.corregido = true;
+      return copia;
+    });
+  };
+
   function perAhora(){
     try{ return (typeof nubePeriodoActual==='function') ? (nubePeriodoActual()||'') : ''; }catch(e){ return ''; }
   }
@@ -21927,7 +21973,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
       if(window.NUBE && NUBE.leerCierres){
         var C = await NUBE.leerCierres(per);
         var arr = Array.isArray(C) ? C : (C ? Object.keys(C).map(function(k){ return C[k]; }) : []);
-        if(window.cieUnoPorParte) arr = cieUnoPorParte(arr);
+        arr = window.cieCierresDe ? cieCierresDe(arr, per) : arr;
         paq = armar(arr);
         if(paq) guardarCache(per, paq);
       }
@@ -22015,6 +22061,9 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
         quienes + ' &nbsp;|&nbsp; <b>Total ' + m(gran) + '</b>' +
         (admin ? ' &nbsp;·&nbsp; <a href="#" id="cieVer" style="color:#1d4ed8">ver el recálculo</a>' : '');
     }
+    try{ var co = (window.CIE_CORR||{})[CIE.per];
+      if(co && co.nota && !CIE.verRecalculo) d.innerHTML += '<br><span style="color:#7c4a03">' + co.nota + '</span>';
+    }catch(e){}
     var a1 = document.getElementById('cieVer');
     if(a1) a1.onclick = function(e){ e.preventDefault(); CIE.verRecalculo = true; try{ render(); }catch(err){} };
     var a2 = document.getElementById('cieVolver');
