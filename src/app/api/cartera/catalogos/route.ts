@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
-import { homologarPersonaFacturacion } from "@/lib/carteraCruces";
+import { homologarPersonaFacturacion, normalizarEmpresaNitUnificada } from "@/lib/carteraCruces";
 
 /* ---------------------------------------------------------------------
    CATALOGOS DE CARTERA — facturadores y empresas
@@ -166,7 +166,10 @@ export async function POST(request: Request) {
   try {
     if (accion === "CREAR") {
       const nRaw = (nombre || "").trim();
-      const n = tabla === "cf_responsables" ? homologarPersonaFacturacion(nRaw) : nRaw;
+      const n =
+        tabla === "cf_responsables"
+          ? homologarPersonaFacturacion(nRaw)
+          : normalizarEmpresaNitUnificada(nRaw).nombre || nRaw.toUpperCase();
       if (!n) return NextResponse.json({ ok: false, error: "Nombre inválido o vacío" }, { status: 400 });
       const { data: ya } = await db.from(tabla).select("id").ilike("nombre", n).maybeSingle();
       if (ya) {
@@ -181,7 +184,10 @@ export async function POST(request: Request) {
 
     if (accion === "RENOMBRAR") {
       const nRaw = (nombre || "").trim();
-      const n = tabla === "cf_responsables" ? homologarPersonaFacturacion(nRaw) : nRaw;
+      const n =
+        tabla === "cf_responsables"
+          ? homologarPersonaFacturacion(nRaw)
+          : normalizarEmpresaNitUnificada(nRaw).nombre || nRaw.toUpperCase();
       if (!n) return NextResponse.json({ ok: false, error: "Nombre inválido o vacío" }, { status: 400 });
       const { data: ya } = await db.from(tabla).select("id").ilike("nombre", n).maybeSingle();
       if (ya && ya.id !== id) {

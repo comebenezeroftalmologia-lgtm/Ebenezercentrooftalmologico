@@ -11,6 +11,7 @@ import {
   homologarPersonaFacturacion,
   clasificarAtencionYSede,
   limpiarNombrePersona,
+  normalizarEstadoDecision,
   resolverNotaCreditoCondicional,
 } from "@/lib/carteraCruces";
 import {
@@ -412,15 +413,17 @@ export default function TableroCarteraAnalytics() {
       const pUnif = homologarPersonaFacturacion(
         r.responsableRespuesta || r.responsableAceptacion || r.facturador
       );
+      const estNorm = normalizarEstadoDecision(r.estado || r.subtabla, r.valorAceptado, r.notaCredito);
       return {
         ...r,
+        estado: estNorm,
         facturador: pUnif,
         responsableAceptacion: pUnif,
         responsableRespuesta: pUnif,
         notaCredito: resolverNotaCreditoCondicional(
           r.notaCredito,
           r.valorAceptado,
-          r.estado || r.subtabla
+          estNorm
         ),
       };
     })
@@ -9005,6 +9008,11 @@ export default function TableroCarteraAnalytics() {
       {/* MODAL SUBIR Y ALMACENAR EXCEL (.XLSX / .CSV) EN BASE DE DATOS COMPARTIDA */}
       {mostrarModalSubirExcel && (
         <ModalImportarCarteraExcel
+          facturasExistentes={Array.from(
+            new Set(
+              [...glosas.map((g) => g.factura), ...anuladas.map((a) => a.factura)].filter(Boolean)
+            )
+          )}
           onCerrar={() => setMostrarModalSubirExcel(false)}
           onImportado={(mensaje) => {
             setMostrarModalSubirExcel(false);

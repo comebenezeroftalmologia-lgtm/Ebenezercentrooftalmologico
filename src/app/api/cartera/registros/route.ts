@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
 import {
+  CATALOGO_ERP_UNIFICADAS,
+  RESPONSABLES_OFICIALES_EBENEZER,
   causaNormativa6De,
   claveFacturaNorm,
+  esNumeroNotaCreditoReal,
   extraerCodigoCausalExplicito,
   extraerFacturasFcoe,
   homologarEmpresaYOrigen,
@@ -11,6 +14,7 @@ import {
   clasificarAtencionYSede,
   limpiarNombrePersona,
   normalizarEmpresaNitUnificada,
+  normalizarEstadoDecision,
   normalizarSeguimientoGlosa,
   resolverNotaCreditoCondicional,
 } from "@/lib/carteraCruces";
@@ -140,9 +144,10 @@ async function resolverCodigoParaBD(
 
 async function sanearCatalogosEnBD(db: ReturnType<typeof createServiceClient>) {
   try {
-    const [causRes, respRes] = await Promise.all([
+    const [causRes, respRes, empRes] = await Promise.all([
       db.from("cf_causales").select("codigo"),
       db.from("cf_responsables").select("id, nombre, activo"),
+      db.from("cf_empresas").select("id, nombre, activo"),
     ]);
     const cods = new Set(
       ((causRes.data || []) as { codigo: string }[]).map((c) => String(c.codigo || "").toUpperCase())
@@ -157,15 +162,23 @@ async function sanearCatalogosEnBD(db: ReturnType<typeof createServiceClient>) {
         );
     }
 
+    const refsResp = [
+      { tabla: "cf_glosas", col: "facturador_id" },
+      { tabla: "cf_glosas", col: "responsable_aceptacion_id" },
+      { tabla: "cf_facturas", col: "responsable_id" },
+      { tabla: "cf_pendientes_facturar", col: "responsable_id" },
+    ];
+
     const listaResp = (respRes.data || []) as { id: string; nombre: string; activo: boolean }[];
     const porCanon = new Map<string, { id: string; nombre: string; activo: boolean }[]>();
     for (const r of listaResp) {
       const limpio = limpiarUtf8(String(r.nombre || "")).trim();
       const canon = homologarPersonaFacturacion(limpio);
       if (!canon) {
-        if (r.activo) {
-          await db.from("cf_responsables").update({ activo: false }).eq("id", r.id);
+        for (const rf of refsResp) {
+          await db.from(rf.tabla).update({ [rf.col]: null }).eq(rf.col, r.id);
         }
+        await db.from("cf_responsables").delete().eq("id", r.id);
         continue;
       }
       const arr = porCanon.get(canon) || [];
@@ -173,24 +186,52 @@ async function sanearCatalogosEnBD(db: ReturnType<typeof createServiceClient>) {
       porCanon.set(canon, arr);
     }
 
-    const refs = [
-      { tabla: "cf_glosas", col: "facturador_id" },
-      { tabla: "cf_glosas", col: "responsable_aceptacion_id" },
-      { tabla: "cf_facturas", col: "responsable_id" },
-      { tabla: "cf_pendientes_facturar", col: "responsable_id" },
-    ];
-
     for (const [canon, grupo] of Array.from(porCanon.entries())) {
       const exacto = grupo.find((x) => x.nombre.toUpperCase() === canon) || grupo[0];
       const duplicados = grupo.filter((x) => x.id !== exacto.id);
       for (const dup of duplicados) {
-        for (const rf of refs) {
+        for (const rf of refsResp) {
           await db.from(rf.tabla).update({ [rf.col]: exacto.id }).eq(rf.col, dup.id);
         }
         await db.from("cf_responsables").delete().eq("id", dup.id);
       }
       if (exacto.nombre !== canon || !exacto.activo) {
         await db.from("cf_responsables").update({ nombre: canon, activo: true }).eq("id", exacto.id);
+      }
+    }
+
+    for (const oficial of RESPONSABLES_OFICIALES_EBENEZER) {
+      if (!porCanon.has(oficial)) {
+        await db.from("cf_responsables").insert({ nombre: oficial, activo: true });
+      }
+    }
+
+    // Saneamiento y unificación de ERP duplicadas en cf_empresas (ej. COLSANITA -> COLSANITAS, MEDISANTIAS -> MEDISANITAS)
+    const refsEmp = [
+      { tabla: "cf_facturas", col: "empresa_id" },
+      { tabla: "cf_pendientes_facturar", col: "empresa_id" },
+    ];
+    const listaEmp = (empRes.data || []) as { id: string; nombre: string; activo: boolean }[];
+    const porCanonEmp = new Map<string, { id: string; nombre: string; activo: boolean }[]>();
+    for (const e of listaEmp) {
+      const limpioE = limpiarUtf8(String(e.nombre || "")).trim();
+      if (!limpioE) continue;
+      const canonE = normalizarEmpresaNitUnificada(limpioE).nombre || limpioE.toUpperCase();
+      const arrE = porCanonEmp.get(canonE) || [];
+      arrE.push({ ...e, nombre: limpioE });
+      porCanonEmp.set(canonE, arrE);
+    }
+    for (const [canonE, grupoE] of Array.from(porCanonEmp.entries())) {
+      const exactoE = grupoE.find((x) => x.nombre.toUpperCase() === canonE) || grupoE[0];
+      const duplicadosE = grupoE.filter((x) => x.id !== exactoE.id);
+      for (const dupE of duplicadosE) {
+        for (const rf of refsEmp) {
+          await db.from(rf.tabla).update({ [rf.col]: exactoE.id }).eq(rf.col, dupE.id);
+        }
+        await db.from("cf_empresas").delete().eq("id", dupE.id);
+      }
+      if (exactoE.nombre !== canonE || !exactoE.activo) {
+        await db.from("cf_empresas").update({ nombre: canonE, activo: true }).eq("id", exactoE.id);
       }
     }
   } catch {
@@ -611,12 +652,17 @@ export async function GET() {
       extraido?.motivoCodigo ||
       causaNormativa6De(codExplicito, tipoBD);
 
-    const estadoFinal = strLimpio(r.estado) || extraido?.estado || "PENDIENTE";
-    const valorAceptadoFinal =
+    const valorAceptadoRaw =
       r.valor_aceptado !== null && r.valor_aceptado !== undefined
         ? Number(r.valor_aceptado)
         : extraido?.valorAceptado ?? null;
     const notaBase = strLimpio(r.nota_credito) || extraido?.notaCredito || "";
+    const estadoFinal = normalizarEstadoDecision(
+      strLimpio(r.estado) || extraido?.estado || "PENDIENTE",
+      valorAceptadoRaw,
+      notaBase
+    );
+    const valorAceptadoFinal = estadoFinal === "NO_ACEPTADA" ? 0 : valorAceptadoRaw;
     const notaFinal = resolverNotaCreditoCondicional(notaBase, valorAceptadoFinal, estadoFinal);
 
     const fechaFactFinal = (f.fecha_elaboracion as string) || extraido?.fechaFactura || "";
@@ -719,16 +765,18 @@ export async function GET() {
 
   const catalogos = {
     empresas: unicos([
+      ...CATALOGO_ERP_UNIFICADAS.map((e) => e.nombre),
       ...(empresasCat.data || []).map((x) => {
         const rawE = String(x.nombre || "");
-        return normalizarEmpresaNitUnificada(rawE).nombre || rawE;
+        return normalizarEmpresaNitUnificada(rawE).nombre || rawE.toUpperCase();
       }),
-      ...filasGlosa.map((g) => g.empresa),
+      ...filasGlosa.map((g) => normalizarEmpresaNitUnificada(g.empresa).nombre || g.empresa),
     ]),
     responsables: unicos([
+      ...RESPONSABLES_OFICIALES_EBENEZER,
       ...(responsablesCat.data || []).map((x) => homologarPersonaFacturacion(String(x.nombre || ""))),
-      ...filasGlosa.map((g) => g.facturador),
-      ...filasGlosa.map((g) => g.responsableAceptacion),
+      ...filasGlosa.map((g) => homologarPersonaFacturacion(g.facturador)),
+      ...filasGlosa.map((g) => homologarPersonaFacturacion(g.responsableAceptacion)),
     ]),
     motivos: unicos(filasGlosa.map((g) => g.motivoGlosa)),
     causales: causalesCompletas,
@@ -881,22 +929,32 @@ export async function POST(request: Request) {
       if (!numero) {
         return NextResponse.json({ ok: false, error: "Falta el número de factura" }, { status: 400 });
       }
-      const estadoPre = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
-      const ncPre = resolverNotaCreditoCondicional(fila.notaCredito, fila.valorAceptado, estadoPre);
-      if (esNuevo && !esNotaCreditoValida(ncPre)) {
+      const estadoPre = normalizarEstadoDecision(
+        fila.estado || fila.subtabla || "PENDIENTE",
+        fila.valorAceptado,
+        fila.notaCredito
+      );
+      if (estadoPre === "ACEPTADA" && !esNumeroNotaCreditoReal(fila.notaCredito)) {
         return NextResponse.json(
-          { ok: false, error: "La Nota Crédito es obligatoria (ingresa el número o N/A)" },
+          {
+            ok: false,
+            error: "Para guardar una glosa Aceptada debes ingresar el número de la Nota Crédito.",
+          },
           { status: 400 }
         );
       }
-      if (!esNuevo && ncPre !== "" && !esNotaCreditoValida(ncPre)) {
+      const ncPre = resolverNotaCreditoCondicional(fila.notaCredito, fila.valorAceptado, estadoPre);
+      if (ncPre !== "" && !esNotaCreditoValida(ncPre)) {
         return NextResponse.json(
           { ok: false, error: "La Nota Crédito debe contener el número consecutivo o N/A" },
           { status: 400 }
         );
       }
 
-      const empresaId = await idCatalogo(db, "cf_empresas", fila.empresa);
+      const empCanonicaPost =
+        normalizarEmpresaNitUnificada(strLimpio(fila.empresa)).nombre ||
+        strLimpio(fila.empresa).toUpperCase();
+      const empresaId = await idCatalogo(db, "cf_empresas", empCanonicaPost);
       const facturaId = await idFactura(db, numero, {
         empresa_id: empresaId,
         empresa_nombre_original: txt(fila.empresaOriginal) ?? txt(fila.empresa),
@@ -936,8 +994,16 @@ export async function POST(request: Request) {
         ? null
         : (await db.from("cf_glosas").select("id, estado, origen").eq("id", String(fila.id)).maybeSingle()).data;
 
-      const estado = String(fila.estado || fila.subtabla || "PENDIENTE").toUpperCase();
-      const ncResuelta = resolverNotaCreditoCondicional(fila.notaCredito, fila.valorAceptado, estado);
+      const estado = estadoPre;
+      const valorAceptadoGuardar =
+        estado === "NO_ACEPTADA"
+          ? 0
+          : fila.valorAceptado === null ||
+            fila.valorAceptado === undefined ||
+            fila.valorAceptado === ""
+          ? null
+          : num(fila.valorAceptado);
+      const ncResuelta = resolverNotaCreditoCondicional(fila.notaCredito, valorAceptadoGuardar, estado);
       const ncNormalizada = ncResuelta || null;
 
       const valores = {
@@ -950,16 +1016,8 @@ export async function POST(request: Request) {
         motivo_texto: txt(fila.motivoGlosa),
         observacion: txt(fila.observacionInterna),
         valor_glosado: num(fila.valorGlosado),
-        // Nullable de verdad: sin desenlace definido se guarda null, no 0.
-        valor_aceptado:
-          fila.valorAceptado === null ||
-          fila.valorAceptado === undefined ||
-          fila.valorAceptado === ""
-            ? null
-            : num(fila.valorAceptado),
-        estado: ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(estado)
-          ? estado
-          : "PENDIENTE",
+        valor_aceptado: valorAceptadoGuardar,
+        estado,
         fecha_glosa: fechaNotif,
         nota_credito: ncNormalizada,
         facturador_id: factId,
@@ -1363,7 +1421,11 @@ export async function POST(request: Request) {
         anuladasProcesadas++;
       }
 
-      // 2. Procesar Glosas (cf_facturas + cf_glosas)
+      const facturasModificadasSet = new Set<string>();
+      const facturasNuevasSet = new Set<string>();
+      const factIdsEnExcelGlosas = new Set<string>();
+
+      // 2. Procesar Glosas (cf_facturas + cf_glosas) — actualiza 100% existentes y limpia duplicados huérfanos
       for (const item of listaGlosas) {
         const numero = claveFacturaNorm(strLimpio(item.factura));
         if (!numero) continue;
@@ -1373,6 +1435,12 @@ export async function POST(request: Request) {
         const vRad = num(item.valorFacturado ?? item.valorRadicado);
         const fElab = fecha(item.fechaFactura);
         const fRad = fecha(item.fechaRadicacion);
+        const anioCalc =
+          item.anio && Number(item.anio) >= 2000
+            ? Number(item.anio)
+            : fElab
+            ? Number(fElab.slice(0, 4))
+            : null;
 
         if (!factId) {
           const insF = await db
@@ -1381,7 +1449,7 @@ export async function POST(request: Request) {
               numero,
               empresa_id: empId,
               empresa_nombre_original: txt(item.empresaOriginal) ?? txt(item.empresa),
-              anio: item.anio && Number(item.anio) >= 2000 ? Number(item.anio) : fElab ? Number(fElab.slice(0, 4)) : null,
+              anio: anioCalc,
               fecha_elaboracion: fElab,
               fecha_radicacion: fRad,
               valor_radicado: vRad,
@@ -1393,14 +1461,28 @@ export async function POST(request: Request) {
         } else {
           const upF: Record<string, unknown> = {};
           if (empId) upF.empresa_id = empId;
+          if (txt(item.empresaOriginal) || txt(item.empresa)) {
+            upF.empresa_nombre_original = txt(item.empresaOriginal) ?? txt(item.empresa);
+          }
+          if (anioCalc) upF.anio = anioCalc;
           if (fElab) upF.fecha_elaboracion = fElab;
           if (fRad) upF.fecha_radicacion = fRad;
-          if (vRad > 0) upF.valor_radicado = vRad;
+          if (item.valorFacturado !== undefined || item.valorRadicado !== undefined) {
+            upF.valor_radicado = vRad;
+          }
           if (Object.keys(upF).length > 0) {
             await db.from("cf_facturas").update(upF).eq("id", factId);
           }
         }
         if (!factId) continue;
+
+        factIdsEnExcelGlosas.add(factId);
+        const existentesFactura = glosasPorFactura.get(factId) || [];
+        if (existentesFactura.length > 0) {
+          facturasModificadasSet.add(numero);
+        } else {
+          facturasNuevasSet.add(numero);
+        }
 
         const persImp = homologarPersonaFacturacion(
           strLimpio(item.responsableRespuesta || item.responsableAceptacion || item.facturador)
@@ -1410,14 +1492,12 @@ export async function POST(request: Request) {
         const rId = pIdImp;
         const codCausal = await resolverCodigoCausalSeguro(item.motivoCodigo, item.tipoGlosa);
 
-        const estUp = String(item.estado || "PENDIENTE").toUpperCase();
-        const estadoValido = ["PENDIENTE", "RESPONDIDA", "ACEPTADA", "NO_ACEPTADA", "LEGALIZADA"].includes(estUp)
-          ? estUp
-          : "PENDIENTE";
-        const vAceptadoNum =
+        const vAceptadoRaw =
           item.valorAceptado === null || item.valorAceptado === undefined || item.valorAceptado === ""
             ? null
             : num(item.valorAceptado);
+        const estadoValido = normalizarEstadoDecision(item.estado, vAceptadoRaw, item.notaCredito);
+        const vAceptadoNum = estadoValido === "NO_ACEPTADA" ? 0 : vAceptadoRaw;
         const ncResImp = resolverNotaCreditoCondicional(item.notaCredito, vAceptadoNum, estadoValido);
         const nc = ncResImp || null;
 
@@ -1442,18 +1522,19 @@ export async function POST(request: Request) {
         };
 
         const claveNat = `${factId}|${Math.round(vGlosado)}|${normClaveTxt(motivoTxt)}`;
-        let prevGlosa = mapaGlosaNatural.get(claveNat);
+        const exactaSinUsar = mapaGlosaNatural.get(claveNat);
+        let prevGlosa =
+          exactaSinUsar && !glosasYaEmparejadas.has(exactaSinUsar.id) ? exactaSinUsar : undefined;
         if (!prevGlosa) {
-          const candidatas = (glosasPorFactura.get(factId) || []).filter(
-            (c) => !glosasYaEmparejadas.has(c.id)
-          );
-          if (candidatas.length === 1) {
+          const candidatas = existentesFactura.filter((c) => !glosasYaEmparejadas.has(c.id));
+          if (candidatas.length > 0) {
             prevGlosa = candidatas[0];
           }
         }
         if (prevGlosa?.id) {
           glosasYaEmparejadas.add(prevGlosa.id);
         }
+
         const origenBaseCarga = {
           ...(prevGlosa?.origen && typeof prevGlosa.origen === "object"
             ? (prevGlosa.origen as Record<string, unknown>)
@@ -1464,19 +1545,16 @@ export async function POST(request: Request) {
           cargado: hoyCarga,
           datos: (item.datosOriginales as Record<string, unknown>) || {},
         };
-        const patchGest: Fila = {};
-        if (strLimpio(item.fechaPrestacionServicio)) {
-          patchGest.fechaPrestacionServicio = item.fechaPrestacionServicio;
-        }
-        if (strLimpio(item.subcodigoCausal)) {
-          patchGest.subcodigoCausal = item.subcodigoCausal;
-        }
-        if (strLimpio(item.seguimientoEstado)) {
-          patchGest.seguimientoEstado = item.seguimientoEstado;
-        }
-        if (item.valorSeguimiento !== null && item.valorSeguimiento !== undefined && item.valorSeguimiento !== "") {
-          patchGest.valorSeguimiento = item.valorSeguimiento;
-        }
+        const patchGest: Fila = {
+          fechaPrestacionServicio: strLimpio(item.fechaPrestacionServicio) || "",
+          seguimientoEstado: strLimpio(item.seguimientoEstado) || "",
+          valorSeguimiento:
+            item.valorSeguimiento !== null &&
+            item.valorSeguimiento !== undefined &&
+            item.valorSeguimiento !== ""
+              ? item.valorSeguimiento
+              : null,
+        };
         valoresGlosa.origen = construirOrigenGestion(origenBaseCarga, patchGest);
 
         if (prevGlosa?.id) {
@@ -1485,11 +1563,23 @@ export async function POST(request: Request) {
         } else {
           const insG = await db.from("cf_glosas").insert(valoresGlosa).select("id").maybeSingle();
           if (insG.data?.id) {
-            mapaGlosaNatural.set(claveNat, { id: String(insG.data.id), origen: valoresGlosa.origen });
+            const nuevoRef = { id: String(insG.data.id), origen: valoresGlosa.origen };
+            mapaGlosaNatural.set(claveNat, nuevoRef);
+            glosasYaEmparejadas.add(nuevoRef.id);
             creados++;
           }
         }
         glosasProcesadas++;
+      }
+
+      // Eliminar filas duplicadas/huérfanas viejas de las facturas que sí vinieron en este Excel
+      for (const fIdProc of Array.from(factIdsEnExcelGlosas)) {
+        const sobrantes = (glosasPorFactura.get(fIdProc) || []).filter(
+          (c) => !glosasYaEmparejadas.has(c.id)
+        );
+        for (const sob of sobrantes) {
+          await db.from("cf_glosas").delete().eq("id", sob.id);
+        }
       }
 
       // 3. Procesar Servicios Clínicos / Pendientes por Facturar (cf_pendientes_facturar)
@@ -1587,6 +1677,8 @@ export async function POST(request: Request) {
           glosasProcesadas,
           pendientesProcesados,
           anuladasProcesadas,
+          facturasModificadas: Array.from(facturasModificadasSet),
+          facturasNuevas: Array.from(facturasNuevasSet),
         },
       });
     }

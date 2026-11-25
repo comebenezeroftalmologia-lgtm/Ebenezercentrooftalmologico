@@ -21,6 +21,7 @@ import {
   homologarEmpresaYOrigen,
   homologarPersonaFacturacion,
   limpiarNombrePersona,
+  esNumeroNotaCreditoReal,
   limpiarTextoUtf8,
   normalizarSeguimientoGlosa,
   resolverNotaCreditoCondicional,
@@ -877,28 +878,32 @@ export function extraerCamposGlosaDesdeObjeto(rawObj: Record<string, unknown>): 
   ]);
   const valorSeguimiento = vSegTxt === "" ? null : normalizarNumeroMoneda(vSegTxt);
 
+  const tieneNcReal = esNumeroNotaCreditoReal(ncRaw);
   const ncPrelim = resolverNotaCreditoCondicional(ncRaw, vAcep, "");
-  let estado = "PENDIENTE";
+  let estado: "PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA" = "PENDIENTE";
   if (
     estRaw.includes("NO ACEPT") ||
     estRaw.includes("NO_ACEPT") ||
+    estRaw.includes("NO ACEPTO") ||
+    estRaw === "NO" ||
     estRaw.includes("DEFEND") ||
     estRaw.includes("LEVANTAMIENTO COMPLETO") ||
-    (vAcep !== null && vAcep === 0 && (estRaw.includes("LEVANT") || estRaw.includes("CERRAD") || ncPrelim === "N/A"))
+    (vAcep !== null &&
+      vAcep === 0 &&
+      !tieneNcReal &&
+      (estRaw.includes("LEVANT") || estRaw.includes("CERRAD") || estRaw.includes("LEGALIZ") || ncPrelim === "N/A"))
   ) {
     estado = "NO_ACEPTADA";
-  } else if (estRaw.includes("LEGALIZ")) {
-    estado = "LEGALIZADA";
   } else if (
     estRaw.includes("ACEPT") ||
+    estRaw === "SI" ||
+    estRaw === "SÍ" ||
     estRaw.includes("CONCILI") ||
     estRaw.includes("RATIFIC") ||
-    (vAcep !== null && vAcep > 0) ||
-    (ncPrelim !== "" && ncPrelim !== "N/A" && !estRaw)
+    tieneNcReal ||
+    (vAcep !== null && vAcep > 0)
   ) {
     estado = "ACEPTADA";
-  } else if (estRaw.includes("RESPOND") || estRaw.includes("CONTEST")) {
-    estado = "RESPONDIDA";
   }
 
   const notaCredito = resolverNotaCreditoCondicional(ncRaw, vAcep, estado);

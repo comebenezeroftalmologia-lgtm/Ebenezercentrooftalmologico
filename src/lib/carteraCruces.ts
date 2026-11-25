@@ -185,28 +185,34 @@ const CATALOGO_EMPRESAS_SISMA: {
     regimenBase: "Medicina Prepagada (PyP)",
   },
   {
-    match: (t) => t.includes("MEDISANITAS"),
+    match: (t) =>
+      t.includes("MEDISANIT") || t.includes("MEDISANTIA") || t.includes("MEDI SANIT"),
     nit: "800149387",
     corta: "MEDISANITAS",
     homologada: "Medisanitas Prepagada",
     regimenBase: "Medicina Prepagada (PyP)",
   },
   {
-    match: (t, nit) => nit.startsWith("860078828") || t.includes("COLSANITAS"),
+    match: (t, nit) => nit.startsWith("860078828") || t.includes("COLSANITA"),
     nit: "860078828",
     corta: "COLSANITAS",
     homologada: "Colsanitas Prepagada",
     regimenBase: "Medicina Prepagada (PyP)",
   },
   {
-    match: (t, nit) => nit.startsWith("800251440") || t.includes("SANITAS"),
+    match: (t, nit) =>
+      nit.startsWith("800251440") ||
+      (t.includes("SANITAS") &&
+        !t.includes("COLSANITA") &&
+        !t.includes("MEDISANIT") &&
+        !t.includes("MEDISANTIA")),
     nit: "800251440",
     corta: "SANITAS EPS",
     homologada: "Sanitas EPS",
     regimenBase: "EPS Contributivo",
   },
   {
-    match: (t, nit) => nit.startsWith("800106339") || t.includes("COLMEDICA"),
+    match: (t, nit) => nit.startsWith("800106339") || t.includes("COLMEDIC"),
     nit: "800106339",
     corta: "COLMEDICA",
     homologada: "Colmédica Prepagada",
@@ -702,20 +708,44 @@ export function normalizarEmpresaNitUnificada(
  * sobrantes o nombres recortados (p. ej. "ERIKA" -> "ERIKA ALZATE", "YULEIBIS " -> "YULEIBIS").
  * Si viene vacío o con marcador sin asignar, devuelve "" (Cero datos inventados).
  */
+export const CATALOGO_ERP_UNIFICADAS: { nombre: string; homologada: string; nit: string }[] =
+  CATALOGO_EMPRESAS_SISMA.map((c) => ({
+    nombre: c.corta,
+    homologada: c.homologada,
+    nit: c.nit,
+  })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+
+export const RESPONSABLES_OFICIALES_EBENEZER: string[] = [
+  "AURA BOTERO",
+  "ELIZABET DE HOYOS",
+  "ERIKA ALZATE",
+  "MARIA ALEJANDRA",
+  "MARIA JOSE",
+  "MARIA PAOLA",
+  "MILENA MEDINA",
+  "TILSON GUZMAN",
+  "YULEIBIS",
+];
+
 export function homologarPersonaFacturacion(raw?: string | null): string {
   const base = limpiarNombrePersona(raw);
   if (!base) return "";
   const up = sinAcentosUpper(base).replace(/\s+/g, " ").trim();
   if (
     !up ||
+    up.length < 3 ||
     up === "ADMINISTRADOR" ||
     up === "ADMIN" ||
-    up === "SIN ASIGNAR" ||
-    up === "SIN ASIGNAR EN WORKCENTER" ||
-    up === "SIN FACTURADOR" ||
-    up === "SIN RESPONSABLE" ||
-    up === "SIN RESPONSABLE EN FUENTE" ||
+    up === "XYZ" ||
+    up === "PRUEBA" ||
+    up === "TEST" ||
+    up.startsWith("SIN ") ||
     up === "POR ASIGNAR" ||
+    up === "NO APLICA" ||
+    up === "PENDIENTE" ||
+    up === "GLOSA" ||
+    up === "DEVOLUCION" ||
+    up === "ANULADA" ||
     /^\d+$/.test(up)
   ) {
     return "";
@@ -730,20 +760,89 @@ export function homologarPersonaFacturacion(raw?: string | null): string {
   }
   if (up === "TILSON" || up.startsWith("TILSON ")) return "TILSON GUZMAN";
   if (up === "AURA" || up.startsWith("AURA ")) return "AURA BOTERO";
-  if (up === "MILENA" || up.startsWith("MILENA MEDINA")) return "MILENA MEDINA";
+  if (
+    up === "MILENA" ||
+    up.startsWith("MILENA MEDI") ||
+    up.startsWith("MILENA MEDIC") ||
+    (up.startsWith("MILENA ") && !up.includes("ROMERO"))
+  ) {
+    return "MILENA MEDINA";
+  }
   return up;
+}
+
+/** Verifica que exista un número consecutivo real de Nota Crédito (no vacío, no "N/A", no solo "NC"). */
+export function esNumeroNotaCreditoReal(notaRaw?: unknown): boolean {
+  const s = limpiarTextoUtf8(notaRaw == null ? "" : String(notaRaw)).trim();
+  if (!s) return false;
+  const up = sinAcentosUpper(s).replace(/\s+/g, " ").trim();
+  if (
+    up === "N/A" ||
+    up === "NA" ||
+    up === "N.A." ||
+    up === "N.A" ||
+    up === "NO APLICA" ||
+    up === "SIN NC" ||
+    up === "NO" ||
+    up === "NC" ||
+    up === "-"
+  ) {
+    return false;
+  }
+  return /\d/.test(up);
+}
+
+/** Homologa cualquier estado legado al selector oficial: PENDIENTE ("— Seleccionar —"), ACEPTADA o NO_ACEPTADA. */
+export function normalizarEstadoDecision(
+  estadoRaw?: unknown,
+  valorAceptado?: unknown,
+  notaRaw?: unknown
+): "PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA" {
+  const est = sinAcentosUpper(estadoRaw == null ? "" : String(estadoRaw))
+    .replace(/\s+/g, "_")
+    .trim();
+  if (est === "NO_ACEPTADA" || est === "NO_ACEPTO" || est === "DEFENDIDA" || est === "RESPONDIDA_NO_ACEPTADA") {
+    return "NO_ACEPTADA";
+  }
+  if (est === "ACEPTADA" || est === "ACEPTO" || est === "ACEPTADA_NOTA_CREDITO") {
+    return "ACEPTADA";
+  }
+  if (est === "LEGALIZADA") {
+    if (esNumeroNotaCreditoReal(notaRaw)) return "ACEPTADA";
+    const txtA = valorAceptado === null || valorAceptado === undefined ? "" : String(valorAceptado).trim();
+    if (txtA !== "") {
+      const n = Number(txtA.replace(/[^0-9.-]/g, ""));
+      if (Number.isFinite(n) && n > 0) return "ACEPTADA";
+      if (Number.isFinite(n) && n === 0) return "NO_ACEPTADA";
+    }
+    const upN = sinAcentosUpper(notaRaw == null ? "" : String(notaRaw)).trim();
+    if (upN === "N/A" || upN === "NA" || upN === "NO APLICA") return "NO_ACEPTADA";
+  }
+  return "PENDIENTE";
 }
 
 /**
  * Condicional oficial de Nota Crédito:
- * - Si el valor aceptado es explícitamente 0 (o estado NO_ACEPTADA sin valor aceptado > 0), corresponde a "N/A".
- * - Normaliza variantes "NA", "N.A.", "NO APLICA" -> "N/A".
+ * - Si el estado es NO_ACEPTADA (No acepto), automáticamente corresponde a "N/A".
+ * - Si el estado es ACEPTADA (Acepto), exige el número real de Nota Crédito (jamás pone "N/A").
+ * - En estados sin definir, si el valor aceptado es explícitamente 0, corresponde a "N/A".
  */
 export function resolverNotaCreditoCondicional(
   notaRaw?: unknown,
   valorAceptado?: unknown,
   estadoRaw?: unknown
 ): string {
+  const est = sinAcentosUpper(estadoRaw == null ? "" : String(estadoRaw))
+    .replace(/\s+/g, "_")
+    .trim();
+  if (est === "NO_ACEPTADA" || est === "NO_ACEPTO") {
+    return "N/A";
+  }
+  const s = limpiarTextoUtf8(notaRaw == null ? "" : String(notaRaw)).trim();
+  const up = sinAcentosUpper(s).replace(/\s+/g, " ").trim();
+  if (est === "ACEPTADA" || est === "ACEPTO") {
+    return esNumeroNotaCreditoReal(s) ? s.toUpperCase() : "";
+  }
   const txtAcep = valorAceptado === null || valorAceptado === undefined ? "" : String(valorAceptado).trim();
   if (txtAcep !== "") {
     const n = Number(txtAcep.replace(/[^0-9.-]/g, ""));
@@ -751,13 +850,7 @@ export function resolverNotaCreditoCondicional(
       return "N/A";
     }
   }
-  const est = String(estadoRaw ?? "").trim().toUpperCase();
-  if (est === "NO_ACEPTADA" && txtAcep === "") {
-    return "N/A";
-  }
-  const s = limpiarTextoUtf8(notaRaw == null ? "" : String(notaRaw)).trim();
   if (!s) return "";
-  const up = sinAcentosUpper(s).replace(/\s+/g, " ").trim();
   if (
     up === "N/A" ||
     up === "NA" ||

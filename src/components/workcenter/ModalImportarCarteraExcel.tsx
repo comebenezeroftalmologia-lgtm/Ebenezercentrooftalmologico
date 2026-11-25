@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -10,6 +10,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { claveFacturaNorm } from "@/lib/carteraCruces";
 import {
   type DestinoHojaCartera,
   type HojaExcelDetectada,
@@ -33,9 +34,11 @@ const ETIQUETA_DESTINO: Record<DestinoHojaCartera, string> = {
 export function ModalImportarCarteraExcel({
   onCerrar,
   onImportado,
+  facturasExistentes,
 }: {
   onCerrar: () => void;
   onImportado: (mensaje: string) => void;
+  facturasExistentes?: string[];
 }) {
   const [archivoNombre, setArchivoNombre] = useState<string>("");
   const [hojas, setHojas] = useState<HojaExcelDetectada[]>([]);
@@ -45,6 +48,72 @@ export function ModalImportarCarteraExcel({
   const [subiendo, setSubiendo] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [arrastrando, setArrastrando] = useState<boolean>(false);
+  const [facturasBdRemotas, setFacturasBdRemotas] = useState<string[]>([]);
+  const [verTodasModificadas, setVerTodasModificadas] = useState<boolean>(false);
+  const [pedirConfirmacionModificar, setPedirConfirmacionModificar] = useState<boolean>(false);
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/cartera/registros", { cache: "no-store" });
+        const j = await r.json();
+        if (!activo || !r.ok || !j?.ok) return;
+        const acumuladas: string[] = [];
+        for (const g of (j.glosas || []) as { factura?: string }[]) {
+          if (g?.factura) acumuladas.push(String(g.factura));
+        }
+        for (const a of (j.anuladas || []) as { factura?: string }[]) {
+          if (a?.factura) acumuladas.push(String(a.factura));
+        }
+        setFacturasBdRemotas(acumuladas);
+      } catch {
+        // Si falla la consulta auxiliar, se usa facturasExistentes pasado por props.
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const setExistentesNorm = useMemo(() => {
+    const s = new Set<string>();
+    for (const f of facturasExistentes || []) {
+      const k = claveFacturaNorm(f);
+      if (k) s.add(k);
+    }
+    for (const f of facturasBdRemotas) {
+      const k = claveFacturaNorm(f);
+      if (k) s.add(k);
+    }
+    return s;
+  }, [facturasExistentes, facturasBdRemotas]);
+
+  const analisisFacturas = useMemo(() => {
+    const vistas = new Set<string>();
+    const modificadas: string[] = [];
+    const nuevas: string[] = [];
+    for (const h of hojas) {
+      if (h.destinoSeleccionado === "glosas") {
+        for (const g of h.glosas) {
+          const k = claveFacturaNorm(g.factura);
+          if (!k || vistas.has(k)) continue;
+          vistas.add(k);
+          if (setExistentesNorm.has(k)) modificadas.push(k);
+          else nuevas.push(k);
+        }
+      } else if (h.destinoSeleccionado === "anuladas") {
+        for (const a of h.anuladas) {
+          const k = claveFacturaNorm(a.factura);
+          if (!k || vistas.has(k)) continue;
+          vistas.add(k);
+          if (setExistentesNorm.has(k)) modificadas.push(k);
+          else nuevas.push(k);
+        }
+      }
+    }
+    return { modificadas, nuevas };
+  }, [hojas, setExistentesNorm]);
 
   const resumenTotales = useMemo(() => {
     let glosas = 0;
@@ -87,6 +156,8 @@ export function ModalImportarCarteraExcel({
       }
       setArchivoNombre(file.name);
       setHojas(detectadas);
+      setPedirConfirmacionModificar(false);
+      setVerTodasModificadas(false);
       const primeraActiva = detectadas.findIndex((d) => d.destinoSeleccionado !== "omitir");
       setHojaVistaIdx(primeraActiva >= 0 ? primeraActiva : 0);
     } catch (err) {
@@ -164,8 +235,9 @@ export function ModalImportarCarteraExcel({
     URL.revokeObjectURL(url);
   };
 
-  const confirmarAlmacenamiento = async () => {
+  const ejecutarGuardadoEnBD = async () => {
     if (resumenTotales.total === 0) return;
+    setPedirConfirmacionModificar(false);
     setSubiendo(true);
     setErrorMsg("");
     try {
@@ -208,14 +280,29 @@ export function ModalImportarCarteraExcel({
       if (r.pendientesProcesados) partes.push(`${r.pendientesProcesados} servicios/pendientes`);
       if (r.anuladasProcesadas) partes.push(`${r.anuladasProcesadas} anuladas/legalizadas`);
       const detalleTxt = partes.length > 0 ? partes.join(" · ") : `${resumenTotales.total} registros`;
+      const cantMod = Array.isArray(r.facturasModificadas)
+        ? r.facturasModificadas.length
+        : r.actualizados ?? 0;
+      const cantNue = Array.isArray(r.facturasNuevas)
+        ? r.facturasNuevas.length
+        : r.creados ?? 0;
       onImportado(
-        `Excel almacenado en BD (${detalleTxt} — ${r.creados ?? 0} nuevos, ${r.actualizados ?? 0} actualizados sin duplicar).`
+        `Excel sincronizado (${detalleTxt} — ${cantNue} facturas nuevas incluidas y ${cantMod} facturas existentes modificadas).`
       );
     } catch {
       setErrorMsg("Error de red al guardar el archivo Excel en la base de datos.");
     } finally {
       setSubiendo(false);
     }
+  };
+
+  const solicitarConfirmacionOGuardar = () => {
+    if (resumenTotales.total === 0) return;
+    if (analisisFacturas.modificadas.length > 0) {
+      setPedirConfirmacionModificar(true);
+      return;
+    }
+    void ejecutarGuardadoEnBD();
   };
 
   const hojaActiva = hojas[hojaVistaIdx] || null;
@@ -413,6 +500,57 @@ export function ModalImportarCarteraExcel({
                 })}
               </div>
 
+              {/* AVISO EN PANTALLA DE FACTURAS EXISTENTES QUE SE VAN A MODIFICAR (LAS NUEVAS NO SALEN EN LA ALERTA) */}
+              {analisisFacturas.modificadas.length > 0 && (
+                <div className="rounded-xl border border-[#F59E0B] bg-[#FFFBEB] p-3.5 text-[12px] text-[#92400E]">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#D97706]" />
+                      <div>
+                        <p className="font-extrabold text-[#78350F]">
+                          Atención: Se van a modificar {analisisFacturas.modificadas.length}{" "}
+                          {analisisFacturas.modificadas.length === 1 ? "factura que ya existe" : "facturas que ya existen"} en el tablero
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-[#92400E]">
+                          {analisisFacturas.nuevas.length > 0
+                            ? `Las ${analisisFacturas.nuevas.length} facturas nuevas del archivo se incluirán directamente sin alerta. Las siguientes facturas existentes actualizarán todos sus datos:`
+                            : "Todas las facturas siguientes ya existen y actualizarán sus valores, causal, motivo, responsable, estado y Nota Crédito:"}
+                        </p>
+                      </div>
+                    </div>
+                    {analisisFacturas.modificadas.length > 24 && (
+                      <button
+                        type="button"
+                        onClick={() => setVerTodasModificadas((v) => !v)}
+                        className="rounded-lg border border-[#FCD34D] bg-white px-2.5 py-1 text-[11px] font-bold text-[#92400E] hover:bg-[#FEF3C7] cursor-pointer"
+                      >
+                        {verTodasModificadas
+                          ? "Contraer listado"
+                          : `Ver las ${analisisFacturas.modificadas.length} facturas`}
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
+                    {(verTodasModificadas
+                      ? analisisFacturas.modificadas
+                      : analisisFacturas.modificadas.slice(0, 24)
+                    ).map((fac) => (
+                      <span
+                        key={fac}
+                        className="rounded-md border border-[#FCD34D] bg-white px-2 py-0.5 font-mono text-[10.5px] font-bold text-[#78350F]"
+                      >
+                        {fac}
+                      </span>
+                    ))}
+                    {!verTodasModificadas && analisisFacturas.modificadas.length > 24 && (
+                      <span className="px-1.5 py-0.5 text-[10.5px] font-bold text-[#92400E]">
+                        +{analisisFacturas.modificadas.length - 24} más…
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* VISTA PREVIA CRUZADA DE LA HOJA SELECCIONADA */}
               {hojaActiva && hojaActiva.destinoSeleccionado !== "omitir" && (
                 <div className="overflow-x-auto rounded-xl border border-[#E2EBF8]">
@@ -430,42 +568,60 @@ export function ModalImportarCarteraExcel({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#F1F5F9]">
-                        {hojaActiva.glosas.slice(0, 12).map((g, i) => (
-                          <tr key={`${g.factura}-${i}`} className="hover:bg-[#F8FAFC]">
-                            <td className="p-2 font-mono">
-                              <div className="font-bold text-[#0E245E]">{g.factura}</div>
-                              {g.fechaPrestacionServicio && (
-                                <div className="text-[10px] font-semibold text-[#047857]">
-                                  Prest: {g.fechaPrestacionServicio}
+                        {hojaActiva.glosas.slice(0, 12).map((g, i) => {
+                          const sinVal = (g.valorFacturado || 0) <= 0 || (g.valorGlosado || 0) <= 0;
+                          const yaExiste = setExistentesNorm.has(claveFacturaNorm(g.factura));
+                          return (
+                            <tr
+                              key={`${g.factura}-${i}`}
+                              className={sinVal ? "bg-[#FEF2F2] hover:bg-[#FEE2E2]/70" : "hover:bg-[#F8FAFC]"}
+                            >
+                              <td className="p-2 font-mono">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-[#0E245E]">{g.factura}</span>
+                                  {yaExiste && (
+                                    <span className="rounded bg-[#FEF3C7] px-1 py-0.5 text-[9px] font-bold text-[#92400E]">
+                                      MODIFICA
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                              <div className="text-[10px] text-[#64748B]">Fact: {g.fechaFactura || "—"}</div>
-                            </td>
-                            <td className="p-2">
-                              <div className="font-bold text-[#0E245E]">{g.empresaHomologada || g.empresa}</div>
-                              {g.nit && <div className="font-mono text-[10px] text-[#64748B]">NIT {g.nit}</div>}
-                            </td>
-                            <td className="p-2 max-w-[260px]">
-                              <span className="inline-block rounded bg-[#EFF6FF] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#1D4ED8] mr-1.5">
-                                {g.motivoCodigo || "SIN CAUSAL"}
-                              </span>
-                              <span className="text-[11px] text-[#334155] line-clamp-2" title={g.motivoGlosa}>
-                                {g.motivoGlosa || "—"}
-                              </span>
-                            </td>
-                            <td className="p-2 text-[10.5px] font-semibold text-[#0E245E]">
-                              {g.responsableRespuesta || g.facturador || "—"}
-                            </td>
-                            <td className="p-2 text-right font-mono">{formatPesos(g.valorFacturado)}</td>
-                            <td className="p-2 text-right font-mono font-bold text-[#BE123C]">
-                              {formatPesos(g.valorGlosado)}
-                            </td>
-                            <td className="p-2 font-mono text-[10.5px]">
-                              <span className="font-bold text-[#0E245E]">{g.estado}</span>
-                              <div className="text-[#64748B]">NC: {g.notaCredito || "Pendiente"}</div>
-                            </td>
-                          </tr>
-                        ))}
+                                {g.fechaPrestacionServicio && (
+                                  <div className="text-[10px] font-semibold text-[#047857]">
+                                    Prest: {g.fechaPrestacionServicio}
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-[#64748B]">Fact: {g.fechaFactura || "—"}</div>
+                              </td>
+                              <td className="p-2">
+                                <div className="font-bold text-[#0E245E]">{g.empresaHomologada || g.empresa}</div>
+                                {g.nit && <div className="font-mono text-[10px] text-[#64748B]">NIT {g.nit}</div>}
+                              </td>
+                              <td className="p-2 max-w-[260px]">
+                                <span className="inline-block rounded bg-[#EFF6FF] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#1D4ED8] mr-1.5">
+                                  {g.motivoCodigo || "SIN CAUSAL"}
+                                </span>
+                                <span className="text-[11px] text-[#334155] line-clamp-2" title={g.motivoGlosa}>
+                                  {g.motivoGlosa || "—"}
+                                </span>
+                              </td>
+                              <td className="p-2 text-[10.5px] font-semibold text-[#0E245E]">
+                                {g.responsableRespuesta || g.facturador || "—"}
+                              </td>
+                              <td className={`p-2 text-right font-mono ${(g.valorFacturado || 0) <= 0 ? "font-bold text-[#B91C1C]" : ""}`}>
+                                {(g.valorFacturado || 0) > 0 ? formatPesos(g.valorFacturado) : "⚠ $0"}
+                              </td>
+                              <td className={`p-2 text-right font-mono font-bold ${(g.valorGlosado || 0) <= 0 ? "text-[#B91C1C]" : "text-[#BE123C]"}`}>
+                                {(g.valorGlosado || 0) > 0 ? formatPesos(g.valorGlosado) : "⚠ $0"}
+                              </td>
+                              <td className="p-2 font-mono text-[10.5px]">
+                                <span className="font-bold text-[#0E245E]">
+                                  {g.estado === "ACEPTADA" ? "Aceptada" : g.estado === "NO_ACEPTADA" ? "No Aceptada" : "— Seleccionar —"}
+                                </span>
+                                <div className="text-[#64748B]">NC: {g.notaCredito || "—"}</div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
@@ -563,11 +719,62 @@ export function ModalImportarCarteraExcel({
           )}
         </div>
 
+        {/* CUADRO DE CONFIRMACIÓN EN PANTALLA CUANDO HAY FACTURAS EXISTENTES A MODIFICAR */}
+        {pedirConfirmacionModificar && analisisFacturas.modificadas.length > 0 && (
+          <div className="mx-5 mb-4 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] p-4 shadow-sm">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[#DC2626]" />
+              <div className="flex-1">
+                <p className="text-[13.5px] font-extrabold text-[#991B1B]">
+                  Confirmación requerida: se van a modificar {analisisFacturas.modificadas.length}{" "}
+                  {analisisFacturas.modificadas.length === 1 ? "factura existente" : "facturas existentes"}
+                </p>
+                <p className="mt-1 text-[11.5px] text-[#7F1D1D]">
+                  {analisisFacturas.nuevas.length > 0
+                    ? `Las ${analisisFacturas.nuevas.length} facturas nuevas entran directo sin modificar nada previo. Confirma que deseas actualizar los datos de las siguientes facturas ya registradas:`
+                    : "Confirma que deseas sobrescribir y actualizar con este Excel los datos de las siguientes facturas ya registradas:"}
+                </p>
+                <div className="mt-2.5 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-[#FCA5A5] bg-white p-2.5">
+                  {analisisFacturas.modificadas.map((fac) => (
+                    <span
+                      key={fac}
+                      className="rounded border border-[#FECACA] bg-[#FEF2F2] px-2 py-0.5 font-mono text-[11px] font-bold text-[#991B1B]"
+                    >
+                      {fac}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPedirConfirmacionModificar(false)}
+                    className="rounded-lg border border-[#CBD5E1] bg-white px-3.5 py-1.5 text-[12px] font-bold text-[#47597A] hover:bg-slate-50 cursor-pointer"
+                  >
+                    Revisar antes
+                  </button>
+                  <button
+                    type="button"
+                    disabled={subiendo}
+                    onClick={() => void ejecutarGuardadoEnBD()}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#DC2626] px-4 py-1.5 text-[12px] font-extrabold text-white hover:bg-[#B91C1C] cursor-pointer"
+                  >
+                    {subiendo && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Sí, modificar {analisisFacturas.modificadas.length}{" "}
+                    {analisisFacturas.modificadas.length === 1 ? "factura" : "facturas"} y sincronizar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* PIE DE ACCIÓN */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E2EBF8] bg-[#F8FAFC] px-5 py-3.5">
           <span className="text-[11.5px] text-[#47597A]">
             {resumenTotales.total > 0
-              ? `Se guardarán ${resumenTotales.total.toLocaleString("es-CO")} registros en Supabase (actualiza existentes sin duplicar y alimenta ambos tableros).`
+              ? analisisFacturas.modificadas.length > 0
+                ? `Listo: ${analisisFacturas.nuevas.length} facturas nuevas y ${analisisFacturas.modificadas.length} existentes por modificar.`
+                : `Listo: ${analisisFacturas.nuevas.length || resumenTotales.total} registros nuevos para agregar en Supabase.`
               : "Selecciona un archivo .xlsx o .csv, o pega las celdas desde Excel para previsualizar."}
           </span>
           <div className="flex items-center gap-2.5">
@@ -581,7 +788,7 @@ export function ModalImportarCarteraExcel({
             <button
               type="button"
               disabled={resumenTotales.total === 0 || subiendo || leyendo}
-              onClick={confirmarAlmacenamiento}
+              onClick={solicitarConfirmacionOGuardar}
               className="inline-flex items-center gap-1.5 rounded-xl bg-[#1D58D8] px-4 py-2 text-[12.5px] font-extrabold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#CBD5E1] cursor-pointer"
             >
               {subiendo && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

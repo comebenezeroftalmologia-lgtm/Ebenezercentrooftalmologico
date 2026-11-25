@@ -19,16 +19,20 @@ import {
   X,
 } from "lucide-react";
 import {
+  CATALOGO_ERP_UNIFICADAS,
   CAUSAS_NORMATIVAS_OFICIALES,
   OPCIONES_SEGUIMIENTO_GLOSA,
+  RESPONSABLES_OFICIALES_EBENEZER,
   type SeguimientoGlosaCodigo,
   causaNormativa6De,
   claveFacturaNorm,
+  esNumeroNotaCreditoReal,
   etiquetaSeguimientoGlosa,
   homologarEmpresaYOrigen,
   homologarPersonaFacturacion,
   clasificarAtencionYSede,
   normalizarEmpresaNitUnificada,
+  normalizarEstadoDecision,
   normalizarSeguimientoGlosa,
   resolverNotaCreditoCondicional,
 } from "@/lib/carteraCruces";
@@ -200,20 +204,24 @@ type Catalogos = {
 };
 
 const ESTADOS = [
-  { id: "PENDIENTE", etiqueta: "Pendiente" },
-  { id: "RESPONDIDA", etiqueta: "Respondida" },
+  { id: "PENDIENTE", etiqueta: "— Seleccionar —" },
   { id: "ACEPTADA", etiqueta: "Aceptada" },
-  { id: "NO_ACEPTADA", etiqueta: "No aceptada" },
-  { id: "LEGALIZADA", etiqueta: "Legalizada" },
+  { id: "NO_ACEPTADA", etiqueta: "No Aceptada" },
 ];
-const ETIQUETA: Record<string, string> = Object.fromEntries(ESTADOS.map((e) => [e.id, e.etiqueta]));
+const ETIQUETA: Record<string, string> = {
+  PENDIENTE: "— Seleccionar —",
+  RESPONDIDA: "— Seleccionar —",
+  LEGALIZADA: "— Seleccionar —",
+  ACEPTADA: "Aceptada",
+  NO_ACEPTADA: "No Aceptada",
+};
 
 const PASTILLA: Record<string, string> = {
-  PENDIENTE: "border-[#DCE8FA] bg-[#EEF4FD] text-[#1A3174]",
-  RESPONDIDA: "border-[#C7CDE0] bg-[#F4F6FB] text-[#3B4F8D]",
-  ACEPTADA: "border-[#BFE0CC] bg-[#DCEEE3] text-[#146138]",
-  NO_ACEPTADA: "border-[#BBD2F0] bg-[#E7ECFE] text-[#13359B]",
-  LEGALIZADA: "border-[#D8DEE9] bg-[#F1F3F7] text-[#47597A]",
+  PENDIENTE: "border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B]",
+  RESPONDIDA: "border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B]",
+  ACEPTADA: "border-[#86EFAC] bg-[#DCFCE7] text-[#14532D]",
+  NO_ACEPTADA: "border-[#BFDBFE] bg-[#DBEAFE] text-[#1E3A8A]",
+  LEGALIZADA: "border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B]",
 };
 
 const FAMILIA_COLOR: Record<string, string> = {
@@ -299,6 +307,7 @@ export function CarteraWorkspace({
   const [fSeguimiento, setFSeguimiento] = useState("");
   const [fFamilia, setFFamilia] = useState("");
   const [soloSinCausal, setSoloSinCausal] = useState(false);
+  const [soloSinValores, setSoloSinValores] = useState(false);
 
   const [vista, setVista] = useState<"cuadricula" | "anuladas" | "pendientes" | "resumen">("cuadricula");
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -351,7 +360,7 @@ export function CarteraWorkspace({
         notaCredito: resolverNotaCreditoCondicional(
           g.notaCredito,
           g.valorAceptado,
-          g.estado
+          normalizarEstadoDecision(g.estado, g.valorAceptado, g.notaCredito)
         ),
         facturador: homologarPersonaFacturacion(
           String(g.responsableRespuesta || g.responsableAceptacion || g.facturador || "")
@@ -369,7 +378,7 @@ export function CarteraWorkspace({
             : Number(g.valorSeguimiento),
         tipoGlosa: String(g.tipoGlosa || "GLOSA"),
         alcance: String(g.alcance || ""),
-        estado: String(g.estado || "PENDIENTE"),
+        estado: normalizarEstadoDecision(g.estado, g.valorAceptado, g.notaCredito),
       }));
       setGlosas(listaGlosas);
       setAnuladas((j.anuladas || []) as Anulada[]);
@@ -454,7 +463,7 @@ export function CarteraWorkspace({
     [traer, avisar],
   );
 
-  /* Empresas unificadas por NIT real de SISMA para el filtro */
+  /* Empresas unificadas por NIT real de SISMA para filtros y selectores cerrados */
   const empresasUnificadasEnDatos = useMemo(() => {
     const mapa = new Map<string, { nombre: string; nit: string }>();
     for (const g of glosas) {
@@ -468,8 +477,27 @@ export function CarteraWorkspace({
     return Array.from(mapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   }, [glosas, anuladas]);
 
+  const catalogoErpCerrado = useMemo(() => {
+    const mapa = new Map<string, { nombre: string; nit: string }>();
+    for (const base of CATALOGO_ERP_UNIFICADAS) {
+      mapa.set(base.nombre, { nombre: base.nombre, nit: base.nit });
+    }
+    for (const e of cat.empresas) {
+      const info = normalizarEmpresaYNit(e);
+      if (info.nombre && info.nombre !== "SIN ENTIDAD" && !mapa.has(info.nombre)) {
+        mapa.set(info.nombre, info);
+      }
+    }
+    for (const x of empresasUnificadasEnDatos) {
+      if (x.nombre && x.nombre !== "SIN ENTIDAD" && !mapa.has(x.nombre)) {
+        mapa.set(x.nombre, x);
+      }
+    }
+    return Array.from(mapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [cat.empresas, empresasUnificadasEnDatos]);
+
   const responsablesEnDatos = useMemo(() => {
-    const setR = new Set<string>();
+    const setR = new Set<string>(RESPONSABLES_OFICIALES_EBENEZER);
     for (const r of cat.responsables) {
       const h = homologarPersonaFacturacion(r);
       if (h) setR.add(h);
@@ -482,6 +510,11 @@ export function CarteraWorkspace({
     }
     return Array.from(setR).sort((a, b) => a.localeCompare(b, "es"));
   }, [glosas, cat.responsables]);
+
+  const facturasExistentesLista = useMemo(
+    () => Array.from(new Set(glosas.map((g) => g.factura).filter(Boolean))),
+    [glosas]
+  );
 
   const causalPorCodigo = useMemo(() => {
     const mapC: Record<string, Causal> = {};
@@ -559,8 +592,13 @@ export function CarteraWorkspace({
       const cr = cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
       if (fMutual === "SOLO" && !cr.esMutual) return false;
       if (fMutual === "SIN" && cr.esMutual) return false;
-      if (fEstado === "SIN_RESOLVER" && g.estado !== "PENDIENTE") return false;
-      if (fEstado !== "TODAS" && fEstado !== "SIN_RESOLVER" && g.estado !== fEstado) return false;
+      const estDec = normalizarEstadoDecision(g.estado, g.valorAceptado, g.notaCredito);
+      if (fEstado === "SIN_RESOLVER" && estDec !== "PENDIENTE") return false;
+      if (fEstado !== "TODAS" && fEstado !== "SIN_RESOLVER" && estDec !== fEstado) return false;
+      if (soloSinValores) {
+        const vfEf = g.valorFacturado || g.valorRadicado || cr.saldoSisma || 0;
+        if (vfEf > 0 && (g.valorGlosado || 0) > 0) return false;
+      }
       if (fEmpresa) {
         const info = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
         if (info.nombre !== fEmpresa && g.empresa !== fEmpresa) return false;
@@ -599,7 +637,7 @@ export function CarteraWorkspace({
     });
   }, [
     glosas, busqueda, fEstado, fEmpresa, fMutual, fSeguimiento, fAnio, fMes,
-    fFacturador, soloSinCausal, cruzarFila,
+    fFacturador, soloSinCausal, soloSinValores, cruzarFila,
   ]);
 
   const visibles = useMemo(() => {
@@ -676,7 +714,12 @@ export function CarteraWorkspace({
   const sinFecha = useMemo(() => glosas.filter((g) => !mesDe(g)).length, [glosas]);
 
   const m = useMemo(() => {
-    let glosado = 0, facturado = 0, aceptado = 0, sinResolver = 0, valorSinResolver = 0, sinCausal = 0, sinNC = 0;
+    let glosado = 0, facturado = 0, aceptado = 0, sinResolver = 0, valorSinResolver = 0, sinCausal = 0, sinNC = 0, sinValores = 0;
+    for (const gAll of glosas) {
+      const crAll = cruzarFila({ ...gAll, motivoTexto: `${gAll.motivoGlosa} ${gAll.observacionInterna}` });
+      const vfAll = gAll.valorFacturado || gAll.valorRadicado || crAll.saldoSisma || 0;
+      if (vfAll <= 0 || (gAll.valorGlosado || 0) <= 0) sinValores++;
+    }
     let glosadoBaseCausas = 0;
     const porFamilia: Record<string, number> = {};
     const porNorma: Record<string, { monto: number; cantidad: number }> = {
@@ -740,7 +783,7 @@ export function CarteraWorkspace({
     });
     const orden = (o: Record<string, number>) => Object.entries(o).sort((a, b) => b[1] - a[1]);
     return {
-      glosado, glosadoBaseCausas, facturado, aceptado, sinResolver, valorSinResolver, sinCausal, sinNC, porNorma,
+      glosado, glosadoBaseCausas, facturado, aceptado, sinResolver, valorSinResolver, sinCausal, sinNC, sinValores, porNorma,
       familias: orden(porFamilia),
       empresas: orden(porEmpresa),
       causales: orden(porCausal),
@@ -750,7 +793,7 @@ export function CarteraWorkspace({
       estados: orden(porEstado),
       clases: orden(porClase),
     };
-  }, [visiblesBaseSinCausal, visibles, causalPorCodigo, cruzarFila]);
+  }, [glosas, visiblesBaseSinCausal, visibles, causalPorCodigo, cruzarFila]);
 
   const exportarExcelCsv = () => {
     const encabezados = [
@@ -841,11 +884,11 @@ export function CarteraWorkspace({
   const limpiarFiltros = () => {
     setFEstado("TODAS"); setFEmpresa(""); setFMutual("CON");
     setFCausaNorma(""); setFSeguimiento(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
-    setSoloSinCausal(false); setBusqueda("");
+    setSoloSinCausal(false); setSoloSinValores(false); setBusqueda("");
   };
   const hayFiltro = !!(
     fEstado !== "TODAS" || fEmpresa || fMutual !== "CON" || fCausaNorma || fSeguimiento || fAnio || fMes ||
-    fFacturador || fFamilia || soloSinCausal || busqueda
+    fFacturador || fFamilia || soloSinCausal || soloSinValores || busqueda
   );
 
   const sel =
@@ -924,13 +967,12 @@ export function CarteraWorkspace({
       {/* ---------- filtros ---------- */}
       <div className="rounded-[14px] border border-[#E2EBF8] bg-white px-4 py-3 shadow-[0_1px_6px_rgba(14,36,94,0.03)]">
         <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="f-est" className="sr-only">Filtrar por desenlace</label>
+          <label htmlFor="f-est" className="sr-only">Filtrar por estado</label>
           <select id="f-est" value={fEstado} onChange={(e) => setFEstado(e.target.value)} className={sel}>
-            <option value="TODAS">Todos los desenlaces</option>
-            <option value="SIN_RESOLVER">Sin resolver (Pendientes)</option>
-            {ESTADOS.filter((e) => e.id !== "PENDIENTE").map((e) => (
-              <option key={e.id} value={e.id}>{e.etiqueta}</option>
-            ))}
+            <option value="TODAS">Todos los estados</option>
+            <option value="SIN_RESOLVER">— Seleccionar — (Sin definir)</option>
+            <option value="ACEPTADA">Aceptada</option>
+            <option value="NO_ACEPTADA">No Aceptada</option>
           </select>
 
           <label htmlFor="f-mut" className="sr-only">Filtro Mutual Ser</label>
@@ -1060,8 +1102,26 @@ export function CarteraWorkspace({
               : `Facturado: ${pesos(m.facturado)} · Glosado: ${pesos(m.glosado)}`;
           })()}
         </span>
+        {m.sinValores > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setVista("cuadricula");
+              setSoloSinValores((v) => !v);
+            }}
+            title="Clic para filtrar las facturas o glosas que están en $0 o sin valores"
+            className={`ml-2 inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-[11px] font-bold transition cursor-pointer ${
+              soloSinValores
+                ? "border-[#991B1B] bg-[#DC2626] text-white"
+                : "border-[#FCA5A5] bg-[#FEF2F2] text-[#B91C1C] hover:bg-[#FEE2E2]"
+            }`}
+          >
+            <AlertTriangle className="h-3 w-3" />
+            {m.sinValores} sin valores ($0)
+          </button>
+        )}
         {m.sinNC > 0 && (
-          <span className="ml-2 rounded-pill bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#92400E]">
+          <span className="ml-1.5 rounded-pill bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#92400E]">
             {m.sinNC} sin N° Nota Crédito o N/A
           </span>
         )}
@@ -1590,7 +1650,7 @@ export function CarteraWorkspace({
                   <th className="py-2 pr-3 text-right">Glosado</th>
                   <th className="py-2 pr-3 text-right">Aceptado</th>
                   <th className="py-2 pr-3">Seguimiento</th>
-                  <th className="py-2 pr-3">Desenlace</th>
+                  <th className="py-2 pr-3">Estado</th>
                   <th className="py-2 pr-3">Nota crédito</th>
                   <th className="w-6 py-2" />
                 </tr>
@@ -1618,6 +1678,7 @@ export function CarteraWorkspace({
                       glosa={g}
                       cruce={cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` })}
                       causal={causalPorCodigo[cn || g.motivoCodigo]}
+                      responsablesOpciones={responsablesEnDatos}
                       guardando={guardando === g.id}
                       guardado={guardado === g.id}
                       avisar={avisar}
@@ -1637,7 +1698,7 @@ export function CarteraWorkspace({
                 : `${visibles.length} de ${glosas.length} filas`}
             </span>
             <span>
-              La flecha izquierda despliega fechas completas, facturador y responsable. Doble clic abre la ficha (o permite anular la factura).
+              La flecha izquierda despliega fechas completas y detalle. Doble clic abre la ficha (o permite anular la factura).
             </span>
           </div>
         </div>
@@ -1658,6 +1719,8 @@ export function CarteraWorkspace({
 
       {nuevaAbierta && (
         <ModalNueva
+          empresasOpciones={catalogoErpCerrado}
+          responsablesOpciones={responsablesEnDatos}
           guardando={guardando === "nueva"}
           onCerrar={() => setNuevaAbierta(false)}
           onGuardar={async (fila) => {
@@ -1671,6 +1734,8 @@ export function CarteraWorkspace({
         <ModalAnularFactura
           facturaInicial={anularDe}
           glosas={glosas}
+          empresasOpciones={catalogoErpCerrado}
+          responsablesOpciones={responsablesEnDatos}
           guardando={guardando === "anular"}
           onCerrar={() => setAnularDe(null)}
           onConfirmar={async (fila) => {
@@ -1685,6 +1750,7 @@ export function CarteraWorkspace({
 
       {importarAbierto && (
         <ModalImportarCarteraExcel
+          facturasExistentes={facturasExistentesLista}
           onCerrar={() => setImportarAbierto(false)}
           onImportado={(msg) => {
             avisar(msg);
@@ -2234,7 +2300,7 @@ function PanelClasificar({
 /* ====================================================================== */
 
 function FilaGlosa({
-  glosa, cruce, causal, guardando, guardado, avisar, onGuardar, onFicha,
+  glosa, cruce, causal, responsablesOpciones, guardando, guardado, avisar, onGuardar, onFicha,
 }: {
   glosa: Glosa;
   cruce: {
@@ -2254,6 +2320,7 @@ function FilaGlosa({
     saldoSisma?: number;
   };
   causal?: Causal;
+  responsablesOpciones: string[];
   guardando: boolean;
   guardado: boolean;
   avisar: (msg: string) => void;
@@ -2262,14 +2329,15 @@ function FilaGlosa({
 }) {
   const personaInicial = homologarPersonaFacturacion(glosa.responsableAceptacion || glosa.facturador);
   const facturadoEfectivo = glosa.valorFacturado || glosa.valorRadicado || cruce.saldoSisma || 0;
+  const estadoInicial = normalizarEstadoDecision(glosa.estado, glosa.valorAceptado, glosa.notaCredito);
 
   const [abierta, setAbierta] = useState(false);
-  const [estado, setEstado] = useState(glosa.estado);
+  const [estado, setEstado] = useState<"PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA">(estadoInicial);
   const [aceptado, setAceptado] = useState(
     glosa.valorAceptado == null ? "" : String(Math.round(glosa.valorAceptado)),
   );
   const [nota, setNota] = useState(
-    resolverNotaCreditoCondicional(glosa.notaCredito, glosa.valorAceptado, glosa.estado),
+    resolverNotaCreditoCondicional(glosa.notaCredito, glosa.valorAceptado, estadoInicial),
   );
   const [persona, setPersona] = useState(personaInicial);
   const [fechaPrest, setFechaPrest] = useState((glosa.fechaPrestacionServicio || "").slice(0, 10));
@@ -2289,6 +2357,7 @@ function FilaGlosa({
   const [clase, setClase] = useState(claseDe(glosa));
 
   const ultimo = useRef({
+    estado: estadoInicial,
     aceptado: "",
     nota: "",
     persona: "",
@@ -2303,7 +2372,13 @@ function FilaGlosa({
   });
 
   useEffect(() => {
-    const a = glosa.valorAceptado == null ? "" : String(Math.round(glosa.valorAceptado));
+    const estNorm = normalizarEstadoDecision(glosa.estado, glosa.valorAceptado, glosa.notaCredito);
+    const a =
+      estNorm === "NO_ACEPTADA"
+        ? "0"
+        : glosa.valorAceptado == null
+        ? ""
+        : String(Math.round(glosa.valorAceptado));
     const vs = glosa.valorSeguimiento == null ? "" : String(Math.round(glosa.valorSeguimiento));
     const vfEf = glosa.valorFacturado || glosa.valorRadicado || cruce.saldoSisma || 0;
     const vf = String(Math.round(vfEf));
@@ -2312,8 +2387,8 @@ function FilaGlosa({
     const fr = (glosa.fechaRadicacion || "").slice(0, 10);
     const fn = (glosa.fechaNotificacionGlosa || "").slice(0, 10);
     const pUnif = homologarPersonaFacturacion(glosa.responsableAceptacion || glosa.facturador);
-    const ncInit = resolverNotaCreditoCondicional(glosa.notaCredito, glosa.valorAceptado, glosa.estado);
-    setEstado(glosa.estado);
+    const ncInit = resolverNotaCreditoCondicional(glosa.notaCredito, glosa.valorAceptado, estNorm);
+    setEstado(estNorm);
     setAceptado(a);
     setNota(ncInit);
     setPersona(pUnif);
@@ -2329,6 +2404,7 @@ function FilaGlosa({
     setCodigo(causaNormativaDe(glosa.motivoCodigo, glosa.tipoGlosa));
     setClase(claseDe(glosa));
     ultimo.current = {
+      estado: estNorm,
       aceptado: a,
       nota: ncInit,
       persona: pUnif,
@@ -2380,6 +2456,7 @@ function FilaGlosa({
   const salir = () => {
     const u = ultimo.current;
     if (
+      estado === u.estado &&
       aceptado === u.aceptado &&
       nota === u.nota &&
       persona === u.persona &&
@@ -2395,12 +2472,22 @@ function FilaGlosa({
       return;
     }
 
-    const vAcepNum = aceptado.trim() === "" ? null : soloNumero(aceptado);
+    if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) {
+      avisar("Glosa Aceptada: debes ingresar el número de la Nota Crédito antes de guardar.");
+      return;
+    }
+
+    const vAcepNum =
+      estado === "NO_ACEPTADA"
+        ? 0
+        : aceptado.trim() === ""
+        ? null
+        : soloNumero(aceptado);
     const notaFinal = resolverNotaCreditoCondicional(nota, vAcepNum, estado);
     if (notaFinal !== nota) setNota(notaFinal);
 
     if (notaFinal !== u.nota && notaFinal !== "" && !esNotaCreditoValida(notaFinal)) {
-      avisar("Nota Crédito: ingresa el consecutivo (ej. NC2375) o selecciona N/A.");
+      avisar("Nota Crédito: ingresa el número consecutivo (ej. NC2375).");
       setNota(u.nota);
       return;
     }
@@ -2409,7 +2496,8 @@ function FilaGlosa({
     if (personaNorm !== persona) setPersona(personaNorm);
 
     ultimo.current = {
-      aceptado,
+      estado,
+      aceptado: vAcepNum == null ? "" : String(vAcepNum),
       nota: notaFinal,
       persona: personaNorm,
       fechaPrest,
@@ -2422,6 +2510,7 @@ function FilaGlosa({
       motivo,
     };
     enviar({
+      estado,
       valorAceptado: vAcepNum,
       notaCredito: notaFinal,
       responsableAceptacion: personaNorm,
@@ -2440,6 +2529,21 @@ function FilaGlosa({
     });
   };
 
+  const cambiarPersona = (nuevaPersonaRaw: string) => {
+    const nv = homologarPersonaFacturacion(nuevaPersonaRaw);
+    setPersona(nv);
+    ultimo.current = { ...ultimo.current, persona: nv };
+    if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) {
+      avisar("Responsable seleccionado. Ingresa el número de la Nota Crédito al lado para guardar.");
+      return;
+    }
+    enviar({
+      responsableAceptacion: nv,
+      responsableRespuesta: nv,
+      facturador: nv,
+    });
+  };
+
   const cambiarSeguimiento = (nuevoSeg: SeguimientoGlosaCodigo) => {
     setSeguimiento(nuevoSeg);
     let nuevoValSeg = valSeg;
@@ -2452,6 +2556,7 @@ function FilaGlosa({
     }
     setValSeg(nuevoValSeg);
     ultimo.current = { ...ultimo.current, valSeg: nuevoValSeg };
+    if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) return;
     enviar({
       seguimientoEstado: nuevoSeg,
       valorSeguimiento: nuevoValSeg.trim() === "" ? null : soloNumero(nuevoValSeg),
@@ -2461,21 +2566,48 @@ function FilaGlosa({
   const cambiarClase = (id: string) => {
     const c = CLASES.find((x) => x.id === id) || CLASES[0];
     setClase(id);
+    if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) return;
     enviar({ tipoGlosa: c.tipo, alcance: c.alcance });
   };
 
-  const cambiarEstado = (nuevo: string) => {
+  const cambiarEstado = (nuevoRaw: string) => {
+    const nuevo = normalizarEstadoDecision(nuevoRaw);
     setEstado(nuevo);
-    let p = aceptado;
-    if (nuevo === "ACEPTADA" && aceptado.trim() === "") p = String(Math.round(glosa.valorGlosado));
-    if (nuevo === "NO_ACEPTADA") p = "0";
-    if (nuevo === "PENDIENTE") p = "";
-    const vAcepNum = p.trim() === "" ? null : soloNumero(p);
-    const ncAuto = resolverNotaCreditoCondicional(nota, vAcepNum, nuevo);
+    if (nuevo === "NO_ACEPTADA") {
+      setAceptado("0");
+      setNota("N/A");
+      ultimo.current = { ...ultimo.current, estado: "NO_ACEPTADA", aceptado: "0", nota: "N/A" };
+      enviar({ estado: "NO_ACEPTADA", valorAceptado: 0, notaCredito: "N/A" });
+      return;
+    }
+    if (nuevo === "PENDIENTE") {
+      setAceptado("");
+      const ncPend = nota.trim().toUpperCase() === "N/A" ? "" : nota.trim().toUpperCase();
+      setNota(ncPend);
+      ultimo.current = { ...ultimo.current, estado: "PENDIENTE", aceptado: "", nota: ncPend };
+      enviar({ estado: "PENDIENTE", valorAceptado: null, notaCredito: ncPend || null });
+      return;
+    }
+    // nuevo === "ACEPTADA"
+    const p =
+      aceptado.trim() === "" || soloNumero(aceptado) === 0
+        ? glosa.valorGlosado > 0
+          ? String(Math.round(glosa.valorGlosado))
+          : ""
+        : aceptado;
     setAceptado(p);
-    setNota(ncAuto);
-    ultimo.current = { ...ultimo.current, aceptado: p, nota: ncAuto };
-    enviar({ estado: nuevo, valorAceptado: vAcepNum, notaCredito: ncAuto });
+    if (!esNumeroNotaCreditoReal(nota)) {
+      setNota("");
+      avisar("Glosa Aceptada: ingresa el número de la Nota Crédito al lado para poder guardar.");
+      window.setTimeout(() => {
+        document.getElementById(`nc-${glosa.id}`)?.focus();
+      }, 35);
+      return;
+    }
+    const ncReal = nota.trim().toUpperCase();
+    const vAcepNum = p.trim() === "" ? null : soloNumero(p);
+    ultimo.current = { ...ultimo.current, estado: "ACEPTADA", aceptado: p, nota: ncReal };
+    enviar({ estado: "ACEPTADA", valorAceptado: vAcepNum, notaCredito: ncReal });
   };
 
   const vistaFila: Glosa = { ...glosa, valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado) };
@@ -2483,7 +2615,22 @@ function FilaGlosa({
   const excede =
     vistaFila.valorAceptado !== null && glosa.valorGlosado > 0 && vistaFila.valorAceptado > glosa.valorGlosado;
   const empInfo = normalizarEmpresaYNit(glosa.empresa || glosa.empresaOriginal, cruce.nit);
-  const ncValida = esNotaCreditoValida(nota);
+  const faltaNcAceptada = estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota);
+  const pendienteGuardarAceptada =
+    estado === "ACEPTADA" &&
+    esNumeroNotaCreditoReal(nota) &&
+    (estado !== ultimo.current.estado || nota.trim().toUpperCase() !== ultimo.current.nota);
+  const valorFactVista = soloNumero(valFact) || facturadoEfectivo;
+  const sinValorFact = valorFactVista <= 0;
+  const sinValorGlosa = (glosa.valorGlosado || 0) <= 0;
+  const sinValores = sinValorFact || sinValorGlosa;
+
+  const listaRespFinal = useMemo(() => {
+    if (persona && !responsablesOpciones.includes(persona)) {
+      return [persona, ...responsablesOpciones];
+    }
+    return responsablesOpciones;
+  }, [persona, responsablesOpciones]);
 
   const celda =
     "w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-[12.5px] outline-none hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white";
@@ -2492,11 +2639,17 @@ function FilaGlosa({
     <>
       <tr
         onDoubleClick={onFicha}
-        className={`border-b border-[#F1F5F9] align-top transition ${
-          guardando ? "bg-[#F6F9FE]" : abierta ? "bg-[#FAFCFF]" : "hover:bg-[#F8FAFC]"
+        className={`border-b align-top transition ${
+          sinValores
+            ? "border-[#FECACA] border-l-4 border-l-[#DC2626] bg-[#FEF2F2]/85 hover:bg-[#FEE2E2]/75"
+            : guardando
+            ? "border-[#F1F5F9] bg-[#F6F9FE]"
+            : abierta
+            ? "border-[#F1F5F9] bg-[#FAFCFF]"
+            : "border-[#F1F5F9] hover:bg-[#F8FAFC]"
         }`}
       >
-        <td className="py-1.5">
+        <td className="py-1.5 pl-1">
           <button
             type="button"
             onClick={() => setAbierta((v) => !v)}
@@ -2507,7 +2660,17 @@ function FilaGlosa({
           </button>
         </td>
         <td className="py-1.5 pr-3 font-cifra">
-          <span className="block text-[12.5px] font-semibold text-[#0E245E]">{glosa.factura}</span>
+          <span className={`block text-[12.5px] font-semibold ${sinValores ? "text-[#991B1B]" : "text-[#0E245E]"}`}>
+            {glosa.factura}
+          </span>
+          {sinValores && (
+            <span
+              className="mt-0.5 inline-flex items-center gap-1 rounded border border-[#FCA5A5] bg-[#FEE2E2] px-1.5 py-0.5 font-sans text-[9.5px] font-extrabold text-[#B91C1C]"
+              title="Alerta: esta factura o glosa no tiene valores registrados ($0)"
+            >
+              <AlertTriangle className="h-2.5 w-2.5" /> Sin valores
+            </span>
+          )}
           {fechaPrest ? (
             <span className="block text-[10.5px] font-semibold text-[#047857]" title="Fecha de prestación del servicio">
               Prest: {fecha(fechaPrest)}
@@ -2541,16 +2704,24 @@ function FilaGlosa({
         </td>
         <td className="py-1.5 pr-3">
           <label htmlFor={`rg-${glosa.id}`} className="sr-only">Responsable / Facturador unificado</label>
-          <input
+          <select
             id={`rg-${glosa.id}`}
-            list="cat-responsables"
             value={persona}
-            onChange={(e) => setPersona(e.target.value.toUpperCase())}
-            onBlur={salir}
-            placeholder="Sin responsable"
-            title="Responsable / Facturador unificado"
-            className={`${celda} min-w-[132px] text-[11.5px] font-semibold text-[#0E245E]`}
-          />
+            onChange={(e) => cambiarPersona(e.target.value)}
+            title="Lista desplegable cerrada de Responsable / Facturador unificado"
+            className={`min-w-[146px] rounded-[6px] border px-1.5 py-1 text-[11.5px] font-semibold outline-none focus:border-[#1D58D8] ${
+              persona
+                ? "border-[#DCE8FA] bg-white text-[#0E245E]"
+                : "border-[#E2EBF8] bg-white text-[#94A3B8]"
+            }`}
+          >
+            <option value="">— Sin responsable —</option>
+            {listaRespFinal.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
         </td>
         <td className="py-1.5 pr-3">
           <label htmlFor={`cla-${glosa.id}`} className="sr-only">Clase de la glosa {glosa.factura}</label>
@@ -2575,6 +2746,7 @@ function FilaGlosa({
             onChange={(e) => {
               const nuevoCod = e.target.value;
               setCodigo(nuevoCod);
+              if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) return;
               enviar({ motivoCodigo: nuevoCod, subcodigoCausal: "" });
             }}
             title={causal ? `${causal.codigo} · ${causal.familia} · ${causal.nombre}` : "Sin causal"}
@@ -2604,28 +2776,47 @@ function FilaGlosa({
             className={`${celda} truncate text-[11.5px] text-[#334155]`}
           />
         </td>
-        <td className="py-1.5 pr-3 text-right font-cifra text-[#47597A]">
-          {facturadoEfectivo > 0 ? pesos(facturadoEfectivo) : "—"}
+        <td className="py-1.5 pr-3 text-right font-cifra">
+          {sinValorFact ? (
+            <span
+              className="inline-flex items-center gap-0.5 rounded border border-[#FCA5A5] bg-[#FEE2E2] px-1.5 py-0.5 text-[11px] font-bold text-[#B91C1C]"
+              title="Sin valor facturado (abre la fila con '>' para ingresarlo)"
+            >
+              ⚠ $0
+            </span>
+          ) : (
+            <span className="text-[#47597A]">{pesos(valorFactVista)}</span>
+          )}
         </td>
-        <td className="py-1.5 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
-          {pesos(glosa.valorGlosado)}
+        <td className="py-1.5 pr-3 text-right font-cifra">
+          {sinValorGlosa ? (
+            <span
+              className="inline-flex items-center gap-0.5 rounded border border-[#FCA5A5] bg-[#FEE2E2] px-1.5 py-0.5 text-[11px] font-extrabold text-[#B91C1C]"
+              title="Alerta: valor glosado en cero ($0)"
+            >
+              ⚠ $0
+            </span>
+          ) : (
+            <span className="font-semibold text-[#0E245E]">{pesos(glosa.valorGlosado)}</span>
+          )}
         </td>
         <td className="py-1.5 pr-3 text-right">
           <label htmlFor={`ace-${glosa.id}`} className="sr-only">Valor aceptado de la glosa {glosa.factura}</label>
           <input
             id={`ace-${glosa.id}`}
             value={aceptado}
+            disabled={estado === "NO_ACEPTADA"}
             onChange={(e) => {
               const nv = e.target.value;
               setAceptado(nv);
-              if (nv.trim() !== "" && soloNumero(nv) === 0) {
+              if (estado !== "ACEPTADA" && nv.trim() !== "" && soloNumero(nv) === 0) {
                 setNota("N/A");
               }
             }}
             onBlur={salir}
             inputMode="numeric"
             placeholder="—"
-            className={`${celda} text-right font-cifra`}
+            className={`${celda} text-right font-cifra disabled:text-[#64748B]`}
           />
           {pago && <span className={`block pr-1.5 text-[10px] font-semibold uppercase ${pago.clase}`}>{pago.texto}</span>}
           {excede && <span className="block pr-1.5 text-[10px] font-semibold text-[#B45309]">supera lo glosado</span>}
@@ -2668,7 +2859,7 @@ function FilaGlosa({
           })()}
         </td>
         <td className="py-1.5 pr-3">
-          <label htmlFor={`est-${glosa.id}`} className="sr-only">Desenlace de la glosa {glosa.factura}</label>
+          <label htmlFor={`est-${glosa.id}`} className="sr-only">Estado de la glosa {glosa.factura}</label>
           <select
             id={`est-${glosa.id}`}
             value={estado}
@@ -2681,34 +2872,54 @@ function FilaGlosa({
           </select>
         </td>
         <td className="py-1.5 pr-3">
-          <div className="flex items-center gap-1">
-            <label htmlFor={`nc-${glosa.id}`} className="sr-only">Nota crédito si aplica (número o N/A)</label>
-            <input
-              id={`nc-${glosa.id}`}
-              value={nota}
-              onChange={(e) => setNota(e.target.value.toUpperCase())}
-              onBlur={salir}
-              placeholder="NC... o N/A"
-              title="Si Valor aceptado = 0, corresponde automáticamente a N/A"
-              className={`w-[92px] rounded border px-1.5 py-1 font-cifra text-[12px] outline-none focus:border-[#1D58D8] focus:bg-white ${
-                ncValida
-                  ? "border-transparent bg-transparent text-[#0E245E] hover:border-[#DCE8FA]"
-                  : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E]"
-              }`}
-            />
-            {!ncValida && (
-              <button
-                type="button"
-                onClick={() => {
-                  setNota("N/A");
-                  ultimo.current = { ...ultimo.current, nota: "N/A" };
-                  enviar({ notaCredito: "N/A" });
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <label htmlFor={`nc-${glosa.id}`} className="sr-only">Nota crédito (número obligatorio si es Aceptada, o N/A si es No Aceptada)</label>
+              <input
+                id={`nc-${glosa.id}`}
+                value={estado === "NO_ACEPTADA" ? "N/A" : nota}
+                readOnly={estado === "NO_ACEPTADA"}
+                onChange={(e) => setNota(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    salir();
+                  }
                 }}
-                title="Marcar No aplica (N/A)"
-                className="rounded border border-[#DCE8FA] bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-bold text-[#47597A] hover:bg-[#EEF4FD] hover:text-[#1D58D8]"
-              >
-                N/A
-              </button>
+                onBlur={salir}
+                placeholder={estado === "ACEPTADA" ? "N° Nota *" : "NC... o N/A"}
+                title={
+                  estado === "NO_ACEPTADA"
+                    ? "No Aceptada: automáticamente N/A"
+                    : estado === "ACEPTADA"
+                    ? "Aceptada: obligatorio escribir el número de la Nota Crédito para guardar"
+                    : "Número de Nota Crédito o N/A"
+                }
+                className={`w-[98px] rounded border px-1.5 py-1 font-cifra text-[12px] outline-none ${
+                  estado === "NO_ACEPTADA"
+                    ? "border-[#DCE8FA] bg-[#F8FAFC] font-semibold text-[#475569] cursor-default"
+                    : faltaNcAceptada
+                    ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B] placeholder:text-[#DC2626]/75 focus:ring-2 focus:ring-[#DC2626]/30"
+                    : esNotaCreditoValida(nota)
+                    ? "border-transparent bg-transparent text-[#0E245E] hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white"
+                    : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E] focus:border-[#1D58D8] focus:bg-white"
+                }`}
+              />
+              {pendienteGuardarAceptada && (
+                <button
+                  type="button"
+                  onClick={salir}
+                  className="rounded bg-[#16A34A] px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-[#15803D]"
+                  title="Guardar glosa Aceptada con su Nota Crédito"
+                >
+                  Guardar
+                </button>
+              )}
+            </div>
+            {faltaNcAceptada && (
+              <span className="block text-[9.5px] font-bold text-[#DC2626]">
+                Falta N° Nota p/ guardar
+              </span>
             )}
           </div>
         </td>
@@ -2787,22 +2998,30 @@ function FilaGlosa({
                       value={valFact}
                       onChange={(e) => setValFact(e.target.value)}
                       onBlur={salir}
-                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 font-cifra text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                      className={`w-full rounded-lg border px-2 py-1.5 font-cifra text-[12px] outline-none ${
+                        sinValorFact
+                          ? "border-[#FCA5A5] bg-[#FEF2F2] font-bold text-[#991B1B] focus:border-[#DC2626]"
+                          : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
+                      }`}
                     />
                   </div>
                   <div className="sm:col-span-2">
                     <label htmlFor={`rga-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
                       Responsable / Facturador (unificado)
                     </label>
-                    <input
+                    <select
                       id={`rga-${glosa.id}`}
-                      list="cat-responsables"
                       value={persona}
-                      onChange={(e) => setPersona(e.target.value.toUpperCase())}
-                      onBlur={salir}
-                      placeholder="Responsable unificado"
-                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
-                    />
+                      onChange={(e) => cambiarPersona(e.target.value)}
+                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                    >
+                      <option value="">— Sin responsable —</option>
+                      {listaRespFinal.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label htmlFor={`sega-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
@@ -3022,8 +3241,14 @@ function Dato({ etiqueta, valor, alerta }: { etiqueta: string; valor: string; al
 /* ====================================================================== */
 
 function ModalNueva({
-  guardando, onCerrar, onGuardar,
+  empresasOpciones,
+  responsablesOpciones,
+  guardando,
+  onCerrar,
+  onGuardar,
 }: {
+  empresasOpciones: { nombre: string; nit: string }[];
+  responsablesOpciones: string[];
   guardando: boolean;
   onCerrar: () => void;
   onGuardar: (fila: Record<string, unknown>) => void;
@@ -3037,6 +3262,7 @@ function ModalNueva({
     fechaNotificacionGlosa: "",
     valorFacturado: "",
     valorGlosado: "",
+    valorAceptado: "",
     clase: "",
     motivoCodigo: "",
     subcodigoCausal: "",
@@ -3044,19 +3270,27 @@ function ModalNueva({
     observacionInterna: "",
     facturador: "",
     responsableAceptacion: "",
-    seguimientoEstado: "" as SeguimientoGlosaCodigo,
-    valorSeguimiento: "",
-    notaCredito: "N/A",
-    estado: "PENDIENTE",
+    notaCredito: "",
+    estado: "PENDIENTE" as "PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA",
   });
 
-  const ncOk = esNotaCreditoValida(f.notaCredito);
+  const esAcepto = f.estado === "ACEPTADA";
+  const esNoAcepto = f.estado === "NO_ACEPTADA";
+  const ncRequeridaOk = esAcepto
+    ? esNumeroNotaCreditoReal(f.notaCredito)
+    : esNoAcepto
+    ? true
+    : f.notaCredito.trim() === "" || esNotaCreditoValida(f.notaCredito);
+  const sinValoresModal =
+    (f.valorFacturado.trim() !== "" || f.valorGlosado.trim() !== "") &&
+    (soloNumero(f.valorFacturado) <= 0 || soloNumero(f.valorGlosado) <= 0);
   const completo =
     f.factura.trim() !== "" &&
+    f.empresa.trim() !== "" &&
     (f.motivoGlosa.trim() !== "" || f.motivoCodigo !== "") &&
-    ncOk;
+    ncRequeridaOk;
   const infoNit = normalizarEmpresaYNit(f.empresa);
-  const campo = "w-full rounded-lg border border-[#DCE8FA] px-2.5 py-2 text-[12.5px] outline-none focus:border-[#1D58D8]";
+  const campo = "w-full rounded-lg border border-[#DCE8FA] bg-white px-2.5 py-2 text-[12.5px] outline-none focus:border-[#1D58D8]";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E245E]/40 p-4" role="dialog" aria-label="Registrar glosa">
@@ -3065,7 +3299,7 @@ function ModalNueva({
           <div>
             <p className="text-[15px] font-bold text-[#0E245E]">Registrar glosa o devolución</p>
             <p className="text-[11.5px] text-[#64748B]">
-              Todos los campos normativos de facturación, notificación y Nota Crédito obligatoria.
+              Selecciona ERP unificada, Responsable/Facturador y Acepto/No Acepto con validación de Nota Crédito.
             </p>
           </div>
           <button
@@ -3090,16 +3324,21 @@ function ModalNueva({
           </Campo>
           <Campo
             id="emp"
-            etiqueta={infoNit.nit ? `Empresa · unificada NIT ${infoNit.nit}` : "Empresa"}
+            etiqueta={infoNit.nit ? `ERP Unificada · NIT ${infoNit.nit} *` : "ERP Unificada *"}
           >
-            <input
+            <select
               id="emp"
-              list="cat-empresas"
               value={f.empresa}
-              onChange={(e) => setF({ ...f, empresa: e.target.value.toUpperCase() })}
-              placeholder="Elige o escribe la entidad"
+              onChange={(e) => setF({ ...f, empresa: e.target.value })}
               className={campo}
-            />
+            >
+              <option value="">— Seleccionar ERP —</option>
+              {empresasOpciones.map((x) => (
+                <option key={x.nombre} value={x.nombre}>
+                  {x.nombre}{x.nit ? ` · NIT ${x.nit}` : ""}
+                </option>
+              ))}
+            </select>
           </Campo>
 
           <Campo id="fprest" etiqueta="Fecha de prestación de servicios">
@@ -3159,19 +3398,41 @@ function ModalNueva({
               onChange={(e) => setF({ ...f, valorFacturado: e.target.value })}
               inputMode="numeric"
               placeholder="0"
-              className={`${campo} font-cifra`}
+              className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
+                f.valorFacturado.trim() !== "" && soloNumero(f.valorFacturado) <= 0
+                  ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B]"
+                  : "border-[#DCE8FA] bg-white focus:border-[#1D58D8]"
+              }`}
             />
           </Campo>
           <Campo id="val" etiqueta="Valor glosado">
             <input
               id="val"
               value={f.valorGlosado}
-              onChange={(e) => setF({ ...f, valorGlosado: e.target.value })}
+              onChange={(e) => {
+                const vg = e.target.value;
+                setF({
+                  ...f,
+                  valorGlosado: vg,
+                  valorAceptado: f.estado === "ACEPTADA" && !f.valorAceptado ? vg : f.valorAceptado,
+                });
+              }}
               inputMode="numeric"
               placeholder="0"
-              className={`${campo} font-cifra`}
+              className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
+                f.valorGlosado.trim() !== "" && soloNumero(f.valorGlosado) <= 0
+                  ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B]"
+                  : "border-[#DCE8FA] bg-white focus:border-[#1D58D8]"
+              }`}
             />
           </Campo>
+
+          {sinValoresModal && (
+            <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-3 py-2 text-[11.5px] font-bold text-[#B91C1C]">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>Alerta: el valor facturado o el valor glosado está en $0 (quedará resaltado en rojo en la tabla).</span>
+            </div>
+          )}
 
           <div className="sm:col-span-2 space-y-2.5">
             <div>
@@ -3234,91 +3495,96 @@ function ModalNueva({
           </div>
 
           <div className="sm:col-span-2">
-            <Campo id="rglosa" etiqueta="Responsable / Facturador (unificado)">
-              <input
+            <Campo id="rglosa" etiqueta="Responsable / Facturador (lista desplegable)">
+              <select
                 id="rglosa"
-                list="cat-responsables"
                 value={f.responsableAceptacion}
                 onChange={(e) => {
-                  const v = e.target.value.toUpperCase();
+                  const v = homologarPersonaFacturacion(e.target.value);
                   setF({ ...f, responsableAceptacion: v, facturador: v });
                 }}
-                placeholder="Responsable unificado"
                 className={campo}
-              />
+              >
+                <option value="">— Seleccionar responsable / facturador —</option>
+                {responsablesOpciones.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
             </Campo>
           </div>
 
-          <Campo id="seg-nueva" etiqueta="Seguimiento (Pago / Levantamiento / Ratificación)">
+          <Campo id="acep-nueva" etiqueta="Acepto / No Acepto">
             <select
-              id="seg-nueva"
-              value={f.seguimientoEstado}
-              onChange={(e) => setF({ ...f, seguimientoEstado: e.target.value as SeguimientoGlosaCodigo })}
-              className={campo}
+              id="acep-nueva"
+              value={f.estado}
+              onChange={(e) => {
+                const nv = e.target.value as "PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA";
+                if (nv === "NO_ACEPTADA") {
+                  setF({ ...f, estado: "NO_ACEPTADA", valorAceptado: "0", notaCredito: "N/A" });
+                } else if (nv === "ACEPTADA") {
+                  setF({
+                    ...f,
+                    estado: "ACEPTADA",
+                    valorAceptado:
+                      f.valorAceptado && soloNumero(f.valorAceptado) > 0
+                        ? f.valorAceptado
+                        : f.valorGlosado,
+                    notaCredito: esNumeroNotaCreditoReal(f.notaCredito) ? f.notaCredito : "",
+                  });
+                } else {
+                  setF({
+                    ...f,
+                    estado: "PENDIENTE",
+                    valorAceptado: "",
+                    notaCredito: f.notaCredito === "N/A" ? "" : f.notaCredito,
+                  });
+                }
+              }}
+              className={`${campo} font-semibold`}
             >
-              {OPCIONES_SEGUIMIENTO_GLOSA.map((o) => (
-                <option key={o.id || "NONE"} value={o.id}>{o.etiqueta}</option>
-              ))}
+              <option value="PENDIENTE">— Seleccionar —</option>
+              <option value="ACEPTADA">Acepto</option>
+              <option value="NO_ACEPTADA">No Acepto</option>
             </select>
           </Campo>
 
-          <Campo id="vseg-nueva" etiqueta="Valor seguimiento (si aplica pago/levant./ratif.)">
+          <Campo id="vacep-nueva" etiqueta="Valor aceptado">
             <input
-              id="vseg-nueva"
+              id="vacep-nueva"
               inputMode="numeric"
-              value={f.valorSeguimiento}
-              onChange={(e) => setF({ ...f, valorSeguimiento: e.target.value })}
-              placeholder="0"
-              className={`${campo} font-cifra`}
+              disabled={esNoAcepto}
+              value={esNoAcepto ? "0" : f.valorAceptado}
+              onChange={(e) => setF({ ...f, valorAceptado: e.target.value })}
+              placeholder={esAcepto ? "Monto aceptado" : "—"}
+              className={`${campo} font-cifra disabled:bg-[#F8FAFC] disabled:text-[#64748B]`}
             />
           </Campo>
 
           <div>
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <label htmlFor="nc2" className="eb-label text-[10px] font-bold text-[#0E245E]">
-                Nota crédito (si aplica) *
-              </label>
-              <div className="inline-flex rounded-md border border-[#DCE8FA] bg-[#F8FAFC] p-0.5 text-[10.5px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setF({ ...f, notaCredito: "N/A" })}
-                  className={`rounded px-2 py-0.5 transition ${
-                    f.notaCredito.trim().toUpperCase() === "N/A"
-                      ? "bg-[#0E245E] text-white"
-                      : "text-[#47597A]"
-                  }`}
-                >
-                  No aplica (N/A)
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setF({
-                      ...f,
-                      notaCredito: f.notaCredito.trim().toUpperCase() === "N/A" ? "NC" : f.notaCredito,
-                    })
-                  }
-                  className={`rounded px-2 py-0.5 transition ${
-                    f.notaCredito.trim().toUpperCase() !== "N/A"
-                      ? "bg-[#1D58D8] text-white"
-                      : "text-[#47597A]"
-                  }`}
-                >
-                  Sí aplica (NC)
-                </button>
-              </div>
-            </div>
+            <label htmlFor="nc2" className="eb-label mb-1 block text-[10px] font-bold text-[#0E245E]">
+              {esAcepto ? "Número de Nota Crédito (obligatorio) *" : "Nota crédito (si aplica)"}
+            </label>
             <input
               id="nc2"
-              value={f.notaCredito}
+              value={esNoAcepto ? "N/A" : f.notaCredito}
+              readOnly={esNoAcepto}
               onChange={(e) => setF({ ...f, notaCredito: e.target.value.toUpperCase() })}
-              placeholder="Ej: NC2375 o N/A"
+              placeholder={esAcepto ? "Ej: NC2375 (obligatorio)" : esNoAcepto ? "N/A" : "NC... o vacío"}
               className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
-                f.notaCredito.trim() === "" || ncOk
-                  ? "border-[#DCE8FA] focus:border-[#1D58D8]"
-                  : "border-[#FCA5A5] bg-[#FEF2F2] text-[#B91C1C]"
+                esNoAcepto
+                  ? "border-[#DCE8FA] bg-[#F8FAFC] font-bold text-[#475569] cursor-default"
+                  : esAcepto && !esNumeroNotaCreditoReal(f.notaCredito)
+                  ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B] placeholder:text-[#DC2626]/75"
+                  : "border-[#DCE8FA] bg-white focus:border-[#1D58D8]"
               }`}
             />
+            {esAcepto && !esNumeroNotaCreditoReal(f.notaCredito) && (
+              <span className="mt-1 block text-[10.5px] font-bold text-[#DC2626]">
+                Obligatorio ingresar el número de la Nota Crédito cuando marcas Acepto.
+              </span>
+            )}
           </div>
 
           <Campo id="obs2" etiqueta="Observación general">
@@ -3333,8 +3599,12 @@ function ModalNueva({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-[#E2EBF8] px-5 py-3.5">
-          <span className="text-[11.5px] text-[#64748B]">
-            {!ncOk ? "Debes indicar el número de Nota Crédito o seleccionar N/A." : "Listo para guardar."}
+          <span className={`text-[11.5px] ${esAcepto && !ncRequeridaOk ? "font-bold text-[#DC2626]" : "text-[#64748B]"}`}>
+            {esAcepto && !ncRequeridaOk
+              ? "No se puede guardar hasta colocar el número de la Nota Crédito."
+              : f.empresa.trim() === ""
+              ? "Selecciona la ERP en la lista desplegable."
+              : "Listo para guardar."}
           </span>
           <div className="flex gap-2.5">
             <button
@@ -3349,21 +3619,36 @@ function ModalNueva({
               disabled={!completo || guardando}
               onClick={() => {
                 const c = CLASES.find((x) => x.id === f.clase) || CLASES[0];
+                const vAcepFinal =
+                  f.estado === "NO_ACEPTADA"
+                    ? 0
+                    : f.valorAceptado.trim() === ""
+                    ? f.estado === "ACEPTADA"
+                      ? soloNumero(f.valorGlosado)
+                      : null
+                    : soloNumero(f.valorAceptado);
+                const ncGuardar = resolverNotaCreditoCondicional(
+                  f.notaCredito,
+                  vAcepFinal,
+                  f.estado
+                );
                 onGuardar({
                   ...f,
                   empresa: infoNit.nombre || f.empresa.trim(),
-                  empresaOriginal: f.empresa.trim(),
+                  empresaOriginal: infoNit.nombre || f.empresa.trim(),
                   tipoGlosa: c.tipo,
                   alcance: c.alcance,
                   valorFacturado: soloNumero(f.valorFacturado),
                   valorRadicado: soloNumero(f.valorFacturado),
                   valorGlosado: soloNumero(f.valorGlosado),
+                  valorAceptado: vAcepFinal,
+                  notaCredito: ncGuardar,
+                  estado: f.estado,
                   facturador: homologarPersonaFacturacion(f.responsableAceptacion || f.facturador),
                   responsableAceptacion: homologarPersonaFacturacion(f.responsableAceptacion || f.facturador),
                   responsableRespuesta: homologarPersonaFacturacion(f.responsableAceptacion || f.facturador),
-                  seguimientoEstado: f.seguimientoEstado,
-                  valorSeguimiento: f.valorSeguimiento.trim() === "" ? null : soloNumero(f.valorSeguimiento),
-                  valorAceptado: null,
+                  seguimientoEstado: "",
+                  valorSeguimiento: null,
                 });
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D58D8] px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#C7CDE0]"
@@ -3381,10 +3666,18 @@ function ModalNueva({
 /* ====================================================================== */
 
 function ModalAnularFactura({
-  facturaInicial, glosas, guardando, onCerrar, onConfirmar,
+  facturaInicial,
+  glosas,
+  empresasOpciones,
+  responsablesOpciones,
+  guardando,
+  onCerrar,
+  onConfirmar,
 }: {
   facturaInicial: string;
   glosas: Glosa[];
+  empresasOpciones: { nombre: string; nit: string }[];
+  responsablesOpciones: string[];
   guardando: boolean;
   onCerrar: () => void;
   onConfirmar: (fila: Record<string, unknown>) => void;
@@ -3395,7 +3688,9 @@ function ModalAnularFactura({
   }, [facturaInicial, glosas]);
 
   const [factura, setFactura] = useState(facturaInicial);
-  const [empresa, setEmpresa] = useState(coincidencia?.empresa || "");
+  const [empresa, setEmpresa] = useState(
+    coincidencia?.empresa ? normalizarEmpresaYNit(coincidencia.empresa).nombre : ""
+  );
   const [fechaFactura, setFechaFactura] = useState((coincidencia?.fechaFactura || "").slice(0, 10));
   const [fechaRadicacion, setFechaRadicacion] = useState((coincidencia?.fechaRadicacion || "").slice(0, 10));
   const [valorFacturado, setValorFacturado] = useState(
@@ -3410,7 +3705,7 @@ function ModalAnularFactura({
     setFactura(num);
     const enc = glosas.find((g) => g.factura.toUpperCase() === num);
     if (enc) {
-      if (!empresa) setEmpresa(enc.empresa);
+      if (!empresa) setEmpresa(normalizarEmpresaYNit(enc.empresa).nombre);
       if (!fechaFactura && enc.fechaFactura) setFechaFactura(enc.fechaFactura.slice(0, 10));
       if (!fechaRadicacion && enc.fechaRadicacion) setFechaRadicacion(enc.fechaRadicacion.slice(0, 10));
       if (!valorFacturado && enc.valorFacturado) setValorFacturado(String(Math.round(enc.valorFacturado)));
@@ -3418,7 +3713,7 @@ function ModalAnularFactura({
   };
 
   const listo = factura.trim() !== "" && motivo.trim() !== "";
-  const campo = "w-full rounded-lg border border-[#DCE8FA] px-2.5 py-2 text-[12.5px] outline-none focus:border-[#1D58D8]";
+  const campo = "w-full rounded-lg border border-[#DCE8FA] bg-white px-2.5 py-2 text-[12.5px] outline-none focus:border-[#1D58D8]";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E245E]/40 p-4" role="dialog" aria-label="Anular factura">
@@ -3448,34 +3743,30 @@ function ModalAnularFactura({
               <label htmlFor="an-fac" className="eb-label text-[10px] text-[#94A3B8]">
                 Número de factura *
               </label>
-              {factura !== "FCOE0000001" && (
-                <button
-                  type="button"
-                  onClick={() => buscarFacturaExistente("FCOE0000001")}
-                  className="font-cifra text-[11px] font-semibold text-[#BE123C] hover:underline"
-                >
-                  Cargar FCOE0000001
-                </button>
-              )}
             </div>
             <input
               id="an-fac"
               value={factura}
               onChange={(e) => buscarFacturaExistente(e.target.value)}
-              placeholder="Ej: FCOE0000001"
+              placeholder="Ej: FCOE00000"
               className={`${campo} font-cifra font-semibold`}
             />
           </div>
 
-          <Campo id="an-emp" etiqueta="Empresa (opcional)">
-            <input
+          <Campo id="an-emp" etiqueta="ERP (opcional)">
+            <select
               id="an-emp"
-              list="cat-empresas"
               value={empresa}
-              onChange={(e) => setEmpresa(e.target.value.toUpperCase())}
-              placeholder="Entidad asociada"
+              onChange={(e) => setEmpresa(e.target.value)}
               className={campo}
-            />
+            >
+              <option value="">— Seleccionar ERP —</option>
+              {empresasOpciones.map((x) => (
+                <option key={x.nombre} value={x.nombre}>
+                  {x.nombre}{x.nit ? ` · NIT ${x.nit}` : ""}
+                </option>
+              ))}
+            </select>
           </Campo>
 
           <Campo id="an-ff" etiqueta="Fecha de factura">
@@ -3521,14 +3812,19 @@ function ModalAnularFactura({
 
           <div className="sm:col-span-2">
             <Campo id="an-resp" etiqueta="Responsable de la anulación">
-              <input
+              <select
                 id="an-resp"
-                list="cat-responsables"
                 value={responsable}
-                onChange={(e) => setResponsable(e.target.value.toUpperCase())}
-                placeholder="Nombre del responsable"
+                onChange={(e) => setResponsable(homologarPersonaFacturacion(e.target.value))}
                 className={campo}
-              />
+              >
+                <option value="">— Seleccionar responsable —</option>
+                {responsablesOpciones.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
             </Campo>
           </div>
 
