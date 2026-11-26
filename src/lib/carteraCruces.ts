@@ -865,8 +865,64 @@ export function resolverNotaCreditoCondicional(
   return s.toUpperCase();
 }
 
+/**
+ * Asociación obligatoria Clase <-> Causal:
+ * - DE se asocia siempre con Devolución ("DEVOLUCION").
+ * - TA, AU, SO, CO y FA se asocian siempre con Glosa ("GLOSA").
+ */
+export function resolverClaseYCausal(
+  tipoRaw?: unknown,
+  codigoRaw?: unknown
+): { tipoGlosa: "GLOSA" | "DEVOLUCION"; motivoCodigo: string } {
+  const cod = causaNormativa6De(codigoRaw == null ? "" : String(codigoRaw), "");
+  if (cod === "DE") {
+    return { tipoGlosa: "DEVOLUCION", motivoCodigo: "DE" };
+  }
+  if (cod) {
+    return { tipoGlosa: "GLOSA", motivoCodigo: cod };
+  }
+  const tUp = sinAcentosUpper(tipoRaw == null ? "" : String(tipoRaw)).trim();
+  if (tUp.startsWith("DEVOL")) {
+    return { tipoGlosa: "DEVOLUCION", motivoCodigo: "DE" };
+  }
+  return { tipoGlosa: "GLOSA", motivoCodigo: "" };
+}
+
+/**
+ * Regla oficial de Valor Aceptado:
+ * - Si es NO_ACEPTADA -> 0 ($0 y Nota Crédito N/A).
+ * - Si es ACEPTADA y es DEVOLUCION (DE) -> siempre es el mismo valor de la factura (Facturado).
+ * - Si es ACEPTADA y es GLOSA -> conserva el valor aceptado digitado (>0) o trae el valor glosado.
+ * - Si sigue sin definir (PENDIENTE) -> conserva el valor previo o null (para marcar pendiente en rojo).
+ */
+export function resolverValorAceptadoSegunRegla(input: {
+  estado: "PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA";
+  tipoGlosa: "GLOSA" | "DEVOLUCION";
+  valorFacturado: number;
+  valorGlosado: number;
+  valorAceptadoPrevio?: number | null;
+}): number | null {
+  if (input.estado === "NO_ACEPTADA") return 0;
+  if (input.estado === "ACEPTADA") {
+    if (input.tipoGlosa === "DEVOLUCION") {
+      if (input.valorFacturado > 0) return Math.round(input.valorFacturado);
+      if (input.valorGlosado > 0) return Math.round(input.valorGlosado);
+      return input.valorAceptadoPrevio != null && input.valorAceptadoPrevio > 0
+        ? Math.round(input.valorAceptadoPrevio)
+        : null;
+    }
+    if (input.valorAceptadoPrevio != null && input.valorAceptadoPrevio > 0) {
+      return Math.round(input.valorAceptadoPrevio);
+    }
+    return input.valorGlosado > 0 ? Math.round(input.valorGlosado) : null;
+  }
+  return input.valorAceptadoPrevio == null ? null : Math.round(input.valorAceptadoPrevio);
+}
+
 export type SeguimientoGlosaCodigo =
   | ""
+  | "TRAMITADA"
+  | "PROCESO_PAGO"
   | "PAGO_COMPLETO"
   | "PAGO_PARCIAL"
   | "LEVANTAMIENTO_COMPLETO"
@@ -878,24 +934,47 @@ export const OPCIONES_SEGUIMIENTO_GLOSA: {
   etiqueta: string;
   corto: string;
   requiereValor: boolean;
+  requiereObservacion: boolean;
   badgeBg: string;
   badgeText: string;
   badgeBorder: string;
 }[] = [
   {
     id: "",
-    etiqueta: "En trámite / Sin seguimiento",
+    etiqueta: "En trámite (pendiente)",
     corto: "En trámite",
     requiereValor: false,
-    badgeBg: "#F8FAFC",
-    badgeText: "#64748B",
-    badgeBorder: "#E2E8F0",
+    requiereObservacion: false,
+    badgeBg: "#FEF2F2",
+    badgeText: "#B91C1C",
+    badgeBorder: "#DC2626",
+  },
+  {
+    id: "TRAMITADA",
+    etiqueta: "Tramitada",
+    corto: "Tramitada",
+    requiereValor: false,
+    requiereObservacion: false,
+    badgeBg: "#DCFCE7",
+    badgeText: "#14532D",
+    badgeBorder: "#86EFAC",
+  },
+  {
+    id: "PROCESO_PAGO",
+    etiqueta: "Proceso de pago",
+    corto: "Proceso de pago",
+    requiereValor: false,
+    requiereObservacion: false,
+    badgeBg: "#EEF2FF",
+    badgeText: "#3730A3",
+    badgeBorder: "#C7D2FE",
   },
   {
     id: "PAGO_COMPLETO",
     etiqueta: "Pago completo",
     corto: "Pago completo",
     requiereValor: false,
+    requiereObservacion: false,
     badgeBg: "#ECFDF5",
     badgeText: "#047857",
     badgeBorder: "#A7F3D0",
@@ -905,6 +984,7 @@ export const OPCIONES_SEGUIMIENTO_GLOSA: {
     etiqueta: "Pago parcial",
     corto: "Pago parcial",
     requiereValor: true,
+    requiereObservacion: false,
     badgeBg: "#F0F9FF",
     badgeText: "#0369A1",
     badgeBorder: "#BAE6FD",
@@ -914,6 +994,7 @@ export const OPCIONES_SEGUIMIENTO_GLOSA: {
     etiqueta: "Levantamiento de glosa completo",
     corto: "Levantamiento completo",
     requiereValor: false,
+    requiereObservacion: false,
     badgeBg: "#DCFCE7",
     badgeText: "#15803D",
     badgeBorder: "#86EFAC",
@@ -923,15 +1004,17 @@ export const OPCIONES_SEGUIMIENTO_GLOSA: {
     etiqueta: "Levantamiento de glosa parcial",
     corto: "Levantamiento parcial",
     requiereValor: true,
+    requiereObservacion: false,
     badgeBg: "#FFFBEB",
     badgeText: "#B45309",
     badgeBorder: "#FDE68A",
   },
   {
     id: "RATIFICACION_GLOSA",
-    etiqueta: "Ratificación de glosa",
-    corto: "Ratificación glosa",
-    requiereValor: true,
+    etiqueta: "Rectificación de glosa",
+    corto: "Rectificación de glosa",
+    requiereValor: false,
+    requiereObservacion: true,
     badgeBg: "#FFF1F2",
     badgeText: "#BE123C",
     badgeBorder: "#FECDD3",
@@ -941,6 +1024,12 @@ export const OPCIONES_SEGUIMIENTO_GLOSA: {
 export function normalizarSeguimientoGlosa(raw?: string | null): SeguimientoGlosaCodigo {
   const s = sinAcentosUpper(raw);
   if (!s) return "";
+  if (s === "TRAMITADA" || s === "TRAMITADO" || s.includes("TRAMITAD")) {
+    return "TRAMITADA";
+  }
+  if (s === "PROCESO_PAGO" || s === "PROCESO DE PAGO" || (s.includes("PROCESO") && s.includes("PAGO"))) {
+    return "PROCESO_PAGO";
+  }
   if (s === "PAGO_COMPLETO" || (s.includes("PAGO") && (s.includes("COMPLETO") || s.includes("TOTAL")))) {
     return "PAGO_COMPLETO";
   }
@@ -956,13 +1045,31 @@ export function normalizarSeguimientoGlosa(raw?: string | null): SeguimientoGlos
   if (s === "LEVANTAMIENTO_PARCIAL" || (s.includes("LEVANT") && s.includes("PARCIAL"))) {
     return "LEVANTAMIENTO_PARCIAL";
   }
-  if (s === "RATIFICACION_GLOSA" || s.includes("RATIFIC")) {
+  if (s === "RATIFICACION_GLOSA" || s === "RECTIFICACION_GLOSA" || s.includes("RATIFIC") || s.includes("RECTIFIC")) {
     return "RATIFICACION_GLOSA";
   }
   return "";
 }
 
-export function etiquetaSeguimientoGlosa(raw?: string | null): string {
-  const cod = normalizarSeguimientoGlosa(raw);
-  return OPCIONES_SEGUIMIENTO_GLOSA.find((o) => o.id === cod)?.etiqueta || "En trámite / Sin seguimiento";
+/**
+ * Si el estado es ACEPTADA y el seguimiento estaba vacío ("En trámite"),
+ * pasa automáticamente a "TRAMITADA".
+ */
+export function resolverSeguimientoAutomatico(
+  seguimientoRaw?: string | null,
+  estadoRaw?: unknown
+): SeguimientoGlosaCodigo {
+  const norm = normalizarSeguimientoGlosa(seguimientoRaw);
+  const est = sinAcentosUpper(estadoRaw == null ? "" : String(estadoRaw))
+    .replace(/\s+/g, "_")
+    .trim();
+  if ((est === "ACEPTADA" || est === "ACEPTO") && !norm) {
+    return "TRAMITADA";
+  }
+  return norm;
+}
+
+export function etiquetaSeguimientoGlosa(raw?: string | null, estadoRaw?: unknown): string {
+  const cod = resolverSeguimientoAutomatico(raw, estadoRaw);
+  return OPCIONES_SEGUIMIENTO_GLOSA.find((o) => o.id === cod)?.etiqueta || "En trámite (pendiente)";
 }

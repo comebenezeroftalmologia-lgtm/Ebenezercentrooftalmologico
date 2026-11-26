@@ -33,8 +33,10 @@ import {
   clasificarAtencionYSede,
   normalizarEmpresaNitUnificada,
   normalizarEstadoDecision,
-  normalizarSeguimientoGlosa,
+  resolverClaseYCausal,
   resolverNotaCreditoCondicional,
+  resolverSeguimientoAutomatico,
+  resolverValorAceptadoSegunRegla,
 } from "@/lib/carteraCruces";
 import { ModalImportarCarteraExcel } from "@/components/workcenter/ModalImportarCarteraExcel";
 
@@ -217,11 +219,11 @@ const ETIQUETA: Record<string, string> = {
 };
 
 const PASTILLA: Record<string, string> = {
-  PENDIENTE: "border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B]",
-  RESPONDIDA: "border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B]",
+  PENDIENTE: "border-[#DC2626] bg-[#FEF2F2] text-[#B91C1C] font-bold",
+  RESPONDIDA: "border-[#DC2626] bg-[#FEF2F2] text-[#B91C1C] font-bold",
   ACEPTADA: "border-[#86EFAC] bg-[#DCFCE7] text-[#14532D]",
   NO_ACEPTADA: "border-[#BFDBFE] bg-[#DBEAFE] text-[#1E3A8A]",
-  LEGALIZADA: "border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B]",
+  LEGALIZADA: "border-[#DC2626] bg-[#FEF2F2] text-[#B91C1C] font-bold",
 };
 
 const FAMILIA_COLOR: Record<string, string> = {
@@ -237,15 +239,66 @@ const FAMILIA_COLOR: Record<string, string> = {
 };
 
 const CLASES = [
-  { id: "", etiqueta: "— sin definir —", tipo: "GLOSA", alcance: "" },
-  { id: "GLOSA|PARCIAL", etiqueta: "Glosa parcial", tipo: "GLOSA", alcance: "PARCIAL" },
-  { id: "GLOSA|TOTAL", etiqueta: "Glosa total", tipo: "GLOSA", alcance: "TOTAL" },
-  { id: "DEVOLUCION|TOTAL", etiqueta: "Devolución", tipo: "DEVOLUCION", alcance: "TOTAL" },
+  { id: "GLOSA", etiqueta: "Glosa", tipo: "GLOSA" as const },
+  { id: "DEVOLUCION", etiqueta: "Devolución", tipo: "DEVOLUCION" as const },
 ];
-const claseDe = (g: { tipoGlosa: string; alcance: string }) =>
-  g.tipoGlosa === "DEVOLUCION" ? "DEVOLUCION|TOTAL" : g.alcance ? `GLOSA|${g.alcance}` : "";
+const claseDe = (g: { tipoGlosa: string; motivoCodigo?: string }) =>
+  resolverClaseYCausal(g.tipoGlosa, g.motivoCodigo).tipoGlosa;
 
 const pesos = (n: number) => "$" + Math.round(n || 0).toLocaleString("es-CO");
+const formatoPesosInput = (s: string) => {
+  if (s.trim() === "") return "";
+  const limpio = s.replace(/[^0-9]/g, "");
+  if (!limpio) return "";
+  return "$" + Number(limpio).toLocaleString("es-CO");
+};
+
+function listarPendientesFila(
+  g: Glosa,
+  cruce: { nit: string; empresaHomologada: string; fechaFacturaSisma: string; saldoSisma?: number }
+): string[] {
+  const faltan: string[] = [];
+  const vf = g.valorFacturado || g.valorRadicado || cruce.saldoSisma || 0;
+  const vg = g.valorGlosado || 0;
+  const est = normalizarEstadoDecision(g.estado, g.valorAceptado, g.notaCredito);
+  const cc = resolverClaseYCausal(g.tipoGlosa, g.motivoCodigo);
+  const vAcep = resolverValorAceptadoSegunRegla({
+    estado: est,
+    tipoGlosa: cc.tipoGlosa,
+    valorFacturado: vf,
+    valorGlosado: vg,
+    valorAceptadoPrevio: g.valorAceptado,
+  });
+  const nc = resolverNotaCreditoCondicional(g.notaCredito, vAcep, est);
+  const seg = resolverSeguimientoAutomatico(g.seguimientoEstado, est);
+
+  if (!g.fechaPrestacionServicio) faltan.push("Fecha prestación");
+  if (!(g.fechaFactura || cruce.fechaFacturaSisma)) faltan.push("Fecha factura");
+  const empInfo = normalizarEmpresaYNit(g.empresa || g.empresaOriginal, cruce.nit);
+  if (!(empInfo.nombre || cruce.empresaHomologada || g.empresa)) faltan.push("ERP");
+  if (!(empInfo.nit || cruce.nit)) faltan.push("NIT");
+  if (!homologarPersonaFacturacion(g.facturador)) faltan.push("Facturador");
+  if (!homologarPersonaFacturacion(g.responsableRespuesta || g.responsableAceptacion)) {
+    faltan.push("Responsable glosa");
+  }
+  if (!cc.motivoCodigo) faltan.push("Causal");
+  if (!(g.motivoGlosa || "").trim()) faltan.push("Motivo");
+  if (vf <= 0) faltan.push("Valor facturado");
+  if (vg <= 0) faltan.push("Valor glosado");
+  if (vAcep === null) faltan.push("Valor aceptado");
+  if (seg === "") faltan.push("Seguimiento");
+  if (seg === "RATIFICACION_GLOSA" && !(g.observacionInterna || "").trim()) {
+    faltan.push("Motivo/Obs. rectificación");
+  }
+  if ((seg === "PAGO_PARCIAL" || seg === "LEVANTAMIENTO_PARCIAL") && g.valorSeguimiento == null) {
+    faltan.push("Valor seguimiento");
+  }
+  if (est === "PENDIENTE") faltan.push("Estado");
+  if (est === "ACEPTADA" ? !esNumeroNotaCreditoReal(nc) : !esNotaCreditoValida(nc)) {
+    faltan.push("Nota Crédito");
+  }
+  return faltan;
+}
 const pesosCorto = (n: number) => {
   const v = Math.abs(n);
   if (v >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1).replace(".0", "") + "M";
@@ -304,10 +357,12 @@ export function CarteraWorkspace({
   const [fAnio, setFAnio] = useState("");
   const [fMes, setFMes] = useState("");
   const [fFacturador, setFFacturador] = useState("");
+  const [fRespGlosa, setFRespGlosa] = useState("");
   const [fSeguimiento, setFSeguimiento] = useState("");
   const [fFamilia, setFFamilia] = useState("");
   const [soloSinCausal, setSoloSinCausal] = useState(false);
   const [soloSinValores, setSoloSinValores] = useState(false);
+  const [soloPendientesLlenar, setSoloPendientesLlenar] = useState(false);
 
   const [vista, setVista] = useState<"cuadricula" | "anuladas" | "pendientes" | "resumen">("cuadricula");
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -326,60 +381,68 @@ export function CarteraWorkspace({
       const r = await fetch("/api/cartera/registros", { cache: "no-store" });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      const listaGlosas = ((j.glosas || []) as Partial<Glosa>[]).map((g) => ({
-        id: String(g.id || ""),
-        factura: String(g.factura || ""),
-        empresa: String(g.empresa || ""),
-        empresaOriginal: String(g.empresaOriginal || ""),
-        empresaHomologada: String(g.empresaHomologada || ""),
-        nit: String(g.nit || ""),
-        esMutual: Boolean(g.esMutual),
-        deDondeEs: String(g.deDondeEs || ""),
-        sede: String(g.sede || ""),
-        sedeGrupo: String(g.sedeGrupo || ""),
-        tipoAtencion: String(g.tipoAtencion || ""),
-        tipoGrupo: String(g.tipoGrupo || ""),
-        pacienteNombre: String(g.pacienteNombre || ""),
-        pacienteDoc: String(g.pacienteDoc || ""),
-        medicoNombre: String(g.medicoNombre || ""),
-        cups: String(g.cups || ""),
-        servicioDescripcion: String(g.servicioDescripcion || ""),
-        fechaPrestacionServicio: String(g.fechaPrestacionServicio || ""),
-        fechaFactura: String(g.fechaFactura || ""),
-        fechaRadicacion: String(g.fechaRadicacion || ""),
-        fechaNotificacionGlosa: String(g.fechaNotificacionGlosa || ""),
-        anio: String(g.anio || ""),
-        valorRadicado: Number(g.valorRadicado || 0),
-        valorFacturado: Number(g.valorFacturado ?? g.valorRadicado ?? 0),
-        valorGlosado: Number(g.valorGlosado || 0),
-        valorAceptado: g.valorAceptado === null || g.valorAceptado === undefined ? null : Number(g.valorAceptado),
-        motivoCodigo: String(g.motivoCodigo || ""),
-        subcodigoCausal: String(g.subcodigoCausal || ""),
-        motivoGlosa: String(g.motivoGlosa || ""),
-        observacionInterna: String(g.observacionInterna || ""),
-        notaCredito: resolverNotaCreditoCondicional(
-          g.notaCredito,
-          g.valorAceptado,
-          normalizarEstadoDecision(g.estado, g.valorAceptado, g.notaCredito)
-        ),
-        facturador: homologarPersonaFacturacion(
-          String(g.responsableRespuesta || g.responsableAceptacion || g.facturador || "")
-        ),
-        responsableAceptacion: homologarPersonaFacturacion(
-          String(g.responsableRespuesta || g.responsableAceptacion || g.facturador || "")
-        ),
-        responsableRespuesta: homologarPersonaFacturacion(
-          String(g.responsableRespuesta || g.responsableAceptacion || g.facturador || "")
-        ),
-        seguimientoEstado: normalizarSeguimientoGlosa(String(g.seguimientoEstado || "")),
-        valorSeguimiento:
-          g.valorSeguimiento === null || g.valorSeguimiento === undefined
-            ? null
-            : Number(g.valorSeguimiento),
-        tipoGlosa: String(g.tipoGlosa || "GLOSA"),
-        alcance: String(g.alcance || ""),
-        estado: normalizarEstadoDecision(g.estado, g.valorAceptado, g.notaCredito),
-      }));
+      const listaGlosas = ((j.glosas || []) as Partial<Glosa>[]).map((g) => {
+        const vFact = Number(g.valorFacturado ?? g.valorRadicado ?? 0);
+        const vGlos = Number(g.valorGlosado || 0);
+        const vAcepPrev =
+          g.valorAceptado === null || g.valorAceptado === undefined ? null : Number(g.valorAceptado);
+        const estNorm = normalizarEstadoDecision(g.estado, vAcepPrev, g.notaCredito);
+        const cc = resolverClaseYCausal(g.tipoGlosa, g.motivoCodigo);
+        const vAcepFinal = resolverValorAceptadoSegunRegla({
+          estado: estNorm,
+          tipoGlosa: cc.tipoGlosa,
+          valorFacturado: vFact,
+          valorGlosado: vGlos,
+          valorAceptadoPrevio: vAcepPrev,
+        });
+        const respSep = homologarPersonaFacturacion(
+          String(g.responsableRespuesta ?? g.responsableAceptacion ?? "")
+        );
+        return {
+          id: String(g.id || ""),
+          factura: String(g.factura || ""),
+          empresa: String(g.empresa || ""),
+          empresaOriginal: String(g.empresaOriginal || ""),
+          empresaHomologada: String(g.empresaHomologada || ""),
+          nit: String(g.nit || ""),
+          esMutual: Boolean(g.esMutual),
+          deDondeEs: String(g.deDondeEs || ""),
+          sede: String(g.sede || ""),
+          sedeGrupo: String(g.sedeGrupo || ""),
+          tipoAtencion: String(g.tipoAtencion || ""),
+          tipoGrupo: String(g.tipoGrupo || ""),
+          pacienteNombre: String(g.pacienteNombre || ""),
+          pacienteDoc: String(g.pacienteDoc || ""),
+          medicoNombre: String(g.medicoNombre || ""),
+          cups: String(g.cups || ""),
+          servicioDescripcion: String(g.servicioDescripcion || ""),
+          fechaPrestacionServicio: String(g.fechaPrestacionServicio || ""),
+          fechaFactura: String(g.fechaFactura || ""),
+          fechaRadicacion: String(g.fechaRadicacion || ""),
+          fechaNotificacionGlosa: String(g.fechaNotificacionGlosa || ""),
+          anio: String(g.anio || ""),
+          valorRadicado: Number(g.valorRadicado || 0),
+          valorFacturado: vFact,
+          valorGlosado: vGlos,
+          valorAceptado: vAcepFinal,
+          motivoCodigo: cc.motivoCodigo,
+          subcodigoCausal: "",
+          motivoGlosa: String(g.motivoGlosa || ""),
+          observacionInterna: String(g.observacionInterna || ""),
+          notaCredito: resolverNotaCreditoCondicional(g.notaCredito, vAcepFinal, estNorm),
+          facturador: homologarPersonaFacturacion(String(g.facturador || "")),
+          responsableAceptacion: respSep,
+          responsableRespuesta: respSep,
+          seguimientoEstado: resolverSeguimientoAutomatico(String(g.seguimientoEstado || ""), estNorm),
+          valorSeguimiento:
+            g.valorSeguimiento === null || g.valorSeguimiento === undefined
+              ? null
+              : Number(g.valorSeguimiento),
+          tipoGlosa: cc.tipoGlosa,
+          alcance: "",
+          estado: estNorm,
+        };
+      });
       setGlosas(listaGlosas);
       setAnuladas((j.anuladas || []) as Anulada[]);
       setPendientes((j.pendientes || []) as PendienteWc[]);
@@ -599,20 +662,26 @@ export function CarteraWorkspace({
         const vfEf = g.valorFacturado || g.valorRadicado || cr.saldoSisma || 0;
         if (vfEf > 0 && (g.valorGlosado || 0) > 0) return false;
       }
+      if (soloPendientesLlenar && listarPendientesFila(g, cr).length === 0) {
+        return false;
+      }
       if (fEmpresa) {
         const info = normalizarEmpresaYNit(g.empresa || g.empresaOriginal);
         if (info.nombre !== fEmpresa && g.empresa !== fEmpresa) return false;
       }
       if (fSeguimiento) {
-        const seg = g.seguimientoEstado || "";
+        const seg = resolverSeguimientoAutomatico(g.seguimientoEstado, estDec);
         if (fSeguimiento === "SIN_SEGUIMIENTO" && seg !== "") return false;
         if (fSeguimiento !== "SIN_SEGUIMIENTO" && seg !== fSeguimiento) return false;
       }
       if (fAnio && g.anio !== fAnio) return false;
       if (fMes && mesDe(g) !== fMes) return false;
+      if (fFacturador && homologarPersonaFacturacion(g.facturador) !== fFacturador) {
+        return false;
+      }
       if (
-        fFacturador &&
-        homologarPersonaFacturacion(g.responsableAceptacion || g.facturador) !== fFacturador
+        fRespGlosa &&
+        homologarPersonaFacturacion(g.responsableRespuesta || g.responsableAceptacion) !== fRespGlosa
       ) {
         return false;
       }
@@ -631,13 +700,14 @@ export function CarteraWorkspace({
         (g.motivoGlosa || "").toUpperCase().includes(q) ||
         (g.motivoCodigo || "").toUpperCase().includes(q) ||
         (g.notaCredito || "").toUpperCase().includes(q) ||
-        (g.responsableAceptacion || g.facturador || "").toUpperCase().includes(q) ||
+        (g.facturador || "").toUpperCase().includes(q) ||
+        (g.responsableRespuesta || g.responsableAceptacion || "").toUpperCase().includes(q) ||
         (g.observacionInterna || "").toUpperCase().includes(q)
       );
     });
   }, [
     glosas, busqueda, fEstado, fEmpresa, fMutual, fSeguimiento, fAnio, fMes,
-    fFacturador, soloSinCausal, soloSinValores, cruzarFila,
+    fFacturador, fRespGlosa, soloSinCausal, soloSinValores, soloPendientesLlenar, cruzarFila,
   ]);
 
   const visibles = useMemo(() => {
@@ -714,11 +784,12 @@ export function CarteraWorkspace({
   const sinFecha = useMemo(() => glosas.filter((g) => !mesDe(g)).length, [glosas]);
 
   const m = useMemo(() => {
-    let glosado = 0, facturado = 0, aceptado = 0, sinResolver = 0, valorSinResolver = 0, sinCausal = 0, sinNC = 0, sinValores = 0;
+    let glosado = 0, facturado = 0, aceptado = 0, sinResolver = 0, valorSinResolver = 0, sinCausal = 0, sinNC = 0, sinValores = 0, conPendientes = 0;
     for (const gAll of glosas) {
       const crAll = cruzarFila({ ...gAll, motivoTexto: `${gAll.motivoGlosa} ${gAll.observacionInterna}` });
       const vfAll = gAll.valorFacturado || gAll.valorRadicado || crAll.saldoSisma || 0;
       if (vfAll <= 0 || (gAll.valorGlosado || 0) <= 0) sinValores++;
+      if (listarPendientesFila(gAll, crAll).length > 0) conPendientes++;
     }
     let glosadoBaseCausas = 0;
     const porFamilia: Record<string, number> = {};
@@ -743,7 +814,8 @@ export function CarteraWorkspace({
     const porEmpresa: Record<string, number> = {};
     const porCausal: Record<string, number> = {};
     const porAnio: Record<string, number> = {};
-    const porPersonaUnificada: Record<string, number> = {};
+    const porFacturador: Record<string, number> = {};
+    const porRespGlosa: Record<string, number> = {};
     const porSeguimiento: Record<string, number> = {};
     const porEstado: Record<string, number> = {};
     const porClase: Record<string, number> = {};
@@ -770,12 +842,14 @@ export function CarteraWorkspace({
       if (empKey) porEmpresa[empKey] = (porEmpresa[empKey] || 0) + v;
       if (cn) porCausal[cn] = (porCausal[cn] || 0) + v;
       porAnio[g.anio || "sin año"] = (porAnio[g.anio || "sin año"] || 0) + v;
-      const pUnif = homologarPersonaFacturacion(g.responsableAceptacion || g.facturador) || "SIN RESPONSABLE EN FUENTE";
-      porPersonaUnificada[pUnif] = (porPersonaUnificada[pUnif] || 0) + v;
-      const segLabel = etiquetaSeguimientoGlosa(g.seguimientoEstado);
+      const fNom = homologarPersonaFacturacion(g.facturador) || "SIN FACTURADOR";
+      porFacturador[fNom] = (porFacturador[fNom] || 0) + v;
+      const rNom = homologarPersonaFacturacion(g.responsableRespuesta || g.responsableAceptacion) || "SIN RESPONSABLE GLOSA";
+      porRespGlosa[rNom] = (porRespGlosa[rNom] || 0) + v;
+      const segLabel = etiquetaSeguimientoGlosa(g.seguimientoEstado, g.estado);
       porSeguimiento[segLabel] = (porSeguimiento[segLabel] || 0) + v;
       porEstado[g.estado] = (porEstado[g.estado] || 0) + v;
-      const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "— sin definir —";
+      const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "Glosa";
       porClase[cl] = (porClase[cl] || 0) + v;
     }
     factUnicas.forEach((v) => {
@@ -783,12 +857,13 @@ export function CarteraWorkspace({
     });
     const orden = (o: Record<string, number>) => Object.entries(o).sort((a, b) => b[1] - a[1]);
     return {
-      glosado, glosadoBaseCausas, facturado, aceptado, sinResolver, valorSinResolver, sinCausal, sinNC, sinValores, porNorma,
+      glosado, glosadoBaseCausas, facturado, aceptado, sinResolver, valorSinResolver, sinCausal, sinNC, sinValores, conPendientes, porNorma,
       familias: orden(porFamilia),
       empresas: orden(porEmpresa),
       causales: orden(porCausal),
       anios: Object.entries(porAnio).sort((a, b) => a[0].localeCompare(b[0])),
-      personasUnificadas: orden(porPersonaUnificada),
+      facturadores: orden(porFacturador),
+      responsablesGlosa: orden(porRespGlosa),
       seguimientos: orden(porSeguimiento),
       estados: orden(porEstado),
       clases: orden(porClase),
@@ -799,17 +874,17 @@ export function CarteraWorkspace({
     const encabezados = [
       "Factura", "Fecha Prestación Servicio", "Fecha Factura", "Fecha Radicación", "Fecha Notificación Glosa", "Año",
       "ERP Unificada", "NIT ERP", "De dónde es (Convenio / Régimen)",
-      "Responsable / Facturador",
+      "Facturador (Quien factura)", "Responsable Glosa (Quien responde)",
       "Valor Facturado", "Valor Glosado", "Valor Aceptado", "Valor Defendido",
-      "Causal (TA/AU/SO/DE/CO/FA)", "Clase", "Motivo de Glosa",
-      "Seguimiento (Pago / Levantamiento / Ratificación)", "Valor Seguimiento",
-      "Nota Crédito", "Estado", "Observación Interna",
+      "Clase", "Causal (TA/AU/SO/DE/CO/FA)", "Motivo de Glosa",
+      "Seguimiento", "Valor Seguimiento",
+      "Nota Crédito", "Estado", "Observación / Motivo Rectificación",
     ];
     const filasCsv = visibles.map((g) => {
       const cr = cruzarFila({ ...g, motivoTexto: `${g.motivoGlosa} ${g.observacionInterna}` });
       const cn = causaNormativaDe(g.motivoCodigo, g.tipoGlosa);
       const empNit = normalizarEmpresaYNit(g.empresa || g.empresaOriginal, cr.nit);
-      const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "";
+      const cl = CLASES.find((c) => c.id === claseDe(g))?.etiqueta || "Glosa";
       const vGlosa = Number(g.valorGlosado || 0);
       const vAcep = g.valorAceptado ?? null;
       const vDef =
@@ -820,7 +895,8 @@ export function CarteraWorkspace({
           : g.estado === "NO_ACEPTADA"
           ? vGlosa
           : 0;
-      const personaCsv = homologarPersonaFacturacion(g.responsableAceptacion || g.facturador);
+      const factCsv = homologarPersonaFacturacion(g.facturador);
+      const respCsv = homologarPersonaFacturacion(g.responsableRespuesta || g.responsableAceptacion);
       const ncCsv = resolverNotaCreditoCondicional(g.notaCredito, vAcep, g.estado);
       return [
         g.factura,
@@ -832,15 +908,16 @@ export function CarteraWorkspace({
         empNit.nombre || cr.empresaHomologada,
         empNit.nit || cr.nit,
         cr.deDondeEs,
-        personaCsv,
+        factCsv,
+        respCsv,
         g.valorFacturado || g.valorRadicado || cr.saldoSisma || 0,
         vGlosa,
         vAcep ?? "",
         vDef,
-        cn,
         cl,
+        cn,
         g.motivoGlosa,
-        etiquetaSeguimientoGlosa(g.seguimientoEstado),
+        etiquetaSeguimientoGlosa(g.seguimientoEstado, g.estado),
         g.valorSeguimiento ?? "",
         ncCsv,
         ETIQUETA[g.estado] || g.estado,
@@ -883,12 +960,12 @@ export function CarteraWorkspace({
 
   const limpiarFiltros = () => {
     setFEstado("TODAS"); setFEmpresa(""); setFMutual("CON");
-    setFCausaNorma(""); setFSeguimiento(""); setFAnio(""); setFMes(""); setFFacturador(""); setFFamilia("");
-    setSoloSinCausal(false); setSoloSinValores(false); setBusqueda("");
+    setFCausaNorma(""); setFSeguimiento(""); setFAnio(""); setFMes(""); setFFacturador(""); setFRespGlosa(""); setFFamilia("");
+    setSoloSinCausal(false); setSoloSinValores(false); setSoloPendientesLlenar(false); setBusqueda("");
   };
   const hayFiltro = !!(
     fEstado !== "TODAS" || fEmpresa || fMutual !== "CON" || fCausaNorma || fSeguimiento || fAnio || fMes ||
-    fFacturador || fFamilia || soloSinCausal || soloSinValores || busqueda
+    fFacturador || fRespGlosa || fFamilia || soloSinCausal || soloSinValores || soloPendientesLlenar || busqueda
   );
 
   const sel =
@@ -908,7 +985,7 @@ export function CarteraWorkspace({
             Glosas, devoluciones y control de facturas
           </h2>
           <p className="mt-0.5 text-[12px] text-[#64748B]">
-            ERP unificadas con NIT, fecha de prestación, Facturador/Responsable unificados, 6 causales (TA, AU, SO, DE, CO, FA), seguimiento de pagos/levantamientos/ratificación y Nota Crédito.
+            ERP unificadas con NIT, fecha de prestación, Facturador y Responsable Glosa independientes, Clase (Glosa / Devolución ↔ DE), seguimiento automático Tramitada / Proceso de pago / Rectificación y alertas en rojo de pendientes.
             {usuario.esAdmin ? " Entras como administrador." : ""}
           </p>
         </div>
@@ -1033,9 +1110,15 @@ export function CarteraWorkspace({
             ))}
           </select>
 
-          <label htmlFor="f-fact" className="sr-only">Filtrar por responsable o facturador</label>
+          <label htmlFor="f-fact" className="sr-only">Filtrar por facturador</label>
           <select id="f-fact" value={fFacturador} onChange={(e) => setFFacturador(e.target.value)} className={sel}>
-            <option value="">Facturador / Resp. glosa (Unificado)</option>
+            <option value="">Facturador (quien factura)</option>
+            {responsablesEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+
+          <label htmlFor="f-resp-glosa" className="sr-only">Filtrar por responsable de glosa</label>
+          <select id="f-resp-glosa" value={fRespGlosa} onChange={(e) => setFRespGlosa(e.target.value)} className={sel}>
+            <option value="">Responsable glosa (quien responde)</option>
             {responsablesEnDatos.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
 
@@ -1102,6 +1185,24 @@ export function CarteraWorkspace({
               : `Facturado: ${pesos(m.facturado)} · Glosado: ${pesos(m.glosado)}`;
           })()}
         </span>
+        {m.conPendientes > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setVista("cuadricula");
+              setSoloPendientesLlenar((v) => !v);
+            }}
+            title="Clic para mostrar todas las filas que tienen algún ítem pendiente por llenar en rojo"
+            className={`ml-2 inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-[11px] font-extrabold transition cursor-pointer ${
+              soloPendientesLlenar
+                ? "border-[#991B1B] bg-[#DC2626] text-white"
+                : "border-[#DC2626] bg-[#FEF2F2] text-[#B91C1C] hover:bg-[#FEE2E2]"
+            }`}
+          >
+            <AlertTriangle className="h-3 w-3" />
+            {m.conPendientes} con ítems pendientes (en rojo)
+          </button>
+        )}
         {m.sinValores > 0 && (
           <button
             type="button"
@@ -1110,7 +1211,7 @@ export function CarteraWorkspace({
               setSoloSinValores((v) => !v);
             }}
             title="Clic para filtrar las facturas o glosas que están en $0 o sin valores"
-            className={`ml-2 inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-[11px] font-bold transition cursor-pointer ${
+            className={`ml-1.5 inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-[11px] font-bold transition cursor-pointer ${
               soloSinValores
                 ? "border-[#991B1B] bg-[#DC2626] text-white"
                 : "border-[#FCA5A5] bg-[#FEF2F2] text-[#B91C1C] hover:bg-[#FEE2E2]"
@@ -1119,11 +1220,6 @@ export function CarteraWorkspace({
             <AlertTriangle className="h-3 w-3" />
             {m.sinValores} sin valores ($0)
           </button>
-        )}
-        {m.sinNC > 0 && (
-          <span className="ml-1.5 rounded-pill bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#92400E]">
-            {m.sinNC} sin N° Nota Crédito o N/A
-          </span>
         )}
         {fMes && sinFecha > 0 && (
           <span className="text-[11.5px] text-[#B45309]">
@@ -1248,14 +1344,21 @@ export function CarteraWorkspace({
           {m.glosado > 0 && (
             <div className="mt-5 grid gap-5 border-t border-[#F1F5F9] pt-4 md:grid-cols-2">
               <Ranking
-                titulo="Responsable / Facturador (Unificado)"
-                filas={m.personasUnificadas.slice(0, 8)}
+                titulo="Facturador (Quien realiza la factura)"
+                filas={m.facturadores.slice(0, 8)}
                 total={m.glosado}
                 onClick={(k) => setFFacturador(fFacturador === k ? "" : k)}
                 activo={fFacturador}
               />
               <Ranking
-                titulo="Seguimiento (Pagos, Levantamientos y Ratificación)"
+                titulo="Responsable Glosa (Quien responde)"
+                filas={m.responsablesGlosa.slice(0, 8)}
+                total={m.glosado}
+                onClick={(k) => setFRespGlosa(fRespGlosa === k ? "" : k)}
+                activo={fRespGlosa}
+              />
+              <Ranking
+                titulo="Seguimiento (Tramitada, Proceso de pago, Pagos, Levantamientos, Rectificación)"
                 filas={m.seguimientos}
                 total={m.glosado}
               />
@@ -1376,7 +1479,7 @@ export function CarteraWorkspace({
                     </td>
                   </tr>
                 )}
-                {anuladasVisibles.slice(0, 200).map((a) => {
+                {anuladasVisibles.map((a) => {
                   const cr = cruzarFila({ ...a, motivoTexto: a.motivo });
                   return (
                     <tr key={a.id} className="border-b border-[#F1F5F9] align-top hover:bg-[#F8FAFC]">
@@ -1488,7 +1591,7 @@ export function CarteraWorkspace({
                     </td>
                   </tr>
                 )}
-                {pendientesVisibles.slice(0, 200).map((p) => {
+                {pendientesVisibles.map((p) => {
                   const empInfo = homologarEmpresaYOrigen({
                     empresa: p.empresa,
                     empresaOriginal: p.empresaOriginal,
@@ -1642,7 +1745,8 @@ export function CarteraWorkspace({
                   <th className="w-6 py-2" />
                   <th className="py-2 pr-3">Factura · Prestación / Fechas</th>
                   <th className="py-2 pr-3">ERP Unificada · NIT</th>
-                  <th className="py-2 pr-3">Responsable / Facturador</th>
+                  <th className="py-2 pr-3">Facturador</th>
+                  <th className="py-2 pr-3">Responsable Glosa</th>
                   <th className="py-2 pr-3">Clase</th>
                   <th className="py-2 pr-3">Causal (TA–FA)</th>
                   <th className="py-2 pr-3">Motivo de glosa</th>
@@ -1658,19 +1762,19 @@ export function CarteraWorkspace({
               <tbody>
                 {cargando && (
                   <tr>
-                    <td colSpan={14} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={15} className="py-8 text-center text-[#94A3B8]">
                       <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" /> Cargando…
                     </td>
                   </tr>
                 )}
                 {!cargando && visibles.length === 0 && !fallo && (
                   <tr>
-                    <td colSpan={14} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={15} className="py-8 text-center text-[#94A3B8]">
                       {glosas.length === 0 ? "Todavía no hay glosas en la base." : "Nada coincide con el filtro."}
                     </td>
                   </tr>
                 )}
-                {visibles.slice(0, 150).map((g) => {
+                {visibles.map((g) => {
                   const cn = causaNormativaDe(g.motivoCodigo, g.tipoGlosa);
                   return (
                     <FilaGlosa
@@ -1693,12 +1797,10 @@ export function CarteraWorkspace({
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[#64748B]">
             <span>
-              {visibles.length > 150
-                ? `Mostrando 150 de ${visibles.length} filas. Usa los filtros para acotar.`
-                : `${visibles.length} de ${glosas.length} filas`}
+              Mostrando todas las {visibles.length} filas ({glosas.length} totales en base)
             </span>
             <span>
-              La flecha izquierda despliega fechas completas y detalle. Doble clic abre la ficha (o permite anular la factura).
+              Todo ítem faltante aparece resaltado en rojo. La flecha izquierda despliega fechas y detalle; doble clic abre la ficha.
             </span>
           </div>
         </div>
@@ -2327,114 +2429,148 @@ function FilaGlosa({
   onGuardar: (fila: Record<string, unknown>, accion: "CREAR" | "EDITAR") => Promise<boolean>;
   onFicha: () => void;
 }) {
-  const personaInicial = homologarPersonaFacturacion(glosa.responsableAceptacion || glosa.facturador);
+  const facturadorInicial = homologarPersonaFacturacion(glosa.facturador);
+  const respGlosaInicial = homologarPersonaFacturacion(glosa.responsableRespuesta || glosa.responsableAceptacion);
   const facturadoEfectivo = glosa.valorFacturado || glosa.valorRadicado || cruce.saldoSisma || 0;
   const estadoInicial = normalizarEstadoDecision(glosa.estado, glosa.valorAceptado, glosa.notaCredito);
+  const claseCausalInicial = resolverClaseYCausal(glosa.tipoGlosa, glosa.motivoCodigo);
+  const valorAceptadoInicialNum = resolverValorAceptadoSegunRegla({
+    estado: estadoInicial,
+    tipoGlosa: claseCausalInicial.tipoGlosa,
+    valorFacturado: facturadoEfectivo,
+    valorGlosado: glosa.valorGlosado || 0,
+    valorAceptadoPrevio: glosa.valorAceptado,
+  });
+  const aceptadoInicial = valorAceptadoInicialNum == null ? "" : String(Math.round(valorAceptadoInicialNum));
+  const notaInicial = resolverNotaCreditoCondicional(glosa.notaCredito, valorAceptadoInicialNum, estadoInicial);
+  const segInicial = resolverSeguimientoAutomatico(glosa.seguimientoEstado, estadoInicial);
+  const valSegInicial = glosa.valorSeguimiento == null ? "" : String(Math.round(glosa.valorSeguimiento));
+  const valFactInicial = String(Math.round(facturadoEfectivo));
+  const valGlosInicial = String(Math.round(glosa.valorGlosado || 0));
+  const fechaPrestInicial = (glosa.fechaPrestacionServicio || "").slice(0, 10);
+  const fechaFactInicial = (glosa.fechaFactura || "").slice(0, 10);
+  const fechaRadInicial = (glosa.fechaRadicacion || "").slice(0, 10);
+  const fechaNotifInicial = (glosa.fechaNotificacionGlosa || "").slice(0, 10);
+  const obsInicial = glosa.observacionInterna || "";
+  const motivoInicial = glosa.motivoGlosa || "";
 
   const [abierta, setAbierta] = useState(false);
   const [estado, setEstado] = useState<"PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA">(estadoInicial);
-  const [aceptado, setAceptado] = useState(
-    glosa.valorAceptado == null ? "" : String(Math.round(glosa.valorAceptado)),
-  );
-  const [nota, setNota] = useState(
-    resolverNotaCreditoCondicional(glosa.notaCredito, glosa.valorAceptado, estadoInicial),
-  );
-  const [persona, setPersona] = useState(personaInicial);
-  const [fechaPrest, setFechaPrest] = useState((glosa.fechaPrestacionServicio || "").slice(0, 10));
-  const [fechaFact, setFechaFact] = useState((glosa.fechaFactura || "").slice(0, 10));
-  const [fechaRad, setFechaRad] = useState((glosa.fechaRadicacion || "").slice(0, 10));
-  const [fechaNotif, setFechaNotif] = useState((glosa.fechaNotificacionGlosa || "").slice(0, 10));
-  const [seguimiento, setSeguimiento] = useState<SeguimientoGlosaCodigo>(
-    normalizarSeguimientoGlosa(glosa.seguimientoEstado),
-  );
-  const [valSeg, setValSeg] = useState(
-    glosa.valorSeguimiento == null ? "" : String(Math.round(glosa.valorSeguimiento)),
-  );
-  const [valFact, setValFact] = useState(String(Math.round(facturadoEfectivo)));
-  const [obs, setObs] = useState(glosa.observacionInterna || "");
-  const [motivo, setMotivo] = useState(glosa.motivoGlosa || "");
-  const [codigo, setCodigo] = useState(causaNormativaDe(glosa.motivoCodigo, glosa.tipoGlosa));
-  const [clase, setClase] = useState(claseDe(glosa));
+  const [aceptado, setAceptado] = useState(aceptadoInicial);
+  const [nota, setNota] = useState(notaInicial);
+  const [facturador, setFacturador] = useState(facturadorInicial);
+  const [respGlosa, setRespGlosa] = useState(respGlosaInicial);
+  const [fechaPrest, setFechaPrest] = useState(fechaPrestInicial);
+  const [fechaFact, setFechaFact] = useState(fechaFactInicial);
+  const [fechaRad, setFechaRad] = useState(fechaRadInicial);
+  const [fechaNotif, setFechaNotif] = useState(fechaNotifInicial);
+  const [seguimiento, setSeguimiento] = useState<SeguimientoGlosaCodigo>(segInicial);
+  const [valSeg, setValSeg] = useState(valSegInicial);
+  const [valFact, setValFact] = useState(valFactInicial);
+  const [valGlos, setValGlos] = useState(valGlosInicial);
+  const [obs, setObs] = useState(obsInicial);
+  const [motivo, setMotivo] = useState(motivoInicial);
+  const [codigo, setCodigo] = useState(claseCausalInicial.motivoCodigo);
+  const [clase, setClase] = useState<"GLOSA" | "DEVOLUCION">(claseCausalInicial.tipoGlosa);
 
   const ultimo = useRef({
     estado: estadoInicial,
-    aceptado: "",
-    nota: "",
-    persona: "",
-    fechaPrest: "",
-    fechaFact: "",
-    fechaRad: "",
-    fechaNotif: "",
-    valSeg: "",
-    valFact: "",
-    obs: "",
-    motivo: "",
+    aceptado: aceptadoInicial,
+    nota: notaInicial,
+    facturador: facturadorInicial,
+    respGlosa: respGlosaInicial,
+    fechaPrest: fechaPrestInicial,
+    fechaFact: fechaFactInicial,
+    fechaRad: fechaRadInicial,
+    fechaNotif: fechaNotifInicial,
+    seguimiento: segInicial,
+    valSeg: valSegInicial,
+    valFact: valFactInicial,
+    valGlos: valGlosInicial,
+    obs: obsInicial,
+    motivo: motivoInicial,
   });
 
   useEffect(() => {
     const estNorm = normalizarEstadoDecision(glosa.estado, glosa.valorAceptado, glosa.notaCredito);
-    const a =
-      estNorm === "NO_ACEPTADA"
-        ? "0"
-        : glosa.valorAceptado == null
-        ? ""
-        : String(Math.round(glosa.valorAceptado));
-    const vs = glosa.valorSeguimiento == null ? "" : String(Math.round(glosa.valorSeguimiento));
     const vfEf = glosa.valorFacturado || glosa.valorRadicado || cruce.saldoSisma || 0;
+    const vgEf = glosa.valorGlosado || 0;
+    const cc = resolverClaseYCausal(glosa.tipoGlosa, glosa.motivoCodigo);
+    const vAcepNum = resolverValorAceptadoSegunRegla({
+      estado: estNorm,
+      tipoGlosa: cc.tipoGlosa,
+      valorFacturado: vfEf,
+      valorGlosado: vgEf,
+      valorAceptadoPrevio: glosa.valorAceptado,
+    });
+    const a = vAcepNum == null ? "" : String(Math.round(vAcepNum));
+    const vs = glosa.valorSeguimiento == null ? "" : String(Math.round(glosa.valorSeguimiento));
     const vf = String(Math.round(vfEf));
+    const vg = String(Math.round(vgEf));
     const fp = (glosa.fechaPrestacionServicio || "").slice(0, 10);
     const ff = (glosa.fechaFactura || "").slice(0, 10);
     const fr = (glosa.fechaRadicacion || "").slice(0, 10);
     const fn = (glosa.fechaNotificacionGlosa || "").slice(0, 10);
-    const pUnif = homologarPersonaFacturacion(glosa.responsableAceptacion || glosa.facturador);
-    const ncInit = resolverNotaCreditoCondicional(glosa.notaCredito, glosa.valorAceptado, estNorm);
+    const fUnif = homologarPersonaFacturacion(glosa.facturador);
+    const rUnif = homologarPersonaFacturacion(glosa.responsableRespuesta || glosa.responsableAceptacion);
+    const ncInit = resolverNotaCreditoCondicional(glosa.notaCredito, vAcepNum, estNorm);
+    const segAuto = resolverSeguimientoAutomatico(glosa.seguimientoEstado, estNorm);
+    const obsClean = glosa.observacionInterna || "";
+    const motClean = glosa.motivoGlosa || "";
+
     setEstado(estNorm);
     setAceptado(a);
     setNota(ncInit);
-    setPersona(pUnif);
+    setFacturador(fUnif);
+    setRespGlosa(rUnif);
     setFechaPrest(fp);
     setFechaFact(ff);
     setFechaRad(fr);
     setFechaNotif(fn);
-    setSeguimiento(normalizarSeguimientoGlosa(glosa.seguimientoEstado));
+    setSeguimiento(segAuto);
     setValSeg(vs);
     setValFact(vf);
-    setObs(glosa.observacionInterna || "");
-    setMotivo(glosa.motivoGlosa || "");
-    setCodigo(causaNormativaDe(glosa.motivoCodigo, glosa.tipoGlosa));
-    setClase(claseDe(glosa));
+    setValGlos(vg);
+    setObs(obsClean);
+    setMotivo(motClean);
+    setCodigo(cc.motivoCodigo);
+    setClase(cc.tipoGlosa);
     ultimo.current = {
       estado: estNorm,
       aceptado: a,
       nota: ncInit,
-      persona: pUnif,
+      facturador: fUnif,
+      respGlosa: rUnif,
       fechaPrest: fp,
       fechaFact: ff,
       fechaRad: fr,
       fechaNotif: fn,
+      seguimiento: segAuto,
       valSeg: vs,
       valFact: vf,
-      obs: glosa.observacionInterna || "",
-      motivo: glosa.motivoGlosa || "",
+      valGlos: vg,
+      obs: obsClean,
+      motivo: motClean,
     };
   }, [
     glosa.id, glosa.estado, glosa.valorAceptado, glosa.notaCredito, glosa.responsableAceptacion,
-    glosa.facturador, glosa.fechaPrestacionServicio, glosa.fechaFactura, glosa.fechaRadicacion,
-    glosa.fechaNotificacionGlosa, glosa.seguimientoEstado, glosa.valorSeguimiento,
-    glosa.valorFacturado, glosa.valorRadicado, glosa.observacionInterna, glosa.motivoGlosa,
-    glosa.motivoCodigo, glosa.tipoGlosa, glosa.alcance, cruce.saldoSisma,
+    glosa.responsableRespuesta, glosa.facturador, glosa.fechaPrestacionServicio, glosa.fechaFactura,
+    glosa.fechaRadicacion, glosa.fechaNotificacionGlosa, glosa.seguimientoEstado, glosa.valorSeguimiento,
+    glosa.valorFacturado, glosa.valorRadicado, glosa.valorGlosado, glosa.observacionInterna,
+    glosa.motivoGlosa, glosa.motivoCodigo, glosa.tipoGlosa, cruce.saldoSisma,
   ]);
 
   const enviar = (parcial: Record<string, unknown>) => {
-    const pUnif = homologarPersonaFacturacion(persona);
+    const fUnif = homologarPersonaFacturacion(facturador);
+    const rUnif = homologarPersonaFacturacion(respGlosa);
     void onGuardar(
       {
         ...glosa,
         estado,
         notaCredito: nota,
-        responsableAceptacion: pUnif,
-        responsableRespuesta: pUnif,
-        facturador: pUnif,
+        facturador: fUnif,
+        responsableAceptacion: rUnif,
+        responsableRespuesta: rUnif,
         fechaPrestacionServicio: fechaPrest,
         fechaFactura: fechaFact,
         fechaRadicacion: fechaRad,
@@ -2443,14 +2579,34 @@ function FilaGlosa({
         valorSeguimiento: valSeg.trim() === "" ? null : soloNumero(valSeg),
         valorFacturado: soloNumero(valFact),
         valorRadicado: soloNumero(valFact),
+        valorGlosado: soloNumero(valGlos),
         observacionInterna: obs,
         motivoGlosa: motivo,
         motivoCodigo: codigo,
+        tipoGlosa: clase,
+        alcance: "",
         subcodigoCausal: "",
         ...parcial,
       },
       "EDITAR",
     );
+  };
+
+  const puedePersistirFila = (
+    estCheck = estado,
+    ncCheck = nota,
+    segCheck = seguimiento,
+    obsCheck = obs
+  ): boolean => {
+    if (estCheck === "ACEPTADA" && !esNumeroNotaCreditoReal(ncCheck)) {
+      avisar("Glosa Aceptada: debes ingresar el número de la Nota Crédito antes de guardar.");
+      return false;
+    }
+    if (segCheck === "RATIFICACION_GLOSA" && !obsCheck.trim()) {
+      avisar("Rectificación de glosa: es obligatorio escribir el motivo en el campo de observación.");
+      return false;
+    }
+    return true;
   };
 
   const salir = () => {
@@ -2459,30 +2615,37 @@ function FilaGlosa({
       estado === u.estado &&
       aceptado === u.aceptado &&
       nota === u.nota &&
-      persona === u.persona &&
+      facturador === u.facturador &&
+      respGlosa === u.respGlosa &&
       fechaPrest === u.fechaPrest &&
       fechaFact === u.fechaFact &&
       fechaRad === u.fechaRad &&
       fechaNotif === u.fechaNotif &&
+      seguimiento === u.seguimiento &&
       valSeg === u.valSeg &&
       valFact === u.valFact &&
+      valGlos === u.valGlos &&
       obs === u.obs &&
       motivo === u.motivo
     ) {
       return;
     }
 
-    if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) {
-      avisar("Glosa Aceptada: debes ingresar el número de la Nota Crédito antes de guardar.");
-      return;
-    }
+    if (!puedePersistirFila()) return;
 
-    const vAcepNum =
-      estado === "NO_ACEPTADA"
-        ? 0
-        : aceptado.trim() === ""
-        ? null
-        : soloNumero(aceptado);
+    const vfNum = soloNumero(valFact);
+    const vgNum = soloNumero(valGlos);
+    const vAcepPrev = aceptado.trim() === "" ? null : soloNumero(aceptado);
+    const vAcepNum = resolverValorAceptadoSegunRegla({
+      estado,
+      tipoGlosa: clase,
+      valorFacturado: vfNum || facturadoEfectivo,
+      valorGlosado: vgNum,
+      valorAceptadoPrevio: vAcepPrev,
+    });
+    const aStr = vAcepNum == null ? "" : String(vAcepNum);
+    if (aStr !== aceptado) setAceptado(aStr);
+
     const notaFinal = resolverNotaCreditoCondicional(nota, vAcepNum, estado);
     if (notaFinal !== nota) setNota(notaFinal);
 
@@ -2492,20 +2655,28 @@ function FilaGlosa({
       return;
     }
 
-    const personaNorm = homologarPersonaFacturacion(persona);
-    if (personaNorm !== persona) setPersona(personaNorm);
+    const fNorm = homologarPersonaFacturacion(facturador);
+    const rNorm = homologarPersonaFacturacion(respGlosa);
+    if (fNorm !== facturador) setFacturador(fNorm);
+    if (rNorm !== respGlosa) setRespGlosa(rNorm);
+
+    const segFinal = resolverSeguimientoAutomatico(seguimiento, estado);
+    if (segFinal !== seguimiento) setSeguimiento(segFinal);
 
     ultimo.current = {
       estado,
-      aceptado: vAcepNum == null ? "" : String(vAcepNum),
+      aceptado: aStr,
       nota: notaFinal,
-      persona: personaNorm,
+      facturador: fNorm,
+      respGlosa: rNorm,
       fechaPrest,
       fechaFact,
       fechaRad,
       fechaNotif,
+      seguimiento: segFinal,
       valSeg,
-      valFact,
+      valFact: String(vfNum),
+      valGlos: String(vgNum),
       obs,
       motivo,
     };
@@ -2513,61 +2684,138 @@ function FilaGlosa({
       estado,
       valorAceptado: vAcepNum,
       notaCredito: notaFinal,
-      responsableAceptacion: personaNorm,
-      responsableRespuesta: personaNorm,
-      facturador: personaNorm,
+      facturador: fNorm,
+      responsableAceptacion: rNorm,
+      responsableRespuesta: rNorm,
       fechaPrestacionServicio: fechaPrest,
       fechaFactura: fechaFact,
       fechaRadicacion: fechaRad,
       fechaNotificacionGlosa: fechaNotif,
-      seguimientoEstado: seguimiento,
+      seguimientoEstado: segFinal,
       valorSeguimiento: valSeg.trim() === "" ? null : soloNumero(valSeg),
-      valorFacturado: soloNumero(valFact),
-      valorRadicado: soloNumero(valFact),
+      valorFacturado: vfNum,
+      valorRadicado: vfNum,
+      valorGlosado: vgNum,
       observacionInterna: obs,
       motivoGlosa: motivo,
+      tipoGlosa: clase,
+      motivoCodigo: codigo,
     });
   };
 
-  const cambiarPersona = (nuevaPersonaRaw: string) => {
-    const nv = homologarPersonaFacturacion(nuevaPersonaRaw);
-    setPersona(nv);
-    ultimo.current = { ...ultimo.current, persona: nv };
-    if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) {
-      avisar("Responsable seleccionado. Ingresa el número de la Nota Crédito al lado para guardar.");
-      return;
-    }
-    enviar({
-      responsableAceptacion: nv,
-      responsableRespuesta: nv,
-      facturador: nv,
-    });
+  const cambiarFacturador = (nuevoRaw: string) => {
+    const nv = homologarPersonaFacturacion(nuevoRaw);
+    setFacturador(nv);
+    if (!puedePersistirFila()) return;
+    ultimo.current = { ...ultimo.current, facturador: nv };
+    enviar({ facturador: nv });
+  };
+
+  const cambiarRespGlosa = (nuevoRaw: string) => {
+    const nv = homologarPersonaFacturacion(nuevoRaw);
+    setRespGlosa(nv);
+    if (!puedePersistirFila()) return;
+    ultimo.current = { ...ultimo.current, respGlosa: nv };
+    enviar({ responsableAceptacion: nv, responsableRespuesta: nv });
   };
 
   const cambiarSeguimiento = (nuevoSeg: SeguimientoGlosaCodigo) => {
     setSeguimiento(nuevoSeg);
     let nuevoValSeg = valSeg;
     if (nuevoSeg === "PAGO_COMPLETO") {
-      nuevoValSeg = String(Math.round(facturadoEfectivo || glosa.valorGlosado || 0));
+      nuevoValSeg = String(Math.round(soloNumero(valFact) || facturadoEfectivo || soloNumero(valGlos) || 0));
     } else if (nuevoSeg === "LEVANTAMIENTO_COMPLETO") {
-      nuevoValSeg = String(Math.round(glosa.valorGlosado || 0));
-    } else if (nuevoSeg === "") {
+      nuevoValSeg = String(Math.round(soloNumero(valGlos) || 0));
+    } else if (nuevoSeg === "" || nuevoSeg === "TRAMITADA" || nuevoSeg === "PROCESO_PAGO" || nuevoSeg === "RATIFICACION_GLOSA") {
       nuevoValSeg = "";
     }
     setValSeg(nuevoValSeg);
-    ultimo.current = { ...ultimo.current, valSeg: nuevoValSeg };
+
+    if (nuevoSeg === "RATIFICACION_GLOSA" && !obs.trim()) {
+      avisar("Rectificación de glosa: ingresa el motivo obligatorio en el campo que se abrió debajo.");
+      window.setTimeout(() => {
+        document.getElementById(`obs-rect-${glosa.id}`)?.focus();
+      }, 35);
+      return;
+    }
     if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) return;
+    ultimo.current = { ...ultimo.current, seguimiento: nuevoSeg, valSeg: nuevoValSeg };
     enviar({
       seguimientoEstado: nuevoSeg,
       valorSeguimiento: nuevoValSeg.trim() === "" ? null : soloNumero(nuevoValSeg),
     });
   };
 
-  const cambiarClase = (id: string) => {
-    const c = CLASES.find((x) => x.id === id) || CLASES[0];
-    setClase(id);
-    if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) return;
-    enviar({ tipoGlosa: c.tipo, alcance: c.alcance });
+  const cambiarClase = (nuevaClaseRaw: string) => {
+    const nuevaClase: "GLOSA" | "DEVOLUCION" = nuevaClaseRaw === "DEVOLUCION" ? "DEVOLUCION" : "GLOSA";
+    const nuevoCod = nuevaClase === "DEVOLUCION" ? "DE" : codigo === "DE" ? "" : codigo;
+    setClase(nuevaClase);
+    setCodigo(nuevoCod);
+
+    const vfActual = soloNumero(valFact) || facturadoEfectivo;
+    const vgActual = soloNumero(valGlos);
+    let nuevoAcep = aceptado;
+    if (estado === "ACEPTADA") {
+      const calc = resolverValorAceptadoSegunRegla({
+        estado: "ACEPTADA",
+        tipoGlosa: nuevaClase,
+        valorFacturado: vfActual,
+        valorGlosado: vgActual,
+        valorAceptadoPrevio: aceptado.trim() === "" ? null : soloNumero(aceptado),
+      });
+      nuevoAcep = calc == null ? "" : String(calc);
+      setAceptado(nuevoAcep);
+    }
+
+    if (!puedePersistirFila()) return;
+    if (estado === "ACEPTADA") {
+      ultimo.current = { ...ultimo.current, aceptado: nuevoAcep };
+    }
+    enviar({
+      tipoGlosa: nuevaClase,
+      alcance: "",
+      motivoCodigo: nuevoCod,
+      ...(estado === "ACEPTADA"
+        ? { valorAceptado: nuevoAcep.trim() === "" ? null : soloNumero(nuevoAcep) }
+        : {}),
+    });
+  };
+
+  const cambiarCausal = (nuevoCodRaw: string) => {
+    const nuevoCod = nuevoCodRaw.trim().toUpperCase();
+    const nuevaClase: "GLOSA" | "DEVOLUCION" =
+      nuevoCod === "DE" ? "DEVOLUCION" : nuevoCod ? "GLOSA" : clase;
+    setCodigo(nuevoCod);
+    setClase(nuevaClase);
+
+    const vfActual = soloNumero(valFact) || facturadoEfectivo;
+    const vgActual = soloNumero(valGlos);
+    let nuevoAcep = aceptado;
+    if (estado === "ACEPTADA") {
+      const calc = resolverValorAceptadoSegunRegla({
+        estado: "ACEPTADA",
+        tipoGlosa: nuevaClase,
+        valorFacturado: vfActual,
+        valorGlosado: vgActual,
+        valorAceptadoPrevio: aceptado.trim() === "" ? null : soloNumero(aceptado),
+      });
+      nuevoAcep = calc == null ? "" : String(calc);
+      setAceptado(nuevoAcep);
+    }
+
+    if (!puedePersistirFila()) return;
+    if (estado === "ACEPTADA") {
+      ultimo.current = { ...ultimo.current, aceptado: nuevoAcep };
+    }
+    enviar({
+      motivoCodigo: nuevoCod,
+      tipoGlosa: nuevaClase,
+      alcance: "",
+      subcodigoCausal: "",
+      ...(estado === "ACEPTADA"
+        ? { valorAceptado: nuevoAcep.trim() === "" ? null : soloNumero(nuevoAcep) }
+        : {}),
+    });
   };
 
   const cambiarEstado = (nuevoRaw: string) => {
@@ -2576,72 +2824,201 @@ function FilaGlosa({
     if (nuevo === "NO_ACEPTADA") {
       setAceptado("0");
       setNota("N/A");
-      ultimo.current = { ...ultimo.current, estado: "NO_ACEPTADA", aceptado: "0", nota: "N/A" };
-      enviar({ estado: "NO_ACEPTADA", valorAceptado: 0, notaCredito: "N/A" });
+      const segNoAcep = seguimiento === "TRAMITADA" ? "" : seguimiento;
+      if (segNoAcep !== seguimiento) setSeguimiento(segNoAcep);
+      if (segNoAcep === "RATIFICACION_GLOSA" && !obs.trim()) {
+        avisar("Completa primero el motivo obligatorio de Rectificación de glosa.");
+        return;
+      }
+      ultimo.current = {
+        ...ultimo.current,
+        estado: "NO_ACEPTADA",
+        aceptado: "0",
+        nota: "N/A",
+        seguimiento: segNoAcep,
+      };
+      enviar({
+        estado: "NO_ACEPTADA",
+        valorAceptado: 0,
+        notaCredito: "N/A",
+        seguimientoEstado: segNoAcep,
+      });
       return;
     }
     if (nuevo === "PENDIENTE") {
       setAceptado("");
       const ncPend = nota.trim().toUpperCase() === "N/A" ? "" : nota.trim().toUpperCase();
+      const segPend = seguimiento === "TRAMITADA" ? "" : seguimiento;
       setNota(ncPend);
-      ultimo.current = { ...ultimo.current, estado: "PENDIENTE", aceptado: "", nota: ncPend };
-      enviar({ estado: "PENDIENTE", valorAceptado: null, notaCredito: ncPend || null });
+      setSeguimiento(segPend);
+      if (segPend === "RATIFICACION_GLOSA" && !obs.trim()) return;
+      ultimo.current = {
+        ...ultimo.current,
+        estado: "PENDIENTE",
+        aceptado: "",
+        nota: ncPend,
+        seguimiento: segPend,
+      };
+      enviar({
+        estado: "PENDIENTE",
+        valorAceptado: null,
+        notaCredito: ncPend || null,
+        seguimientoEstado: segPend,
+      });
       return;
     }
-    // nuevo === "ACEPTADA"
-    const p =
-      aceptado.trim() === "" || soloNumero(aceptado) === 0
-        ? glosa.valorGlosado > 0
-          ? String(Math.round(glosa.valorGlosado))
-          : ""
-        : aceptado;
+
+    // nuevo === "ACEPTADA" -> Seguimiento pasa automáticamente a "TRAMITADA" y Aceptado toma Facturado (si Devolución) o Glosado (si Glosa)
+    const vfActual = soloNumero(valFact) || facturadoEfectivo;
+    const vgActual = soloNumero(valGlos);
+    const vCalc = resolverValorAceptadoSegunRegla({
+      estado: "ACEPTADA",
+      tipoGlosa: clase,
+      valorFacturado: vfActual,
+      valorGlosado: vgActual,
+      valorAceptadoPrevio:
+        aceptado.trim() === "" || soloNumero(aceptado) === 0 ? null : soloNumero(aceptado),
+    });
+    const p = vCalc == null ? "" : String(vCalc);
+    const segAceptada: SeguimientoGlosaCodigo = seguimiento === "" ? "TRAMITADA" : seguimiento;
     setAceptado(p);
+    setSeguimiento(segAceptada);
+
     if (!esNumeroNotaCreditoReal(nota)) {
       setNota("");
-      avisar("Glosa Aceptada: ingresa el número de la Nota Crédito al lado para poder guardar.");
+      avisar("Glosa Aceptada: seguimiento en Tramitada. Ingresa el número de la Nota Crédito para guardar.");
       window.setTimeout(() => {
         document.getElementById(`nc-${glosa.id}`)?.focus();
       }, 35);
       return;
     }
+    if (segAceptada === "RATIFICACION_GLOSA" && !obs.trim()) {
+      avisar("Rectificación de glosa: escribe el motivo obligatorio para guardar.");
+      return;
+    }
     const ncReal = nota.trim().toUpperCase();
     const vAcepNum = p.trim() === "" ? null : soloNumero(p);
-    ultimo.current = { ...ultimo.current, estado: "ACEPTADA", aceptado: p, nota: ncReal };
-    enviar({ estado: "ACEPTADA", valorAceptado: vAcepNum, notaCredito: ncReal });
+    ultimo.current = {
+      ...ultimo.current,
+      estado: "ACEPTADA",
+      aceptado: p,
+      nota: ncReal,
+      seguimiento: segAceptada,
+    };
+    enviar({
+      estado: "ACEPTADA",
+      valorAceptado: vAcepNum,
+      notaCredito: ncReal,
+      seguimientoEstado: segAceptada,
+    });
   };
 
-  const vistaFila: Glosa = { ...glosa, valorAceptado: aceptado.trim() === "" ? null : soloNumero(aceptado) };
+  const valorFactVista = soloNumero(valFact) || facturadoEfectivo;
+  const valorGlosVista = soloNumero(valGlos);
+  const esDevolucionAceptada = estado === "ACEPTADA" && clase === "DEVOLUCION";
+  const valorAceptadoEfectivo =
+    estado === "NO_ACEPTADA"
+      ? 0
+      : esDevolucionAceptada
+      ? valorFactVista || valorGlosVista
+      : aceptado.trim() === ""
+      ? null
+      : soloNumero(aceptado);
+
+  const vistaFila: Glosa = {
+    ...glosa,
+    valorFacturado: valorFactVista,
+    valorGlosado: valorGlosVista,
+    valorAceptado: valorAceptadoEfectivo,
+    estado,
+    notaCredito: nota,
+    facturador,
+    responsableAceptacion: respGlosa,
+    responsableRespuesta: respGlosa,
+    fechaPrestacionServicio: fechaPrest,
+    fechaFactura: fechaFact,
+    motivoCodigo: codigo,
+    tipoGlosa: clase,
+    motivoGlosa: motivo,
+    seguimientoEstado: seguimiento,
+    valorSeguimiento: valSeg.trim() === "" ? null : soloNumero(valSeg),
+    observacionInterna: obs,
+  };
+
   const pago = clasePago(vistaFila);
   const excede =
-    vistaFila.valorAceptado !== null && glosa.valorGlosado > 0 && vistaFila.valorAceptado > glosa.valorGlosado;
+    !esDevolucionAceptada &&
+    vistaFila.valorAceptado !== null &&
+    valorGlosVista > 0 &&
+    vistaFila.valorAceptado > valorGlosVista;
   const empInfo = normalizarEmpresaYNit(glosa.empresa || glosa.empresaOriginal, cruce.nit);
+
+  const itemsPendientes = listarPendientesFila(vistaFila, cruce);
+  const tienePendientes = itemsPendientes.length > 0;
+
+  const sinValorFact = valorFactVista <= 0;
+  const sinValorGlosa = valorGlosVista <= 0;
+  const faltaPrest = !fechaPrest;
+  const faltaFechaFact = !fechaFact && !cruce.fechaFacturaSisma;
+  const faltaEmpresa = !(empInfo.nombre || cruce.empresaHomologada || glosa.empresa);
+  const faltaNit = !(empInfo.nit || cruce.nit);
+  const faltaFacturador = !facturador;
+  const faltaRespGlosa = !respGlosa;
+  const faltaCausal = !codigo;
+  const faltaMotivo = !motivo.trim();
+  const faltaAceptado = valorAceptadoEfectivo === null;
+  const faltaSegBase = seguimiento === "";
+  const faltaObsRectificacion = seguimiento === "RATIFICACION_GLOSA" && !obs.trim();
+  const faltaValSegParcial =
+    (seguimiento === "PAGO_PARCIAL" || seguimiento === "LEVANTAMIENTO_PARCIAL") && !valSeg.trim();
   const faltaNcAceptada = estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota);
+  const faltaNotaCualquiera =
+    estado === "ACEPTADA" ? !esNumeroNotaCreditoReal(nota) : !esNotaCreditoValida(nota);
+
   const pendienteGuardarAceptada =
     estado === "ACEPTADA" &&
     esNumeroNotaCreditoReal(nota) &&
     (estado !== ultimo.current.estado || nota.trim().toUpperCase() !== ultimo.current.nota);
-  const valorFactVista = soloNumero(valFact) || facturadoEfectivo;
-  const sinValorFact = valorFactVista <= 0;
-  const sinValorGlosa = (glosa.valorGlosado || 0) <= 0;
-  const sinValores = sinValorFact || sinValorGlosa;
 
-  const listaRespFinal = useMemo(() => {
-    if (persona && !responsablesOpciones.includes(persona)) {
-      return [persona, ...responsablesOpciones];
+  const pendienteGuardarRectificacion =
+    seguimiento === "RATIFICACION_GLOSA" &&
+    obs.trim() !== "" &&
+    (seguimiento !== ultimo.current.seguimiento || obs !== ultimo.current.obs);
+
+  const listaFactFinal = useMemo(() => {
+    if (facturador && !responsablesOpciones.includes(facturador)) {
+      return [facturador, ...responsablesOpciones];
     }
     return responsablesOpciones;
-  }, [persona, responsablesOpciones]);
+  }, [facturador, responsablesOpciones]);
+
+  const listaRespFinal = useMemo(() => {
+    if (respGlosa && !responsablesOpciones.includes(respGlosa)) {
+      return [respGlosa, ...responsablesOpciones];
+    }
+    return responsablesOpciones;
+  }, [respGlosa, responsablesOpciones]);
+
+  const opcionesSegFila = useMemo(
+    () =>
+      estado === "ACEPTADA"
+        ? OPCIONES_SEGUIMIENTO_GLOSA.filter((o) => o.id !== "")
+        : OPCIONES_SEGUIMIENTO_GLOSA,
+    [estado]
+  );
 
   const celda =
     "w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-[12.5px] outline-none hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white";
+  const estiloRojo =
+    "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B] placeholder:text-[#DC2626]/80 focus:ring-2 focus:ring-[#DC2626]/25";
 
   return (
     <>
       <tr
         onDoubleClick={onFicha}
         className={`border-b align-top transition ${
-          sinValores
-            ? "border-[#FECACA] border-l-4 border-l-[#DC2626] bg-[#FEF2F2]/85 hover:bg-[#FEE2E2]/75"
+          tienePendientes
+            ? "border-[#FECACA] border-l-4 border-l-[#DC2626] bg-[#FEF2F2]/60 hover:bg-[#FEE2E2]/60"
             : guardando
             ? "border-[#F1F5F9] bg-[#F6F9FE]"
             : abierta
@@ -2660,29 +3037,41 @@ function FilaGlosa({
           </button>
         </td>
         <td className="py-1.5 pr-3 font-cifra">
-          <span className={`block text-[12.5px] font-semibold ${sinValores ? "text-[#991B1B]" : "text-[#0E245E]"}`}>
+          <span className={`block text-[12.5px] font-semibold ${tienePendientes ? "text-[#991B1B]" : "text-[#0E245E]"}`}>
             {glosa.factura}
           </span>
-          {sinValores && (
+          {tienePendientes && (
             <span
               className="mt-0.5 inline-flex items-center gap-1 rounded border border-[#FCA5A5] bg-[#FEE2E2] px-1.5 py-0.5 font-sans text-[9.5px] font-extrabold text-[#B91C1C]"
-              title="Alerta: esta factura o glosa no tiene valores registrados ($0)"
+              title={`Pendiente por llenar (${itemsPendientes.length}): ${itemsPendientes.join(", ")}`}
             >
-              <AlertTriangle className="h-2.5 w-2.5" /> Sin valores
+              <AlertTriangle className="h-2.5 w-2.5" /> {itemsPendientes.length} pend.
             </span>
           )}
-          {fechaPrest ? (
+          {!faltaPrest ? (
             <span className="block text-[10.5px] font-semibold text-[#047857]" title="Fecha de prestación del servicio">
               Prest: {fecha(fechaPrest)}
             </span>
           ) : (
-            <span className="block text-[10px] text-[#94A3B8]" title="Sin fecha de prestación en fuente (despliega para diligenciar)">
-              Prest: —
+            <span
+              className="mt-0.5 block rounded bg-[#FEE2E2] px-1 py-0.5 text-[10px] font-bold text-[#B91C1C]"
+              title="Falta fecha de prestación (abre '>' para diligenciar)"
+            >
+              Prest: Falta fecha
             </span>
           )}
-          <span className="block text-[10px] text-[#64748B]" title="Fecha de factura">
-            Fact: {fechaFact ? fecha(fechaFact) : cruce.fechaFacturaSisma ? fecha(cruce.fechaFacturaSisma) : glosa.anio || "—"}
-          </span>
+          {!faltaFechaFact ? (
+            <span className="block text-[10px] text-[#64748B]" title="Fecha de factura">
+              Fact: {fechaFact ? fecha(fechaFact) : fecha(cruce.fechaFacturaSisma)}
+            </span>
+          ) : (
+            <span
+              className="mt-0.5 block rounded bg-[#FEE2E2] px-1 py-0.5 text-[10px] font-bold text-[#B91C1C]"
+              title="Falta fecha de factura"
+            >
+              Fact: Falta fecha
+            </span>
+          )}
           {fechaNotif && (
             <span className="block text-[10px] text-[#1D58D8]" title="Fecha de notificación de glosa">
               Notif: {fecha(fechaNotif)}
@@ -2690,32 +3079,55 @@ function FilaGlosa({
           )}
         </td>
         <td className="py-1.5 pr-3 text-[#47597A]">
-          <span className="block text-[12px] font-bold text-[#0E245E]">
-            {empInfo.nombre || cruce.empresaHomologada || glosa.empresa || "—"}
+          <span className={`block text-[12px] font-bold ${faltaEmpresa ? "rounded bg-[#FEE2E2] px-1 text-[#B91C1C]" : "text-[#0E245E]"}`}>
+            {empInfo.nombre || cruce.empresaHomologada || glosa.empresa || "Falta ERP"}
           </span>
-          {(empInfo.nit || cruce.nit) ? (
+          {!faltaNit ? (
             <span className="mt-0.5 inline-block rounded bg-[#F1F5F9] px-1.5 py-0.5 font-cifra text-[10px] font-semibold text-[#334155]">
               NIT {empInfo.nit || cruce.nit}
             </span>
           ) : (
-            <span className="block text-[10px] text-[#94A3B8]">Sin NIT en fuente</span>
+            <span className="mt-0.5 inline-block rounded border border-[#FCA5A5] bg-[#FEE2E2] px-1.5 py-0.5 text-[10px] font-bold text-[#B91C1C]">
+              Sin NIT
+            </span>
           )}
           <span className="mt-0.5 block text-[10px] font-medium text-[#1D58D8]">{cruce.deDondeEs}</span>
         </td>
-        <td className="py-1.5 pr-3">
-          <label htmlFor={`rg-${glosa.id}`} className="sr-only">Responsable / Facturador unificado</label>
+
+        {/* COLUMNA 1: FACTURADOR (QUIEN REALIZA LA FACTURA) */}
+        <td className="py-1.5 pr-2">
+          <label htmlFor={`fac-${glosa.id}`} className="sr-only">Facturador (quien realiza la factura)</label>
           <select
-            id={`rg-${glosa.id}`}
-            value={persona}
-            onChange={(e) => cambiarPersona(e.target.value)}
-            title="Lista desplegable cerrada de Responsable / Facturador unificado"
-            className={`min-w-[146px] rounded-[6px] border px-1.5 py-1 text-[11.5px] font-semibold outline-none focus:border-[#1D58D8] ${
-              persona
-                ? "border-[#DCE8FA] bg-white text-[#0E245E]"
-                : "border-[#E2EBF8] bg-white text-[#94A3B8]"
+            id={`fac-${glosa.id}`}
+            value={facturador}
+            onChange={(e) => cambiarFacturador(e.target.value)}
+            title="Quien realiza la factura (Facturador)"
+            className={`w-[138px] rounded-[6px] border px-1.5 py-1 text-[11px] font-semibold outline-none focus:border-[#1D58D8] ${
+              faltaFacturador ? estiloRojo : "border-[#DCE8FA] bg-white text-[#0E245E]"
             }`}
           >
-            <option value="">— Sin responsable —</option>
+            <option value="">— Falta facturador —</option>
+            {listaFactFinal.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </td>
+
+        {/* COLUMNA 2: RESPONSABLE GLOSA (QUIEN RESPONDE) */}
+        <td className="py-1.5 pr-2">
+          <label htmlFor={`rg-${glosa.id}`} className="sr-only">Responsable de responder la glosa</label>
+          <select
+            id={`rg-${glosa.id}`}
+            value={respGlosa}
+            onChange={(e) => cambiarRespGlosa(e.target.value)}
+            title="Quien responde la glosa (Responsable Glosa)"
+            className={`w-[138px] rounded-[6px] border px-1.5 py-1 text-[11px] font-semibold outline-none focus:border-[#1D58D8] ${
+              faltaRespGlosa ? estiloRojo : "border-[#DCE8FA] bg-white text-[#0E245E]"
+            }`}
+          >
+            <option value="">— Falta responsable —</option>
             {listaRespFinal.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -2723,14 +3135,19 @@ function FilaGlosa({
             ))}
           </select>
         </td>
-        <td className="py-1.5 pr-3">
-          <label htmlFor={`cla-${glosa.id}`} className="sr-only">Clase de la glosa {glosa.factura}</label>
+
+        {/* CLASE: SOLO GLOSA / DEVOLUCIÓN ASOCIADA CON DE */}
+        <td className="py-1.5 pr-2">
+          <label htmlFor={`cla-${glosa.id}`} className="sr-only">Clase (Glosa o Devolución)</label>
           <select
             id={`cla-${glosa.id}`}
             value={clase}
             onChange={(e) => cambiarClase(e.target.value)}
-            className={`rounded-[6px] border px-1.5 py-1 text-[11.5px] font-semibold outline-none ${
-              clase === "" ? "border-[#E2EBF8] bg-white text-[#94A3B8]" : "border-[#DCE8FA] bg-[#F8FAFC] text-[#1A3174]"
+            title="Devolución va asociada con DE; las demás causales con Glosa"
+            className={`w-[104px] rounded-[6px] border px-1.5 py-1 text-[11.5px] font-semibold outline-none ${
+              clase === "DEVOLUCION"
+                ? "border-[#FECDD3] bg-[#FFF1F2] text-[#BE123C]"
+                : "border-[#DCE8FA] bg-[#F8FAFC] text-[#1A3174]"
             }`}
           >
             {CLASES.map((c) => (
@@ -2738,25 +3155,20 @@ function FilaGlosa({
             ))}
           </select>
         </td>
-        <td className="py-1.5 pr-3">
+
+        {/* CAUSAL (TA, AU, SO, DE, CO, FA) */}
+        <td className="py-1.5 pr-2">
           <label htmlFor={`cau-${glosa.id}`} className="sr-only">Causal (TA, AU, SO, DE, CO, FA)</label>
           <select
             id={`cau-${glosa.id}`}
             value={codigo}
-            onChange={(e) => {
-              const nuevoCod = e.target.value;
-              setCodigo(nuevoCod);
-              if (estado === "ACEPTADA" && !esNumeroNotaCreditoReal(nota)) return;
-              enviar({ motivoCodigo: nuevoCod, subcodigoCausal: "" });
-            }}
-            title={causal ? `${causal.codigo} · ${causal.familia} · ${causal.nombre}` : "Sin causal"}
-            className={`w-[122px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11.5px] font-semibold outline-none ${
-              codigo
-                ? "border-[#DCE8FA] bg-[#F8FAFC] text-[#1A3174]"
-                : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E]"
+            onChange={(e) => cambiarCausal(e.target.value)}
+            title={causal ? `${causal.codigo} · ${causal.familia} · ${causal.nombre}` : "Falta seleccionar causal"}
+            className={`w-[122px] rounded-[6px] border px-1.5 py-1 font-cifra text-[11px] font-semibold outline-none ${
+              faltaCausal ? estiloRojo : "border-[#DCE8FA] bg-[#F8FAFC] text-[#1A3174]"
             }`}
           >
-            <option value="">sin causal</option>
+            <option value="">— Falta causal —</option>
             {CAUSAS_NORMATIVAS.map((c) => (
               <option key={c.codigo} value={c.codigo}>
                 {c.codigo} · {c.nombre}
@@ -2764,22 +3176,30 @@ function FilaGlosa({
             ))}
           </select>
         </td>
-        <td className="py-1.5 pr-3 min-w-[180px] max-w-[260px]">
+
+        {/* MOTIVO DE GLOSA */}
+        <td className="py-1.5 pr-2 min-w-[165px] max-w-[235px]">
           <label htmlFor={`motline-${glosa.id}`} className="sr-only">Motivo de glosa {glosa.factura}</label>
           <input
             id={`motline-${glosa.id}`}
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             onBlur={salir}
-            placeholder="Sin motivo en fuente"
-            title={motivo || "Sin motivo escrito"}
-            className={`${celda} truncate text-[11.5px] text-[#334155]`}
+            placeholder="⚠ Falta motivo"
+            title={motivo || "Falta escribir el motivo de glosa"}
+            className={`w-full rounded border px-1.5 py-1 truncate text-[11.5px] outline-none ${
+              faltaMotivo
+                ? estiloRojo
+                : "border-transparent bg-transparent text-[#334155] hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white"
+            }`}
           />
         </td>
-        <td className="py-1.5 pr-3 text-right font-cifra">
+
+        {/* FACTURADO */}
+        <td className="py-1.5 pr-2 text-right font-cifra">
           {sinValorFact ? (
             <span
-              className="inline-flex items-center gap-0.5 rounded border border-[#FCA5A5] bg-[#FEE2E2] px-1.5 py-0.5 text-[11px] font-bold text-[#B91C1C]"
+              className="inline-flex items-center gap-0.5 rounded border border-[#DC2626] bg-[#FEE2E2] px-1.5 py-0.5 text-[11px] font-extrabold text-[#B91C1C]"
               title="Sin valor facturado (abre la fila con '>' para ingresarlo)"
             >
               ⚠ $0
@@ -2788,77 +3208,155 @@ function FilaGlosa({
             <span className="text-[#47597A]">{pesos(valorFactVista)}</span>
           )}
         </td>
-        <td className="py-1.5 pr-3 text-right font-cifra">
+
+        {/* GLOSADO */}
+        <td className="py-1.5 pr-2 text-right font-cifra">
           {sinValorGlosa ? (
             <span
-              className="inline-flex items-center gap-0.5 rounded border border-[#FCA5A5] bg-[#FEE2E2] px-1.5 py-0.5 text-[11px] font-extrabold text-[#B91C1C]"
-              title="Alerta: valor glosado en cero ($0)"
+              className="inline-flex items-center gap-0.5 rounded border border-[#DC2626] bg-[#FEE2E2] px-1.5 py-0.5 text-[11px] font-extrabold text-[#B91C1C]"
+              title="Alerta: valor glosado en cero ($0). Abre '>' para ingresarlo."
             >
               ⚠ $0
             </span>
           ) : (
-            <span className="font-semibold text-[#0E245E]">{pesos(glosa.valorGlosado)}</span>
+            <span className="font-semibold text-[#0E245E]">{pesos(valorGlosVista)}</span>
           )}
         </td>
-        <td className="py-1.5 pr-3 text-right">
-          <label htmlFor={`ace-${glosa.id}`} className="sr-only">Valor aceptado de la glosa {glosa.factura}</label>
+
+        {/* ACEPTADO (EN PESOS $ — IGUAL AL FACTURADO SI ES DEVOLUCIÓN ACEPTADA) */}
+        <td className="py-1.5 pr-2 text-right">
+          <label htmlFor={`ace-${glosa.id}`} className="sr-only">Valor aceptado en pesos {glosa.factura}</label>
           <input
             id={`ace-${glosa.id}`}
-            value={aceptado}
-            disabled={estado === "NO_ACEPTADA"}
+            value={
+              estado === "NO_ACEPTADA"
+                ? "$0"
+                : esDevolucionAceptada
+                ? pesos(valorFactVista || valorGlosVista)
+                : formatoPesosInput(aceptado)
+            }
+            readOnly={estado === "NO_ACEPTADA" || esDevolucionAceptada}
             onChange={(e) => {
-              const nv = e.target.value;
-              setAceptado(nv);
-              if (estado !== "ACEPTADA" && nv.trim() !== "" && soloNumero(nv) === 0) {
+              const dig = e.target.value.replace(/[^0-9]/g, "");
+              setAceptado(dig);
+              if (estado !== "ACEPTADA" && dig !== "" && Number(dig) === 0) {
                 setNota("N/A");
               }
             }}
             onBlur={salir}
             inputMode="numeric"
-            placeholder="—"
-            className={`${celda} text-right font-cifra disabled:text-[#64748B]`}
+            placeholder="⚠ Falta $"
+            title={
+              esDevolucionAceptada
+                ? "Devolución aceptada: siempre toma el mismo valor de la factura"
+                : estado === "NO_ACEPTADA"
+                ? "No Aceptada: $0"
+                : "Valor aceptado en pesos ($)"
+            }
+            className={`w-[104px] rounded border px-1.5 py-1 text-right font-cifra text-[12px] outline-none ${
+              faltaAceptado
+                ? estiloRojo
+                : estado === "NO_ACEPTADA" || esDevolucionAceptada
+                ? "border-[#DCE8FA] bg-[#F8FAFC] font-semibold text-[#0E245E] cursor-default"
+                : "border-transparent bg-transparent font-semibold text-[#0E245E] hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white"
+            }`}
           />
           {pago && <span className={`block pr-1.5 text-[10px] font-semibold uppercase ${pago.clase}`}>{pago.texto}</span>}
           {excede && <span className="block pr-1.5 text-[10px] font-semibold text-[#B45309]">supera lo glosado</span>}
         </td>
-        <td className="py-1.5 pr-3">
+
+        {/* SEGUIMIENTO (TRAMITADA AUTOMÁTICA EN ACEPTADA, PROCESO DE PAGO Y RECTIFICACIÓN CON OBS OBLIGATORIA) */}
+        <td className="py-1.5 pr-2">
           {(() => {
             const opSeg =
               OPCIONES_SEGUIMIENTO_GLOSA.find((o) => o.id === seguimiento) || OPCIONES_SEGUIMIENTO_GLOSA[0];
             return (
               <div className="space-y-1">
-                <label htmlFor={`seg-${glosa.id}`} className="sr-only">Seguimiento de pago, levantamiento o ratificación</label>
+                <label htmlFor={`seg-${glosa.id}`} className="sr-only">Seguimiento de la glosa</label>
                 <select
                   id={`seg-${glosa.id}`}
                   value={seguimiento}
                   onChange={(e) => cambiarSeguimiento(e.target.value as SeguimientoGlosaCodigo)}
-                  className="w-[144px] rounded-[6px] border px-1.5 py-1 text-[11px] font-semibold outline-none"
-                  style={{
-                    backgroundColor: opSeg.badgeBg,
-                    color: opSeg.badgeText,
-                    borderColor: opSeg.badgeBorder,
-                  }}
+                  className={`w-[158px] rounded-[6px] border px-1.5 py-1 text-[11px] font-semibold outline-none ${
+                    faltaSegBase ? estiloRojo : ""
+                  }`}
+                  style={
+                    faltaSegBase
+                      ? undefined
+                      : {
+                          backgroundColor: opSeg.badgeBg,
+                          color: opSeg.badgeText,
+                          borderColor: opSeg.badgeBorder,
+                        }
+                  }
                 >
-                  {OPCIONES_SEGUIMIENTO_GLOSA.map((o) => (
+                  {opcionesSegFila.map((o) => (
                     <option key={o.id || "NONE"} value={o.id}>{o.corto}</option>
                   ))}
                 </select>
-                {seguimiento !== "" && (
+
+                {(seguimiento === "PAGO_PARCIAL" || seguimiento === "LEVANTAMIENTO_PARCIAL") && (
                   <input
-                    value={valSeg}
-                    onChange={(e) => setValSeg(e.target.value)}
+                    value={formatoPesosInput(valSeg)}
+                    onChange={(e) => setValSeg(e.target.value.replace(/[^0-9]/g, ""))}
                     onBlur={salir}
                     inputMode="numeric"
-                    placeholder="$ valor seg."
-                    title="Valor pagado, levantado o ratificado"
-                    className="w-[144px] rounded border border-[#DCE8FA] bg-white px-1.5 py-0.5 text-right font-cifra text-[11px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                    placeholder="⚠ $ valor seg. *"
+                    title="Valor pagado o levantado en pesos"
+                    className={`w-[158px] rounded border px-1.5 py-0.5 text-right font-cifra text-[11px] outline-none ${
+                      faltaValSegParcial
+                        ? estiloRojo
+                        : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
+                    }`}
                   />
+                )}
+
+                {seguimiento === "RATIFICACION_GLOSA" && (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1">
+                      <input
+                        id={`obs-rect-${glosa.id}`}
+                        value={obs}
+                        onChange={(e) => setObs(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            salir();
+                          }
+                        }}
+                        onBlur={salir}
+                        placeholder="Motivo / obs. obligatorio *"
+                        title="Campo obligatorio: escribe el motivo como observación para Rectificación de glosa"
+                        className={`w-[158px] rounded border px-1.5 py-1 text-[11px] outline-none ${
+                          faltaObsRectificacion
+                            ? estiloRojo
+                            : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
+                        }`}
+                      />
+                      {pendienteGuardarRectificacion && (
+                        <button
+                          type="button"
+                          onClick={salir}
+                          className="rounded bg-[#16A34A] px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-[#15803D]"
+                        >
+                          Guardar
+                        </button>
+                      )}
+                    </div>
+                    {faltaObsRectificacion && (
+                      <span className="block text-[9.5px] font-bold text-[#DC2626]">
+                        Obligatorio escribir motivo
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })()}
         </td>
-        <td className="py-1.5 pr-3">
+
+        {/* ESTADO (— SELECCIONAR — EN ROJO / ACEPTADA / NO ACEPTADA) */}
+        <td className="py-1.5 pr-2">
           <label htmlFor={`est-${glosa.id}`} className="sr-only">Estado de la glosa {glosa.factura}</label>
           <select
             id={`est-${glosa.id}`}
@@ -2871,10 +3369,12 @@ function FilaGlosa({
             ))}
           </select>
         </td>
-        <td className="py-1.5 pr-3">
+
+        {/* NOTA CRÉDITO (EN ROJO SI ESTÁ VACÍA O FALTA EN ACEPTADA) */}
+        <td className="py-1.5 pr-2">
           <div className="space-y-0.5">
             <div className="flex items-center gap-1">
-              <label htmlFor={`nc-${glosa.id}`} className="sr-only">Nota crédito (número obligatorio si es Aceptada, o N/A si es No Aceptada)</label>
+              <label htmlFor={`nc-${glosa.id}`} className="sr-only">Nota crédito</label>
               <input
                 id={`nc-${glosa.id}`}
                 value={estado === "NO_ACEPTADA" ? "N/A" : nota}
@@ -2887,22 +3387,20 @@ function FilaGlosa({
                   }
                 }}
                 onBlur={salir}
-                placeholder={estado === "ACEPTADA" ? "N° Nota *" : "NC... o N/A"}
+                placeholder={estado === "ACEPTADA" ? "N° Nota *" : "⚠ Falta NC"}
                 title={
                   estado === "NO_ACEPTADA"
                     ? "No Aceptada: automáticamente N/A"
                     : estado === "ACEPTADA"
                     ? "Aceptada: obligatorio escribir el número de la Nota Crédito para guardar"
-                    : "Número de Nota Crédito o N/A"
+                    : "Pendiente: ingresa el número de Nota Crédito o elige Estado"
                 }
-                className={`w-[98px] rounded border px-1.5 py-1 font-cifra text-[12px] outline-none ${
+                className={`w-[96px] rounded border px-1.5 py-1 font-cifra text-[12px] outline-none ${
                   estado === "NO_ACEPTADA"
                     ? "border-[#DCE8FA] bg-[#F8FAFC] font-semibold text-[#475569] cursor-default"
-                    : faltaNcAceptada
-                    ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B] placeholder:text-[#DC2626]/75 focus:ring-2 focus:ring-[#DC2626]/30"
-                    : esNotaCreditoValida(nota)
-                    ? "border-transparent bg-transparent text-[#0E245E] hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white"
-                    : "border-[#F3D9A8] bg-[#FFFBEB] text-[#92400E] focus:border-[#1D58D8] focus:bg-white"
+                    : faltaNotaCualquiera
+                    ? estiloRojo
+                    : "border-transparent bg-transparent text-[#0E245E] hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white"
                 }`}
               />
               {pendienteGuardarAceptada && (
@@ -2932,8 +3430,8 @@ function FilaGlosa({
       {abierta && (
         <tr className="border-b border-[#E2EBF8] bg-[#FAFCFF]">
           <td />
-          <td colSpan={13} className="px-1 pb-4 pt-2">
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)]">
+          <td colSpan={14} className="px-1 pb-4 pt-2">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1.65fr)_minmax(0,1.35fr)]">
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                   <div>
@@ -2946,7 +3444,11 @@ function FilaGlosa({
                       value={fechaPrest}
                       onChange={(e) => setFechaPrest(e.target.value)}
                       onBlur={salir}
-                      className="w-full rounded-lg border border-[#A7F3D0] bg-white px-2 py-1.5 font-cifra text-[12px] text-[#0E245E] outline-none focus:border-[#059669]"
+                      className={`w-full rounded-lg border px-2 py-1.5 font-cifra text-[12px] outline-none ${
+                        faltaPrest
+                          ? estiloRojo
+                          : "border-[#A7F3D0] bg-white text-[#0E245E] focus:border-[#059669]"
+                      }`}
                     />
                   </div>
                   <div>
@@ -2959,7 +3461,11 @@ function FilaGlosa({
                       value={fechaFact}
                       onChange={(e) => setFechaFact(e.target.value)}
                       onBlur={salir}
-                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 font-cifra text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                      className={`w-full rounded-lg border px-2 py-1.5 font-cifra text-[12px] outline-none ${
+                        faltaFechaFact
+                          ? estiloRojo
+                          : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
+                      }`}
                     />
                   </div>
                   <div>
@@ -2990,51 +3496,77 @@ function FilaGlosa({
                   </div>
                   <div>
                     <label htmlFor={`vf-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
-                      Valor facturado
+                      Valor facturado ($)
                     </label>
                     <input
                       id={`vf-${glosa.id}`}
                       inputMode="numeric"
-                      value={valFact}
-                      onChange={(e) => setValFact(e.target.value)}
+                      value={formatoPesosInput(valFact)}
+                      onChange={(e) => setValFact(e.target.value.replace(/[^0-9]/g, ""))}
                       onBlur={salir}
+                      placeholder="$0"
                       className={`w-full rounded-lg border px-2 py-1.5 font-cifra text-[12px] outline-none ${
                         sinValorFact
-                          ? "border-[#FCA5A5] bg-[#FEF2F2] font-bold text-[#991B1B] focus:border-[#DC2626]"
+                          ? estiloRojo
                           : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
                       }`}
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label htmlFor={`rga-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
-                      Responsable / Facturador (unificado)
+                  <div>
+                    <label htmlFor={`vg-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
+                      Valor glosado ($)
+                    </label>
+                    <input
+                      id={`vg-${glosa.id}`}
+                      inputMode="numeric"
+                      value={formatoPesosInput(valGlos)}
+                      onChange={(e) => setValGlos(e.target.value.replace(/[^0-9]/g, ""))}
+                      onBlur={salir}
+                      placeholder="$0"
+                      className={`w-full rounded-lg border px-2 py-1.5 font-cifra text-[12px] outline-none ${
+                        sinValorGlosa
+                          ? estiloRojo
+                          : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`faca-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
+                      Facturador (quien factura)
                     </label>
                     <select
-                      id={`rga-${glosa.id}`}
-                      value={persona}
-                      onChange={(e) => cambiarPersona(e.target.value)}
-                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12px] font-semibold text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                      id={`faca-${glosa.id}`}
+                      value={facturador}
+                      onChange={(e) => cambiarFacturador(e.target.value)}
+                      className={`w-full rounded-lg border px-2 py-1.5 text-[12px] font-semibold outline-none ${
+                        faltaFacturador
+                          ? estiloRojo
+                          : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
+                      }`}
                     >
-                      <option value="">— Sin responsable —</option>
-                      {listaRespFinal.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
+                      <option value="">— Falta facturador —</option>
+                      {listaFactFinal.map((r) => (
+                        <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label htmlFor={`sega-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
-                      Ítem de seguimiento
+                    <label htmlFor={`rga-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
+                      Responsable glosa (quien responde)
                     </label>
                     <select
-                      id={`sega-${glosa.id}`}
-                      value={seguimiento}
-                      onChange={(e) => cambiarSeguimiento(e.target.value as SeguimientoGlosaCodigo)}
-                      className="w-full rounded-lg border border-[#DCE8FA] bg-white px-2 py-1.5 text-[12px] text-[#0E245E] outline-none focus:border-[#1D58D8]"
+                      id={`rga-${glosa.id}`}
+                      value={respGlosa}
+                      onChange={(e) => cambiarRespGlosa(e.target.value)}
+                      className={`w-full rounded-lg border px-2 py-1.5 text-[12px] font-semibold outline-none ${
+                        faltaRespGlosa
+                          ? estiloRojo
+                          : "border-[#DCE8FA] bg-white text-[#0E245E] focus:border-[#1D58D8]"
+                      }`}
                     >
-                      {OPCIONES_SEGUIMIENTO_GLOSA.map((o) => (
-                        <option key={o.id || "NONE"} value={o.id}>{o.etiqueta}</option>
+                      <option value="">— Falta responsable —</option>
+                      {listaRespFinal.map((r) => (
+                        <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
                   </div>
@@ -3050,13 +3582,19 @@ function FilaGlosa({
                     rows={2}
                     onChange={(e) => setMotivo(e.target.value)}
                     onBlur={salir}
-                    placeholder="Sin motivo escrito"
-                    className="w-full resize-y rounded-lg border border-[#DCE8FA] bg-white px-2.5 py-2 text-[12.5px] leading-relaxed text-[#2A335A] outline-none focus:border-[#1D58D8]"
+                    placeholder="⚠ Falta escribir el motivo de glosa"
+                    className={`w-full resize-y rounded-lg border px-2.5 py-2 text-[12.5px] leading-relaxed outline-none ${
+                      faltaMotivo
+                        ? estiloRojo
+                        : "border-[#DCE8FA] bg-white text-[#2A335A] focus:border-[#1D58D8]"
+                    }`}
                   />
                 </div>
                 <div>
                   <label htmlFor={`obg-${glosa.id}`} className="eb-label mb-1 block text-[10px] text-[#64748B]">
-                    Observación general · respuesta / nota interna
+                    {seguimiento === "RATIFICACION_GLOSA"
+                      ? "Motivo / Observación de Rectificación de glosa (obligatorio) *"
+                      : "Observación general · respuesta / nota interna"}
                   </label>
                   <textarea
                     id={`obg-${glosa.id}`}
@@ -3064,27 +3602,39 @@ function FilaGlosa({
                     rows={2}
                     onChange={(e) => setObs(e.target.value)}
                     onBlur={salir}
-                    placeholder="Sin observación"
-                    className="w-full resize-y rounded-lg border border-[#DCE8FA] bg-white px-2.5 py-2 text-[12.5px] leading-relaxed text-[#2A335A] outline-none focus:border-[#1D58D8]"
+                    placeholder={
+                      seguimiento === "RATIFICACION_GLOSA"
+                        ? "Obligatorio escribir el motivo de la rectificación de glosa *"
+                        : "Sin observación"
+                    }
+                    className={`w-full resize-y rounded-lg border px-2.5 py-2 text-[12.5px] leading-relaxed outline-none ${
+                      faltaObsRectificacion
+                        ? estiloRojo
+                        : "border-[#DCE8FA] bg-white text-[#2A335A] focus:border-[#1D58D8]"
+                    }`}
                   />
                 </div>
               </div>
 
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 self-start rounded-lg border border-[#E2EBF8] bg-white p-3">
-                <Detalle etiqueta="Causal (TA–FA)" valor={causal ? `${causal.codigo} · ${causal.familia}` : "Sin clasificar"} />
+                <Detalle etiqueta="Clase · Causal" valor={`${clase === "DEVOLUCION" ? "Devolución" : "Glosa"} · ${causal ? `${causal.codigo} (${causal.familia})` : "Sin causal"}`} />
                 <Detalle
                   etiqueta="ERP unificada / NIT"
                   valor={empInfo.nit ? `${empInfo.nombre} · NIT ${empInfo.nit}` : empInfo.nombre || glosa.empresa || "—"}
                 />
-                <Detalle etiqueta="De dónde es" valor={cruce.deDondeEs || "—"} />
-                <Detalle etiqueta="Empresa original (fuente)" valor={glosa.empresaOriginal || glosa.empresa || "—"} />
-                <Detalle etiqueta="Nota crédito" valor={nota || "Sin anexar (N° NC o N/A)"} />
+                <Detalle etiqueta="Facturador (factura)" valor={facturador || "Falta facturador"} />
+                <Detalle etiqueta="Responsable glosa" valor={respGlosa || "Falta responsable"} />
+                <Detalle etiqueta="Nota crédito" valor={nota || "Falta N° NC o N/A"} />
                 <Detalle etiqueta="Fecha prestación" valor={fecha(fechaPrest)} />
-                <Detalle etiqueta="Seguimiento" valor={`${etiquetaSeguimientoGlosa(seguimiento)}${valSeg ? ` · ${pesos(soloNumero(valSeg))}` : ""}`} />
+                <Detalle etiqueta="Seguimiento" valor={`${etiquetaSeguimientoGlosa(seguimiento, estado)}${valSeg ? ` · ${pesos(soloNumero(valSeg))}` : ""}`} />
                 <Detalle etiqueta="Fecha factura" valor={fecha(fechaFact)} />
                 <Detalle etiqueta="Fecha radicación" valor={fecha(fechaRad)} />
                 <Detalle etiqueta="Notificación glosa" valor={fecha(fechaNotif)} />
-                <Detalle etiqueta="Responsable / Facturador" valor={persona || "—"} />
+                {tienePendientes && (
+                  <div className="col-span-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-2.5 py-1.5 text-[11.5px] font-bold text-[#B91C1C]">
+                    Pendiente por llenar: {itemsPendientes.join(" · ")}
+                  </div>
+                )}
                 {causal && (
                   <div className="col-span-2">
                     <dt className="eb-label text-[10px] text-[#94A3B8]">Qué dice la norma</dt>
@@ -3136,6 +3686,7 @@ function FichaFactura({
             <p className="eb-label text-[10.5px] text-[#64748B]">
               {empInfo.nombre || base.empresa}
               {empInfo.nit ? ` · NIT ${empInfo.nit}` : ""}
+              {base.facturador ? ` · Facturador: ${base.facturador}` : ""}
               {base.responsableAceptacion ? ` · Resp. Glosa: ${base.responsableAceptacion}` : ""}
             </p>
             <p className="mt-1 font-cifra text-[24px] font-bold leading-none text-[#0E245E]">{factura}</p>
@@ -3166,10 +3717,10 @@ function FichaFactura({
           <Dato etiqueta="Glosas" valor={`${glosas.length} · ${sinResolver.length} sin resolver`} />
           <Dato etiqueta="Fecha prestación" valor={fecha(base.fechaPrestacionServicio || "")} />
           <Dato etiqueta="Fecha factura" valor={fecha(base.fechaFactura)} />
-          <Dato etiqueta="Fecha radicación" valor={fecha(base.fechaRadicacion)} />
+          <Dato etiqueta="Facturador (factura)" valor={homologarPersonaFacturacion(base.facturador) || "—"} />
           <Dato
-            etiqueta="Responsable / Facturador"
-            valor={homologarPersonaFacturacion(base.responsableAceptacion || base.facturador) || "—"}
+            etiqueta="Responsable glosa"
+            valor={homologarPersonaFacturacion(base.responsableRespuesta || base.responsableAceptacion) || "—"}
           />
         </div>
 
@@ -3196,12 +3747,10 @@ function FichaFactura({
                     <span className="font-cifra text-[11px] font-semibold text-[#47597A]">
                       {ca ? `${ca.codigo} · ${ca.familia}` : "sin causal"}
                     </span>
-                    {g.seguimientoEstado && (
-                      <span className="rounded-pill border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[10.5px] font-semibold text-[#0369A1]">
-                        {etiquetaSeguimientoGlosa(g.seguimientoEstado)}
-                        {g.valorSeguimiento != null ? ` (${pesos(g.valorSeguimiento)})` : ""}
-                      </span>
-                    )}
+                    <span className="rounded-pill border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[10.5px] font-semibold text-[#0369A1]">
+                      {etiquetaSeguimientoGlosa(g.seguimientoEstado, g.estado)}
+                      {g.valorSeguimiento != null ? ` (${pesos(g.valorSeguimiento)})` : ""}
+                    </span>
                     {g.notaCredito && (
                       <span className="font-cifra text-[11px] text-[#64748B]">NC: {g.notaCredito}</span>
                     )}
@@ -3263,7 +3812,7 @@ function ModalNueva({
     valorFacturado: "",
     valorGlosado: "",
     valorAceptado: "",
-    clase: "",
+    clase: "GLOSA" as "GLOSA" | "DEVOLUCION",
     motivoCodigo: "",
     subcodigoCausal: "",
     motivoGlosa: "",
@@ -3276,6 +3825,7 @@ function ModalNueva({
 
   const esAcepto = f.estado === "ACEPTADA";
   const esNoAcepto = f.estado === "NO_ACEPTADA";
+  const esDevAcepto = esAcepto && f.clase === "DEVOLUCION";
   const ncRequeridaOk = esAcepto
     ? esNumeroNotaCreditoReal(f.notaCredito)
     : esNoAcepto
@@ -3299,7 +3849,7 @@ function ModalNueva({
           <div>
             <p className="text-[15px] font-bold text-[#0E245E]">Registrar glosa o devolución</p>
             <p className="text-[11.5px] text-[#64748B]">
-              Selecciona ERP unificada, Responsable/Facturador y Acepto/No Acepto con validación de Nota Crédito.
+              ERP unificada, Facturador y Responsable separados, Clase (Glosa / Devolución ↔ DE) y Acepto / No Acepto.
             </p>
           </div>
           <button
@@ -3378,11 +3928,24 @@ function ModalNueva({
               className={`${campo} font-cifra`}
             />
           </Campo>
-          <Campo id="clase" etiqueta="Clase">
+
+          <Campo id="clase" etiqueta="Clase (Glosa / Devolución ↔ DE)">
             <select
               id="clase"
               value={f.clase}
-              onChange={(e) => setF({ ...f, clase: e.target.value })}
+              onChange={(e) => {
+                const cl = e.target.value === "DEVOLUCION" ? "DEVOLUCION" : "GLOSA";
+                const cod = cl === "DEVOLUCION" ? "DE" : f.motivoCodigo === "DE" ? "" : f.motivoCodigo;
+                setF({
+                  ...f,
+                  clase: cl,
+                  motivoCodigo: cod,
+                  valorAceptado:
+                    f.estado === "ACEPTADA" && cl === "DEVOLUCION"
+                      ? f.valorFacturado || f.valorGlosado
+                      : f.valorAceptado,
+                });
+              }}
               className={campo}
             >
               {CLASES.map((c) => (
@@ -3391,13 +3954,21 @@ function ModalNueva({
             </select>
           </Campo>
 
-          <Campo id="vfac" etiqueta="Valor facturado">
+          <Campo id="vfac" etiqueta="Valor facturado ($)">
             <input
               id="vfac"
-              value={f.valorFacturado}
-              onChange={(e) => setF({ ...f, valorFacturado: e.target.value })}
+              value={formatoPesosInput(f.valorFacturado)}
+              onChange={(e) => {
+                const vf = e.target.value.replace(/[^0-9]/g, "");
+                setF({
+                  ...f,
+                  valorFacturado: vf,
+                  valorAceptado:
+                    f.estado === "ACEPTADA" && f.clase === "DEVOLUCION" ? vf : f.valorAceptado,
+                });
+              }}
               inputMode="numeric"
-              placeholder="0"
+              placeholder="$0"
               className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
                 f.valorFacturado.trim() !== "" && soloNumero(f.valorFacturado) <= 0
                   ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B]"
@@ -3405,20 +3976,24 @@ function ModalNueva({
               }`}
             />
           </Campo>
-          <Campo id="val" etiqueta="Valor glosado">
+
+          <Campo id="val" etiqueta="Valor glosado ($)">
             <input
               id="val"
-              value={f.valorGlosado}
+              value={formatoPesosInput(f.valorGlosado)}
               onChange={(e) => {
-                const vg = e.target.value;
+                const vg = e.target.value.replace(/[^0-9]/g, "");
                 setF({
                   ...f,
                   valorGlosado: vg,
-                  valorAceptado: f.estado === "ACEPTADA" && !f.valorAceptado ? vg : f.valorAceptado,
+                  valorAceptado:
+                    f.estado === "ACEPTADA" && f.clase === "GLOSA" && !f.valorAceptado
+                      ? vg
+                      : f.valorAceptado,
                 });
               }}
               inputMode="numeric"
-              placeholder="0"
+              placeholder="$0"
               className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
                 f.valorGlosado.trim() !== "" && soloNumero(f.valorGlosado) <= 0
                   ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B]"
@@ -3437,7 +4012,7 @@ function ModalNueva({
           <div className="sm:col-span-2 space-y-2.5">
             <div>
               <p className="eb-label mb-1.5 text-[10px] text-[#94A3B8]">
-                Causales oficiales de glosa y devolución (TA, AU, SO, DE, CO, FA)
+                Causales oficiales de glosa y devolución (DE ↔ Devolución · TA, AU, SO, CO, FA ↔ Glosa)
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {CAUSAS_NORMATIVAS.map((c) => {
@@ -3446,7 +4021,20 @@ function ModalNueva({
                     <button
                       key={c.codigo}
                       type="button"
-                      onClick={() => setF({ ...f, motivoCodigo: activo ? "" : c.codigo, subcodigoCausal: "" })}
+                      onClick={() => {
+                        const nuevoCod = activo ? "" : c.codigo;
+                        const nuevaClase = nuevoCod === "DE" ? "DEVOLUCION" : nuevoCod ? "GLOSA" : f.clase;
+                        setF({
+                          ...f,
+                          motivoCodigo: nuevoCod,
+                          clase: nuevaClase,
+                          subcodigoCausal: "",
+                          valorAceptado:
+                            f.estado === "ACEPTADA" && nuevaClase === "DEVOLUCION"
+                              ? f.valorFacturado || f.valorGlosado
+                              : f.valorAceptado,
+                        });
+                      }}
                       title={c.descripcion}
                       className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-semibold transition ${
                         activo ? "ring-2 ring-[#1D58D8]" : "hover:opacity-90"
@@ -3468,7 +4056,20 @@ function ModalNueva({
               <select
                 id="cau"
                 value={f.motivoCodigo}
-                onChange={(e) => setF({ ...f, motivoCodigo: e.target.value, subcodigoCausal: "" })}
+                onChange={(e) => {
+                  const nuevoCod = e.target.value;
+                  const nuevaClase = nuevoCod === "DE" ? "DEVOLUCION" : nuevoCod ? "GLOSA" : f.clase;
+                  setF({
+                    ...f,
+                    motivoCodigo: nuevoCod,
+                    clase: nuevaClase,
+                    subcodigoCausal: "",
+                    valorAceptado:
+                      f.estado === "ACEPTADA" && nuevaClase === "DEVOLUCION"
+                        ? f.valorFacturado || f.valorGlosado
+                        : f.valorAceptado,
+                  });
+                }}
                 className={campo}
               >
                 <option value="">— elegir causal —</option>
@@ -3494,26 +4095,35 @@ function ModalNueva({
             </Campo>
           </div>
 
-          <div className="sm:col-span-2">
-            <Campo id="rglosa" etiqueta="Responsable / Facturador (lista desplegable)">
-              <select
-                id="rglosa"
-                value={f.responsableAceptacion}
-                onChange={(e) => {
-                  const v = homologarPersonaFacturacion(e.target.value);
-                  setF({ ...f, responsableAceptacion: v, facturador: v });
-                }}
-                className={campo}
-              >
-                <option value="">— Seleccionar responsable / facturador —</option>
-                {responsablesOpciones.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-          </div>
+          <Campo id="fact-nueva" etiqueta="Facturador (quien realiza la factura)">
+            <select
+              id="fact-nueva"
+              value={f.facturador}
+              onChange={(e) => setF({ ...f, facturador: homologarPersonaFacturacion(e.target.value) })}
+              className={campo}
+            >
+              <option value="">— Seleccionar facturador —</option>
+              {responsablesOpciones.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </Campo>
+
+          <Campo id="rglosa" etiqueta="Responsable Glosa (quien responde)">
+            <select
+              id="rglosa"
+              value={f.responsableAceptacion}
+              onChange={(e) =>
+                setF({ ...f, responsableAceptacion: homologarPersonaFacturacion(e.target.value) })
+              }
+              className={campo}
+            >
+              <option value="">— Seleccionar responsable glosa —</option>
+              {responsablesOpciones.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </Campo>
 
           <Campo id="acep-nueva" etiqueta="Acepto / No Acepto">
             <select
@@ -3528,7 +4138,9 @@ function ModalNueva({
                     ...f,
                     estado: "ACEPTADA",
                     valorAceptado:
-                      f.valorAceptado && soloNumero(f.valorAceptado) > 0
+                      f.clase === "DEVOLUCION"
+                        ? f.valorFacturado || f.valorGlosado
+                        : f.valorAceptado && soloNumero(f.valorAceptado) > 0
                         ? f.valorAceptado
                         : f.valorGlosado,
                     notaCredito: esNumeroNotaCreditoReal(f.notaCredito) ? f.notaCredito : "",
@@ -3550,15 +4162,21 @@ function ModalNueva({
             </select>
           </Campo>
 
-          <Campo id="vacep-nueva" etiqueta="Valor aceptado">
+          <Campo id="vacep-nueva" etiqueta="Valor aceptado ($)">
             <input
               id="vacep-nueva"
               inputMode="numeric"
-              disabled={esNoAcepto}
-              value={esNoAcepto ? "0" : f.valorAceptado}
-              onChange={(e) => setF({ ...f, valorAceptado: e.target.value })}
-              placeholder={esAcepto ? "Monto aceptado" : "—"}
-              className={`${campo} font-cifra disabled:bg-[#F8FAFC] disabled:text-[#64748B]`}
+              readOnly={esNoAcepto || esDevAcepto}
+              value={
+                esNoAcepto
+                  ? "$0"
+                  : esDevAcepto
+                  ? formatoPesosInput(f.valorFacturado || f.valorGlosado) || "$0"
+                  : formatoPesosInput(f.valorAceptado)
+              }
+              onChange={(e) => setF({ ...f, valorAceptado: e.target.value.replace(/[^0-9]/g, "") })}
+              placeholder={esAcepto ? "$ Monto aceptado" : "—"}
+              className={`${campo} font-cifra ${esNoAcepto || esDevAcepto ? "bg-[#F8FAFC] text-[#475569] font-semibold" : ""}`}
             />
           </Campo>
 
@@ -3604,6 +4222,8 @@ function ModalNueva({
               ? "No se puede guardar hasta colocar el número de la Nota Crédito."
               : f.empresa.trim() === ""
               ? "Selecciona la ERP en la lista desplegable."
+              : esAcepto
+              ? "Al guardar con Acepto, el seguimiento quedará automáticamente en Tramitada."
               : "Listo para guardar."}
           </span>
           <div className="flex gap-2.5">
@@ -3618,36 +4238,40 @@ function ModalNueva({
               type="button"
               disabled={!completo || guardando}
               onClick={() => {
-                const c = CLASES.find((x) => x.id === f.clase) || CLASES[0];
-                const vAcepFinal =
-                  f.estado === "NO_ACEPTADA"
-                    ? 0
-                    : f.valorAceptado.trim() === ""
-                    ? f.estado === "ACEPTADA"
-                      ? soloNumero(f.valorGlosado)
-                      : null
-                    : soloNumero(f.valorAceptado);
+                const vfNum = soloNumero(f.valorFacturado);
+                const vgNum = soloNumero(f.valorGlosado);
+                const cc = resolverClaseYCausal(f.clase, f.motivoCodigo);
+                const vAcepFinal = resolverValorAceptadoSegunRegla({
+                  estado: f.estado,
+                  tipoGlosa: cc.tipoGlosa,
+                  valorFacturado: vfNum,
+                  valorGlosado: vgNum,
+                  valorAceptadoPrevio:
+                    f.valorAceptado.trim() === "" ? null : soloNumero(f.valorAceptado),
+                });
                 const ncGuardar = resolverNotaCreditoCondicional(
                   f.notaCredito,
                   vAcepFinal,
                   f.estado
                 );
+                const respGuardar = homologarPersonaFacturacion(f.responsableAceptacion);
                 onGuardar({
                   ...f,
                   empresa: infoNit.nombre || f.empresa.trim(),
                   empresaOriginal: infoNit.nombre || f.empresa.trim(),
-                  tipoGlosa: c.tipo,
-                  alcance: c.alcance,
-                  valorFacturado: soloNumero(f.valorFacturado),
-                  valorRadicado: soloNumero(f.valorFacturado),
-                  valorGlosado: soloNumero(f.valorGlosado),
+                  tipoGlosa: cc.tipoGlosa,
+                  motivoCodigo: cc.motivoCodigo,
+                  alcance: "",
+                  valorFacturado: vfNum,
+                  valorRadicado: vfNum,
+                  valorGlosado: vgNum,
                   valorAceptado: vAcepFinal,
                   notaCredito: ncGuardar,
                   estado: f.estado,
-                  facturador: homologarPersonaFacturacion(f.responsableAceptacion || f.facturador),
-                  responsableAceptacion: homologarPersonaFacturacion(f.responsableAceptacion || f.facturador),
-                  responsableRespuesta: homologarPersonaFacturacion(f.responsableAceptacion || f.facturador),
-                  seguimientoEstado: "",
+                  facturador: homologarPersonaFacturacion(f.facturador),
+                  responsableAceptacion: respGuardar,
+                  responsableRespuesta: respGuardar,
+                  seguimientoEstado: resolverSeguimientoAutomatico("", f.estado),
                   valorSeguimiento: null,
                 });
               }}

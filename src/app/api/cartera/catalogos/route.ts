@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
-import { homologarPersonaFacturacion, normalizarEmpresaNitUnificada } from "@/lib/carteraCruces";
+import {
+  RESPONSABLES_OFICIALES_EBENEZER,
+  homologarPersonaFacturacion,
+  normalizarEmpresaNitUnificada,
+} from "@/lib/carteraCruces";
 
 /* ---------------------------------------------------------------------
    CATALOGOS DE CARTERA — facturadores y empresas
@@ -99,6 +103,12 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
   }
   const db = createServiceClient();
+  for (const oficial of RESPONSABLES_OFICIALES_EBENEZER) {
+    const { data: ex } = await db.from("cf_responsables").select("id").ilike("nombre", oficial).maybeSingle();
+    if (!ex) {
+      await db.from("cf_responsables").insert({ nombre: oficial, activo: true });
+    }
+  }
 
   const salida: Record<string, unknown[]> = {};
   for (const tabla of ["cf_empresas", "cf_responsables"] as Tabla[]) {

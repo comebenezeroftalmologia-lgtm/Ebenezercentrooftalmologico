@@ -5,6 +5,7 @@ import carteraInitialData from "@/lib/cartera-data.json";
 import { FechaDelDato } from "@/components/FechaDelDato";
 import { normalizarEmpresaYNit, CAUSAS_NORMATIVAS, causaNormativaDe } from "@/components/workcenter/CarteraWorkspace";
 import {
+  RESPONSABLES_OFICIALES_EBENEZER,
   claveFacturaNorm,
   extraerFacturasFcoe,
   homologarEmpresaYOrigen,
@@ -12,7 +13,10 @@ import {
   clasificarAtencionYSede,
   limpiarNombrePersona,
   normalizarEstadoDecision,
+  resolverClaseYCausal,
   resolverNotaCreditoCondicional,
+  resolverSeguimientoAutomatico,
+  resolverValorAceptadoSegunRegla,
 } from "@/lib/carteraCruces";
 import {
   CIERRES_SISMA_2026_VERIFICADOS,
@@ -410,19 +414,31 @@ export default function TableroCarteraAnalytics() {
   );
   const [glosas, setGlosas] = useState<GlosaRow[]>(() =>
     (carteraInitialData.glosas as GlosaRow[]).map((r) => {
-      const pUnif = homologarPersonaFacturacion(
-        r.responsableRespuesta || r.responsableAceptacion || r.facturador
-      );
+      const fUnif = homologarPersonaFacturacion(r.facturador);
+      const rUnif = homologarPersonaFacturacion(r.responsableRespuesta || r.responsableAceptacion);
       const estNorm = normalizarEstadoDecision(r.estado || r.subtabla, r.valorAceptado, r.notaCredito);
+      const cc = resolverClaseYCausal(r.tipoGlosa, r.motivoCodigo);
+      const vFact = Number(r.valorFacturado || r.valorFactura || r.valorRadicado || 0);
+      const vGlos = Number(r.valorGlosado || 0);
+      const vAcepFinal = resolverValorAceptadoSegunRegla({
+        estado: estNorm,
+        tipoGlosa: cc.tipoGlosa,
+        valorFacturado: vFact,
+        valorGlosado: vGlos,
+        valorAceptadoPrevio: r.valorAceptado ?? null,
+      });
       return {
         ...r,
         estado: estNorm,
-        facturador: pUnif,
-        responsableAceptacion: pUnif,
-        responsableRespuesta: pUnif,
+        tipoGlosa: cc.tipoGlosa,
+        motivoCodigo: cc.motivoCodigo,
+        valorAceptado: vAcepFinal,
+        facturador: fUnif,
+        responsableAceptacion: rUnif,
+        responsableRespuesta: rUnif,
         notaCredito: resolverNotaCreditoCondicional(
           r.notaCredito,
-          r.valorAceptado,
+          vAcepFinal,
           estNorm
         ),
       };
@@ -807,18 +823,32 @@ export default function TableroCarteraAnalytics() {
       if (Array.isArray(json.glosas) && json.glosas.length > 0) {
         setGlosas(
           json.glosas.map((r: GlosaRow) => {
-            const pUnif = homologarPersonaFacturacion(
-              r.responsableRespuesta || r.responsableAceptacion || r.facturador
-            );
+            const fUnif = homologarPersonaFacturacion(r.facturador);
+            const rUnif = homologarPersonaFacturacion(r.responsableRespuesta || r.responsableAceptacion);
+            const estNorm = normalizarEstadoDecision(r.estado || r.subtabla, r.valorAceptado, r.notaCredito);
+            const cc = resolverClaseYCausal(r.tipoGlosa, r.motivoCodigo);
+            const vFact = Number(r.valorFacturado || r.valorFactura || r.valorRadicado || 0);
+            const vGlos = Number(r.valorGlosado || 0);
+            const vAcepFinal = resolverValorAceptadoSegunRegla({
+              estado: estNorm,
+              tipoGlosa: cc.tipoGlosa,
+              valorFacturado: vFact,
+              valorGlosado: vGlos,
+              valorAceptadoPrevio: r.valorAceptado ?? null,
+            });
             return {
               ...r,
-              facturador: pUnif,
-              responsableAceptacion: pUnif,
-              responsableRespuesta: pUnif,
+              estado: estNorm,
+              tipoGlosa: cc.tipoGlosa,
+              motivoCodigo: cc.motivoCodigo,
+              valorAceptado: vAcepFinal,
+              facturador: fUnif,
+              responsableAceptacion: rUnif,
+              responsableRespuesta: rUnif,
               notaCredito: resolverNotaCreditoCondicional(
                 r.notaCredito,
-                r.valorAceptado,
-                r.estado || r.subtabla
+                vAcepFinal,
+                estNorm
               ),
             };
           })
@@ -951,7 +981,7 @@ export default function TableroCarteraAnalytics() {
     const respBase = filtrosCustom?.responsables ?? responsablesFrecSel;
     const respAct =
       respBase.length > 0 &&
-      respBase.length < carteraInitialData.responsablesDisponibles.length
+      respBase.length < RESPONSABLES_OFICIALES_EBENEZER.length
         ? respBase
         : filtroResponsable !== "TODAS"
         ? [filtroResponsable]
@@ -1372,7 +1402,7 @@ export default function TableroCarteraAnalytics() {
     }
     if (
       responsablesFrecSel.length > 0 &&
-      responsablesFrecSel.length < carteraInitialData.responsablesDisponibles.length &&
+      responsablesFrecSel.length < RESPONSABLES_OFICIALES_EBENEZER.length &&
       !responsablesFrecSel.includes(String(responsableReg || ""))
     ) {
       return false;
@@ -1498,7 +1528,7 @@ export default function TableroCarteraAnalytics() {
       empresasFrecSel.length < todasLasEmpresasDisponibles.length) ||
     (responsablesFrecSel.length > 0 &&
       responsablesFrecSel.length <
-        carteraInitialData.responsablesDisponibles.length) ||
+        RESPONSABLES_OFICIALES_EBENEZER.length) ||
     Object.values(valoresExcluidosPorCol).some((arr) => arr && arr.length > 0) ||
     Object.values(busquedaTextoPorCol).some((txt) => txt && txt.trim() !== "") ||
     ordenColumna !== null;
@@ -1551,7 +1581,7 @@ export default function TableroCarteraAnalytics() {
       if (
         responsablesFrecSel.length > 0 &&
         responsablesFrecSel.length <
-          carteraInitialData.responsablesDisponibles.length
+          RESPONSABLES_OFICIALES_EBENEZER.length
       ) {
         if (!responsablesFrecSel.includes(resp)) {
           return false;
@@ -1580,7 +1610,7 @@ export default function TableroCarteraAnalytics() {
     filtroEmpresa !== "TODAS" ||
     (responsablesFrecSel.length > 0 &&
       responsablesFrecSel.length <
-        carteraInitialData.responsablesDisponibles.length) ||
+        RESPONSABLES_OFICIALES_EBENEZER.length) ||
     filtroResponsable !== "TODAS";
 
   const corteSeleccionado = useMemo<CorteSismaBack>(() => {
@@ -1595,7 +1625,7 @@ export default function TableroCarteraAnalytics() {
     const sinSubfiltroResp =
       (responsablesFrecSel.length === 0 ||
         responsablesFrecSel.length >=
-          carteraInitialData.responsablesDisponibles.length) &&
+          RESPONSABLES_OFICIALES_EBENEZER.length) &&
       filtroResponsable === "TODAS";
     const esSoloMutual =
       sinSubfiltroResp &&
@@ -1767,7 +1797,7 @@ export default function TableroCarteraAnalytics() {
       filtroEmpresa !== "TODAS" ||
       (responsablesFrecSel.length > 0 &&
         responsablesFrecSel.length <
-          carteraInitialData.responsablesDisponibles.length) ||
+          RESPONSABLES_OFICIALES_EBENEZER.length) ||
       filtroResponsable !== "TODAS";
 
     const agrupado = new Map<string, { val: number; totalRef: number }>();
@@ -2214,7 +2244,7 @@ export default function TableroCarteraAnalytics() {
       filtroEmpresa,
       responsablesSel: responsablesFrecSel,
       totalResponsablesDisponibles:
-        carteraInitialData.responsablesDisponibles.length,
+        RESPONSABLES_OFICIALES_EBENEZER.length,
       filtroResponsable,
       diasFiltroActivo,
       diasSemanaCount: diasSemanaSel.length,
@@ -2285,7 +2315,7 @@ export default function TableroCarteraAnalytics() {
     const sinSubfiltroRespTend =
       (responsablesFrecSel.length === 0 ||
         responsablesFrecSel.length >=
-          carteraInitialData.responsablesDisponibles.length) &&
+          RESPONSABLES_OFICIALES_EBENEZER.length) &&
       filtroResponsable === "TODAS";
     const usaCierresGlobalesOficiales =
       incluirMutual &&
@@ -4884,7 +4914,8 @@ export default function TableroCarteraAnalytics() {
         "ERP Unificada",
         "NIT",
         "De dónde es (Convenio / Régimen)",
-        "Responsable / Facturador",
+        "Facturador",
+        "Responsable Glosa",
         "Valor Facturado",
         "Valor Glosado",
         "Valor Aceptado",
@@ -4896,9 +4927,8 @@ export default function TableroCarteraAnalytics() {
       ];
       rows = glosasFiltradas.map((r) => {
         const cr = cruzarFilaMaestra({ ...r, motivoTexto: `${r.motivoGlosa} ${r.observacionInterna}` });
-        const persUnif = homologarPersonaFacturacion(
-          r.responsableRespuesta || r.responsableAceptacion || r.facturador
-        );
+        const factUnif = homologarPersonaFacturacion(r.facturador);
+        const respUnif = homologarPersonaFacturacion(r.responsableRespuesta || r.responsableAceptacion);
         const ncFinal = resolverNotaCreditoCondicional(
           r.notaCredito,
           r.valorAceptado,
@@ -4913,7 +4943,8 @@ export default function TableroCarteraAnalytics() {
           cr.empresaHomologada,
           cr.nit,
           cr.deDondeEs,
-          persUnif,
+          factUnif,
+          respUnif,
           r.valorFacturado || r.valorFactura || r.valorRadicado,
           r.valorGlosado,
           r.valorAceptado ?? "",
@@ -5726,7 +5757,7 @@ export default function TableroCarteraAnalytics() {
               backgroundColor:
                 responsablesFrecSel.length > 0 &&
                 responsablesFrecSel.length <
-                  carteraInitialData.responsablesDisponibles.length
+                  RESPONSABLES_OFICIALES_EBENEZER.length
                   ? "#E7ECFE"
                   : "#FFFFFF",
               borderColor:
@@ -5734,14 +5765,14 @@ export default function TableroCarteraAnalytics() {
                   ? "#1A3174"
                   : responsablesFrecSel.length > 0 &&
                     responsablesFrecSel.length <
-                      carteraInitialData.responsablesDisponibles.length
+                      RESPONSABLES_OFICIALES_EBENEZER.length
                   ? "#0F2FF3"
                   : "#E1E4EC",
               color: "#0E245E",
               fontWeight:
                 responsablesFrecSel.length > 0 &&
                 responsablesFrecSel.length <
-                  carteraInitialData.responsablesDisponibles.length
+                  RESPONSABLES_OFICIALES_EBENEZER.length
                   ? 600
                   : 500,
             }}
@@ -5749,7 +5780,7 @@ export default function TableroCarteraAnalytics() {
             <span>
               {responsablesFrecSel.length === 0 ||
               responsablesFrecSel.length ===
-                carteraInitialData.responsablesDisponibles.length
+                RESPONSABLES_OFICIALES_EBENEZER.length
                 ? "Todas las responsables"
                 : responsablesFrecSel.length === 1
                 ? responsablesFrecSel[0]
@@ -5803,7 +5834,7 @@ export default function TableroCarteraAnalytics() {
                 </button>
               </div>
               <div className="space-y-0.5">
-                {carteraInitialData.responsablesDisponibles.map((resp) => {
+                {RESPONSABLES_OFICIALES_EBENEZER.map((resp) => {
                   const sel = responsablesFrecSel.includes(resp);
                   return (
                     <div
@@ -5812,7 +5843,7 @@ export default function TableroCarteraAnalytics() {
                         setFiltroResponsable("TODAS");
                         if (
                           responsablesFrecSel.length ===
-                          carteraInitialData.responsablesDisponibles.length
+                          RESPONSABLES_OFICIALES_EBENEZER.length
                         ) {
                           setResponsablesFrecSel([resp]);
                           setPaginaActual(1);
@@ -8808,14 +8839,16 @@ export default function TableroCarteraAnalytics() {
               )}
             </div>
 
-            {/* SEGUIMIENTO DE PAGOS, LEVANTAMIENTOS Y RATIFICACIÓN DE GLOSAS */}
+            {/* SEGUIMIENTO DE TRAMITADAS, PROCESO DE PAGO, PAGOS, LEVANTAMIENTOS Y RECTIFICACIÓN */}
             {(() => {
               const itemsSeg = [
+                { id: "TRAMITADA", label: "Tramitada", bg: "#DCFCE7", border: "#86EFAC", text: "#14532D" },
+                { id: "PROCESO_PAGO", label: "Proceso de pago", bg: "#EEF2FF", border: "#C7D2FE", text: "#3730A3" },
                 { id: "PAGO_COMPLETO", label: "Pago completo", bg: "#ECFDF5", border: "#A7F3D0", text: "#047857" },
                 { id: "PAGO_PARCIAL", label: "Pago parcial", bg: "#F0F9FF", border: "#BAE6FD", text: "#0369A1" },
                 { id: "LEVANTAMIENTO_COMPLETO", label: "Levantamiento completo", bg: "#DCFCE7", border: "#86EFAC", text: "#15803D" },
                 { id: "LEVANTAMIENTO_PARCIAL", label: "Levantamiento parcial", bg: "#FFFBEB", border: "#FDE68A", text: "#B45309" },
-                { id: "RATIFICACION_GLOSA", label: "Ratificación de glosa", bg: "#FFF1F2", border: "#FECDD3", text: "#BE123C" },
+                { id: "RATIFICACION_GLOSA", label: "Rectificación de glosa", bg: "#FFF1F2", border: "#FECDD3", text: "#BE123C" },
               ];
               const conteoSeg: Record<string, { cant: number; glosado: number; valorSeg: number }> = {};
               for (const it of itemsSeg) conteoSeg[it.id] = { cant: 0, glosado: 0, valorSeg: 0 };
@@ -8824,7 +8857,7 @@ export default function TableroCarteraAnalytics() {
 
               for (const g of glosasDash) {
                 const rawExt = g as unknown as { seguimientoEstado?: string; valorSeguimiento?: number | null };
-                const st = String(rawExt.seguimientoEstado || "").trim().toUpperCase();
+                const st = resolverSeguimientoAutomatico(rawExt.seguimientoEstado, g.estado || g.subtabla);
                 if (st && conteoSeg[st]) {
                   conteoSeg[st].cant += 1;
                   conteoSeg[st].glosado += Number(g.valorGlosado || 0);

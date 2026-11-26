@@ -13,7 +13,6 @@
  */
 
 import {
-  causaNormativa6De,
   clasificarAtencionYSede,
   claveFacturaNorm,
   extraerCodigoCausalExplicito,
@@ -23,8 +22,10 @@ import {
   limpiarNombrePersona,
   esNumeroNotaCreditoReal,
   limpiarTextoUtf8,
-  normalizarSeguimientoGlosa,
+  resolverClaseYCausal,
   resolverNotaCreditoCondicional,
+  resolverSeguimientoAutomatico,
+  resolverValorAceptadoSegunRegla,
 } from "@/lib/carteraCruces";
 
 export type DestinoHojaCartera = "glosas" | "pendientes" | "anuladas" | "omitir";
@@ -581,6 +582,8 @@ export function extraerCamposGlosaDesdeObjeto(rawObj: Record<string, unknown>): 
   motivoGlosa: string;
   observacionInterna: string;
   notaCredito: string;
+  facturador: string;
+  responsableRespuesta: string;
   personaUnificada: string;
   seguimientoEstado: string;
   valorSeguimiento: number | null;
@@ -830,51 +833,55 @@ export function extraerCamposGlosaDesdeObjeto(rawObj: Record<string, unknown>): 
 
   const facturador = homologarPersonaFacturacion(
     obtenerCampo(raw, encabezados, [
-      (h) => h.includes("facturador") || h.includes("quien facturo") || h.includes("elaboro"),
+      (h) =>
+        (h.includes("facturador") && !h.includes("responsable")) ||
+        h.includes("quien facturo") ||
+        h.includes("quien realiza la factura") ||
+        h.includes("elaboro"),
+      (h) => h.includes("facturador"),
     ])
   );
   const responsable = homologarPersonaFacturacion(
     obtenerCampo(raw, encabezados, [
       (h) =>
-        h.includes("responsable") ||
+        (h.includes("responsable") && !h.includes("facturador")) ||
         h.includes("quien responde") ||
         h.includes("auditor") ||
         h.includes("asignado"),
+      (h) => h.includes("responsable"),
     ])
   );
-  const personaUnificada = responsable || facturador;
+  const personaUnificada = facturador || responsable;
 
   const codExplicitoTxt = extraerCodigoCausalExplicito(motivoGlosa);
-  const tipoGlosa: "GLOSA" | "DEVOLUCION" =
-    claseRaw.includes("DEVOL") || (codDetectado === "DE" && !claseRaw.includes("GLOSA"))
-      ? "DEVOLUCION"
-      : "GLOSA";
-  const alcance =
-    claseRaw.includes("TOTAL") || tipoGlosa === "DEVOLUCION"
-      ? "TOTAL"
-      : claseRaw.includes("PARCIAL")
-      ? "PARCIAL"
-      : "";
-  const causalPrincipal = causaNormativa6De(codDetectado || codExplicitoTxt, tipoGlosa);
+  const claseCausal = resolverClaseYCausal(
+    claseRaw.includes("DEVOL") ? "DEVOLUCION" : "GLOSA",
+    codDetectado || codExplicitoTxt
+  );
+  const tipoGlosa = claseCausal.tipoGlosa;
+  const causalPrincipal = claseCausal.motivoCodigo;
+  const alcance = "";
 
   const segTexto = obtenerCampo(raw, encabezados, [
     (h) =>
       h.includes("seguimiento") ||
       h.includes("levantamiento") ||
       h.includes("ratificacion") ||
+      h.includes("rectificacion") ||
+      h.includes("proceso de pago") ||
       h.includes("estado pago"),
   ]);
   const estRaw = obtenerCampo(raw, encabezados, [
     (h) => h.includes("estado") || h.includes("desenlace"),
   ]).toUpperCase();
-  const seguimientoEstado = normalizarSeguimientoGlosa(segTexto || estRaw);
 
   const vSegTxt = obtenerCampo(raw, encabezados, [
     (h) =>
       h.includes("valor seguimiento") ||
       h.includes("valor pagado") ||
       h.includes("valor levantado") ||
-      h.includes("valor ratificado"),
+      h.includes("valor ratificado") ||
+      h.includes("valor rectificado"),
   ]);
   const valorSeguimiento = vSegTxt === "" ? null : normalizarNumeroMoneda(vSegTxt);
 
@@ -900,13 +907,22 @@ export function extraerCamposGlosaDesdeObjeto(rawObj: Record<string, unknown>): 
     estRaw === "SÍ" ||
     estRaw.includes("CONCILI") ||
     estRaw.includes("RATIFIC") ||
+    estRaw.includes("RECTIFIC") ||
     tieneNcReal ||
     (vAcep !== null && vAcep > 0)
   ) {
     estado = "ACEPTADA";
   }
 
-  const notaCredito = resolverNotaCreditoCondicional(ncRaw, vAcep, estado);
+  const valorAceptadoFinal = resolverValorAceptadoSegunRegla({
+    estado,
+    tipoGlosa,
+    valorFacturado: vFact,
+    valorGlosado: vGlosa,
+    valorAceptadoPrevio: vAcep,
+  });
+  const seguimientoEstado = resolverSeguimientoAutomatico(segTexto || estRaw, estado);
+  const notaCredito = resolverNotaCreditoCondicional(ncRaw, valorAceptadoFinal, estado);
 
   return {
     factura,
@@ -924,13 +940,15 @@ export function extraerCamposGlosaDesdeObjeto(rawObj: Record<string, unknown>): 
     anio,
     valorFacturado: vFact,
     valorGlosado: vGlosa,
-    valorAceptado: vAcep,
+    valorAceptado: valorAceptadoFinal,
     tipoGlosa,
     alcance,
     motivoCodigo: causalPrincipal,
     motivoGlosa,
     observacionInterna: obs,
     notaCredito,
+    facturador,
+    responsableRespuesta: responsable,
     personaUnificada,
     seguimientoEstado,
     valorSeguimiento,
@@ -995,8 +1013,8 @@ export function mapearFilasSegunDestino(
         motivoGlosa: ext.motivoGlosa,
         observacionInterna: ext.observacionInterna,
         notaCredito: ext.notaCredito,
-        facturador: ext.personaUnificada,
-        responsableRespuesta: ext.personaUnificada,
+        facturador: ext.facturador,
+        responsableRespuesta: ext.responsableRespuesta,
         seguimientoEstado: ext.seguimientoEstado,
         valorSeguimiento: ext.valorSeguimiento,
         estado: ext.estado,
