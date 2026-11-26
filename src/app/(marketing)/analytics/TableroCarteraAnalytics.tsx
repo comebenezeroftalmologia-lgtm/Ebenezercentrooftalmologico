@@ -7880,29 +7880,44 @@ export default function TableroCarteraAnalytics() {
       {(() => {
         const clasificarMontosGlosa = (g: GlosaRow) => {
           const vGlosa = Math.max(0, Number(g.valorGlosado || 0));
-          const est = String(g.estado || g.subtabla || "PENDIENTE").toUpperCase();
-          const tieneAceptExp = g.valorAceptado !== null && g.valorAceptado !== undefined;
-          const vAceptExp = tieneAceptExp
-            ? Math.min(vGlosa, Math.max(0, Number(g.valorAceptado || 0)))
-            : null;
+          const vFact = Math.max(
+            0,
+            Number(g.valorFacturado || g.valorFactura || g.valorRadicado || 0)
+          );
+          const cc = resolverClaseYCausal(
+            (g as unknown as { tipoGlosa?: string }).tipoGlosa,
+            g.motivoCodigo
+          );
+          const esDevolucion = cc.tipoGlosa === "DEVOLUCION";
+          const est = normalizarEstadoDecision(
+            g.estado || g.subtabla || "PENDIENTE",
+            g.valorAceptado,
+            g.notaCredito
+          );
+          const vCalc = resolverValorAceptadoSegunRegla({
+            estado: est,
+            tipoGlosa: cc.tipoGlosa,
+            valorFacturado: vFact,
+            valorGlosado: vGlosa,
+            valorAceptadoPrevio: g.valorAceptado ?? null,
+          });
 
-          if (est === "PENDIENTE" || est === "EN_GESTION") {
+          if (est === "PENDIENTE") {
             return { glosado: vGlosa, defendido: 0, aceptado: 0, pendiente: vGlosa, estadoNorm: "PENDIENTE" as const };
           }
-          if (est === "NO_ACEPTADA" || est === "RESPONDIDA_NO_ACEPTADA") {
-            const ac = vAceptExp !== null && vAceptExp > 0 ? vAceptExp : 0;
+          if (est === "NO_ACEPTADA") {
             return {
               glosado: vGlosa,
-              defendido: Math.max(0, vGlosa - ac),
-              aceptado: ac,
+              defendido: vGlosa,
+              aceptado: 0,
               pendiente: 0,
               estadoNorm: "DEFENDIDA" as const,
             };
           }
-          const ac = vAceptExp !== null ? vAceptExp : vGlosa;
+          const ac = vCalc !== null ? Math.max(0, vCalc) : esDevolucion ? Math.max(vFact, vGlosa) : vGlosa;
           return {
             glosado: vGlosa,
-            defendido: Math.max(0, vGlosa - ac),
+            defendido: esDevolucion ? 0 : Math.max(0, vGlosa - ac),
             aceptado: ac,
             pendiente: 0,
             estadoNorm: "ACEPTADA" as const,
@@ -8203,8 +8218,8 @@ export default function TableroCarteraAnalytics() {
         for (const g of glosasDash) {
           const r =
             homologarPersonaFacturacion(
-              g.responsableRespuesta || g.responsableAceptacion || g.facturador
-            ) || "SIN RESPONSABLE EN FUENTE";
+              g.responsableRespuesta || g.responsableAceptacion
+            ) || "SIN RESPONSABLE DE GLOSA";
           const m = clasificarMontosGlosa(g);
           if (!porResp[r]) {
             porResp[r] = { monto: 0, defendido: 0, aceptado: 0, pendiente: 0, glosas: 0 };
@@ -8873,17 +8888,17 @@ export default function TableroCarteraAnalytics() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h4 className="text-[13.5px] sm:text-[14px] font-bold text-[#0E245E]">
-                        Seguimiento Operativo: Pagos, Levantamientos y Ratificación de Glosa
+                        Seguimiento Operativo: Tramitadas, Proceso de Pago, Pagos, Levantamientos y Rectificación de Glosa
                       </h4>
                       <p className="text-[11.5px] text-[#64748B]">
-                        Consolidado al cierre del día anterior de pagos completos/parciales, levantamientos completos/parciales y ratificaciones.
+                        Consolidado al cierre del día anterior de glosas tramitadas, en proceso de pago, pagos, levantamientos y rectificaciones de glosa.
                       </p>
                     </div>
-                    <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-[11px] font-semibold text-[#475569]">
-                      En trámite sin marcación: {sinSegCant} ({formatMillones(sinSegMonto)})
+                    <span className="rounded-full border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-0.5 text-[11px] font-bold text-[#B91C1C]">
+                      En trámite (pendientes): {sinSegCant} ({formatMillones(sinSegMonto)})
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2.5">
                     {itemsSeg.map((it) => {
                       const d = conteoSeg[it.id];
                       return (

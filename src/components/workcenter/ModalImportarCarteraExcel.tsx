@@ -562,8 +562,9 @@ export function ModalImportarCarteraExcel({
                         <tr className="bg-[#0E245E] text-left text-white">
                           <th className="p-2 font-bold">Factura · Fechas</th>
                           <th className="p-2 font-bold">ERP Unificada (NIT)</th>
-                          <th className="p-2 font-bold">Causal · Motivo de Glosa</th>
-                          <th className="p-2 font-bold">Responsable / Facturador</th>
+                          <th className="p-2 font-bold">Clase · Causal · Motivo</th>
+                          <th className="p-2 font-bold">Facturador</th>
+                          <th className="p-2 font-bold">Responsable Glosa</th>
                           <th className="p-2 text-right font-bold">Facturado</th>
                           <th className="p-2 text-right font-bold">Glosado</th>
                           <th className="p-2 font-bold">NC · Estado</th>
@@ -599,15 +600,41 @@ export function ModalImportarCarteraExcel({
                                 {g.nit && <div className="font-mono text-[10px] text-[#64748B]">NIT {g.nit}</div>}
                               </td>
                               <td className="p-2 max-w-[260px]">
-                                <span className="inline-block rounded bg-[#EFF6FF] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#1D4ED8] mr-1.5">
-                                  {g.motivoCodigo || "SIN CAUSAL"}
+                                <span
+                                  className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold mr-1 ${
+                                    g.tipoGlosa === "DEVOLUCION"
+                                      ? "bg-[#FFF1F2] text-[#BE123C]"
+                                      : "bg-[#F8FAFC] text-[#0E245E]"
+                                  }`}
+                                >
+                                  {g.tipoGlosa === "DEVOLUCION" ? "Devolución" : "Glosa"}
+                                </span>
+                                <span
+                                  className={`inline-block rounded px-1.5 py-0.5 font-mono text-[10px] font-bold mr-1.5 ${
+                                    g.motivoCodigo
+                                      ? "bg-[#EFF6FF] text-[#1D4ED8]"
+                                      : "bg-[#FEE2E2] text-[#B91C1C]"
+                                  }`}
+                                >
+                                  {g.motivoCodigo || "⚠ SIN CAUSAL"}
                                 </span>
                                 <span className="text-[11px] text-[#334155] line-clamp-2" title={g.motivoGlosa}>
-                                  {g.motivoGlosa || "—"}
+                                  {g.motivoGlosa || "⚠ Falta motivo"}
                                 </span>
                               </td>
-                              <td className="p-2 text-[10.5px] font-semibold text-[#0E245E]">
-                                {g.responsableRespuesta || g.facturador || "—"}
+                              <td
+                                className={`p-2 text-[10.5px] font-semibold ${
+                                  g.facturador ? "text-[#0E245E]" : "font-bold text-[#B91C1C]"
+                                }`}
+                              >
+                                {g.facturador || "⚠ Falta facturador"}
+                              </td>
+                              <td
+                                className={`p-2 text-[10.5px] font-semibold ${
+                                  g.responsableRespuesta ? "text-[#0E245E]" : "font-bold text-[#B91C1C]"
+                                }`}
+                              >
+                                {g.responsableRespuesta || "⚠ Falta responsable"}
                               </td>
                               <td className={`p-2 text-right font-mono ${(g.valorFacturado || 0) <= 0 ? "font-bold text-[#B91C1C]" : ""}`}>
                                 {(g.valorFacturado || 0) > 0 ? formatPesos(g.valorFacturado) : "⚠ $0"}

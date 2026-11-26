@@ -324,13 +324,7 @@ const fecha = (s: string) => {
   return a && m && d ? `${d}/${m}/${a}` : s;
 };
 
-function clasePago(g: Glosa): { texto: string; clase: string } | null {
-  if (g.valorAceptado === null || g.valorAceptado === undefined) return null;
-  if (g.valorAceptado <= 0) return { texto: "nada", clase: "text-[#64748B]" };
-  if (g.valorGlosado > 0 && g.valorAceptado >= g.valorGlosado)
-    return { texto: "total", clase: "text-[#146138]" };
-  return { texto: "parcial", clase: "text-[#B45309]" };
-}
+
 
 const VACIO: Catalogos = { empresas: [], responsables: [], motivos: [], causales: [], anios: [] };
 
@@ -2945,7 +2939,6 @@ function FilaGlosa({
     observacionInterna: obs,
   };
 
-  const pago = clasePago(vistaFila);
   const excede =
     !esDevolucionAceptada &&
     vistaFila.valorAceptado !== null &&
@@ -3261,7 +3254,6 @@ function FilaGlosa({
                 : "border-transparent bg-transparent font-semibold text-[#0E245E] hover:border-[#DCE8FA] focus:border-[#1D58D8] focus:bg-white"
             }`}
           />
-          {pago && <span className={`block pr-1.5 text-[10px] font-semibold uppercase ${pago.clase}`}>{pago.texto}</span>}
           {excede && <span className="block pr-1.5 text-[10px] font-semibold text-[#B45309]">supera lo glosado</span>}
         </td>
 
@@ -3735,7 +3727,6 @@ function FichaFactura({
           <p className="eb-label mb-2 text-[10.5px] text-[#64748B]">Glosas registradas en esta factura</p>
           <div className="divide-y divide-[#F1F5F9]">
             {glosas.map((g) => {
-              const c = clasePago(g);
               const cn = causaNormativaDe(g.motivoCodigo, g.tipoGlosa);
               const ca = causalPorCodigo[cn || g.motivoCodigo];
               return (
@@ -3755,7 +3746,6 @@ function FichaFactura({
                       <span className="font-cifra text-[11px] text-[#64748B]">NC: {g.notaCredito}</span>
                     )}
                     <span className="ml-auto font-cifra text-[13px] font-semibold text-[#0E245E]">{pesos(g.valorGlosado)}</span>
-                    {c && <span className={`text-[10.5px] font-semibold uppercase ${c.clase}`}>{c.texto}</span>}
                   </div>
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#47597A]">
                     {g.motivoGlosa || "Sin motivo escrito"}
@@ -3819,6 +3809,8 @@ function ModalNueva({
     observacionInterna: "",
     facturador: "",
     responsableAceptacion: "",
+    seguimientoEstado: "" as SeguimientoGlosaCodigo,
+    valorSeguimiento: "",
     notaCredito: "",
     estado: "PENDIENTE" as "PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA",
   });
@@ -3826,30 +3818,44 @@ function ModalNueva({
   const esAcepto = f.estado === "ACEPTADA";
   const esNoAcepto = f.estado === "NO_ACEPTADA";
   const esDevAcepto = esAcepto && f.clase === "DEVOLUCION";
+  const esRectificacion = f.seguimientoEstado === "RATIFICACION_GLOSA";
+  const esSegParcial =
+    f.seguimientoEstado === "PAGO_PARCIAL" || f.seguimientoEstado === "LEVANTAMIENTO_PARCIAL";
+
   const ncRequeridaOk = esAcepto
     ? esNumeroNotaCreditoReal(f.notaCredito)
     : esNoAcepto
     ? true
     : f.notaCredito.trim() === "" || esNotaCreditoValida(f.notaCredito);
+  const obsRectificacionOk = !esRectificacion || f.observacionInterna.trim() !== "";
+
   const sinValoresModal =
-    (f.valorFacturado.trim() !== "" || f.valorGlosado.trim() !== "") &&
-    (soloNumero(f.valorFacturado) <= 0 || soloNumero(f.valorGlosado) <= 0);
+    soloNumero(f.valorFacturado) <= 0 || soloNumero(f.valorGlosado) <= 0;
   const completo =
     f.factura.trim() !== "" &&
     f.empresa.trim() !== "" &&
     (f.motivoGlosa.trim() !== "" || f.motivoCodigo !== "") &&
-    ncRequeridaOk;
+    ncRequeridaOk &&
+    obsRectificacionOk;
+
   const infoNit = normalizarEmpresaYNit(f.empresa);
-  const campo = "w-full rounded-lg border border-[#DCE8FA] bg-white px-2.5 py-2 text-[12.5px] outline-none focus:border-[#1D58D8]";
+  const opcionesSegModal = esAcepto
+    ? OPCIONES_SEGUIMIENTO_GLOSA.filter((o) => o.id !== "")
+    : OPCIONES_SEGUIMIENTO_GLOSA;
+
+  const campoOk =
+    "w-full rounded-lg border border-[#DCE8FA] bg-white px-2.5 py-2 text-[12.5px] text-[#0E245E] outline-none focus:border-[#1D58D8]";
+  const campoRojo =
+    "w-full rounded-lg border border-[#DC2626] bg-[#FEF2F2] px-2.5 py-2 text-[12.5px] font-bold text-[#991B1B] placeholder:text-[#DC2626]/75 outline-none focus:ring-2 focus:ring-[#DC2626]/25";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E245E]/40 p-4" role="dialog" aria-label="Registrar glosa">
-      <div className="max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[14px] border border-[#E2EBF8] bg-white shadow-[0_24px_60px_rgba(14,36,94,0.18)]">
+      <div className="max-h-[90vh] w-full max-w-[700px] overflow-y-auto rounded-[14px] border border-[#E2EBF8] bg-white shadow-[0_24px_60px_rgba(14,36,94,0.18)]">
         <div className="flex items-center justify-between border-b border-[#E2EBF8] px-5 py-3.5">
           <div>
             <p className="text-[15px] font-bold text-[#0E245E]">Registrar glosa o devolución</p>
             <p className="text-[11.5px] text-[#64748B]">
-              ERP unificada, Facturador y Responsable separados, Clase (Glosa / Devolución ↔ DE) y Acepto / No Acepto.
+              Los ítems pendientes por llenar aparecen resaltados en rojo. Incluye Facturador y Responsable separados, Clase (Glosa / Devolución ↔ DE) y Seguimiento.
             </p>
           </div>
           <button
@@ -3869,7 +3875,7 @@ function ModalNueva({
               value={f.factura}
               onChange={(e) => setF({ ...f, factura: e.target.value.toUpperCase() })}
               placeholder="FCOE00000"
-              className={`${campo} font-cifra`}
+              className={`${f.factura.trim() === "" ? campoRojo : campoOk} font-cifra`}
             />
           </Campo>
           <Campo
@@ -3880,9 +3886,9 @@ function ModalNueva({
               id="emp"
               value={f.empresa}
               onChange={(e) => setF({ ...f, empresa: e.target.value })}
-              className={campo}
+              className={f.empresa.trim() === "" ? campoRojo : campoOk}
             >
-              <option value="">— Seleccionar ERP —</option>
+              <option value="">— Falta seleccionar ERP —</option>
               {empresasOpciones.map((x) => (
                 <option key={x.nombre} value={x.nombre}>
                   {x.nombre}{x.nit ? ` · NIT ${x.nit}` : ""}
@@ -3897,7 +3903,7 @@ function ModalNueva({
               type="date"
               value={f.fechaPrestacionServicio}
               onChange={(e) => setF({ ...f, fechaPrestacionServicio: e.target.value })}
-              className={`${campo} font-cifra`}
+              className={`${!f.fechaPrestacionServicio ? campoRojo : campoOk} font-cifra`}
             />
           </Campo>
           <Campo id="ffac" etiqueta="Fecha de factura">
@@ -3906,7 +3912,7 @@ function ModalNueva({
               type="date"
               value={f.fechaFactura}
               onChange={(e) => setF({ ...f, fechaFactura: e.target.value })}
-              className={`${campo} font-cifra`}
+              className={`${!f.fechaFactura ? campoRojo : campoOk} font-cifra`}
             />
           </Campo>
           <Campo id="frad" etiqueta="Fecha de radicación">
@@ -3915,7 +3921,7 @@ function ModalNueva({
               type="date"
               value={f.fechaRadicacion}
               onChange={(e) => setF({ ...f, fechaRadicacion: e.target.value })}
-              className={`${campo} font-cifra`}
+              className={`${campoOk} font-cifra`}
             />
           </Campo>
 
@@ -3925,7 +3931,7 @@ function ModalNueva({
               type="date"
               value={f.fechaNotificacionGlosa}
               onChange={(e) => setF({ ...f, fechaNotificacionGlosa: e.target.value })}
-              className={`${campo} font-cifra`}
+              className={`${campoOk} font-cifra`}
             />
           </Campo>
 
@@ -3946,10 +3952,39 @@ function ModalNueva({
                       : f.valorAceptado,
                 });
               }}
-              className={campo}
+              className={campoOk}
             >
               {CLASES.map((c) => (
                 <option key={c.id} value={c.id}>{c.etiqueta}</option>
+              ))}
+            </select>
+          </Campo>
+
+          <Campo id="cau" etiqueta="Causal oficial (TA, AU, SO, DE, CO, FA)">
+            <select
+              id="cau"
+              value={f.motivoCodigo}
+              onChange={(e) => {
+                const nuevoCod = e.target.value;
+                const nuevaClase = nuevoCod === "DE" ? "DEVOLUCION" : nuevoCod ? "GLOSA" : f.clase;
+                setF({
+                  ...f,
+                  motivoCodigo: nuevoCod,
+                  clase: nuevaClase,
+                  subcodigoCausal: "",
+                  valorAceptado:
+                    f.estado === "ACEPTADA" && nuevaClase === "DEVOLUCION"
+                      ? f.valorFacturado || f.valorGlosado
+                      : f.valorAceptado,
+                });
+              }}
+              className={!f.motivoCodigo ? campoRojo : campoOk}
+            >
+              <option value="">— Falta causal —</option>
+              {CAUSAS_NORMATIVAS.map((c) => (
+                <option key={c.codigo} value={c.codigo}>
+                  {c.codigo} · {c.nombre}
+                </option>
               ))}
             </select>
           </Campo>
@@ -3968,12 +4003,8 @@ function ModalNueva({
                 });
               }}
               inputMode="numeric"
-              placeholder="$0"
-              className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
-                f.valorFacturado.trim() !== "" && soloNumero(f.valorFacturado) <= 0
-                  ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B]"
-                  : "border-[#DCE8FA] bg-white focus:border-[#1D58D8]"
-              }`}
+              placeholder="⚠ Falta $"
+              className={`${soloNumero(f.valorFacturado) <= 0 ? campoRojo : campoOk} font-cifra`}
             />
           </Campo>
 
@@ -3993,93 +4024,58 @@ function ModalNueva({
                 });
               }}
               inputMode="numeric"
-              placeholder="$0"
-              className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
-                f.valorGlosado.trim() !== "" && soloNumero(f.valorGlosado) <= 0
-                  ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B]"
-                  : "border-[#DCE8FA] bg-white focus:border-[#1D58D8]"
-              }`}
+              placeholder="⚠ Falta $"
+              className={`${soloNumero(f.valorGlosado) <= 0 ? campoRojo : campoOk} font-cifra`}
             />
           </Campo>
 
           {sinValoresModal && (
             <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-3 py-2 text-[11.5px] font-bold text-[#B91C1C]">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              <span>Alerta: el valor facturado o el valor glosado está en $0 (quedará resaltado en rojo en la tabla).</span>
+              <span>Falta diligenciar el valor facturado o el valor glosado en pesos ($).</span>
             </div>
           )}
 
-          <div className="sm:col-span-2 space-y-2.5">
-            <div>
-              <p className="eb-label mb-1.5 text-[10px] text-[#94A3B8]">
-                Causales oficiales de glosa y devolución (DE ↔ Devolución · TA, AU, SO, CO, FA ↔ Glosa)
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {CAUSAS_NORMATIVAS.map((c) => {
-                  const activo = f.motivoCodigo === c.codigo;
-                  return (
-                    <button
-                      key={c.codigo}
-                      type="button"
-                      onClick={() => {
-                        const nuevoCod = activo ? "" : c.codigo;
-                        const nuevaClase = nuevoCod === "DE" ? "DEVOLUCION" : nuevoCod ? "GLOSA" : f.clase;
-                        setF({
-                          ...f,
-                          motivoCodigo: nuevoCod,
-                          clase: nuevaClase,
-                          subcodigoCausal: "",
-                          valorAceptado:
-                            f.estado === "ACEPTADA" && nuevaClase === "DEVOLUCION"
-                              ? f.valorFacturado || f.valorGlosado
-                              : f.valorAceptado,
-                        });
-                      }}
-                      title={c.descripcion}
-                      className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-semibold transition ${
-                        activo ? "ring-2 ring-[#1D58D8]" : "hover:opacity-90"
-                      }`}
-                      style={{
-                        backgroundColor: c.badgeBg,
-                        color: c.badgeText,
-                        borderColor: c.badgeBorder,
-                      }}
-                    >
-                      {c.codigo} · {c.nombre}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <Campo id="cau" etiqueta="Causal oficial (TA, AU, SO, DE, CO, FA)">
-              <select
-                id="cau"
-                value={f.motivoCodigo}
-                onChange={(e) => {
-                  const nuevoCod = e.target.value;
-                  const nuevaClase = nuevoCod === "DE" ? "DEVOLUCION" : nuevoCod ? "GLOSA" : f.clase;
-                  setF({
-                    ...f,
-                    motivoCodigo: nuevoCod,
-                    clase: nuevaClase,
-                    subcodigoCausal: "",
-                    valorAceptado:
-                      f.estado === "ACEPTADA" && nuevaClase === "DEVOLUCION"
-                        ? f.valorFacturado || f.valorGlosado
-                        : f.valorAceptado,
-                  });
-                }}
-                className={campo}
-              >
-                <option value="">— elegir causal —</option>
-                {CAUSAS_NORMATIVAS.map((c) => (
-                  <option key={c.codigo} value={c.codigo}>
+          <div className="sm:col-span-2">
+            <p className="eb-label mb-1.5 text-[10px] text-[#94A3B8]">
+              Acceso rápido a causales (DE ↔ Devolución · TA, AU, SO, CO, FA ↔ Glosa)
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {CAUSAS_NORMATIVAS.map((c) => {
+                const activo = f.motivoCodigo === c.codigo;
+                return (
+                  <button
+                    key={c.codigo}
+                    type="button"
+                    onClick={() => {
+                      const nuevoCod = activo ? "" : c.codigo;
+                      const nuevaClase = nuevoCod === "DE" ? "DEVOLUCION" : nuevoCod ? "GLOSA" : f.clase;
+                      setF({
+                        ...f,
+                        motivoCodigo: nuevoCod,
+                        clase: nuevaClase,
+                        subcodigoCausal: "",
+                        valorAceptado:
+                          f.estado === "ACEPTADA" && nuevaClase === "DEVOLUCION"
+                            ? f.valorFacturado || f.valorGlosado
+                            : f.valorAceptado,
+                      });
+                    }}
+                    title={c.descripcion}
+                    className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-semibold transition ${
+                      activo ? "ring-2 ring-[#1D58D8]" : "hover:opacity-90"
+                    }`}
+                    style={{
+                      backgroundColor: c.badgeBg,
+                      color: c.badgeText,
+                      borderColor: c.badgeBorder,
+                    }}
+                  >
                     {c.codigo} · {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </Campo>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="sm:col-span-2">
@@ -4089,8 +4085,8 @@ function ModalNueva({
                 rows={2}
                 value={f.motivoGlosa}
                 onChange={(e) => setF({ ...f, motivoGlosa: e.target.value })}
-                placeholder="Detalle notificado por la ERP / aseguradora"
-                className={`${campo} resize-y leading-relaxed`}
+                placeholder="⚠ Falta escribir el detalle notificado por la ERP"
+                className={`${!f.motivoGlosa.trim() ? campoRojo : campoOk} resize-y leading-relaxed`}
               />
             </Campo>
           </div>
@@ -4100,9 +4096,9 @@ function ModalNueva({
               id="fact-nueva"
               value={f.facturador}
               onChange={(e) => setF({ ...f, facturador: homologarPersonaFacturacion(e.target.value) })}
-              className={campo}
+              className={!f.facturador ? campoRojo : campoOk}
             >
-              <option value="">— Seleccionar facturador —</option>
+              <option value="">— Falta facturador —</option>
               {responsablesOpciones.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
@@ -4116,9 +4112,9 @@ function ModalNueva({
               onChange={(e) =>
                 setF({ ...f, responsableAceptacion: homologarPersonaFacturacion(e.target.value) })
               }
-              className={campo}
+              className={!f.responsableAceptacion ? campoRojo : campoOk}
             >
-              <option value="">— Seleccionar responsable glosa —</option>
+              <option value="">— Falta responsable glosa —</option>
               {responsablesOpciones.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
@@ -4132,7 +4128,14 @@ function ModalNueva({
               onChange={(e) => {
                 const nv = e.target.value as "PENDIENTE" | "ACEPTADA" | "NO_ACEPTADA";
                 if (nv === "NO_ACEPTADA") {
-                  setF({ ...f, estado: "NO_ACEPTADA", valorAceptado: "0", notaCredito: "N/A" });
+                  setF({
+                    ...f,
+                    estado: "NO_ACEPTADA",
+                    valorAceptado: "0",
+                    notaCredito: "N/A",
+                    seguimientoEstado:
+                      f.seguimientoEstado === "TRAMITADA" ? "" : f.seguimientoEstado,
+                  });
                 } else if (nv === "ACEPTADA") {
                   setF({
                     ...f,
@@ -4144,6 +4147,8 @@ function ModalNueva({
                         ? f.valorAceptado
                         : f.valorGlosado,
                     notaCredito: esNumeroNotaCreditoReal(f.notaCredito) ? f.notaCredito : "",
+                    seguimientoEstado:
+                      f.seguimientoEstado === "" ? "TRAMITADA" : f.seguimientoEstado,
                   });
                 } else {
                   setF({
@@ -4151,10 +4156,12 @@ function ModalNueva({
                     estado: "PENDIENTE",
                     valorAceptado: "",
                     notaCredito: f.notaCredito === "N/A" ? "" : f.notaCredito,
+                    seguimientoEstado:
+                      f.seguimientoEstado === "TRAMITADA" ? "" : f.seguimientoEstado,
                   });
                 }
               }}
-              className={`${campo} font-semibold`}
+              className={f.estado === "PENDIENTE" ? campoRojo : `${campoOk} font-semibold`}
             >
               <option value="PENDIENTE">— Seleccionar —</option>
               <option value="ACEPTADA">Acepto</option>
@@ -4175,55 +4182,161 @@ function ModalNueva({
                   : formatoPesosInput(f.valorAceptado)
               }
               onChange={(e) => setF({ ...f, valorAceptado: e.target.value.replace(/[^0-9]/g, "") })}
-              placeholder={esAcepto ? "$ Monto aceptado" : "—"}
-              className={`${campo} font-cifra ${esNoAcepto || esDevAcepto ? "bg-[#F8FAFC] text-[#475569] font-semibold" : ""}`}
+              placeholder={esAcepto ? "⚠ Falta $" : "⚠ Falta $"}
+              className={`${
+                !esNoAcepto && !esDevAcepto && f.valorAceptado.trim() === ""
+                  ? campoRojo
+                  : esNoAcepto || esDevAcepto
+                  ? `${campoOk} bg-[#F8FAFC] text-[#475569] font-semibold cursor-default`
+                  : campoOk
+              } font-cifra`}
             />
           </Campo>
 
-          <div>
-            <label htmlFor="nc2" className="eb-label mb-1 block text-[10px] font-bold text-[#0E245E]">
-              {esAcepto ? "Número de Nota Crédito (obligatorio) *" : "Nota crédito (si aplica)"}
-            </label>
-            <input
-              id="nc2"
-              value={esNoAcepto ? "N/A" : f.notaCredito}
-              readOnly={esNoAcepto}
-              onChange={(e) => setF({ ...f, notaCredito: e.target.value.toUpperCase() })}
-              placeholder={esAcepto ? "Ej: NC2375 (obligatorio)" : esNoAcepto ? "N/A" : "NC... o vacío"}
-              className={`w-full rounded-lg border px-2.5 py-2 font-cifra text-[12.5px] outline-none ${
-                esNoAcepto
-                  ? "border-[#DCE8FA] bg-[#F8FAFC] font-bold text-[#475569] cursor-default"
-                  : esAcepto && !esNumeroNotaCreditoReal(f.notaCredito)
-                  ? "border-[#DC2626] bg-[#FEF2F2] font-bold text-[#991B1B] placeholder:text-[#DC2626]/75"
-                  : "border-[#DCE8FA] bg-white focus:border-[#1D58D8]"
-              }`}
-            />
-            {esAcepto && !esNumeroNotaCreditoReal(f.notaCredito) && (
-              <span className="mt-1 block text-[10.5px] font-bold text-[#DC2626]">
-                Obligatorio ingresar el número de la Nota Crédito cuando marcas Acepto.
-              </span>
-            )}
-          </div>
+          <Campo id="seg-nueva" etiqueta="Seguimiento">
+            <select
+              id="seg-nueva"
+              value={f.seguimientoEstado}
+              onChange={(e) => {
+                const ns = e.target.value as SeguimientoGlosaCodigo;
+                let vs = f.valorSeguimiento;
+                if (ns === "PAGO_COMPLETO") {
+                  vs = f.valorFacturado || f.valorGlosado;
+                } else if (ns === "LEVANTAMIENTO_COMPLETO") {
+                  vs = f.valorGlosado;
+                } else if (
+                  ns === "" ||
+                  ns === "TRAMITADA" ||
+                  ns === "PROCESO_PAGO" ||
+                  ns === "RATIFICACION_GLOSA"
+                ) {
+                  vs = "";
+                }
+                setF({ ...f, seguimientoEstado: ns, valorSeguimiento: vs });
+              }}
+              className={f.seguimientoEstado === "" ? campoRojo : `${campoOk} font-semibold`}
+            >
+              {opcionesSegModal.map((o) => (
+                <option key={o.id || "NONE"} value={o.id}>
+                  {o.etiqueta}
+                </option>
+              ))}
+            </select>
+          </Campo>
 
-          <Campo id="obs2" etiqueta="Observación general">
-            <input
+          {esSegParcial ? (
+            <Campo id="vseg-nueva" etiqueta="Valor seguimiento ($)">
+              <input
+                id="vseg-nueva"
+                inputMode="numeric"
+                value={formatoPesosInput(f.valorSeguimiento)}
+                onChange={(e) =>
+                  setF({ ...f, valorSeguimiento: e.target.value.replace(/[^0-9]/g, "") })
+                }
+                placeholder="⚠ Falta $ valor seg."
+                className={`${!f.valorSeguimiento.trim() ? campoRojo : campoOk} font-cifra`}
+              />
+            </Campo>
+          ) : (
+            <div>
+              <label htmlFor="nc2" className="eb-label mb-1 block text-[10px] font-bold text-[#0E245E]">
+                {esAcepto ? "Número de Nota Crédito (obligatorio) *" : "Nota crédito"}
+              </label>
+              <input
+                id="nc2"
+                value={esNoAcepto ? "N/A" : f.notaCredito}
+                readOnly={esNoAcepto}
+                onChange={(e) => setF({ ...f, notaCredito: e.target.value.toUpperCase() })}
+                placeholder={esAcepto ? "Ej: NC2375 (obligatorio) *" : "⚠ Falta NC"}
+                className={`${
+                  esNoAcepto
+                    ? `${campoOk} bg-[#F8FAFC] font-bold text-[#475569] cursor-default`
+                    : esAcepto
+                    ? !esNumeroNotaCreditoReal(f.notaCredito)
+                      ? campoRojo
+                      : campoOk
+                    : !esNotaCreditoValida(f.notaCredito)
+                    ? campoRojo
+                    : campoOk
+                } font-cifra`}
+              />
+              {esAcepto && !esNumeroNotaCreditoReal(f.notaCredito) && (
+                <span className="mt-1 block text-[10.5px] font-bold text-[#DC2626]">
+                  Obligatorio ingresar el número de la Nota Crédito cuando marcas Acepto.
+                </span>
+              )}
+            </div>
+          )}
+
+          {esSegParcial && (
+            <div>
+              <label htmlFor="nc2-alt" className="eb-label mb-1 block text-[10px] font-bold text-[#0E245E]">
+                {esAcepto ? "Número de Nota Crédito (obligatorio) *" : "Nota crédito"}
+              </label>
+              <input
+                id="nc2-alt"
+                value={esNoAcepto ? "N/A" : f.notaCredito}
+                readOnly={esNoAcepto}
+                onChange={(e) => setF({ ...f, notaCredito: e.target.value.toUpperCase() })}
+                placeholder={esAcepto ? "Ej: NC2375 (obligatorio) *" : "⚠ Falta NC"}
+                className={`${
+                  esNoAcepto
+                    ? `${campoOk} bg-[#F8FAFC] font-bold text-[#475569] cursor-default`
+                    : esAcepto
+                    ? !esNumeroNotaCreditoReal(f.notaCredito)
+                      ? campoRojo
+                      : campoOk
+                    : !esNotaCreditoValida(f.notaCredito)
+                    ? campoRojo
+                    : campoOk
+                } font-cifra`}
+              />
+            </div>
+          )}
+
+          <div className="sm:col-span-2">
+            <Campo
               id="obs2"
-              value={f.observacionInterna}
-              onChange={(e) => setF({ ...f, observacionInterna: e.target.value })}
-              placeholder="Nota interna opcional"
-              className={campo}
-            />
-          </Campo>
+              etiqueta={
+                esRectificacion
+                  ? "Motivo / Observación de Rectificación de glosa (obligatorio) *"
+                  : "Observación general"
+              }
+            >
+              <input
+                id="obs2"
+                value={f.observacionInterna}
+                onChange={(e) => setF({ ...f, observacionInterna: e.target.value })}
+                placeholder={
+                  esRectificacion
+                    ? "Obligatorio escribir el motivo como observación para Rectificación de glosa *"
+                    : "Nota interna opcional"
+                }
+                className={esRectificacion && !f.observacionInterna.trim() ? campoRojo : campoOk}
+              />
+              {esRectificacion && !f.observacionInterna.trim() && (
+                <span className="mt-1 block text-[10.5px] font-bold text-[#DC2626]">
+                  Obligatorio escribir el motivo en observación cuando eliges Rectificación de glosa.
+                </span>
+              )}
+            </Campo>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-[#E2EBF8] px-5 py-3.5">
-          <span className={`text-[11.5px] ${esAcepto && !ncRequeridaOk ? "font-bold text-[#DC2626]" : "text-[#64748B]"}`}>
+          <span
+            className={`text-[11.5px] ${
+              (esAcepto && !ncRequeridaOk) || !obsRectificacionOk
+                ? "font-bold text-[#DC2626]"
+                : "text-[#64748B]"
+            }`}
+          >
             {esAcepto && !ncRequeridaOk
               ? "No se puede guardar hasta colocar el número de la Nota Crédito."
+              : !obsRectificacionOk
+              ? "No se puede guardar Rectificación de glosa sin escribir el motivo en observación."
               : f.empresa.trim() === ""
               ? "Selecciona la ERP en la lista desplegable."
-              : esAcepto
-              ? "Al guardar con Acepto, el seguimiento quedará automáticamente en Tramitada."
               : "Listo para guardar."}
           </span>
           <div className="flex gap-2.5">
@@ -4271,8 +4384,9 @@ function ModalNueva({
                   facturador: homologarPersonaFacturacion(f.facturador),
                   responsableAceptacion: respGuardar,
                   responsableRespuesta: respGuardar,
-                  seguimientoEstado: resolverSeguimientoAutomatico("", f.estado),
-                  valorSeguimiento: null,
+                  seguimientoEstado: resolverSeguimientoAutomatico(f.seguimientoEstado, f.estado),
+                  valorSeguimiento:
+                    f.valorSeguimiento.trim() === "" ? null : soloNumero(f.valorSeguimiento),
                 });
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D58D8] px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-[#1747B0] disabled:cursor-not-allowed disabled:bg-[#C7CDE0]"
