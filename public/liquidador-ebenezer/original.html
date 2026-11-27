@@ -12379,8 +12379,8 @@ function toggleDrill(i, tr){
         + rs.length + ' de ' + ctx.cupo + ' del cupo</span>'
       : '';
     /* Quitar una jornada que no se hizo: botón en la fila del día (27/11/2026) */
-    const _jqMed = (rs[0] && (rs[0]._hoja || rs[0].m)) || '';
-    const _jqFec = String((rs[0]&&rs[0].f)||'').slice(0,10);
+    const _jqMed = (rs[0] && (rs[0]._hoja || rs[0].hoja || rs[0].medico || rs[0].m)) || (window.__medPanel||'');
+    const _jqFec = String(d||'').slice(0,10);
     const _jqK   = _jqMed+'|'+_jqFec;
     const _jqQ   = (window.jqLeer? jqLeer()[_jqK] : null);
     const _jqBtn = (ctx && ctx.tipo==='P' && ctx.v>0 && _jqFec)
