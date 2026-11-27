@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-27 11:26:41",
+  "updatedAt": "2026-11-27 13:26:43",
   "sources": {
     "digiturno": "http://192.168.200.11:6663/SGTWidgetGestureApi",
     "contactCenter": "https://pbx.itmsas.com/sonata/service/v1/api"
@@ -387,49 +387,49 @@
       "steps": {
         "step1": {
           "sede1": {
-            "turnos": 2917,
+            "turnos": 2940,
             "espera": 6.2,
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 5077,
-            "espera": 27.3,
+            "turnos": 5130,
+            "espera": 27.2,
             "atencion": 0.0
           }
         },
         "step2": {
           "sede1": {
-            "turnos": 2917,
+            "turnos": 2940,
             "espera": 0.0,
             "atencion": 4.1
           },
           "sede2": {
-            "turnos": 5077,
+            "turnos": 5130,
             "espera": 0.0,
             "atencion": 1.8
           }
         },
         "step3": {
           "sede1": {
-            "turnos": 1166,
+            "turnos": 1174,
             "espera": 14.4,
             "atencion": 16.7
           },
           "sede2": {
-            "turnos": 3737,
+            "turnos": 3791,
             "espera": 21.8,
             "atencion": 6.3
           }
         },
         "step4": {
           "sede1": {
-            "turnos": 484,
-            "espera": 37.1,
+            "turnos": 493,
+            "espera": 37.9,
             "atencion": 17.2
           },
           "sede2": {
-            "turnos": 1188,
-            "espera": 57.6,
+            "turnos": 1210,
+            "espera": 57.8,
             "atencion": 8.1
           }
         },
@@ -440,19 +440,19 @@
             "atencion": 0.0
           },
           "sede2": {
-            "turnos": 1628,
-            "espera": 21.1,
-            "atencion": 2.2
+            "turnos": 1667,
+            "espera": 21.3,
+            "atencion": 2.1
           }
         }
       },
       "_extraccion": {
-        "cuando": "2026-11-27 11:26",
+        "cuando": "2026-11-27 13:26",
         "desde": "2026-11-01",
         "hasta": "2026-11-27",
-        "registros_leidos": 16197,
-        "turnos_sede1": 4567,
-        "turnos_sede2": 11630
+        "registros_leidos": 16405,
+        "turnos_sede1": 4607,
+        "turnos_sede2": 11798
       }
     }
   ],
@@ -4452,34 +4452,34 @@
           "id": "506012",
           "name": "Mutual Subsidiado",
           "isMutual": true,
-          "recibidas": 7562,
-          "contestadas": 1404,
-          "perdidas": 6158,
+          "recibidas": 7634,
+          "contestadas": 1422,
+          "perdidas": 6212,
           "esperaMin": 11.6,
           "slaPct": 0.34,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 778,
-              "contestadas": 716,
-              "perdidas": 62,
+              "timbradas": 787,
+              "contestadas": 724,
+              "perdidas": 63,
               "duracionMin": 5.1
             },
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 481,
-              "contestadas": 464,
+              "timbradas": 482,
+              "contestadas": 465,
               "perdidas": 17,
               "duracionMin": 6.3
             },
             {
               "id": "1006",
               "name": "Juliam Aguilar",
-              "timbradas": 187,
-              "contestadas": 172,
-              "perdidas": 15,
+              "timbradas": 198,
+              "contestadas": 181,
+              "perdidas": 17,
               "duracionMin": 4.3
             },
             {
@@ -4512,17 +4512,17 @@
           "id": "506013",
           "name": "Mutual Contributivo",
           "isMutual": true,
-          "recibidas": 1847,
-          "contestadas": 759,
-          "perdidas": 1088,
+          "recibidas": 1856,
+          "contestadas": 765,
+          "perdidas": 1091,
           "esperaMin": 8.6,
-          "slaPct": 3.84,
+          "slaPct": 3.93,
           "agents": [
             {
               "id": "1003",
               "name": "Maria Angelica",
-              "timbradas": 453,
-              "contestadas": 430,
+              "timbradas": 457,
+              "contestadas": 434,
               "perdidas": 23,
               "duracionMin": 5.2
             },
@@ -4537,10 +4537,10 @@
             {
               "id": "1006",
               "name": "Juliam Aguilar",
-              "timbradas": 80,
-              "contestadas": 65,
-              "perdidas": 15,
-              "duracionMin": 4.3
+              "timbradas": 83,
+              "contestadas": 67,
+              "perdidas": 16,
+              "duracionMin": 4.2
             },
             {
               "id": "1002",
@@ -4564,17 +4564,17 @@
           "id": "506014",
           "name": "PYP (Particular y Prepagada) y Ecopetrol",
           "isMutual": false,
-          "recibidas": 1050,
-          "contestadas": 970,
+          "recibidas": 1056,
+          "contestadas": 976,
           "perdidas": 80,
           "esperaMin": 0.7,
-          "slaPct": 82.1,
+          "slaPct": 82.01,
           "agents": [
             {
               "id": "1005",
               "name": "Yuranis Castañeda",
-              "timbradas": 528,
-              "contestadas": 451,
+              "timbradas": 532,
+              "contestadas": 455,
               "perdidas": 77,
               "duracionMin": 2.7
             },
@@ -4589,10 +4589,10 @@
             {
               "id": "1018",
               "name": "Karen Tatiana",
-              "timbradas": 232,
-              "contestadas": 199,
+              "timbradas": 233,
+              "contestadas": 200,
               "perdidas": 33,
-              "duracionMin": 4.2
+              "duracionMin": 4.3
             },
             {
               "id": "1003",
@@ -4605,10 +4605,10 @@
             {
               "id": "1006",
               "name": "Juliam Aguilar",
-              "timbradas": 24,
-              "contestadas": 7,
+              "timbradas": 25,
+              "contestadas": 8,
               "perdidas": 17,
-              "duracionMin": 8.3
+              "duracionMin": 7.9
             }
           ]
         },
@@ -4616,11 +4616,11 @@
           "id": "506015",
           "name": "Cirugía Refractiva",
           "isMutual": false,
-          "recibidas": 66,
+          "recibidas": 67,
           "contestadas": 42,
-          "perdidas": 24,
+          "perdidas": 25,
           "esperaMin": 0.6,
-          "slaPct": 60.61,
+          "slaPct": 59.7,
           "agents": [
             {
               "id": "1005",
@@ -4653,24 +4653,24 @@
         {
           "id": "1003",
           "name": "Maria Angelica",
-          "timbradas": 1313,
-          "contestadas": 1210,
-          "perdidas": 103,
+          "timbradas": 1326,
+          "contestadas": 1222,
+          "perdidas": 104,
           "duracionMin": 5.1
         },
         {
           "id": "1018",
           "name": "Karen Tatiana",
-          "timbradas": 983,
-          "contestadas": 915,
+          "timbradas": 985,
+          "contestadas": 917,
           "perdidas": 68,
-          "duracionMin": 5.1
+          "duracionMin": 5.2
         },
         {
           "id": "1005",
           "name": "Yuranis Castañeda",
-          "timbradas": 568,
-          "contestadas": 471,
+          "timbradas": 572,
+          "contestadas": 475,
           "perdidas": 97,
           "duracionMin": 2.7
         },
@@ -4685,9 +4685,9 @@
         {
           "id": "1006",
           "name": "Juliam Aguilar",
-          "timbradas": 291,
-          "contestadas": 244,
-          "perdidas": 47,
+          "timbradas": 306,
+          "contestadas": 256,
+          "perdidas": 50,
           "duracionMin": 4.4
         },
         {
