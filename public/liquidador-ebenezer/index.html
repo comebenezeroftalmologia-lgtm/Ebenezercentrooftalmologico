@@ -8746,7 +8746,7 @@ function liquidarV4(recs, actos, actosAll){
         if(c.jornada){ const d=r.f.slice(0,10); M.jornCons[d]=(M.jornCons[d]||0)+1; }
       } else { const [v,rg]=mPredecir(r.m,r.d,r.sv,r.e+' '+r.ct,r.q,r.t,false); pago=v||0; regla=rg; if(v===null&&rg!=='porcentual') M.hallazgos.add((v4EmpG(r.e+' '+r.ct)==='M'?'[S2]':'[S1]')+'Sin regla: '+r.d.slice(0,38)); }
     }
-    else if(h==='JENNIFER CORREDOR' && /TOPOGRAFIA|SIRIUS/.test(D)){
+    else if(h==='JENNIFER CORREDOR' && /TOPOGRAFIA|SIRIUS/.test(D) && /OJO SECO/.test(mNorm(r.as||''))){   /* solo con OJO SECO en el asunto (norma 27/11/2026) */
       const _kTopo = (((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10);
       if((M._uppTopo=M._uppTopo||new Set()).has(_kTopo)){
         pago=0; regla='Segunda topografía – Sirius / Ojo Seco del mismo paciente ese día: se paga por paciente';
@@ -10714,7 +10714,7 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
     if(!mHojaDe(_m)){
       const _d = (r.detalle||'')+' '+(r.servicio||'');
       if(/CAMPO VISUAL/i.test(_d)){ _m = 'ANA ALVAREZ'; _lect = true; }
-      else if(/TOPOGRAFIA.*(SIRIUS|OJO SECO)|SIRIUS|OJO SECO.*TOPOGRAFIA/i.test(_d+' '+(r.asunto||''))){ _m = 'JENNIFER CORREDOR'; _lect = true; }
+      else if(/OJO SECO/i.test(String(r.asunto||''))){ _m = 'JENNIFER CORREDOR'; _lect = true; }   /* Norma del administrador (27/11/2026): SOLO lo que diga OJO SECO en el ASUNTO se toma como ojo seco. Una topografía corneal, Pentacam o Sirius refractiva sin ese asunto NO es lectura de ojo seco. */
       else if(/TOMOGRAFIA OPTICA|ANGIOTOMOGRAFIA/i.test(_d)){
         const _cR = ((r.paciente||'').match(/(\d{5,12})/)||[])[1] || mNorm(r.paciente||'');
         const _esIV = (_cR && _pacIVCalc.has(_cR)) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(_d+' '+(r.asunto||''));
@@ -22474,7 +22474,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
    actualizar sin perder nada de lo guardado. */
 (function(){
   if(window.__verSello) return; window.__verSello = true;
-  var VER = '2026-11-27 · 11';
+  var VER = '2026-11-27 · 12';
   window.LIQ_VER = VER;
   function poner(){
     if(document.getElementById('verSello')) return true;
