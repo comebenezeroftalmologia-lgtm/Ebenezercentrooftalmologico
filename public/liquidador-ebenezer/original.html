@@ -21415,7 +21415,18 @@ const FICHA_FIEL = {"DIANA CIFUENTES":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTRO
       var nFil = Object.keys(fj).reduce(function(a,k){return a+fj[k].length;},0);
       if(nMed < 20 || nFil < 150){ alert('Ese Excel no parece la ficha técnica (leí '+nMed+' médicos). No se aplicó.'); return; }
       window.__fichaLive = fj;
-      try{ localStorage.setItem('eb_ficha_viva', JSON.stringify(fj)); }catch(e){}
+      try{ localStorage.setItem('eb_ficha_viva', JSON.stringify(fj)); localStorage.setItem('eb_ficha_viva_t', String(Date.now())); }catch(e){}
+      /* La ficha subida se comparte por la nube (27/11/2026): queda guardada en Firebase y
+         los demás computadores la toman solos al entrar — antes vivía solo en el navegador
+         que la subió y a contabilidad le salía otra liquidación. */
+      try{
+        if(window.NUBE && NUBE.activa && NUBE.db && window.FB && FB.setDoc){
+          FB.setDoc(FB.doc(NUBE.db,'config','ficha_viva'),
+            {json: JSON.stringify(fj), t: Date.now(), por: (typeof USUARIO!=='undefined'&&USUARIO&&USUARIO.nombre)||''})
+            .then(function(){ toast('Ficha técnica guardada en la nube: todos los computadores la usan.'); })
+            .catch(function(){ toast('Ojo: la ficha quedó solo en este computador (no se pudo guardar en la nube).'); });
+        }
+      }catch(e){}
       toast('Ficha técnica leída: '+nMed+' médicos, '+nFil+' valores. El motor ya la usa.');
       if(typeof construirFichas==='function') construirFichas();
       var b=document.getElementById('btnCalc'); if(b && !b.disabled) b.click();
@@ -21432,6 +21443,29 @@ const FICHA_FIEL = {"DIANA CIFUENTES":[["CONSULTA EXTERNA","PRIMERA VEZ Y CONTRO
 
   /* al arrancar, si ya habían subido una ficha antes, se vuelve a usar */
   try{ var g=localStorage.getItem('eb_ficha_viva'); if(g){ var o=JSON.parse(g); if(o && Object.keys(o).length>=20) window.__fichaLive=o; } }catch(e){}
+  /* …y apenas haya sesión, se toma la ficha guardada en la nube (si es más nueva), para que
+     todos los computadores liquiden con la misma ficha (27/11/2026). */
+  (function(){
+    var fvInt = setInterval(function(){
+      try{
+        if(!(window.NUBE && NUBE.activa && NUBE.db && window.FB && FB.getDoc)) return;
+        clearInterval(fvInt);
+        FB.getDoc(FB.doc(NUBE.db,'config','ficha_viva')).then(function(sn){
+          if(!sn || !sn.exists || !sn.exists()) return;
+          var d=sn.data()||{}; if(!d.json) return;
+          var loc=0; try{ loc=Number(localStorage.getItem('eb_ficha_viva_t')||0); }catch(e){}
+          if(window.__fichaLive && Number(d.t||0)<=loc) return;
+          var o=JSON.parse(d.json);
+          if(o && Object.keys(o).length>=20){
+            window.__fichaLive=o;
+            try{ localStorage.setItem('eb_ficha_viva', d.json); localStorage.setItem('eb_ficha_viva_t', String(d.t||Date.now())); }catch(e){}
+            try{ if(typeof construirFichas==='function') construirFichas(); }catch(e){}
+            try{ toast('Ficha técnica tomada de la nube: este computador ya liquida con la misma ficha de todos.'); }catch(e){}
+          }
+        }).catch(function(){});
+      }catch(e){}
+    }, 1500);
+  })();
 
   /* botón para subir la ficha, dentro del panel «Fichas técnicas» */
   function ponerBoton(){
@@ -22440,7 +22474,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
    actualizar sin perder nada de lo guardado. */
 (function(){
   if(window.__verSello) return; window.__verSello = true;
-  var VER = '2026-11-27 · 10';
+  var VER = '2026-11-27 · 11';
   window.LIQ_VER = VER;
   function poner(){
     if(document.getElementById('verSello')) return true;
