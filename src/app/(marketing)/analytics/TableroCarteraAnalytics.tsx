@@ -400,56 +400,10 @@ export default function TableroCarteraAnalytics() {
   const [cortesPyp, setCortesPyp] = useState<CorteSismaBack[]>(
     carteraInitialData.sismaBack.cortes.PYP
   );
-  const [anuladas, setAnuladas] = useState<AnuladaRow[]>(() =>
-    (carteraInitialData.anuladas as AnuladaRow[]).map((r) => ({
-      ...r,
-      responsable: normalizarResponsableReal(r.responsable, r.empresa),
-    }))
-  );
-  const [legalizadas, setLegalizadas] = useState<AnuladaRow[]>(() =>
-    (carteraInitialData.legalizadas as AnuladaRow[]).map((r) => ({
-      ...r,
-      responsable: normalizarResponsableReal(r.responsable, r.empresa),
-    }))
-  );
-  const [glosas, setGlosas] = useState<GlosaRow[]>(() =>
-    (carteraInitialData.glosas as GlosaRow[]).map((r) => {
-      const fUnif = homologarPersonaFacturacion(r.facturador);
-      const rUnif = homologarPersonaFacturacion(r.responsableRespuesta || r.responsableAceptacion);
-      const estNorm = normalizarEstadoDecision(r.estado || r.subtabla, r.valorAceptado, r.notaCredito);
-      const cc = resolverClaseYCausal(r.tipoGlosa, r.motivoCodigo);
-      const vFact = Number(r.valorFacturado || r.valorFactura || r.valorRadicado || 0);
-      const vGlos = Number(r.valorGlosado || 0);
-      const vAcepFinal = resolverValorAceptadoSegunRegla({
-        estado: estNorm,
-        tipoGlosa: cc.tipoGlosa,
-        valorFacturado: vFact,
-        valorGlosado: vGlos,
-        valorAceptadoPrevio: r.valorAceptado ?? null,
-      });
-      return {
-        ...r,
-        estado: estNorm,
-        tipoGlosa: cc.tipoGlosa,
-        motivoCodigo: cc.motivoCodigo,
-        valorAceptado: vAcepFinal,
-        facturador: fUnif,
-        responsableAceptacion: rUnif,
-        responsableRespuesta: rUnif,
-        notaCredito: resolverNotaCreditoCondicional(
-          r.notaCredito,
-          vAcepFinal,
-          estNorm
-        ),
-      };
-    })
-  );
-  const [pendientes, setPendientes] = useState<PendienteRow[]>(() =>
-    (carteraInitialData.pendientes as PendienteRow[]).map((r) => ({
-      ...r,
-      responsable: normalizarResponsableReal(r.responsable, r.empresa),
-    }))
-  );
+  const [anuladas, setAnuladas] = useState<AnuladaRow[]>([]);
+  const [legalizadas, setLegalizadas] = useState<AnuladaRow[]>([]);
+  const [glosas, setGlosas] = useState<GlosaRow[]>([]);
+  const [pendientes, setPendientes] = useState<PendienteRow[]>([]);
 
   const [modalidadSisma, setModalidadSisma] = useState<"TODAS" | "PYP">("TODAS");
   const [indiceCorteActivo, setIndiceCorteActivo] = useState<number>(carteraInitialData.sismaBack.cortes.TODAS.length - 1);
@@ -796,7 +750,7 @@ export default function TableroCarteraAnalytics() {
         }
         return;
       }
-      if (Array.isArray(json.facturasBase) && json.facturasBase.length > 0) {
+      if (Array.isArray(json.facturasBase)) {
         setFacturasBaseDb(
           json.facturasBase.map((r: AnuladaRow) => ({
             ...r,
@@ -804,7 +758,7 @@ export default function TableroCarteraAnalytics() {
           }))
         );
       }
-      if (Array.isArray(json.anuladas) && json.anuladas.length > 0) {
+      if (Array.isArray(json.anuladas)) {
         setAnuladas(
           json.anuladas.map((r: AnuladaRow) => ({
             ...r,
@@ -812,7 +766,7 @@ export default function TableroCarteraAnalytics() {
           }))
         );
       }
-      if (Array.isArray(json.legalizadas) && json.legalizadas.length > 0) {
+      if (Array.isArray(json.legalizadas)) {
         setLegalizadas(
           json.legalizadas.map((r: AnuladaRow) => ({
             ...r,
@@ -820,7 +774,7 @@ export default function TableroCarteraAnalytics() {
           }))
         );
       }
-      if (Array.isArray(json.glosas) && json.glosas.length > 0) {
+      if (Array.isArray(json.glosas)) {
         setGlosas(
           json.glosas.map((r: GlosaRow) => {
             const fUnif = homologarPersonaFacturacion(r.facturador);
@@ -854,7 +808,7 @@ export default function TableroCarteraAnalytics() {
           })
         );
       }
-      if (Array.isArray(json.pendientes) && json.pendientes.length > 0) {
+      if (Array.isArray(json.pendientes)) {
         setPendientes(
           json.pendientes.map((r: PendienteRow) => ({
             ...r,
@@ -867,11 +821,7 @@ export default function TableroCarteraAnalytics() {
         (json.legalizadas?.length ?? 0) === 0 &&
         (json.glosas?.length ?? 0) === 0 &&
         (json.pendientes?.length ?? 0) === 0;
-      if (esMontaje && vacio) {
-        mostrarMensaje(
-          "La base aun no tiene registros cargados. Lo que ves es la foto del archivo; lo que registres si se guarda."
-        );
-      }
+      void vacio;
     } catch {
       if (!sigueVigente || sigueVigente()) {
         mostrarMensaje(
@@ -8894,8 +8844,8 @@ export default function TableroCarteraAnalytics() {
                         Consolidado al cierre del día anterior de glosas tramitadas, en proceso de pago, pagos, levantamientos y rectificaciones de glosa.
                       </p>
                     </div>
-                    <span className="rounded-full border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-0.5 text-[11px] font-bold text-[#B91C1C]">
-                      En trámite (pendientes): {sinSegCant} ({formatMillones(sinSegMonto)})
+                    <span className="rounded-full border border-[#BAE6FD] bg-[#F0F9FF] px-2.5 py-0.5 text-[11px] font-bold text-[#0369A1]">
+                      En trámite: {sinSegCant} ({formatMillones(sinSegMonto)})
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2.5">

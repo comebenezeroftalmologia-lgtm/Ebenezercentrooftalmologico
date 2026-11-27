@@ -51,6 +51,7 @@ export function ModalImportarCarteraExcel({
   const [facturasBdRemotas, setFacturasBdRemotas] = useState<string[]>([]);
   const [verTodasModificadas, setVerTodasModificadas] = useState<boolean>(false);
   const [pedirConfirmacionModificar, setPedirConfirmacionModificar] = useState<boolean>(false);
+  const [reemplazarTodo, setReemplazarTodo] = useState<boolean>(false);
 
   useEffect(() => {
     let activo = true;
@@ -266,6 +267,7 @@ export function ModalImportarCarteraExcel({
           entidad: "importar-excel",
           accion: "IMPORTAR",
           archivoNombre: archivoNombre || "carga_excel.xlsx",
+          reemplazarTodo,
           glosas: payloadGlosas,
           pendientes: payloadPendientes,
           anuladas: payloadAnuladas,
@@ -300,7 +302,7 @@ export function ModalImportarCarteraExcel({
 
   const solicitarConfirmacionOGuardar = () => {
     if (resumenTotales.total === 0) return;
-    if (analisisFacturas.modificadas.length > 0) {
+    if (reemplazarTodo || analisisFacturas.modificadas.length > 0) {
       setPedirConfirmacionModificar(true);
       return;
     }
@@ -502,8 +504,29 @@ export function ModalImportarCarteraExcel({
                 })}
               </div>
 
+              {/* OPCIÓN PARA LIMPIAR LA BASE ACTUAL Y SUBIR EL EXCEL DESDE CERO */}
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#DCE8FA] bg-[#F8FAFC] p-3 text-[12px] transition hover:border-[#1D58D8]">
+                <input
+                  type="checkbox"
+                  checked={reemplazarTodo}
+                  onChange={(e) => {
+                    setReemplazarTodo(e.target.checked);
+                    setPedirConfirmacionModificar(false);
+                  }}
+                  className="mt-0.5 h-4 w-4 accent-[#DC2626]"
+                />
+                <div>
+                  <span className="font-extrabold text-[#0E245E]">
+                    Limpiar registros actuales y reemplazar todo con este Excel
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-[#64748B]">
+                    Úsalo cuando quieras borrar las glosas/facturas anteriores y dejar únicamente lo de este archivo (conserva intactos ERP, NIT, responsables y causales).
+                  </span>
+                </div>
+              </label>
+
               {/* AVISO EN PANTALLA DE FACTURAS EXISTENTES QUE SE VAN A MODIFICAR (LAS NUEVAS NO SALEN EN LA ALERTA) */}
-              {analisisFacturas.modificadas.length > 0 && (
+              {!reemplazarTodo && analisisFacturas.modificadas.length > 0 && (
                 <div className="rounded-xl border border-[#F59E0B] bg-[#FFFBEB] p-3.5 text-[12px] text-[#92400E]">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-start gap-2">
@@ -748,31 +771,38 @@ export function ModalImportarCarteraExcel({
           )}
         </div>
 
-        {/* CUADRO DE CONFIRMACIÓN EN PANTALLA CUANDO HAY FACTURAS EXISTENTES A MODIFICAR */}
-        {pedirConfirmacionModificar && analisisFacturas.modificadas.length > 0 && (
+        {/* CUADRO DE CONFIRMACIÓN EN PANTALLA CUANDO SE VA A REEMPLAZAR TODO O MODIFICAR FACTURAS EXISTENTES */}
+        {pedirConfirmacionModificar && (reemplazarTodo || analisisFacturas.modificadas.length > 0) && (
           <div className="mx-5 mb-4 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] p-4 shadow-sm">
             <div className="flex items-start gap-2.5">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[#DC2626]" />
               <div className="flex-1">
                 <p className="text-[13.5px] font-extrabold text-[#991B1B]">
-                  Confirmación requerida: se van a modificar {analisisFacturas.modificadas.length}{" "}
-                  {analisisFacturas.modificadas.length === 1 ? "factura existente" : "facturas existentes"}
+                  {reemplazarTodo
+                    ? `Confirmación requerida: se limpiará la base actual y se cargarán ${resumenTotales.total} registros nuevos`
+                    : `Confirmación requerida: se van a modificar ${analisisFacturas.modificadas.length} ${
+                        analisisFacturas.modificadas.length === 1 ? "factura existente" : "facturas existentes"
+                      }`}
                 </p>
                 <p className="mt-1 text-[11.5px] text-[#7F1D1D]">
-                  {analisisFacturas.nuevas.length > 0
+                  {reemplazarTodo
+                    ? "Todos los registros anteriores de glosas, pendientes y facturas se eliminarán antes de cargar este Excel (los catálogos de ERP, NIT y responsables se conservan intactos)."
+                    : analisisFacturas.nuevas.length > 0
                     ? `Las ${analisisFacturas.nuevas.length} facturas nuevas entran directo sin modificar nada previo. Confirma que deseas actualizar los datos de las siguientes facturas ya registradas:`
                     : "Confirma que deseas sobrescribir y actualizar con este Excel los datos de las siguientes facturas ya registradas:"}
                 </p>
-                <div className="mt-2.5 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-[#FCA5A5] bg-white p-2.5">
-                  {analisisFacturas.modificadas.map((fac) => (
-                    <span
-                      key={fac}
-                      className="rounded border border-[#FECACA] bg-[#FEF2F2] px-2 py-0.5 font-mono text-[11px] font-bold text-[#991B1B]"
-                    >
-                      {fac}
-                    </span>
-                  ))}
-                </div>
+                {!reemplazarTodo && analisisFacturas.modificadas.length > 0 && (
+                  <div className="mt-2.5 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-[#FCA5A5] bg-white p-2.5">
+                    {analisisFacturas.modificadas.map((fac) => (
+                      <span
+                        key={fac}
+                        className="rounded border border-[#FECACA] bg-[#FEF2F2] px-2 py-0.5 font-mono text-[11px] font-bold text-[#991B1B]"
+                      >
+                        {fac}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-3 flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
@@ -788,8 +818,11 @@ export function ModalImportarCarteraExcel({
                     className="inline-flex items-center gap-1.5 rounded-lg bg-[#DC2626] px-4 py-1.5 text-[12px] font-extrabold text-white hover:bg-[#B91C1C] cursor-pointer"
                   >
                     {subiendo && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    Sí, modificar {analisisFacturas.modificadas.length}{" "}
-                    {analisisFacturas.modificadas.length === 1 ? "factura" : "facturas"} y sincronizar
+                    {reemplazarTodo
+                      ? "Sí, limpiar anteriores y subir este Excel"
+                      : `Sí, modificar ${analisisFacturas.modificadas.length} ${
+                          analisisFacturas.modificadas.length === 1 ? "factura" : "facturas"
+                        } y sincronizar`}
                   </button>
                 </div>
               </div>

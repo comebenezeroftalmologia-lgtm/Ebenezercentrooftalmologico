@@ -145,7 +145,35 @@ async function resolverCodigoParaBD(
   return null;
 }
 
+const MARCA_RESET_INICIAL = "__EBENEZER_RESET_20261127__";
+
+async function limpiarRegistrosOperativosCartera(db: ReturnType<typeof createServiceClient>) {
+  await db.from("cf_glosas").delete().not("id", "is", null);
+  await db.from("cf_pendientes_facturar").delete().not("id", "is", null);
+  await db.from("cf_facturas").update({ reemplaza_a_id: null }).not("reemplaza_a_id", "is", null);
+  await db.from("cf_facturas").delete().not("id", "is", null);
+}
+
 async function sanearCatalogosEnBD(db: ReturnType<typeof createServiceClient>) {
+  try {
+    const { data: marcaYa } = await db
+      .from("cf_empresas")
+      .select("id")
+      .eq("nombre", MARCA_RESET_INICIAL)
+      .maybeSingle();
+    if (!marcaYa?.id) {
+      const insMarca = await db
+        .from("cf_empresas")
+        .insert({ nombre: MARCA_RESET_INICIAL, activo: false })
+        .select("id")
+        .maybeSingle();
+      if (insMarca.data?.id && !insMarca.error) {
+        await limpiarRegistrosOperativosCartera(db);
+      }
+    }
+  } catch {
+    // Continúa normal si ya existía la marca.
+  }
   try {
     const [causRes, respRes, empRes] = await Promise.all([
       db.from("cf_causales").select("codigo"),
@@ -218,7 +246,7 @@ async function sanearCatalogosEnBD(db: ReturnType<typeof createServiceClient>) {
     const porCanonEmp = new Map<string, { id: string; nombre: string; activo: boolean }[]>();
     for (const e of listaEmp) {
       const limpioE = limpiarUtf8(String(e.nombre || "")).trim();
-      if (!limpioE) continue;
+      if (!limpioE || limpioE.startsWith("__EBENEZER_")) continue;
       const canonE = normalizarEmpresaNitUnificada(limpioE).nombre || limpioE.toUpperCase();
       const arrE = porCanonEmp.get(canonE) || [];
       arrE.push({ ...e, nombre: limpioE });
@@ -889,6 +917,7 @@ export async function POST(request: Request) {
     entidad?: string;
     accion?: string;
     archivoNombre?: string;
+    reemplazarTodo?: boolean;
     fila?: Fila;
     filas?: Fila[];
     glosas?: Fila[];
@@ -905,7 +934,10 @@ export async function POST(request: Request) {
   const fila: Fila = (body.fila && !Array.isArray(body.fila) ? body.fila : {}) as Fila;
   if (
     !entidad ||
-    (entidad !== "importar-excel" && !body.fila && !Array.isArray(body.filas))
+    (entidad !== "importar-excel" &&
+      entidad !== "limpiar-todo" &&
+      !body.fila &&
+      !Array.isArray(body.filas))
   ) {
     return NextResponse.json({ ok: false, error: "Faltan entidad o fila" }, { status: 400 });
   }
@@ -916,6 +948,97 @@ export async function POST(request: Request) {
   const unombre = user.nombreCompleto;
 
   try {
+    // ---- vaciar toda la base operativa para volver a subir Excel limpio ----
+    if (entidad === "limpiar-todo") {
+      await limpiarRegistrosOperativosCartera(db);
+      await anotar(
+        db,
+        "glosa",
+        "00000000-0000-0000-0000-000000000000",
+        null,
+        "EDITAR",
+        { operacion: "LIMPIAR_TODO_CARTERA" },
+        uid,
+        unombre
+      );
+      return NextResponse.json({
+        ok: true,
+        mensaje: "Todos los registros de glosas, pendientes y facturas fueron eliminados.",
+      });
+    }
+
+    // ---- eliminar un registro individual (glosa, anulada/legalizada o pendiente) ----
+    if (accion === "ELIMINAR") {
+      const idBorrar = strLimpio(fila.id).trim();
+      if (!idBorrar) {
+        return NextResponse.json(
+          { ok: false, error: "Falta el identificador del registro a eliminar" },
+          { status: 400 }
+        );
+      }
+      if (entidad === "glosas") {
+        const { data: gPrev } = await db
+          .from("cf_glosas")
+          .select("id, factura_id")
+          .eq("id", idBorrar)
+          .maybeSingle();
+        const { error: errDelG } = await db.from("cf_glosas").delete().eq("id", idBorrar);
+        if (errDelG) throw new Error(errDelG.message);
+
+        const fIdPadre = gPrev?.factura_id ? String(gPrev.factura_id) : "";
+        if (fIdPadre) {
+          const [{ count: cantGlosasRest }, { count: cantPendRest }, { data: factPadre }] =
+            await Promise.all([
+              db.from("cf_glosas").select("id", { count: "exact", head: true }).eq("factura_id", fIdPadre),
+              db
+                .from("cf_pendientes_facturar")
+                .select("id", { count: "exact", head: true })
+                .eq("factura_id", fIdPadre),
+              db.from("cf_facturas").select("id, numero, estado").eq("id", fIdPadre).maybeSingle(),
+            ]);
+          const estPadre = String(factPadre?.estado || "").toUpperCase();
+          const esAnuladaOLegal = ["ANULADA", "REEMPLAZADA", "PENDIENTE_REEMPLAZO", "LEGALIZADA"].includes(
+            estPadre
+          );
+          if ((cantGlosasRest ?? 0) === 0 && (cantPendRest ?? 0) === 0 && !esAnuladaOLegal) {
+            await db.from("cf_facturas").update({ reemplaza_a_id: null }).eq("reemplaza_a_id", fIdPadre);
+            await db.from("cf_facturas").delete().eq("id", fIdPadre);
+          }
+          await anotar(
+            db,
+            "glosa",
+            idBorrar,
+            factPadre?.numero ? String(factPadre.numero) : null,
+            "EDITAR",
+            { operacion: "ELIMINAR_GLOSA" },
+            uid,
+            unombre
+          );
+        }
+        return NextResponse.json({ ok: true, eliminado: idBorrar });
+      }
+
+      if (entidad === "anuladas" || entidad === "legalizadas") {
+        await db.from("cf_facturas").update({ reemplaza_a_id: null }).eq("reemplaza_a_id", idBorrar);
+        await db.from("cf_pendientes_facturar").update({ factura_id: null }).eq("factura_id", idBorrar);
+        await db.from("cf_glosas").delete().eq("factura_id", idBorrar);
+        const { error: errDelF } = await db.from("cf_facturas").delete().eq("id", idBorrar);
+        if (errDelF) throw new Error(errDelF.message);
+        return NextResponse.json({ ok: true, eliminado: idBorrar });
+      }
+
+      if (entidad === "pendientes") {
+        const { error: errDelP } = await db.from("cf_pendientes_facturar").delete().eq("id", idBorrar);
+        if (errDelP) throw new Error(errDelP.message);
+        return NextResponse.json({ ok: true, eliminado: idBorrar });
+      }
+
+      return NextResponse.json(
+        { ok: false, error: "No se soporta eliminar en entidad: " + entidad },
+        { status: 400 }
+      );
+    }
+
     // ---- facturas (pestañas anuladas y legalizadas) ----
     if (entidad === "anuladas" || entidad === "legalizadas") {
       const numero = String(fila.factura || "").trim().toUpperCase().replace(/\s+/g, "");
@@ -1345,6 +1468,9 @@ export async function POST(request: Request) {
 
     // ---- importar libro Excel completo (.xlsx / .csv) con autodetección y upsert sin duplicados ----
     if (entidad === "importar-excel") {
+      if (body.reemplazarTodo) {
+        await limpiarRegistrosOperativosCartera(db);
+      }
       const listaGlosas: Fila[] = Array.isArray(body.glosas) ? body.glosas : [];
       const listaPendientes: Fila[] = Array.isArray(body.pendientes) ? body.pendientes : [];
       const listaAnuladas: Fila[] = Array.isArray(body.anuladas) ? body.anuladas : [];

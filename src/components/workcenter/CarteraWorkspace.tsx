@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Tags,
+  Trash2,
   Upload,
   Users,
   X,
@@ -286,7 +287,7 @@ function listarPendientesFila(
   if (vf <= 0) faltan.push("Valor facturado");
   if (vg <= 0) faltan.push("Valor glosado");
   if (vAcep === null) faltan.push("Valor aceptado");
-  if (seg === "") faltan.push("Seguimiento");
+  if (est === "PENDIENTE" && seg === "") faltan.push("Seguimiento");
   if (seg === "RATIFICACION_GLOSA" && !(g.observacionInterna || "").trim()) {
     faltan.push("Motivo/Obs. rectificación");
   }
@@ -367,6 +368,14 @@ export function CarteraWorkspace({
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [clasificarAbierto, setClasificarAbierto] = useState(false);
   const [catalogosAbierto, setCatalogosAbierto] = useState(false);
+  const [confirmarVaciarTodo, setConfirmarVaciarTodo] = useState(false);
+  const [vaciandoTodo, setVaciandoTodo] = useState(false);
+  const [eliminarItem, setEliminarItem] = useState<{
+    id: string;
+    entidad: "glosas" | "anuladas" | "pendientes";
+    titulo: string;
+    detalle: string;
+  } | null>(null);
 
   const traer = useCallback(async () => {
     setCargando(true);
@@ -490,8 +499,31 @@ export function CarteraWorkspace({
     window.setTimeout(() => setAviso(""), 4200);
   }, []);
 
+  const ejecutarVaciarTodo = async () => {
+    setVaciandoTodo(true);
+    try {
+      const r = await fetch("/api/cartera/registros", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entidad: "limpiar-todo", accion: "ELIMINAR_TODO" }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) {
+        avisar("NO SE PUDO LIMPIAR: " + (j?.error || r.statusText));
+        return;
+      }
+      setConfirmarVaciarTodo(false);
+      await traer();
+      avisar("Base limpiada por completo (0 registros). Ya puedes subir nuevamente tu Excel.");
+    } catch {
+      avisar("Error de conexión al intentar limpiar la base.");
+    } finally {
+      setVaciandoTodo(false);
+    }
+  };
+
   const guardar = useCallback(
-    async (fila: Record<string, unknown>, accion: "CREAR" | "EDITAR", entidad = "glosas") => {
+    async (fila: Record<string, unknown>, accion: "CREAR" | "EDITAR" | "ELIMINAR", entidad = "glosas") => {
       const marca = String(fila.id ?? "nueva");
       setGuardando(marca);
       try {
@@ -984,6 +1016,16 @@ export function CarteraWorkspace({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {(glosas.length > 0 || anuladas.length > 0 || pendientes.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setConfirmarVaciarTodo(true)}
+              title="Quitar todos los registros actuales para volver a subir el Excel limpio"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-3 py-1.5 text-[12.5px] font-bold text-[#B91C1C] transition hover:bg-[#FEE2E2]"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Vaciar base ({glosas.length + anuladas.length + pendientes.length})
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setAnularDe("")}
@@ -1455,20 +1497,21 @@ export function CarteraWorkspace({
                   <th className="py-2 pr-3">Nombres / Responsable</th>
                   <th className="py-2 pr-3 text-right">Valor facturado</th>
                   <th className="py-2 pr-3">Motivo / Reemplazo</th>
-                  <th className="py-2">Estado</th>
+                  <th className="py-2 pr-2">Estado</th>
+                  <th className="w-8 py-2 text-right">Borrar</th>
                 </tr>
               </thead>
               <tbody>
                 {cargando && (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={10} className="py-8 text-center text-[#94A3B8]">
                       <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" /> Cargando…
                     </td>
                   </tr>
                 )}
                 {!cargando && anuladasVisibles.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={10} className="py-8 text-center text-[#94A3B8]">
                       No hay facturas anuladas que coincidan con el filtro actual.
                     </td>
                   </tr>
@@ -1537,10 +1580,27 @@ export function CarteraWorkspace({
                           </span>
                         )}
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 pr-2">
                         <span className="rounded-pill border border-[#FECDD3] bg-[#FFF1F2] px-2 py-0.5 text-[10.5px] font-semibold text-[#BE123C]">
                           {a.estadoGestion || "ANULADA"}
                         </span>
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEliminarItem({
+                              id: a.id,
+                              entidad: "anuladas",
+                              titulo: `Factura anulada ${a.factura}`,
+                              detalle: `${cr.empresaHomologada || a.empresa || "Sin ERP"} · ${pesos(a.valorRadicado)}`,
+                            })
+                          }
+                          title={`Eliminar registro de ${a.factura}`}
+                          className="rounded p-1 text-[#94A3B8] transition hover:bg-[#FEE2E2] hover:text-[#DC2626]"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1574,13 +1634,14 @@ export function CarteraWorkspace({
                   <th className="py-2 pr-3">Nombres (Paciente · Médico · Resp.)</th>
                   <th className="py-2 pr-3">Servicio / CUPS</th>
                   <th className="py-2 pr-3 text-right">Valor</th>
-                  <th className="py-2">Estado</th>
+                  <th className="py-2 pr-2">Estado</th>
+                  <th className="w-8 py-2 text-right">Borrar</th>
                 </tr>
               </thead>
               <tbody>
                 {pendientesVisibles.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-[#94A3B8]">
+                    <td colSpan={10} className="py-8 text-center text-[#94A3B8]">
                       No hay servicios clínicos pendientes que coincidan con el filtro.
                     </td>
                   </tr>
@@ -1666,7 +1727,7 @@ export function CarteraWorkspace({
                       <td className="py-2 pr-3 text-right font-cifra font-semibold text-[#0E245E]">
                         {pesos(p.valorServicio)}
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 pr-2">
                         <span
                           className={`rounded-pill border px-2 py-0.5 text-[10.5px] font-semibold ${
                             p.estado === "FACTURADO"
@@ -1676,6 +1737,23 @@ export function CarteraWorkspace({
                         >
                           {p.estado}
                         </span>
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEliminarItem({
+                              id: p.id,
+                              entidad: "pendientes",
+                              titulo: `Servicio pendiente ${p.facturaAsociada || p.cups || ""}`.trim(),
+                              detalle: `${p.pacienteNombre || "Sin paciente"} · ${pesos(p.valorServicio)}`,
+                            })
+                          }
+                          title="Eliminar este servicio pendiente"
+                          className="rounded p-1 text-[#94A3B8] transition hover:bg-[#FEE2E2] hover:text-[#DC2626]"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1750,7 +1828,7 @@ export function CarteraWorkspace({
                   <th className="py-2 pr-3">Seguimiento</th>
                   <th className="py-2 pr-3">Estado</th>
                   <th className="py-2 pr-3">Nota crédito</th>
-                  <th className="w-6 py-2" />
+                  <th className="w-12 py-2 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -1782,6 +1860,15 @@ export function CarteraWorkspace({
                       avisar={avisar}
                       onGuardar={guardar}
                       onFicha={() => setFichaDe(g.factura)}
+                      onEliminar={() => {
+                        const empI = normalizarEmpresaYNit(g.empresa || g.empresaOriginal, g.nit);
+                        setEliminarItem({
+                          id: g.id,
+                          entidad: "glosas",
+                          titulo: `Glosa de factura ${g.factura}`,
+                          detalle: `${empI.nombre || g.empresa || "Sin ERP"} · Glosado ${pesos(g.valorGlosado || 0)}`,
+                        });
+                      }}
                     />
                   );
                 })}
@@ -1809,8 +1896,115 @@ export function CarteraWorkspace({
             setFichaDe(null);
             setAnularDe(num);
           }}
+          onEliminarGlosa={(g) => {
+            const empI = normalizarEmpresaYNit(g.empresa || g.empresaOriginal, g.nit);
+            setEliminarItem({
+              id: g.id,
+              entidad: "glosas",
+              titulo: `Glosa de factura ${g.factura}`,
+              detalle: `${empI.nombre || g.empresa || "Sin ERP"} · Glosado ${pesos(g.valorGlosado || 0)}`,
+            });
+          }}
           onCerrar={() => setFichaDe(null)}
         />
+      )}
+
+      {eliminarItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E245E]/45 p-4"
+          role="dialog"
+          aria-label="Confirmar eliminación de registro"
+        >
+          <div className="w-full max-w-[440px] rounded-2xl border border-[#FECACA] bg-white p-5 shadow-[0_24px_60px_rgba(14,36,94,0.22)]">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-[#FEE2E2] p-2 text-[#DC2626]">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-extrabold text-[#0E245E]">
+                  ¿Eliminar {eliminarItem.titulo}?
+                </p>
+                <p className="mt-1 text-[12px] font-semibold text-[#47597A]">
+                  {eliminarItem.detalle}
+                </p>
+                <p className="mt-1.5 text-[11.5px] text-[#64748B]">
+                  Este registro se borrará permanentemente de la base de datos.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEliminarItem(null)}
+                className="rounded-lg border border-[#DCE8FA] px-3.5 py-1.5 text-[12px] font-semibold text-[#47597A] hover:bg-[#F8FAFC]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={guardando === eliminarItem.id}
+                onClick={async () => {
+                  const item = eliminarItem;
+                  const ok = await guardar({ id: item.id }, "ELIMINAR", item.entidad);
+                  if (ok) {
+                    setEliminarItem(null);
+                    setFichaDe(null);
+                    avisar(`${item.titulo} eliminado correctamente.`);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#DC2626] px-4 py-1.5 text-[12px] font-bold text-white hover:bg-[#B91C1C] disabled:opacity-60"
+              >
+                {guardando === eliminarItem.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Sí, eliminar registro
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmarVaciarTodo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E245E]/45 p-4"
+          role="dialog"
+          aria-label="Confirmar limpieza completa de registros"
+        >
+          <div className="w-full max-w-[480px] rounded-2xl border-2 border-[#DC2626] bg-white p-5 shadow-[0_24px_60px_rgba(14,36,94,0.24)]">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-[#FEE2E2] p-2 text-[#DC2626]">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-extrabold text-[#991B1B]">
+                  ¿Vaciar todos los registros actuales para volver a subir la información?
+                </p>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-[#47597A]">
+                  Se eliminarán las <strong>{glosas.length} glosas</strong>
+                  {anuladas.length > 0 ? `, ${anuladas.length} anuladas` : ""}
+                  {pendientes.length > 0 ? ` y ${pendientes.length} pendientes` : ""} actuales para dejar el tablero en 0. Los catálogos de <strong>ERP con NIT</strong>, <strong>Facturadores / Responsables</strong> y <strong>Causales (TA–FA)</strong> se conservan intactos.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={vaciandoTodo}
+                onClick={() => setConfirmarVaciarTodo(false)}
+                className="rounded-lg border border-[#DCE8FA] px-3.5 py-1.5 text-[12px] font-semibold text-[#47597A] hover:bg-[#F8FAFC]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={vaciandoTodo}
+                onClick={() => void ejecutarVaciarTodo()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#DC2626] px-4 py-1.5 text-[12px] font-extrabold text-white hover:bg-[#B91C1C] disabled:opacity-60"
+              >
+                {vaciandoTodo && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Sí, vaciar todo ahora
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {nuevaAbierta && (
@@ -2396,7 +2590,7 @@ function PanelClasificar({
 /* ====================================================================== */
 
 function FilaGlosa({
-  glosa, cruce, causal, responsablesOpciones, guardando, guardado, avisar, onGuardar, onFicha,
+  glosa, cruce, causal, responsablesOpciones, guardando, guardado, avisar, onGuardar, onFicha, onEliminar,
 }: {
   glosa: Glosa;
   cruce: {
@@ -2420,8 +2614,9 @@ function FilaGlosa({
   guardando: boolean;
   guardado: boolean;
   avisar: (msg: string) => void;
-  onGuardar: (fila: Record<string, unknown>, accion: "CREAR" | "EDITAR") => Promise<boolean>;
+  onGuardar: (fila: Record<string, unknown>, accion: "CREAR" | "EDITAR" | "ELIMINAR") => Promise<boolean>;
   onFicha: () => void;
+  onEliminar: () => void;
 }) {
   const facturadorInicial = homologarPersonaFacturacion(glosa.facturador);
   const respGlosaInicial = homologarPersonaFacturacion(glosa.responsableRespuesta || glosa.responsableAceptacion);
@@ -2960,7 +3155,7 @@ function FilaGlosa({
   const faltaCausal = !codigo;
   const faltaMotivo = !motivo.trim();
   const faltaAceptado = valorAceptadoEfectivo === null;
-  const faltaSegBase = seguimiento === "";
+  const faltaSegBase = estado === "PENDIENTE" && seguimiento === "";
   const faltaObsRectificacion = seguimiento === "RATIFICACION_GLOSA" && !obs.trim();
   const faltaValSegParcial =
     (seguimiento === "PAGO_PARCIAL" || seguimiento === "LEVANTAMIENTO_PARCIAL") && !valSeg.trim();
@@ -3413,9 +3608,23 @@ function FilaGlosa({
             )}
           </div>
         </td>
-        <td className="py-1.5 text-right">
-          {guardando && <Loader2 className="inline h-3.5 w-3.5 animate-spin text-[#1D58D8]" />}
-          {!guardando && guardado && <Check className="inline h-3.5 w-3.5 text-[#21814B]" />}
+        <td className="py-1.5 pl-1 text-right whitespace-nowrap">
+          <div className="inline-flex items-center justify-end gap-1">
+            {guardando && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#1D58D8]" />}
+            {!guardando && guardado && <Check className="h-3.5 w-3.5 text-[#21814B]" />}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEliminar();
+              }}
+              title={`Eliminar este registro de ${glosa.factura}`}
+              aria-label={`Eliminar registro ${glosa.factura}`}
+              className="rounded p-1 text-[#94A3B8] transition hover:bg-[#FEE2E2] hover:text-[#DC2626]"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </td>
       </tr>
 
@@ -3622,6 +3831,15 @@ function FilaGlosa({
                 <Detalle etiqueta="Fecha factura" valor={fecha(fechaFact)} />
                 <Detalle etiqueta="Fecha radicación" valor={fecha(fechaRad)} />
                 <Detalle etiqueta="Notificación glosa" valor={fecha(fechaNotif)} />
+                <div className="col-span-2 flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={onEliminar}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-1 text-[11.5px] font-bold text-[#DC2626] transition hover:bg-[#FEE2E2]"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Eliminar este registro
+                  </button>
+                </div>
                 {tienePendientes && (
                   <div className="col-span-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-2.5 py-1.5 text-[11.5px] font-bold text-[#B91C1C]">
                     Pendiente por llenar: {itemsPendientes.join(" · ")}
@@ -3654,12 +3872,13 @@ function Detalle({ etiqueta, valor }: { etiqueta: string; valor: string }) {
 /* ====================================================================== */
 
 function FichaFactura({
-  factura, glosas, causalPorCodigo, onAnular, onCerrar,
+  factura, glosas, causalPorCodigo, onAnular, onEliminarGlosa, onCerrar,
 }: {
   factura: string;
   glosas: Glosa[];
   causalPorCodigo: Record<string, Causal>;
   onAnular: (factura: string) => void;
+  onEliminarGlosa: (glosa: Glosa) => void;
   onCerrar: () => void;
 }) {
   const base = glosas[0];
@@ -3746,6 +3965,14 @@ function FichaFactura({
                       <span className="font-cifra text-[11px] text-[#64748B]">NC: {g.notaCredito}</span>
                     )}
                     <span className="ml-auto font-cifra text-[13px] font-semibold text-[#0E245E]">{pesos(g.valorGlosado)}</span>
+                    <button
+                      type="button"
+                      onClick={() => onEliminarGlosa(g)}
+                      title="Eliminar esta glosa"
+                      className="inline-flex items-center gap-1 rounded border border-[#FECACA] bg-[#FEF2F2] px-2 py-0.5 text-[10.5px] font-bold text-[#DC2626] hover:bg-[#FEE2E2]"
+                    >
+                      <Trash2 className="h-3 w-3" /> Eliminar
+                    </button>
                   </div>
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#47597A]">
                     {g.motivoGlosa || "Sin motivo escrito"}
@@ -4214,7 +4441,7 @@ function ModalNueva({
                 }
                 setF({ ...f, seguimientoEstado: ns, valorSeguimiento: vs });
               }}
-              className={f.seguimientoEstado === "" ? campoRojo : `${campoOk} font-semibold`}
+              className={f.estado === "PENDIENTE" && f.seguimientoEstado === "" ? campoRojo : `${campoOk} font-semibold`}
             >
               {opcionesSegModal.map((o) => (
                 <option key={o.id || "NONE"} value={o.id}>

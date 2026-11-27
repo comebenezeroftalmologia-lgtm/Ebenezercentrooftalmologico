@@ -122,6 +122,7 @@ export async function GET() {
     const filas = [];
     for (const f of data || []) {
       const nombreLimpio = limpiarUtf8(String(f.nombre ?? ""));
+      if (nombreLimpio.startsWith("__EBENEZER_")) continue;
       const usos = await contarUso(db, tabla, f.id as string);
       if (tabla === "cf_responsables" && !homologarPersonaFacturacion(nombreLimpio) && usos === 0) {
         continue;

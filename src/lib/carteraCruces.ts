@@ -941,13 +941,13 @@ export const OPCIONES_SEGUIMIENTO_GLOSA: {
 }[] = [
   {
     id: "",
-    etiqueta: "En trámite (pendiente)",
+    etiqueta: "En trámite",
     corto: "En trámite",
     requiereValor: false,
     requiereObservacion: false,
-    badgeBg: "#FEF2F2",
-    badgeText: "#B91C1C",
-    badgeBorder: "#DC2626",
+    badgeBg: "#F0F9FF",
+    badgeText: "#0369A1",
+    badgeBorder: "#BAE6FD",
   },
   {
     id: "TRAMITADA",
@@ -1071,5 +1071,6 @@ export function resolverSeguimientoAutomatico(
 
 export function etiquetaSeguimientoGlosa(raw?: string | null, estadoRaw?: unknown): string {
   const cod = resolverSeguimientoAutomatico(raw, estadoRaw);
-  return OPCIONES_SEGUIMIENTO_GLOSA.find((o) => o.id === cod)?.etiqueta || "En trámite (pendiente)";
+  if (!cod) return "En trámite";
+  return OPCIONES_SEGUIMIENTO_GLOSA.find((o) => o.id === cod)?.etiqueta || "En trámite";
 }
