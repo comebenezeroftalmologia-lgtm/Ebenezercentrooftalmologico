@@ -8497,12 +8497,17 @@ function liquidarV4(recs, actos, actosAll){
      «HONORARIOS MEDICOS …» — por el mismo paciente y el mismo día. Para el porcentaje de
      la ficha se SUMAN los dos y se paga una sola vez (orden del administrador, 27/11/2026:
      «son dos facturas y tú tomas una sola… es una misma persona»). */
-  const capsBase = new Map();
+  const capsBase = new Map(), capsHon = new Map();
   for(const r of recs){
     const _svc = mNorm(String(r.sv||'')+' '+String(r.d||''));
     if(!/CAPSULOTOM|IRIDOTOM/.test(_svc)) continue;
     const _kc = (((String(r.p||'').match(/(\d{5,12})/)||[])[1])||mNorm(String(r.p||'')))+'|'+String(r.f||'').slice(0,10);
-    capsBase.set(_kc, (capsBase.get(_kc)||0) + (Number(r.t)||0));
+    const _v = Number(r.t)||0;
+    capsBase.set(_kc, (capsBase.get(_kc)||0) + _v);
+    /* el administrador (27/11/2026) definió la base: SOLO los renglones de honorarios
+       médicos, no el procedimiento — igual que el 70% de sus cirugías, que la ficha
+       liquida «sobre el rubro de honorarios del cirujano» */
+    if(/HONORARIO/.test(mNorm(String(r.d||'')))) capsHon.set(_kc, (capsHon.get(_kc)||0) + _v);
   }
   const dkSeen = new Map();
   for(const r of recs){
@@ -8735,11 +8740,14 @@ function liquidarV4(recs, actos, actosAll){
       if((M._uppCaps = M._uppCaps || new Set()).has(_kC)){
         pago=0; regla='Mismo paciente ese día: ya quedó pagada arriba — los dos cargos (procedimiento y honorarios) van en un solo renglón';
       } else {
-        const _base = capsBase.get(_kC) || Number(r.t) || 0;
+        const _hon = capsHon.get(_kC)||0;
+        const _base = _hon || capsBase.get(_kC) || Number(r.t) || 0;
         if(_base>0){
           M._uppCaps.add(_kC);
           pago=Math.round(cfg.capsPct*_base);
-          regla=Math.round(cfg.capsPct*100)+'% de lo facturado de la capsulotomía: '+money(_base)+' (procedimiento + honorarios) · ficha, por paciente';
+          regla = _hon
+            ? (Math.round(cfg.capsPct*100)+'% de los honorarios médicos de la capsulotomía: '+money(_base)+' (los dos ojos) · ficha, por paciente')
+            : (Math.round(cfg.capsPct*100)+'% de lo facturado de la capsulotomía: '+money(_base)+' — ojo: el informe no trae renglón de honorarios médicos, revise');
         } else { pago=0; regla='Capsulotomía sin valor facturado: no se liquida'; }
       }
     }
