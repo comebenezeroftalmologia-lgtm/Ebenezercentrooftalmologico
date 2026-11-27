@@ -11042,6 +11042,10 @@ function render(){
   });
   /* mes cerrado: manda el cierre enviado (no el recalculo) */
   try{ if(window.CIE && CIE.activo && CIE.activo()) CIE.aplicar(datos, sede); }catch(e){}
+  /* jornadas marcadas como no realizadas: se descuentan del tablero y del acta */
+  try{ if(window.jqDescuento) datos.forEach(function(x){
+        var q = jqDescuento(x.m); if(q && q.total>0){ x.sed = Math.max(0, (x.sed||0) - q.total); x._jq = q; }
+      }); }catch(e){}
   const totCir = datos.reduce((a,x)=>a+x.cir,0), totSede = datos.reduce((a,x)=>a+x.sed,0), totMan = datos.reduce((a,x)=>a+x.man,0);
   const totSede2 = datos.reduce((a,x)=>a+(x.sedM||0),0), totSede1 = totSede - totSede2;
   const nSin = datos.reduce((a,x)=>a+x.st,0);
@@ -12374,9 +12378,20 @@ function toggleDrill(i, tr){
       ? ' <span style="background:#fff4e0;border:1px solid #efd79a;border-radius:99px;padding:1px 8px;color:#7d5800;font-weight:700">⚠ revisar: '
         + rs.length + ' de ' + ctx.cupo + ' del cupo</span>'
       : '';
+    /* Quitar una jornada que no se hizo: botón en la fila del día (27/11/2026) */
+    const _jqMed = (rs[0] && (rs[0]._hoja || rs[0].m)) || '';
+    const _jqFec = String((rs[0]&&rs[0].f)||'').slice(0,10);
+    const _jqK   = _jqMed+'|'+_jqFec;
+    const _jqQ   = (window.jqLeer? jqLeer()[_jqK] : null);
+    const _jqBtn = (ctx && ctx.tipo==='P' && ctx.v>0 && _jqFec)
+      ? (_jqQ
+          ? ' <button type="button" onclick="jqDevolver(\''+_jqK+'\')" style="margin-left:8px;font:600 11px system-ui;background:#fdeeea;border:1px solid #f0c3b8;color:#8a2c17;border-radius:99px;padding:2px 9px;cursor:pointer">✕ no se hizo · deshacer</button>'
+          : ' <button type="button" onclick="jqQuitar(\''+_jqK+'\','+(ctx.v||0)+')" style="margin-left:8px;font:600 11px system-ui;background:#f4f6f8;border:1px solid #dde3e8;color:#44525e;border-radius:99px;padding:2px 9px;cursor:pointer">✕ No se hizo</button>')
+      : '';
+    const _jqNota = _jqQ ? ' <span style="color:#8a2c17;font-weight:700">· jornada no realizada ('+String(_jqQ.motivo||'').slice(0,40)+')</span>' : '';
     cuerpo += `<tr class="ddia"><td colspan="${nCol}">`
       + `<div class="ddh"><b>${nomDia}</b><span class="ddm">${rs.length} paciente${rs.length>1?'s':''}`
-      + `${nota?' · '+nota:''}${agTxt?' · '+agTxt:''}${subF?' · facturado <b>'+money(subF)+'</b>':''}${_avPocos}</span></div>`
+      + `${nota?' · '+nota:''}${agTxt?' · '+agTxt:''}${subF?' · facturado <b>'+money(subF)+'</b>':''}${_avPocos}${_jqNota}${_jqBtn}</span></div>`
       + jorHTML
       + `</td><td class="num"><b>${_jo.length? '' : money(sub)}</b></td></tr>`;
     rs.forEach((r,ix)=>{
@@ -22382,6 +22397,51 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', poner);
   else poner();
   setTimeout(poner, 1500);
+})();
+</script>
+<script>
+
+/* ===== Jornadas que no se hicieron =====
+   Orden del administrador (27/11/2026): «quiero quitar vainas y no tienes opción de eso».
+   Se marca la jornada en la fila de su día, queda en $0 con el motivo escrito y firmado,
+   y sale en el acta como «Menos: jornada del DD/MM no realizada». Se deshace igual. */
+(function(){
+  if(window.__jorQuit) return; window.__jorQuit = true;
+  var LS = 'liq_jornadas_quitadas';
+  window.jqLeer = function(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ return {}; } };
+  function jqEscribir(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){} }
+  window.jqQuitar = function(clave, valor){
+    var m = prompt('¿Por qué no se hizo esa jornada? (queda firmado con su nombre)');
+    if(m===null) return;
+    m = String(m||'').trim();
+    if(m.length < 3){ alert('Escriba el motivo: queda firmado.'); return; }
+    var o = jqLeer();
+    o[clave] = { valor: Math.round(Number(valor)||0), motivo: m,
+                 quien: (window.USUARIO && USUARIO.nombre) || '',
+                 el: new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) };
+    jqEscribir(o);
+    try{ if(window.NUBE && NUBE.guardarAjuste) NUBE.guardarAjuste('JOR|'+clave, o[clave]); }catch(e){}
+    try{ registrarAudit && registrarAudit({accion:'JORNADA NO REALIZADA', medico:clave.split('|')[0], motivo:m,
+          despues:0, antes:o[clave].valor, usuario:o[clave].quien}); }catch(e){}
+    var b=document.getElementById('btnCalc'); if(b) b.click();
+  };
+  window.jqDevolver = function(clave){
+    var o = jqLeer(); if(!o[clave]) return;
+    if(!confirm('¿Devolver esa jornada al acta?')) return;
+    delete o[clave]; jqEscribir(o);
+    var b=document.getElementById('btnCalc'); if(b) b.click();
+  };
+  /* Lo que se quitó se descuenta del tablero y del acta */
+  window.jqDescuento = function(med){
+    var o = jqLeer(), t = 0, det = [];
+    Object.keys(o).forEach(function(k){
+      var p = k.split('|');
+      if(String(p[0]).toUpperCase() !== String(med||'').toUpperCase()) return;
+      t += Math.round(Number(o[k].valor)||0);
+      det.push({fecha:p[1], valor:Math.round(Number(o[k].valor)||0), motivo:o[k].motivo, quien:o[k].quien});
+    });
+    return {total:t, det:det};
+  };
 })();
 </script>
 </body>
