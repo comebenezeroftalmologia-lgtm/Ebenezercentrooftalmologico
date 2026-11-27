@@ -12366,9 +12366,17 @@ function toggleDrill(i, tr){
           return '<span class="djp"><b>'+esc3(turno)+'</b>'+(quien?' <span class="djq">'+esc3(quien)+'</span>':'')
                  +' <span class="djv">'+esc3(val)+'</span></span>'; }).join('')+'</div>'
       : '';
+    /* Jornada muy por debajo del cupo: se paga completa pero hay que mirarla
+       (27/11/2026, Ana María: 1 paciente de 12 y pagaba los $600.000). Avisa cuando
+       la jornada no llega ni a un tercio del cupo pactado. */
+    const _pocos = !!(ctx && ctx.tipo==='P' && ctx.cupo && rs.length <= Math.max(1, Math.floor(ctx.cupo/3)));
+    const _avPocos = _pocos
+      ? ' <span style="background:#fff4e0;border:1px solid #efd79a;border-radius:99px;padding:1px 8px;color:#7d5800;font-weight:700">⚠ revisar: '
+        + rs.length + ' de ' + ctx.cupo + ' del cupo</span>'
+      : '';
     cuerpo += `<tr class="ddia"><td colspan="${nCol}">`
       + `<div class="ddh"><b>${nomDia}</b><span class="ddm">${rs.length} paciente${rs.length>1?'s':''}`
-      + `${nota?' · '+nota:''}${agTxt?' · '+agTxt:''}${subF?' · facturado <b>'+money(subF)+'</b>':''}</span></div>`
+      + `${nota?' · '+nota:''}${agTxt?' · '+agTxt:''}${subF?' · facturado <b>'+money(subF)+'</b>':''}${_avPocos}</span></div>`
       + jorHTML
       + `</td><td class="num"><b>${_jo.length? '' : money(sub)}</b></td></tr>`;
     rs.forEach((r,ix)=>{
