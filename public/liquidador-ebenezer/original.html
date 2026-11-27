@@ -8554,6 +8554,7 @@ function liquidarV4(recs, actos, actosAll){
     // El Asunto del informe dice NO COBRO (p. ej. «CONTROL NO COBRO»): no se liquida.
     // En agosto 2026 ninguna de las 136 consultas así se pagó en la liquidación manual.
     if(/NO\s*COBRO/.test(mNorm((r && r.as) || ''))){
+      if(g!=='M' && D.includes('CONSULTA')){ const _kJ2=h+'|'+r.f.slice(0,10); window.__jorNC=window.__jorNC||{}; window.__jorNC[_kJ2]=(window.__jorNC[_kJ2]||0)+1; }
       marcar(r._src,'no_cobro');
       M.filas.push({fuente:'sede', fecha:r.f, pac:r.p, det:r.d, emp:r.e, t:r.t, fa:r.fa, pago:0,
         regla:'El Asunto dice NO COBRO: no se liquida'});
@@ -8879,8 +8880,13 @@ function liquidarV4(recs, actos, actosAll){
            umbral NO es jornada y sus pacientes NO se pagan como extra. Extra es solo el
            paciente que pasa del cupo DENTRO de una jornada real. Antes esos pacientes
            sueltos se sumaban a $50.000 y la cuenta daba de más. */
+        let diasNC=0;
         for(const d in M.jornCons){
-          if(M.jornCons[d]>=um){ nj++; extras+=Math.max(0,M.jornCons[d]-(c.cupo||99)); }
+          /* Norma del administrador (27/11/2026, caso Jaysi — 3 jornadas + 8 extras): los
+             pacientes atendidos «no cobro» cuentan para llegar al umbral de la jornada,
+             pero no se pagan ni cuentan como extras. */
+          const _nc=(window.__jorNC&&window.__jorNC[h+'|'+d])||0;
+          if(M.jornCons[d]+_nc>=um){ nj++; extras+=Math.max(0,M.jornCons[d]-(c.cupo||99)); if(M.jornCons[d]<um) diasNC++; }
           else { fuera+=M.jornCons[d]; diasFuera++; }
         }
       }
@@ -8888,7 +8894,7 @@ function liquidarV4(recs, actos, actosAll){
       M.P += v;
       M.filas.push({fuente:'sede', det:nj+' jornadas de consulta × $'+c.v.toLocaleString()
         +(extras?' + '+extras+' paciente'+(extras>1?'s':'')+' extra × $'+(c.extra||0).toLocaleString():'')
-        +(fuera?' · '+fuera+' paciente'+(fuera>1?'s':'')+' de '+diasFuera+' día'+(diasFuera>1?'s':'')+' sin jornada: $0':''), pago:v, regla:'Consulta por jornada'});
+        +(fuera?' · '+fuera+' paciente'+(fuera>1?'s':'')+' de '+diasFuera+' día'+(diasFuera>1?'s':'')+' sin jornada: $0':'')+((typeof diasNC!=='undefined'&&diasNC)?' · '+diasNC+' día'+(diasNC>1?'s':'')+' llegó a jornada contando atendidos no cobro':''), pago:v, regla:'Consulta por jornada'});
       if(extras) M.hallazgos.add('[CIR]Pacientes fuera de jornada: '+extras);
       if(fuera) M.hallazgos.add('[CIR]'+fuera+' paciente(s) en día(s) que no llegaron a jornada: no se pagaron');
     }
@@ -10640,6 +10646,7 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
     }
   }
   const recs=[]; const sinFichaSet=new Set();
+  window.__jorNC={};  // consultas atendidas «no cobro/cortesía» por médico y día: miden la jornada, no se pagan
   for(const r of RECORDS){
     const fecha = new Date(r.fecha);
     if(isNaN(fecha)){ marcar(r,'fecha_ilegible'); continue; }
@@ -10651,6 +10658,12 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
        27/11/2026: «está tomando el contrato de investigación y no cobro y eso no se
        debe tomar»). Mira la empresa Y el contrato del informe. */
     if(/NO\s*COBRO|CORTESIA|CORTESÍA|INVESTIGACI/i.test(String(r.empresa||'')+' | '+String(r.contrato||''))){
+      /* Norma del administrador (27/11/2026, caso Jaysi): el paciente atendido «no cobro»
+         no se paga, pero SÍ cuenta para medir si ese día hubo jornada de consulta. */
+      if(/CONSULTA/i.test(String(r.detalle||'')+' '+String(r.servicio||'')) && !/MUTUAL/i.test(String(r.empresa||'')+' '+String(r.contrato||''))){
+        const _hJ = mHojaDe(r.medico);
+        if(_hJ){ const _kJ=_hJ+'|'+String(r.fecha||'').slice(0,10); window.__jorNC[_kJ]=(window.__jorNC[_kJ]||0)+1; }
+      }
       nSNC++; marcar(r,'no_cobro'); continue; }
     let _m = r.medico; let _lect = false;
     // Lecturas: el examen lo toma la agenda, la auxiliar o la técnica (cualquier nombre sin hoja),
@@ -22383,7 +22396,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
    actualizar sin perder nada de lo guardado. */
 (function(){
   if(window.__verSello) return; window.__verSello = true;
-  var VER = '2026-11-27 · 6';
+  var VER = '2026-11-27 · 7';
   window.LIQ_VER = VER;
   function poner(){
     if(document.getElementById('verSello')) return true;
