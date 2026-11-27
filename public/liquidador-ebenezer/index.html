@@ -8038,6 +8038,18 @@ const TABLA_LENTES = {
 };
 // ===== liquidación total =====
 function liquidarV4(recs, actos, actosAll){
+  /* LA FICHA MANDA (orden del administrador, 27/11/2026, caso Causil): si la ficha técnica
+     viva (Excel subido) trae la fila de consultas PYP de María Carolina Causil, se liquida
+     por la ficha ($ por consulta atendida) y deja de aplicar el «convenio propio» que
+     venía del mes pasado. Sin fila en la ficha, todo sigue igual. */
+  try{
+    const _fC=(window.__fichaLive||{})['MARIA CAROLINA '];
+    const _filaC=_fC&&_fC.find&&_fC.find(f=>/CONSULTA/i.test(String(f&&f[0]||''))&&String(f&&f[3])==='PYP'&&Number(f&&f[2])>0);
+    if(_filaC&&REGLAS_DOC['MARIA CAROLINA CAUSIL']){
+      REGLAS_DOC['MARIA CAROLINA CAUSIL'].soloMutual=false;
+      REGLAS_DOC['MARIA CAROLINA CAUSIL'].consP={t:'fijo', v:Number(_filaC[2])};
+    }
+  }catch(e){}
   // cédulas a solo dígitos: en estadísticas a veces vienen con letras (PA - AC243810)
   // y sin esto no cruzan con el informe → se pagaba doble la refractiva.
   const _soloDig = s=>{ const d=String(s||'').replace(/\D/g,''); return d.length>=5? d : String(s||''); };
@@ -22397,7 +22409,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
    actualizar sin perder nada de lo guardado. */
 (function(){
   if(window.__verSello) return; window.__verSello = true;
-  var VER = '2026-11-27 · 8';
+  var VER = '2026-11-27 · 9';
   window.LIQ_VER = VER;
   function poner(){
     if(document.getElementById('verSello')) return true;
