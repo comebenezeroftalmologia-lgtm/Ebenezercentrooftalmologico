@@ -15619,6 +15619,7 @@ async function nubeAplicarSesion(u,p){
     if(ub){ ub.style.display='block'; ub.innerHTML='<span class="uic">👤</span> <b>'+USUARIO.nombre+'</b> · '+USUARIO.cargo+(USUARIO.cuenta&&USUARIO.cuenta!==USUARIO.nombre?' <span style="color:var(--muted)">(cuenta: '+USUARIO.cuenta+')</span>':'')
       + (p.rol==='gerencia' && p.estado==='activo' ? ' <a href="#" onclick="abrirEquipo();return false" class="chg">👥 equipo</a>' : '')
       + ' <a href="#" onclick="nubeSalir();return false" class="chg">salir</a>'; }
+    document.body.classList.add('ebz-auth-unlocked');  /* el candado del tema (body:not(.ebz-auth-unlocked) #gate{display:flex!important}) exigía esta clase y ningún código la ponía: la pantalla de ingreso quedaba pegada aunque la clave fuera correcta (27/11/2026) */
     document.getElementById('gate').style.display='none';
     try{ pintarFichasHist(); }catch(e){}
     try{ if(!NUBE._ingresoReg){ NUBE._ingresoReg=true;
@@ -22396,7 +22397,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
    actualizar sin perder nada de lo guardado. */
 (function(){
   if(window.__verSello) return; window.__verSello = true;
-  var VER = '2026-11-27 · 7';
+  var VER = '2026-11-27 · 8';
   window.LIQ_VER = VER;
   function poner(){
     if(document.getElementById('verSello')) return true;
