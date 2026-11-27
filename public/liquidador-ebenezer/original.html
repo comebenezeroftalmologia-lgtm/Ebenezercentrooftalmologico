@@ -8866,15 +8866,26 @@ function liquidarV4(recs, actos, actosAll){
     if(cfg && cfg.consP && cfg.consP.t==='jornada'){
       const c=cfg.consP; let nj=0, extras=0;
       const tot=Object.values(M.jornCons).reduce((a,b)=>a+b,0);
+      let fuera=0, diasFuera=0;
       if(c.modo==='bloque'){ nj=Math.ceil(tot/(c.cupo||35)); }
       else {
         const um=c.umbral||5;
-        for(const d in M.jornCons){ if(M.jornCons[d]>=um){ nj++; extras+=Math.max(0,M.jornCons[d]-(c.cupo||99)); } else extras+=M.jornCons[d]; }
+        /* REGLA DEL ADMINISTRADOR (27/11/2026, caso Ana María): un día que no llega al
+           umbral NO es jornada y sus pacientes NO se pagan como extra. Extra es solo el
+           paciente que pasa del cupo DENTRO de una jornada real. Antes esos pacientes
+           sueltos se sumaban a $50.000 y la cuenta daba de más. */
+        for(const d in M.jornCons){
+          if(M.jornCons[d]>=um){ nj++; extras+=Math.max(0,M.jornCons[d]-(c.cupo||99)); }
+          else { fuera+=M.jornCons[d]; diasFuera++; }
+        }
       }
       const v = nj*c.v + extras*(c.extra||0);
       M.P += v;
-      M.filas.push({fuente:'sede', det:nj+' jornadas de consulta × $'+c.v.toLocaleString()+(extras?' + '+extras+' pacientes extra × $'+(c.extra||0).toLocaleString():''), pago:v, regla:'Consulta por jornada'});
+      M.filas.push({fuente:'sede', det:nj+' jornadas de consulta × $'+c.v.toLocaleString()
+        +(extras?' + '+extras+' paciente'+(extras>1?'s':'')+' extra × $'+(c.extra||0).toLocaleString():'')
+        +(fuera?' · '+fuera+' paciente'+(fuera>1?'s':'')+' de '+diasFuera+' día'+(diasFuera>1?'s':'')+' sin jornada: $0':''), pago:v, regla:'Consulta por jornada'});
       if(extras) M.hallazgos.add('[CIR]Pacientes fuera de jornada: '+extras);
+      if(fuera) M.hallazgos.add('[CIR]'+fuera+' paciente(s) en día(s) que no llegaron a jornada: no se pagaron');
     }
     const RM=REGLAS_MES[h]||{};
     // En un corte interno el mes todavía va corriendo: los rubros fijos mensuales no se
