@@ -22341,5 +22341,48 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
   window.__avBaseCorte = avisar;
 })();
 </script>
+<script>
+
+/* ===== Sello de versión y «¿tengo la última?» =====
+   Problema real (27/11/2026): se publica un cambio y el navegador sigue mostrando la
+   versión vieja, así que no se sabe si el arreglo está o no. Ahora la versión se ve
+   arriba y, al tocarla, el tablero compara con la que está publicada y ofrece
+   actualizar sin perder nada de lo guardado. */
+(function(){
+  if(window.__verSello) return; window.__verSello = true;
+  var VER = '2026-11-27 · 5';
+  window.LIQ_VER = VER;
+  function poner(){
+    if(document.getElementById('verSello')) return true;
+    var ancla = document.querySelector('.topbar, header, .hdr, .encab') || document.body;
+    var s = document.createElement('button');
+    s.id='verSello'; s.type='button'; s.title='Toque para comprobar si hay una versión nueva';
+    s.textContent='v '+VER;
+    s.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99998;font:600 11.5px system-ui,sans-serif;'
+      +'background:#eef4fb;color:#24364f;border:1px solid #c7d2e5;border-radius:99px;padding:5px 11px;cursor:pointer;opacity:.85';
+    s.onclick = async function(){
+      s.textContent='comprobando…';
+      try{
+        var t = await (await fetch('/api/liquidador-app?v='+Date.now(), {cache:'no-store'})).text();
+        var m = t.match(/var VER = '([^']+)'/);
+        var pub = m ? m[1] : '';
+        if(!pub){ s.textContent='v '+VER+' · no pude comprobar'; return; }
+        if(pub === VER){ s.textContent='v '+VER+' · al día ✓'; s.style.background='#eaf7e6'; s.style.borderColor='#cfe6b4';
+          setTimeout(function(){ s.textContent='v '+VER; s.style.background='#eef4fb'; s.style.borderColor='#c7d2e5'; }, 4000); }
+        else {
+          s.style.background='#fff4e0'; s.style.borderColor='#efd79a'; s.style.color='#7d5800';
+          s.textContent='Hay versión nueva ('+pub+') · toque para actualizar';
+          s.onclick = function(){ location.href = location.pathname + '?v=' + Date.now(); };
+        }
+      }catch(e){ s.textContent='v '+VER+' · sin conexión'; }
+    };
+    document.body.appendChild(s);
+    return true;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', poner);
+  else poner();
+  setTimeout(poner, 1500);
+})();
+</script>
 </body>
 </html>
