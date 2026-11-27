@@ -21482,6 +21482,14 @@ function aplicarAcuerdos(porMedico, periodo){
         g.pago = a.valor; g.pagoM = esM ? a.valor : 0;
         g.unit = g.cant ? g.pago/g.cant : g.pago; g.uniforme=false; g.acuerdo=a;
       } else if(a.tipo==='medico'){
+        /* LA FICHA MANDA (orden del administrador, 27/11/2026): si la ficha ya paga ese
+           mismo concepto como rubro fijo del mes, el acuerdo NO se vuelve a sumar.
+           Se avisa en la tarjeta del médico para que quede a la vista. */
+        var _fz = window.fichaYaPaga ? window.fichaYaPaga(h, a) : null;
+        if(_fz){
+          (d._avisos=d._avisos||[]).push('<b>'+String(a.texto||'').slice(0,70)+'</b> ('+money(a.valor)+'): no se sumó como acuerdo porque <b>la ficha ya lo paga</b> — '+String(_fz.servicio||'')+' · '+String(_fz.tipo||'')+' · '+money(_fz.valor)+'. Manda la ficha.');
+          continue;
+        }
         const scopeAcu = a.bloque==='cir' ? 'Cirugía' : (a.mutual ? 'Sede 2' : 'Sede Principal');
         if(sedeSel && scopeAcu !== sedeSel && a.tipoSv !== 'descuento') continue;
         if(sedeSel === 'Cirugía' && a.bloque !== 'cir') continue;
@@ -21863,6 +21871,35 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
     med:null, tot:null, quien:null, pedido:{}
   };
   CIE.activo = function(){ return !!(CIE.hay && !CIE.verRecalculo); };
+  /* ===== La ficha manda sobre el acuerdo =====
+     Orden del administrador (27/11/2026): "si debe leer la ficha, lo compara con el
+     acuerdo, pero prevalece la ficha". Devuelve el renglón de la ficha cuando ésta ya
+     paga ese mismo concepto como rubro fijo del mes (modo fijo_mes), para que el
+     acuerdo no lo pague dos veces. Pide DOS coincidencias, no una: el mismo valor al
+     peso Y que hablen del mismo concepto (una palabra larga en común), para no tumbar
+     por error un acuerdo que de casualidad valga lo mismo. */
+  window.fichaYaPaga = function(med, a){
+    try{
+      if(!a || a.tipo!=='medico' || a.tipoSv==='descuento') return null;
+      var v = Math.round(Number(a.valor)||0); if(v<=0) return null;
+      var N = function(t){ return String(t==null?'':t).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); };
+      var F = window.FICHAS_BASE_V2 || {}, filas = null, k = N(med);
+      Object.keys(F).forEach(function(m){ if(N(m)===k) filas = F[m]; });
+      if(!filas || !filas.length) return null;
+      var pal = function(t){ return N(t).split(/[^A-Z0-9]+/).filter(function(w){ return w.length>4; }); };
+      var pa = pal(a.texto);
+      for(var i=0;i<filas.length;i++){
+        var f = filas[i];
+        if(String(f.modo||'') !== 'fijo_mes') continue;
+        if(Math.round(Number(f.valor)||0) !== v) continue;
+        var pf = pal(String(f.servicio||'') + ' ' + String(f.tipo||''));
+        var comun = pf.some(function(w){ return pa.indexOf(w) >= 0; });
+        if(comun) return f;
+      }
+      return null;
+    }catch(e){ return null; }
+  };
+
   /* Un solo cierre por parte: si la misma sede se envio dos veces (p.ej. se
      corrigio y se volvio a enviar, o la envio otra persona), manda el MAS
      RECIENTE y los enviados por encima de los guardados sin enviar. Sin esto
