@@ -12379,7 +12379,7 @@ function toggleDrill(i, tr){
         + rs.length + ' de ' + ctx.cupo + ' del cupo</span>'
       : '';
     /* Quitar una jornada que no se hizo: botón en la fila del día (27/11/2026) */
-    const _jqMed = (rs[0] && (rs[0]._hoja || rs[0].hoja || rs[0].medico || rs[0].m)) || (window.__medPanel||'');
+    const _jqMed = (ctx && ctx.med) || (rs[0] && (rs[0]._hoja || rs[0].hoja || rs[0].medico || rs[0].m)) || '';
     const _jqFec = String(d||'').slice(0,10);
     const _jqK   = _jqMed+'|'+_jqFec;
     const _jqQ   = (window.jqLeer? jqLeer()[_jqK] : null);
@@ -13552,7 +13552,7 @@ function detalleHTML(d, med, f){
       if(!inc.length) return g.recs;
       const out=(g.recs||[]).concat(inc.flatMap(x=>x.recs||[]));
       try{ if(/MUTUAL/.test(P)){ const J=(REGLAS_MES[med]||{}).consJornM; if(J) out._ctx={tipo:'M', v:J.v}; }
-           else if(!/ANESTESIA/.test(P)){ const c=(REGLAS_DOC[med]||{}).consP; if(c && c.t==='jornada' && (c.modo||'fecha')==='fecha') out._ctx={tipo:'P', v:c.v, extra:c.extra||0, cupo:c.cupo||0}; } }catch(e){}
+           else if(!/ANESTESIA/.test(P)){ const c=(REGLAS_DOC[med]||{}).consP; if(c && c.t==='jornada' && (c.modo||'fecha')==='fecha') out._ctx={tipo:'P', v:c.v, extra:c.extra||0, cupo:c.cupo||0, med:med}; } }catch(e){}
       return out; };
     const cero  = gs.filter(g=>pv(g)<=0 && g.cant>0 && !enBasico.includes(g));
     if(!pagan.length && !cero.length && !enBasico.length) return;
