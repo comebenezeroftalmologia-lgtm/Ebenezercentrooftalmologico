@@ -9853,7 +9853,11 @@ function semaforoPintar(){
     if(x && x.d){ const nAc=Object.values(x.d.cir||{}).concat(Object.values(x.d.sede||{})).filter(g=>g.acuerdo).length; if(nAc) razones.push(nAc+' acuerdo'+(nAc>1?'s':'')); }
     if(v){
       const sinResp=(v.valSobra||0), sinPagar=(v.valFalta||0);
-      if((sinResp>50000 || sinPagar>50000) && !_cerr){ estado='ambar'; razones.push('Revisar frecuencias'); if(!_yaAprob) MOT.frec++; }
+      /* Si la base de frecuencias cargada no cubre el corte que se está liquidando,
+         la comparación no significa nada y marcaba a TODOS los médicos en «Revisar
+         frecuencias» (27/11/2026). En ese caso no se marca: se avisa una sola vez arriba. */
+      const _baseSirve = (typeof window.vBaseCubre!=='function') || window.vBaseCubre()!==false;
+      if((sinResp>50000 || sinPagar>50000) && !_cerr && _baseSirve){ estado='ambar'; razones.push('Revisar frecuencias'); if(!_yaAprob) MOT.frec++; }
     }
     let totM = tot;
     if(rv && rv.estado==='ajuste'){ totM = Math.round(rv.valor||0); ajuste += (totM - tot); }
@@ -22269,6 +22273,46 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
   setInterval(revisar, 2000);
   setTimeout(revisar, 1500);
   window.__cgRevisarMes = revisar;
+})();
+</script>
+<script>
+
+/* ===== La base de frecuencias tiene que cubrir el corte =====
+   Con una base de otro mes, la validación marcaba a todos los médicos en «Revisar
+   frecuencias». Ahora se comprueba el rango de la base y, si no cubre, no se marca a
+   nadie y sale un aviso arriba explicando qué hacer. */
+(function(){
+  if(window.__baseCorte) return; window.__baseCorte = true;
+  function ini(){ try{ return (document.getElementById('corteIni')||{}).value||''; }catch(e){ return ''; } }
+  function fin(){ try{ return (document.getElementById('corteFin')||{}).value||''; }catch(e){ return ''; } }
+  function ddmm(iso){ var p=String(iso||'').slice(0,10).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; }
+  /* true = cubre · false = NO cubre · null = no hay base cargada (se arma del informe) */
+  window.vBaseCubre = function(){
+    try{
+      if(typeof VBASE==='undefined' || !VBASE || VBASE.auto) return null;
+      var max = (VBASE.corte && VBASE.corte.max) ? String(VBASE.corte.max).slice(0,10) : '';
+      var i = ini(); if(!max || !i) return null;
+      return max >= i;
+    }catch(e){ return null; }
+  };
+  function avisar(){
+    try{
+      var zona=document.querySelector('.cargas'); if(!zona) return;
+      var d=document.getElementById('avBaseCorte');
+      if(window.vBaseCubre()!==false){ if(d) d.remove(); return; }
+      if(!d){ d=document.createElement('div'); d.id='avBaseCorte';
+        d.style.cssText='margin:10px 0 0;padding:10px 13px;border-radius:10px;font-size:13px;line-height:1.45;'
+          +'background:linear-gradient(180deg,#fffaf0,#fff4e0);border:1px solid #efd79a;border-left:3px solid #e0a00a;color:#7d5800';
+        zona.insertAdjacentElement('afterend', d); }
+      var max=(VBASE.corte&&VBASE.corte.max)?String(VBASE.corte.max).slice(0,10):'';
+      d.innerHTML='<b>La base de frecuencias es de otro corte.</b> Llega hasta el <b>'+ddmm(max)
+        +'</b> y usted está liquidando del <b>'+ddmm(ini())+'</b> al <b>'+ddmm(fin())
+        +'</b>. Por eso NO se está marcando «Revisar frecuencias» a los médicos: esa comparación no aplica. '
+        +'Cargue la base de este corte, o quítela y el tablero la arma solo del informe.';
+    }catch(e){}
+  };
+  setInterval(avisar, 2500); setTimeout(avisar, 1800);
+  window.__avBaseCorte = avisar;
 })();
 </script>
 </body>
