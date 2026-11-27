@@ -22178,5 +22178,58 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
   if(!inicio()){ var t=setInterval(function(){ if(inicio()) clearInterval(t); }, 500); setTimeout(function(){ clearInterval(t); }, 20000); }
 })();
 </script>
+<script>
+
+/* ===== Aviso: los archivos cargados son de otro corte =====
+   Al cambiar el mes, las tarjetas seguían en verde con los archivos del corte
+   anterior y eso confundía (27/11/2026). Ahora, si lo cargado no alcanza el corte
+   elegido, la tarjeta deja de verse como lista y sale un aviso claro arriba. */
+(function(){
+  if(window.__cgOtroMes) return; window.__cgOtroMes = true;
+  var CSS = ".carga.otromes{border-style:solid!important;border-color:#e8c98f!important;"
+    + "background:linear-gradient(180deg,#fdf8ee 0%,#fff 100%)!important}"
+    + ".carga.otromes .cg-est{background:#fff4e0!important;border-color:#efd79a!important;color:#7d5800!important}"
+    + ".cgOtroMesAv{margin:12px 0 0;padding:10px 13px;border-radius:10px;font-size:13px;line-height:1.45;"
+    + "background:linear-gradient(180deg,#fffaf0,#fff4e0);border:1px solid #efd79a;border-left:3px solid #e0a00a;color:#7d5800}";
+  try{ var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st); }catch(e){}
+
+  function corteIni(){ try{ return (document.getElementById('corteIni')||{}).value || ''; }catch(e){ return ''; } }
+  function corteFin(){ try{ return (document.getElementById('corteFin')||{}).value || ''; }catch(e){ return ''; } }
+  function ddmm(iso){ var p=String(iso||'').slice(0,10).split('-'); return p.length===3 ? (p[2]+'/'+p[1]+'/'+p[0]) : iso; }
+  /* última fecha que trae el informe cargado */
+  function ultimaDelInforme(){
+    try{
+      if(typeof RECORDS==='undefined' || !RECORDS || !RECORDS.length) return '';
+      var max='';
+      for(var i=0;i<RECORDS.length;i++){ var f=String(RECORDS[i].fecha||'').slice(0,10);
+        if(f && f>max) max=f; }
+      return max;
+    }catch(e){ return ''; }
+  }
+  function revisar(){
+    try{
+      var ini = corteIni(); if(!ini) return;
+      var zona = document.querySelector('.cargas'); if(!zona) return;
+      var av = document.getElementById('cgOtroMesAv');
+      var ult = ultimaDelInforme();
+      var tInf = zona.querySelector('.carga[data-tipo="informe"]');
+      var desfasado = !!(ult && ult < ini);
+      if(tInf) tInf.classList.toggle('otromes', desfasado);
+      if(!desfasado){ if(av) av.remove(); return; }
+      if(!av){ av=document.createElement('div'); av.id='cgOtroMesAv'; av.className='cgOtroMesAv';
+               zona.insertAdjacentElement('afterend', av); }
+      av.innerHTML = '<b>⚠ Lo que está cargado es del corte anterior.</b> El informe llega hasta el <b>'
+        + ddmm(ult) + '</b> y usted eligió el corte del <b>' + ddmm(ini) + '</b> al <b>' + ddmm(corteFin())
+        + '</b>. Cargue el informe de este corte (y las estadísticas de cirugía) antes de liquidar.';
+    }catch(e){}
+  }
+  ['periodoMes','periodoAno','corteIni','corteFin'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.addEventListener('change', function(){ setTimeout(revisar,150); });
+  });
+  setInterval(revisar, 2000);
+  setTimeout(revisar, 1500);
+  window.__cgRevisarMes = revisar;
+})();
+</script>
 </body>
 </html>
