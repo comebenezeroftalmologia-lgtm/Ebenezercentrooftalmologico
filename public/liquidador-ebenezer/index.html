@@ -7731,7 +7731,10 @@ function esLente(r){ return mNorm(r.sv).includes('LENTES INTRAOCULARES') || mNor
 // Requiere: mNorm, mGemp, mHojaDe, mPredecir (motor.js), REGLAS_MES/esCirUf/esPosQx/esLente/esProced/baseCUPS (motor_mensual.js)
 
 const REGLAS_DOC = {
- 'ALFREDO RAMIREZ': { lente:true, lenteMutual:300000, consM:14000, consP:{t:'fijo',v:50000,incumplidas:true}, cirFijas:[
+ 'ALFREDO RAMIREZ': { lente:true, lenteMutual:300000, consM:14000, consP:{t:'fijo',v:50000,incumplidas:true},
+    /* ficha E10: CAPSULOTOMIA - IRIDOTOMIA · 0.35 · PARTICULARES - PREPAGADAS · se liquidan
+       por paciente (el Plan Complementario Sura va por su renglón fijo de $55.000) */
+    capsPct:0.35, cirFijas:[
     // ficha E12/E13: refractiva bilateral $1.200.000 · unilateral $600.000
     {re:/QUERATECTOMIA|PRK|LASEK|REFRACTIVA/, P1:600000, P:1200000, porPaciente:true},
     {re:/EXTRACAPSULAR|FACO|CATARATA/, P:700000, S:200000, M:200000}] },
@@ -8716,6 +8719,7 @@ function liquidarV4(recs, actos, actosAll){
       }
     }
     else if(g!=='M' && cfg.camposPct && D.includes('CAMPO VISUAL')){ pago=Math.round(cfg.camposPct*(r.t||0)); regla='15% del campo visual facturado'; }
+    else if(g==='P' && cfg.capsPct && /CAPSULOTOM|IRIDOTOM/.test(D) && (r.t>0) && !/SURA/.test(mNorm((r.e||'')+' '+(r.ct||'')))){ pago=Math.round(cfg.capsPct*(r.t||0)); regla=Math.round(cfg.capsPct*100)+'% de la capsulotomía facturada (ficha) · particulares y prepagadas'; }
     else if(g!=='M' && !esCons && cfg.sinLecturaIV && cfg.sinLecturaIV.test(D) && (pacIV.has(((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||'')) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(D+' '+(r.as||'')))){
       marcar(r._src,'no_cobro'); continue; }
     else if(g!=='M' && cfg.octFlat && /TOMOGRAF|OCT /.test(D)){
@@ -10574,6 +10578,11 @@ document.getElementById('btnCalc').addEventListener('click', ()=>{
     if(fecha > fechaFin){ fechasExcluidas.despues.push(r); nFechaCuora++; marcar(r,'fuera_periodo'); continue; }
     if(exAnul && /ANULADO/i.test(r.tipoPago)){ nAnul++; marcar(r,'anulado'); continue; }
     if(exSNC && /^SNC/i.test(r.codigo)){ nSNC++; marcar(r,'no_cobro'); continue; }
+    /* No cobro, cortesías e investigación no se liquidan (orden del administrador,
+       27/11/2026: «está tomando el contrato de investigación y no cobro y eso no se
+       debe tomar»). Mira la empresa Y el contrato del informe. */
+    if(/NO\s*COBRO|CORTESIA|CORTESÍA|INVESTIGACI/i.test(String(r.empresa||'')+' | '+String(r.contrato||''))){
+      nSNC++; marcar(r,'no_cobro'); continue; }
     let _m = r.medico; let _lect = false;
     // Lecturas: el examen lo toma la agenda, la auxiliar o la técnica (cualquier nombre sin hoja),
     // pero la LECTURA la hace y la cobra el médico. Regla de Faber: «las lecturas son de los médicos».
