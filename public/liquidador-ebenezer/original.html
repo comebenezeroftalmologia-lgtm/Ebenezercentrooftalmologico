@@ -22124,5 +22124,59 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
   }
 })();
 </script>
+<script>
+
+/* ===== Que SIEMPRE se pueda cargar un archivo =====
+   Dos cosas dejaban al usuario sin poder subir (27/11/2026, al cambiar de mes):
+   1) el clic de cada tarjeta se engancha UNA sola vez al abrir la página; si las
+      tarjetas se vuelven a pintar, las nuevas quedan sin clic y "no da para cargar".
+   2) las tarjetas se ocultan mientras la sesión termina de resolverse
+      (.cargas.espera); si eso se queda pegado, no se ve nada que tocar.
+   Esto re-engancha las tarjetas nuevas y destraba la espera cuando ya hay sesión. */
+(function(){
+  if(window.__cgSiempre) return; window.__cgSiempre = true;
+  /* se lleva en memoria, no en un atributo: al repintar copiando el HTML el
+     atributo viajaría con la copia y la tarjeta nueva quedaría sin clic */
+  var YA = new WeakSet();
+  function cont(){ return document.getElementById('drop') || document.querySelector('.cargas'); }
+  function fileIn(){ return document.getElementById('file'); }
+  function enganchar(c){
+    if(!c || YA.has(c)) return;
+    YA.add(c);
+    c.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      try{ if(typeof cgPuedeSubir==='function' && !cgPuedeSubir(c.dataset.tipo)){
+             if(typeof cgAvisoAdmin==='function') cgAvisoAdmin(c); return; } }catch(err){}
+      var f = fileIn(); if(!f) return;
+      try{ f.setAttribute('accept', '.xls,.xlsx,.xlsm,.html,.htm,.csv,.parquet'); }catch(err){}
+      f.dataset.destino = c.dataset.tipo || '';
+      f.click();
+    });
+  }
+  function inicio(){
+    var z = cont(); if(!z) return false;
+    // las que ya están tienen su clic original: solo se marcan para no duplicarlo
+    z.querySelectorAll('.carga').forEach(function(c){ YA.add(c); });
+    var mo = new MutationObserver(function(){
+      z.querySelectorAll('.carga').forEach(function(c){ if(!YA.has(c)) enganchar(c); });
+    });
+    mo.observe(z, {childList:true, subtree:true});
+    // si la espera se queda pegada con sesión abierta, se destraba sola
+    var desde = 0;
+    setInterval(function(){
+      try{
+        var zz = cont(); if(!zz) return;
+        if(!zz.classList.contains('espera')){ desde = 0; return; }
+        var haySesion = !!((window.USUARIO && USUARIO.nombre) || (window.NUBE && NUBE.user));
+        if(!haySesion){ desde = 0; return; }
+        if(!desde) desde = Date.now();
+        else if(Date.now() - desde > 8000){ zz.classList.remove('espera'); desde = 0; }
+      }catch(e){}
+    }, 1500);
+    return true;
+  }
+  if(!inicio()){ var t=setInterval(function(){ if(inicio()) clearInterval(t); }, 500); setTimeout(function(){ clearInterval(t); }, 20000); }
+})();
+</script>
 </body>
 </html>
