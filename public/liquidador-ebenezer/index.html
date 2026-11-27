@@ -7799,7 +7799,7 @@ const REGLAS_DOC = {
     {re:/TONOGRAFIA/, P1:200000, P:350000, PART1:220000, PART:380000, S1:120000, S:160000, M:162990, bilDef:true}] },
  'ANALITH BARRIGA': { consP:{t:'pct',f:0.7}, ayudasPct:0.7, octFlat:50000, cirPct:0.7, angioPct:0.3,
     unaPorPaciente:/TOMOGRAF|ANGIOTOMOGRAF|ANGIOGRAF|FOTOGRAF|CAPSULOTOMIA|IRIDOTOMIA|CITOLOGIA/,
-    sinLecturaIV:/TOMOGRAF|ANGIOTOMOGRAF|\bOCT\b/,   // Pedro Herrera 30/09/2026: «a Analith lo que es de intravítreo no se paga» (estudios de pacientes con aplicación intravítrea en el corte)   // ficha B24: lectura de tomografías y angiotomografías Mutual $22.500 POR PACIENTE (no por estudio ni por ojo)
+    // sinLecturaIV retirada el 27/11/2026 por orden del administrador: su listado de lecturas faltantes incluía un paciente de intravítreos (CC 9.074.112) — las lecturas de tomografía se pagan aunque el paciente tenga aplicación intravítrea en el corte. (Regla anterior, 30/09/2026: «a Analith lo que es de intravítreo no se paga».)   // ficha B24: lectura de tomografías y angiotomografías Mutual $22.500 POR PACIENTE (no por estudio ni por ojo)
     cirFijas:[{re:/PLUG|TAPON/, P:0},{re:/PLASTIA (DE|EN) CANALICULO/, P1:200000, P:400000},   // ficha E10/E11: $200.000 un ojo · $400.000 ambos
     // ficha Mutual: lectura de tomografías y angiotomografías $22.500 · angiografías $48.439
     //               fotografía a color $6.270 · capsulotomía $55.000 · iridotomía $55.000 · citología $36.200
@@ -8773,13 +8773,18 @@ function liquidarV4(recs, actos, actosAll){
       marcar(r._src,'no_cobro'); continue; }
     else if(g!=='M' && cfg.octFlat && /TOMOGRAF|OCT /.test(D)){
       const _kOctS1 = (((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10);
+      /* Norma del administrador (27/11/2026): las lecturas del mismo paciente el mismo día se
+         pagan HASTA 2 POR PACIENTE — «si la ves 3 o 4 veces, se colocan dos». Antes se pagaba
+         solo 1 por paciente y día, y las repetidas quedaban en $0. */
+      const _nOct = (M._uppS1 = M._uppS1 || new Map());
       if(!(r.t>0)){
         pago=0; regla='Tomografía/OCT en Sede Principal sin valor facturado: no se liquida';
-      } else if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (M._uppS1=M._uppS1||new Set()).has(_kOctS1)){
-        pago=0; regla='Lectura OCT del mismo paciente ese día: en Sede Principal se paga por paciente ($'+cfg.octFlat.toLocaleString()+')';
+      } else if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (_nOct.get(_kOctS1)||0)>=2){
+        pago=0; regla='Este paciente ya tiene 2 lecturas pagadas ese día: se pagan máximo 2 por paciente (norma del 27/11/2026)';
       } else {
-        if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)) (M._uppS1=M._uppS1||new Set()).add(_kOctS1);
-        pago=cfg.octFlat; regla=(/ANGIOTOMOGRAF/.test(D)?'Lectura de angiotomografía':'Lectura de tomografía (OCT)')+' a $'+cfg.octFlat.toLocaleString()+' (por paciente en Sede Principal)';
+        let _i2=0;
+        if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)){ _i2=(_nOct.get(_kOctS1)||0)+1; _nOct.set(_kOctS1,_i2); }
+        pago=cfg.octFlat; regla=(/ANGIOTOMOGRAF/.test(D)?'Lectura de angiotomografía':'Lectura de tomografía (OCT)')+' a $'+cfg.octFlat.toLocaleString()+' (por paciente en Sede Principal)'+(_i2===2?' — 2ª lectura del paciente ese día (se pagan hasta 2, norma del 27/11/2026)':'');
       }
     }
     else if(g!=='M' && cfg.angioPct && /ANGIOGRAF|FOTOGRAF/.test(D)){ pago=Math.round(cfg.angioPct*(r.t||0)); regla=Math.round(cfg.angioPct*100)+'% de lo facturado (angiografías y fotografías, ficha)'; }
@@ -22378,7 +22383,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
    actualizar sin perder nada de lo guardado. */
 (function(){
   if(window.__verSello) return; window.__verSello = true;
-  var VER = '2026-11-27 · 5';
+  var VER = '2026-11-27 · 6';
   window.LIQ_VER = VER;
   function poner(){
     if(document.getElementById('verSello')) return true;
