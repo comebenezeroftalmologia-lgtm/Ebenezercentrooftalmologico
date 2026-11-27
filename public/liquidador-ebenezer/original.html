@@ -12388,7 +12388,9 @@ function toggleDrill(i, tr){
           ? ' <button type="button" onclick="jqDevolver(\''+_jqK+'\')" style="margin-left:8px;font:600 11px system-ui;background:#fdeeea;border:1px solid #f0c3b8;color:#8a2c17;border-radius:99px;padding:2px 9px;cursor:pointer">✕ no se hizo · deshacer</button>'
           : ' <button type="button" onclick="jqQuitar(\''+_jqK+'\','+(ctx.v||0)+')" style="margin-left:8px;font:600 11px system-ui;background:#f4f6f8;border:1px solid #dde3e8;color:#44525e;border-radius:99px;padding:2px 9px;cursor:pointer">✕ No se hizo</button>')
       : '';
-    const _jqNota = _jqQ ? ' <span style="color:#8a2c17;font-weight:700">· jornada no realizada ('+String(_jqQ.motivo||'').slice(0,40)+')</span>' : '';
+    const _jqNota = _jqQ ? ' <span style="color:#8a2c17;font-weight:700">· jornada no realizada ('+String(_jqQ.motivo||'').slice(0,40)+') − '+money((ctx&&ctx.v)||0)+'</span>' : '';
+    /* quitada: la fila y el total del panel la restan de una vez */
+    if(_jqQ && ctx && ctx.v){ sub -= ctx.v; totVal -= ctx.v; }
     cuerpo += `<tr class="ddia"><td colspan="${nCol}">`
       + `<div class="ddh"><b>${nomDia}</b><span class="ddm">${rs.length} paciente${rs.length>1?'s':''}`
       + `${nota?' · '+nota:''}${agTxt?' · '+agTxt:''}${subF?' · facturado <b>'+money(subF)+'</b>':''}${_avPocos}${_jqNota}${_jqBtn}</span></div>`
