@@ -8050,6 +8050,16 @@ function liquidarV4(recs, actos, actosAll){
       REGLAS_DOC['MARIA CAROLINA CAUSIL'].consP={t:'fijo', v:Number(_filaC[2])};
     }
   }catch(e){}
+  /* Conteo previo de copias idénticas de tomografía (paciente + día + mismo detalle),
+     para la regla «3 o 4 copias → se pagan 2» de las lecturas en Sede Principal. */
+  const _octCop = new Map();
+  for(const r of recs){
+    const _dx = mNorm(String(r.d||''));
+    if(!/TOMOGRAF/.test(_dx) || /ANGIOTOMOGRAF/.test(_dx)) continue;
+    if(/MUTUAL/.test(mNorm(String(r.e||'')+' '+String(r.ct||'')))) continue;
+    const _k = (((String(r.p||'').match(/(\d{5,12})/)||[])[1])||mNorm(String(r.p||'')))+'|'+String(r.f||'').slice(0,10)+'|'+_dx.replace(/\s+/g,'');
+    _octCop.set(_k,(_octCop.get(_k)||0)+1);
+  }
   // cédulas a solo dígitos: en estadísticas a veces vienen con letras (PA - AC243810)
   // y sin esto no cruzan con el informe → se pagaba doble la refractiva.
   const _soloDig = s=>{ const d=String(s||'').replace(/\D/g,''); return d.length>=5? d : String(s||''); };
@@ -8785,19 +8795,40 @@ function liquidarV4(recs, actos, actosAll){
     else if(g!=='M' && !esCons && cfg.sinLecturaIV && cfg.sinLecturaIV.test(D) && (pacIV.has(((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||'')) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(D+' '+(r.as||'')))){
       marcar(r._src,'no_cobro'); continue; }
     else if(g!=='M' && cfg.octFlat && /TOMOGRAF|OCT /.test(D)){
-      const _kOctS1 = (((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||''))+'|'+r.f.slice(0,10);
-      /* Norma del administrador (27/11/2026): las lecturas del mismo paciente el mismo día se
-         pagan HASTA 2 POR PACIENTE — «si la ves 3 o 4 veces, se colocan dos». Antes se pagaba
-         solo 1 por paciente y día, y las repetidas quedaban en $0. */
-      const _nOct = (M._uppS1 = M._uppS1 || new Map());
+      /* LECTURAS EN SEDE PRINCIPAL — regla de la ficha y norma del administrador (27/11/2026):
+         la ficha dice «se liquidan por paciente, no por ojo». Entonces:
+         · ESTUDIOS DISTINTOS del mismo paciente el mismo día (p. ej. segmento anterior y
+           nervio óptico): se paga CADA estudio.
+         · El MISMO estudio repetido 2 veces (los dos ojos): se paga UNO.
+         · El mismo estudio repetido 3 o 4 veces: se pagan DOS («si la ves 3 o 4 veces,
+           se colocan dos»).
+         Las angiotomografías siguen como siempre: una por paciente por día. */
+      const _ced0 = ((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||'');
+      const _kOctS1 = _ced0+'|'+r.f.slice(0,10);
       if(!(r.t>0)){
         pago=0; regla='Tomografía/OCT en Sede Principal sin valor facturado: no se liquida';
-      } else if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (_nOct.get(_kOctS1)||0)>=2){
-        pago=0; regla='Este paciente ya tiene 2 lecturas pagadas ese día: se pagan máximo 2 por paciente (norma del 27/11/2026)';
+      } else if(/ANGIOTOMOGRAF/.test(D)){
+        if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D) && (M._uppA=M._uppA||new Set()).has(_kOctS1)){
+          pago=0; regla='Lectura de angiotomografía del mismo paciente ese día: se paga por paciente, no por ojo (ficha)';
+        } else {
+          if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)) (M._uppA=M._uppA||new Set()).add(_kOctS1);
+          pago=cfg.octFlat; regla='Lectura de angiotomografía a $'+cfg.octFlat.toLocaleString()+' (por paciente en Sede Principal)';
+        }
       } else {
-        let _i2=0;
-        if(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)){ _i2=(_nOct.get(_kOctS1)||0)+1; _nOct.set(_kOctS1,_i2); }
-        pago=cfg.octFlat; regla=(/ANGIOTOMOGRAF/.test(D)?'Lectura de angiotomografía':'Lectura de tomografía (OCT)')+' a $'+cfg.octFlat.toLocaleString()+' (por paciente en Sede Principal)'+(_i2===2?' — 2ª lectura del paciente ese día (se pagan hasta 2, norma del 27/11/2026)':'');
+        const _kEst = _ced0+'|'+r.f.slice(0,10)+'|'+mNorm(String(r.d||'')).replace(/\s+/g,'');
+        const _tot = (typeof _octCop!=='undefined' && _octCop.get(_kEst))||1;
+        const _n = ((M._uppT=M._uppT||new Map()).get(_kEst)||0)+1; M._uppT.set(_kEst,_n);
+        const _paga = !(cfg.unaPorPaciente && cfg.unaPorPaciente.test(D)) || _n===1 || (_n===2 && _tot>=3);
+        if(_paga){
+          pago=cfg.octFlat;
+          regla='Lectura de tomografía (OCT) a $'+cfg.octFlat.toLocaleString()+' (por paciente en Sede Principal)'
+            +(_n===2?' — este estudio viene '+_tot+' veces ese día: se pagan 2 (norma del 27/11/2026)':'');
+        } else {
+          pago=0;
+          regla=_tot>=3
+            ? 'Copia '+_n+' de '+_tot+' del mismo estudio ese día: se pagan 2 (norma del 27/11/2026)'
+            : 'Mismo estudio del paciente ese día (los dos ojos): se paga por paciente, no por ojo (ficha)';
+        }
       }
     }
     else if(g!=='M' && cfg.angioPct && /ANGIOGRAF|FOTOGRAF/.test(D)){ pago=Math.round(cfg.angioPct*(r.t||0)); regla=Math.round(cfg.angioPct*100)+'% de lo facturado (angiografías y fotografías, ficha)'; }
@@ -22409,7 +22440,7 @@ function acQuitarMedico(k){ const todos=acLeer(); const a=todos[k]; if(!a) retur
    actualizar sin perder nada de lo guardado. */
 (function(){
   if(window.__verSello) return; window.__verSello = true;
-  var VER = '2026-11-27 · 9';
+  var VER = '2026-11-27 · 10';
   window.LIQ_VER = VER;
   function poner(){
     if(document.getElementById('verSello')) return true;
