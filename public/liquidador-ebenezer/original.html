@@ -8493,6 +8493,17 @@ function liquidarV4(recs, actos, actosAll){
     if(!h0 || !dkAplica(r)) continue;
     dkTotal.set(dkClave(h0,r), (dkTotal.get(dkClave(h0,r))||0)+1);
   }
+  /* Capsulotomía e iridotomía: el acto llega en DOS cargos — el procedimiento y el de
+     «HONORARIOS MEDICOS …» — por el mismo paciente y el mismo día. Para el porcentaje de
+     la ficha se SUMAN los dos y se paga una sola vez (orden del administrador, 27/11/2026:
+     «son dos facturas y tú tomas una sola… es una misma persona»). */
+  const capsBase = new Map();
+  for(const r of recs){
+    const _svc = mNorm(String(r.sv||'')+' '+String(r.d||''));
+    if(!/CAPSULOTOM|IRIDOTOM/.test(_svc)) continue;
+    const _kc = (((String(r.p||'').match(/(\d{5,12})/)||[])[1])||mNorm(String(r.p||'')))+'|'+String(r.f||'').slice(0,10);
+    capsBase.set(_kc, (capsBase.get(_kc)||0) + (Number(r.t)||0));
+  }
   const dkSeen = new Map();
   for(const r of recs){
     if(esCirUf(r)){ marcar(r._src, (esLente(r)||esProced(r))? 'quirofano' : 'insumos_quirofano'); continue; }
@@ -8719,7 +8730,19 @@ function liquidarV4(recs, actos, actosAll){
       }
     }
     else if(g!=='M' && cfg.camposPct && D.includes('CAMPO VISUAL')){ pago=Math.round(cfg.camposPct*(r.t||0)); regla='15% del campo visual facturado'; }
-    else if(g==='P' && cfg.capsPct && /CAPSULOTOM|IRIDOTOM/.test(D) && (r.t>0) && !/SURA/.test(mNorm((r.e||'')+' '+(r.ct||'')))){ pago=Math.round(cfg.capsPct*(r.t||0)); regla=Math.round(cfg.capsPct*100)+'% de la capsulotomía facturada (ficha) · particulares y prepagadas'; }
+    else if(g==='P' && cfg.capsPct && /CAPSULOTOM|IRIDOTOM/.test(D+' '+mNorm(String(r.sv||''))) && !/SURA/.test(mNorm((r.e||'')+' '+(r.ct||'')))){
+      const _kC = (((String(r.p||'').match(/(\d{5,12})/)||[])[1])||mNorm(String(r.p||'')))+'|'+String(r.f||'').slice(0,10);
+      if((M._uppCaps = M._uppCaps || new Set()).has(_kC)){
+        pago=0; regla='Mismo paciente ese día: ya quedó pagada arriba — los dos cargos (procedimiento y honorarios) van en un solo renglón';
+      } else {
+        const _base = capsBase.get(_kC) || Number(r.t) || 0;
+        if(_base>0){
+          M._uppCaps.add(_kC);
+          pago=Math.round(cfg.capsPct*_base);
+          regla=Math.round(cfg.capsPct*100)+'% de lo facturado de la capsulotomía: '+money(_base)+' (procedimiento + honorarios) · ficha, por paciente';
+        } else { pago=0; regla='Capsulotomía sin valor facturado: no se liquida'; }
+      }
+    }
     else if(g!=='M' && !esCons && cfg.sinLecturaIV && cfg.sinLecturaIV.test(D) && (pacIV.has(((r.p||'').match(/(\d{5,12})/)||[])[1]||mNorm(r.p||'')) || /INTRAVIT|AFLIBERCEPT|RANIBIZUMAB|BEVACIZUMAB|FARICIMAB|OZURDEX|ANTIANGIOG/i.test(D+' '+(r.as||'')))){
       marcar(r._src,'no_cobro'); continue; }
     else if(g!=='M' && cfg.octFlat && /TOMOGRAF|OCT /.test(D)){
