@@ -8464,7 +8464,11 @@ function liquidarV4(recs, actos, actosAll){
     const k0=h0+'|'+ced0+'|'+r.f.slice(0,10)+'|'+gp0;
     // ojos del acto: suma de la cantidad de las filas del procedimiento (sin la de honorarios)
     if(!/HONORARIO/i.test(r.d)) { gruposQ[k0]=(gruposQ[k0]||0)+(r.q||1); continue; }
-    gruposHon[k0]={hon:r.t||0};
+    /* ANTES se quedaba con el ÚLTIMO renglón de honorarios del acto. Cuando el acto
+       viene en dos facturas (los dos ojos: uno completo y el otro a mitad) se perdía uno
+       y el médico quedaba corto (27/11/2026, capsulotomía de Alfredo: $380.925 en vez de
+       $1.142.775). Ahora se SUMAN los renglones de honorarios del mismo acto. */
+    gruposHon[k0]={hon:(((gruposHon[k0]||{}).hon)||0)+(r.t||0), n:(((gruposHon[k0]||{}).n)||0)+1};
   }
   // apoyo diagnóstico/terapéutico: el informe a veces exporta la misma fila dos (o más) veces
   // (mismo médico, fecha, paciente, código, detalle, factura y valor, sin ningún campo distinto).
@@ -8635,6 +8639,20 @@ function liquidarV4(recs, actos, actosAll){
         } else {
           if(!esHon && !(r.t>0) && !gruposHon[k]){ pago=0; regla='Sesión/procedimiento sin facturación: no se liquida';
             M[g==='M'?'M':'P']+=0; M.filas.push({fuente:'sede',fecha:r.f,pac:r.p,det:r.d,emp:r.e,t:r.t,fa:r.fa,pago,regla}); continue; }
+          /* Capsulotomía/iridotomía con porcentaje propio en la ficha (Alfredo: 35% de los
+             honorarios médicos, particulares y prepagadas; el Plan Complementario Sura
+             sigue con su tarifa fija). */
+          if(cfg.capsPct && /CAPSULOTOM|IRIDOTOM/.test(D) && !/SURA/.test(mNorm((r.e||'')+' '+(r.ct||'')))){
+            const _bC = (grupo && grupo.hon>0) ? grupo.hon : (esHon ? (r.t||0) : 0);
+            if(_bC>0){
+              pago=Math.round(cfg.capsPct*_bC);
+              regla=Math.round(cfg.capsPct*100)+'% de los honorarios médicos de la capsulotomía: '+money(_bC)
+                +((grupo&&grupo.n>1)?' ('+grupo.n+' renglones de honorarios)':'')+' · ficha, por paciente';
+              M[g==='M'?'M':'P']+=pago;
+              M.filas.push({fuente:'sede',fecha:r.f,pac:r.p,det:r.d,emp:r.e,t:r.t,fa:r.fa,pago,regla});
+              continue;
+            }
+          }
           const fj=v4CirFija(cfg, r.d, r.e+' '+r.ct, Math.max(gruposQ[k]||0, r.q||1));
           const cpS = cfg.cirPct && !cfg.cirPctSoloQx;
           if(fj && !(cpS && esHon && fj.v===undefined)){
